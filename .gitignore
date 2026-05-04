@@ -1,0 +1,103 @@
+# =========================
+# ROOT (global ignores)
+# =========================
+.DS_Store
+Thumbs.db
+*.log
+*.swp
+*.swo
+*.tmp
+*.temp
+
+# =========================
+# BACKEND (Laravel - /backend/franchisee)
+# =========================
+/backend/franchisee/vendor/
+/backend/franchisee/node_modules/
+
+# Env (IMPORTANT - never commit)
+/backend/franchisee/.env
+/backend/franchisee/.env.*
+!/backend/franchisee/.env.example
+
+# Logs
+/backend/franchisee/*.log
+
+# Laravel cache
+/backend/franchisee/bootstrap/cache/*.php
+
+# Storage
+/backend/franchisee/storage/*.key
+/backend/franchisee/storage/pail
+/backend/franchisee/storage/debugbar
+
+# Public build/temp
+/backend/franchisee/public/build
+/backend/franchisee/public/hot
+/backend/franchisee/public/storage
+
+# Composer auth (secrets)
+/backend/franchisee/auth.json
+
+# Testing
+/backend/franchisee/.phpunit.result.cache
+/backend/franchisee/.phpunit.cache
+/backend/franchisee/coverage/
+
+# IDE / Editors
+/backend/franchisee/.idea/
+/backend/franchisee/.vscode/
+/backend/franchisee/.fleet/
+/backend/franchisee/.zed/
+
+# Misc
+/backend/franchisee/_ide_helper.php
+/backend/franchisee/Homestead.json
+/backend/franchisee/Homestead.yaml
+/backend/franchisee/.phpactor.json
+
+# =========================
+# FRONTEND (React/Vite - /frontend/franchisee)
+# =========================
+/frontend/franchisee/node_modules/
+
+# Build outputs
+/frontend/franchisee/build/
+/frontend/franchisee/dist/
+/frontend/franchisee/.next/
+/frontend/franchisee/out/
+
+# Env files
+/frontend/franchisee/.env
+/frontend/franchisee/.env.*
+!/frontend/franchisee/.env.example
+
+# Logs
+/frontend/franchisee/npm-debug.log*
+/frontend/franchisee/yarn-debug.log*
+/frontend/franchisee/yarn-error.log*
+/frontend/franchisee/pnpm-debug.log*
+
+# Testing
+/frontend/franchisee/coverage/
+
+# Cache
+/frontend/franchisee/.cache/
+/frontend/franchisee/.vite/
+/frontend/franchisee/.turbo/
+
+# IDE
+/frontend/franchisee/.idea/
+/frontend/franchisee/.vscode/
+
+# Misc
+/frontend/franchisee/.eslintcache
+/frontend/franchisee/.stylelintcache
+
+# =========================
+# OPTIONAL GLOBAL
+# =========================
+.env
+.env.*
+
+docker-compose.override.yml
