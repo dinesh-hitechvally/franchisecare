@@ -46,17 +46,38 @@ export function NewBlockoutsPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!formData.title || !formData.startDate || !formData.startTime || !formData.endDate || !formData.endTime) {
       addToast('Please fill in all required fields', 'error')
       return
     }
 
-    createMutation.mutate({
-      ...formData,
-      company_id: user?.companyId,
+    // Get company_id from user (handle both camelCase and snake_case)
+    const companyId = user?.companyId || (user as any)?.company_id
+
+    if (!companyId) {
+      addToast('Company information not found. Please log in again.', 'error')
+      return
+    }
+
+    const payload = {
+      title: formData.title,
+      location: formData.location,
+      start_date: formData.startDate,
+      start_time: formData.startTime,
+      end_date: formData.endDate,
+      end_time: formData.endTime,
+      is_recurring: formData.isRecurring,
+      repeat_every: formData.repeatEvery || null,
+      repeat_on: formData.repeatOn || null,
+      repeat_until: formData.repeatUntil || null,
+      notes: formData.notes,
+      company_id: companyId,
       active: true,
-    })
+    }
+
+    console.log('Blockout payload:', payload)
+    createMutation.mutate(payload)
   }
 
   return (
@@ -196,31 +217,64 @@ export function NewBlockoutsPage() {
                   <p className="text-[13px] text-gray-900 font-bold leading-relaxed pr-8">
                     The recurring settings are to repeat this blockout for future dates. Please ensure the base blockout dates above are also correct.
                   </p>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-4 items-end">
-                    <div className="flex items-center gap-6">
-                      <div className="flex-1">
-                        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Repeat Every</label>
-                        <Select
-                          value={formData.repeatEvery}
-                          options={[
-                            { label: 'Select', value: '' },
-                            { label: '1 Week', value: '1' },
-                            { label: '2 Weeks', value: '2' },
-                            { label: 'Monthly', value: 'monthly' },
-                          ]}
-                          onChange={(val) => setFormData({ ...formData, repeatEvery: val.toString() })}
-                          className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] focus:ring-0 focus:border-blue-500 cursor-pointer"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Repeat Until</label>
-                        <Input
-                          type="date"
-                          value={formData.repeatUntil}
-                          onChange={(e) => setFormData({ ...formData, repeatUntil: e.target.value })}
-                          className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] transition-all focus:ring-0 focus:border-blue-500"
-                        />
-                      </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-4 items-end">
+                    <div className="flex-1">
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Repeat Every</label>
+                      <Select
+                        value={formData.repeatEvery}
+                        options={[
+                          { label: 'Select', value: '' },
+                          { label: '1 Week', value: '1' },
+                          { label: '2 Weeks', value: '2' },
+                          { label: '3 Weeks', value: '3' },
+                          { label: '4 Weeks', value: '4' },
+                          { label: '5 Weeks', value: '5' },
+                          { label: '6 Weeks', value: '6' },
+                          { label: '7 Weeks', value: '7' },
+                          { label: '8 Weeks', value: '8' },
+                          { label: '9 Weeks', value: '9' },
+                          { label: '10 Weeks', value: '10' },
+                          { label: '11 Weeks', value: '11' },
+                          { label: '12 Weeks', value: '12' },
+                          { label: '13 Weeks', value: '13' },
+                          { label: '14 Weeks', value: '14' },
+                          { label: '15 Weeks', value: '15' },
+                          { label: '16 Weeks', value: '16' },
+                          { label: '17 Weeks', value: '17' },
+                          { label: '18 Weeks', value: '18' },
+                          { label: '19 Weeks', value: '19' },
+                          { label: '20 Weeks', value: '20' },
+                        ]}
+                        onChange={(val) => setFormData({ ...formData, repeatEvery: val.toString() })}
+                        className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] focus:ring-0 focus:border-blue-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Repeat On</label>
+                      <Select
+                        value={formData.repeatOn}
+                        options={[
+                          { label: 'Select', value: '' },
+                          { label: 'Monday', value: 'Monday' },
+                          { label: 'Tuesday', value: 'Tuesday' },
+                          { label: 'Wednesday', value: 'Wednesday' },
+                          { label: 'Thursday', value: 'Thursday' },
+                          { label: 'Friday', value: 'Friday' },
+                          { label: 'Saturday', value: 'Saturday' },
+                          { label: 'Sunday', value: 'Sunday' },
+                        ]}
+                        onChange={(val) => setFormData({ ...formData, repeatOn: val.toString() })}
+                        className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] focus:ring-0 focus:border-blue-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Repeat Until</label>
+                      <Input
+                        type="date"
+                        value={formData.repeatUntil}
+                        onChange={(e) => setFormData({ ...formData, repeatUntil: e.target.value })}
+                        className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] transition-all focus:ring-0 focus:border-blue-500"
+                      />
                     </div>
                   </div>
                 </div>

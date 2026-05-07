@@ -14,6 +14,7 @@ class ForumThread extends Model
         'content',
         'author_id',
         'topic',
+        'group_id',
         'is_pinned',
         'likes_count',
     ];
@@ -31,5 +32,10 @@ class ForumThread extends Model
     public function comments()
     {
         return $this->hasMany(ForumComment::class, 'thread_id');
+    }
+
+    public function group()
+    {
+        return $this->belongsTo(ForumGroup::class, 'group_id');
     }
 }

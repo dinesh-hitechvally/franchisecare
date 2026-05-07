@@ -53,8 +53,17 @@ class BlockoutController extends Controller
             'repeat_until' => 'nullable|date',
             'notes' => 'nullable|string',
             'active' => 'boolean',
-            'company_id' => 'required|exists:companies,id',
+            'company_id' => 'nullable|exists:companies,id',
         ]);
+
+        // Use authenticated user's company_id if not provided
+        if (empty($validated['company_id']) && auth()->check()) {
+            $validated['company_id'] = auth()->user()->company_id;
+        }
+
+        if (empty($validated['company_id'])) {
+            return response()->json(['message' => 'Company information is required'], 422);
+        }
 
         $blockout = Blockout::create($validated);
 

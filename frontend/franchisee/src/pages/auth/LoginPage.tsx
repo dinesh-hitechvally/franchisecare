@@ -39,8 +39,13 @@ export function LoginPage() {
     setIsLoading(true)
     try {
       const response = await authApi.login(data.email, data.password)
-      
-      setAuth(response.access_token, response.user)
+
+      const user = {
+        ...response.user,
+        companyId: (response.user as any).company_id || response.user.companyId,
+      }
+
+      setAuth(response.access_token, user)
       addToast('Successfully signed in', 'success')
       navigate('/dashboard')
     } catch (error: any) {

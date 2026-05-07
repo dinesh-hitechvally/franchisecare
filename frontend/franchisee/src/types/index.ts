@@ -13,14 +13,34 @@ export interface Lead {
   id: string
   firstName: string
   lastName: string
-  email: string
+  customerName: string
+  email?: string
   phone: string
-  source: string
-  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost'
+  alternatePhone?: string
+  interestedServices: string
+  address: string
+  suburb?: string
+  postcode?: string
+  petBreed?: string
+  referredBy?: string
+  additionalNote?: string
+  notes?: string
+  source: 'phone' | 'internet' | 'walk-in' | 'referral'
+  leadsFrom: 'phone' | 'internet'
+  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | 'snoozed' | 'completed'
   companyId?: string
-  notes: string
+  snoozedUntil?: string
+  comments?: LeadComment[]
   createdAt: string
   updatedAt: string
+}
+
+export interface LeadComment {
+  id: string
+  leadId: string
+  comment: string
+  createdBy: string
+  createdAt: string
 }
 
 export interface Customer {
@@ -215,6 +235,10 @@ export interface ForumThread {
   content: string
   authorId: string
   author?: User
+  groupId?: string | null
+  group_id?: string | null
+  group?: ForumGroup
+  topic?: string
   likes_count: number
   comments: ForumComment[]
   isPinned: boolean
@@ -223,12 +247,37 @@ export interface ForumThread {
   created_at: string
 }
 
+export interface ForumGroup {
+  id: string
+  name: string
+  description?: string
+  type: 'topic' | 'state' | 'custom'
+  icon?: string
+  color?: string
+  createdBy?: string
+  created_by?: string
+  creator?: User
+  isPublic: boolean
+  is_public: boolean
+  membersCount: number
+  members_count: number
+  threadsCount: number
+  threads_count: number
+  members?: User[]
+  createdAt: string
+  created_at: string
+}
+
 export interface ForumComment {
   id: string
   threadId: string
+  parentId?: string | null
   content: string
   authorId: string
   author?: User
+  likesCount: number
+  likes_count: number
+  replies?: ForumComment[]
   createdAt: string
   created_at: string
 }

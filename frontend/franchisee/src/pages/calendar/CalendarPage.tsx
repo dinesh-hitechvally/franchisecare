@@ -19,6 +19,11 @@ import {
   useDroppable,
 } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
+import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { BlockoutDetailModal } from '../../components/modals/BlockoutDetailModal'
+import { bookingsApi, blockoutsApi } from '../../api/services'
+import { useToastStore } from '../../store/toastStore'
+import type { Booking as BookingType, Blockout } from '../../types'
 
 type ViewMode = 'month' | 'week' | 'day' | 'agenda'
 
@@ -27,22 +32,27 @@ interface Booking {
   customerName: string
   petName: string
   service: string
-  date: string // start date
+  startDate: string // start date
   endDate?: string // end date for multi-day bookings
-  time: string
+  startTime: string
   status: string
   duration: number // in minutes (for single day) or days (if multi-day)
   isMultiDay?: boolean
+  eventType?: 'booking' | 'blockout'
+  bookingId?: string
+  blockoutId?: string
+  title?: string
+  location?: string
 }
 
 interface DayBooking {
   id: string
-  time: string
+  startTime: string
   customer: string
   pet: string
   service: string
   duration: number
-  date: string
+  startDate: string
   endDate?: string
   isMultiDay?: boolean
   dayIndex?: number
@@ -50,24 +60,26 @@ interface DayBooking {
 }
 
 // Draggable Booking Component with Resize Support
-function ResizableDraggableBooking({ 
-  booking, 
-  isDayView = false, 
+function ResizableDraggableBooking({
+  booking,
+  isDayView = false,
   style: customStyle,
   onResize,
   slotHeight = 60,
   isMultiDay = false,
   isFirstDay = true,
-  isLastDay = true
-}: { 
-  booking: Booking | DayBooking; 
-  isDayView?: boolean; 
+  isLastDay = true,
+  onClick
+}: {
+  booking: Booking | DayBooking;
+  isDayView?: boolean;
   style?: React.CSSProperties;
   onResize?: (id: string, newDuration: number) => void;
   slotHeight?: number;
   isMultiDay?: boolean;
   isFirstDay?: boolean;
   isLastDay?: boolean;
+  onClick?: (booking: Booking | DayBooking) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: booking.id,
@@ -130,19 +142,43 @@ function ResizableDraggableBooking({
 
   if (isDayView) {
     const dayBooking = booking as DayBooking
-    const durationText = currentDuration >= 60 
+    const durationText = currentDuration >= 60
       ? `${Math.floor(currentDuration / 60)}h ${currentDuration % 60}m`
       : `${currentDuration}m`
-    
+
+    const isBlockout = (booking as any).eventType === 'blockout'
+    const bookingColor = (booking as any).calendarColor || (isBlockout ? '#9333ea' : '#3b82f6')
+
+    // Convert hex color to RGB for opacity
+    const hexToRgb = (hex: string) => {
+      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+      return result ? {
+        r: parseInt(result[1], 16),
+        g: parseInt(result[2], 16),
+        b: parseInt(result[3], 16)
+      } : { r: 59, g: 130, b: 246 }
+    }
+
+    const rgb = hexToRgb(bookingColor)
+    const bgStyle = { backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` }
+    const borderStyle = { borderLeftColor: bookingColor }
+    const badgeStyle = { backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`, color: bookingColor }
+
     return (
       <div
         ref={setNodeRef}
         {...attributes}
-        style={style}
-        className="relative flex-1 bg-blue-50 border-l-4 border-blue-500 rounded hover:bg-blue-100 transition-colors overflow-hidden group"
+        style={{ ...style, ...bgStyle, ...borderStyle }}
+        className="relative flex-1 border-l-4 rounded hover:opacity-90 transition-colors overflow-hidden group"
+        onClick={(e) => {
+          if (!isDragging && !isResizing && onClick) {
+            e.stopPropagation()
+            onClick(booking)
+          }
+        }}
       >
         {/* Main content - draggable area */}
-        <div 
+        <div
           {...listeners}
           className="p-3 h-full"
         >
@@ -150,20 +186,21 @@ function ResizableDraggableBooking({
             <div className="flex items-center gap-2">
               <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
               <div>
-                <p className="font-medium text-gray-900 text-sm">{dayBooking.customer} - {dayBooking.pet}</p>
-                <p className="text-xs text-gray-500">{dayBooking.service}</p>
+                <p className="font-medium text-gray-900 text-sm">{dayBooking.customer || (booking as any).title || 'Blockout'} {dayBooking.pet ? `- ${dayBooking.pet}` : ''}</p>
+                <p className="text-xs text-gray-500">{dayBooking.service || (booking as any).location || ''}</p>
               </div>
             </div>
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded flex-shrink-0">{durationText}</span>
+            <span className="text-xs px-2 py-1 rounded flex-shrink-0 font-medium" style={badgeStyle}>{durationText}</span>
           </div>
         </div>
-        
+
         {/* Resize handle */}
         <div
           onMouseDown={handleResizeStart}
-          className="absolute bottom-0 left-0 right-0 h-3 bg-blue-300 hover:bg-blue-400 cursor-ns-resize flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+          style={{ backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` }}
         >
-          <div className="w-8 h-1 bg-blue-600 rounded-full" />
+          <div className="w-8 h-1 rounded-full" style={{ backgroundColor: bookingColor }} />
         </div>
       </div>
     )
@@ -171,7 +208,28 @@ function ResizableDraggableBooking({
 
   const regularBooking = booking as Booking
   const isBookingMultiDay = isMultiDay || regularBooking.isMultiDay
-  
+  const isBlockout = regularBooking.eventType === 'blockout'
+
+  // Get booking color
+  const bookingColor = regularBooking.calendarColor || (isBlockout ? '#9333ea' : '#3b82f6')
+
+  // Convert hex color to RGB for opacity
+  const hexToRgb = (hex: string) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
+    return result ? {
+      r: parseInt(result[1], 16),
+      g: parseInt(result[2], 16),
+      b: parseInt(result[3], 16)
+    } : { r: 59, g: 130, b: 246 }
+  }
+
+  const rgb = hexToRgb(bookingColor)
+  const bgStyle = {
+    backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
+    borderColor: bookingColor,
+    color: bookingColor
+  }
+
   // Determine border radius based on multi-day position
   const borderRadiusClass = isBookingMultiDay
     ? isFirstDay && isLastDay
@@ -185,24 +243,34 @@ function ResizableDraggableBooking({
 
   // Determine multi-day indicator
   const multiDayIndicator = isBookingMultiDay && (
-    <span className="text-[10px] bg-purple-100 text-purple-700 px-1 rounded ml-1">
+    <span className="text-[10px] px-1 rounded ml-1" style={{ backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` }}>
       {isFirstDay && isLastDay ? '' : isFirstDay ? '→' : isLastDay ? '←' : '↔'}
     </span>
   )
+
+  // Display name - for blockouts show title, for bookings show customer name
+  const displayName = isBlockout ? (regularBooking.title || 'Blockout') : regularBooking.customerName
+  const displayDetails = isBlockout ? (regularBooking.location || '') : `${regularBooking.startTime} - ${regularBooking.service}`
 
   return (
     <div
       ref={setNodeRef}
       {...listeners}
       {...attributes}
-      style={style}
-      className={`${isBookingMultiDay ? 'bg-purple-100 text-purple-800 border-purple-300' : 'bg-blue-100 text-blue-800'} text-xs p-2 ${borderRadiusClass} hover:opacity-80 transition-colors ${isBookingMultiDay ? 'border border-purple-300' : ''}`}
+      style={{ ...style, ...bgStyle }}
+      className={`text-xs p-2 ${borderRadiusClass} hover:opacity-80 transition-colors ${isBookingMultiDay || isBlockout ? 'border' : ''}`}
+      onClick={(e) => {
+        if (!isDragging && onClick) {
+          e.stopPropagation()
+          onClick(booking)
+        }
+      }}
     >
       <div className="flex items-center gap-1">
-        <GripVertical className="w-3 h-3 flex-shrink-0" />
+        <GripVertical className="w-3 h-3 flex-shrink-0 opacity-60" />
         <div className="truncate">
-          <p className="font-medium truncate">{regularBooking.customerName} {multiDayIndicator}</p>
-          <p className="truncate">{regularBooking.startTime} - {regularBooking.service}</p>
+          <p className="font-medium truncate">{displayName} {multiDayIndicator}</p>
+          <p className="truncate opacity-80 text-[11px]">{displayDetails}</p>
           {isBookingMultiDay && regularBooking.endDate && (
             <p className="text-[10px] opacity-75">
               {format(parseISO(regularBooking.startDate), 'MMM d')} - {format(parseISO(regularBooking.endDate), 'MMM d')}
@@ -269,15 +337,23 @@ export function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [searchTerm, setSearchTerm] = useState('')
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
+  const [selectedBooking, setSelectedBooking] = useState<BookingType | null>(null)
+  const [selectedBlockout, setSelectedBlockout] = useState<Blockout | null>(null)
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
+  const [isBlockoutModalOpen, setIsBlockoutModalOpen] = useState(false)
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false)
   const [bookings, setBookings] = useState<Booking[]>([
-    { id: '1', customerName: 'John Doe', petName: 'Max', service: 'Full Groom', date: '2026-04-02', time: '9:00 AM', status: 'Confirmed', duration: 90 },
-    { id: '2', customerName: 'Jane Smith', petName: 'Bella', service: 'Bath & Dry', date: '2026-04-02', time: '10:30 AM', status: 'Confirmed', duration: 60 },
-    { id: '3', customerName: 'Mike Johnson', petName: 'Charlie', service: 'Full Groom', date: '2026-04-02', time: '2:00 PM', status: 'Pending', duration: 90 },
-    { id: '4', customerName: 'Alice Cooper', petName: 'Fluffy', service: 'Nail Trim', date: format(new Date(), 'yyyy-MM-dd'), time: '11:00 AM', status: 'Confirmed', duration: 30 },
-    { id: '5', customerName: 'Bob Dylan', petName: 'Buddy', service: 'Spa Package', date: format(new Date(), 'yyyy-MM-dd'), time: '1:00 PM', status: 'Confirmed', duration: 180 },
+    { id: '1', customerName: 'John Doe', petName: 'Max', service: 'Full Groom', startDate: '2026-04-02', startTime: '9:00 AM', status: 'Confirmed', duration: 90, eventType: 'booking', bookingId: '1', calendarColor: '#10b981' },
+    { id: '2', customerName: 'Jane Smith', petName: 'Bella', service: 'Bath & Dry', startDate: '2026-04-02', startTime: '10:30 AM', status: 'Confirmed', duration: 60, eventType: 'booking', bookingId: '2', calendarColor: '#3b82f6' },
+    { id: '3', customerName: 'Mike Johnson', petName: 'Charlie', service: 'Full Groom', startDate: '2026-04-02', startTime: '2:00 PM', status: 'Pending', duration: 90, eventType: 'booking', bookingId: '3', calendarColor: '#f59e0b' },
+    { id: '4', customerName: 'Alice Cooper', petName: 'Fluffy', service: 'Nail Trim', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: '11:00 AM', status: 'Confirmed', duration: 30, eventType: 'booking', bookingId: '4', calendarColor: '#ec4899' },
+    { id: '5', customerName: 'Bob Dylan', petName: 'Buddy', service: 'Spa Package', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: '1:00 PM', status: 'Confirmed', duration: 180, eventType: 'booking', bookingId: '5', calendarColor: '#8b5cf6' },
     // Multi-day bookings
-    { id: '6', customerName: 'Carol King', petName: 'Coco', service: '3-Day Training Camp', date: format(new Date(), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), time: '9:00 AM', status: 'Confirmed', duration: 3, isMultiDay: true },
-    { id: '7', customerName: 'David Bowie', petName: 'Stardust', service: 'Overnight Boarding', date: format(addDays(new Date(), 3), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 4), 'yyyy-MM-dd'), time: '5:00 PM', status: 'Confirmed', duration: 2, isMultiDay: true },
+    { id: '6', customerName: 'Carol King', petName: 'Coco', service: '3-Day Training Camp', startDate: format(new Date(), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), startTime: '9:00 AM', status: 'Confirmed', duration: 3, isMultiDay: true, eventType: 'booking', bookingId: '6', calendarColor: '#ef4444' },
+    { id: '7', customerName: 'David Bowie', petName: 'Stardust', service: 'Overnight Boarding', startDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 4), 'yyyy-MM-dd'), startTime: '5:00 PM', status: 'Confirmed', duration: 2, isMultiDay: true, eventType: 'booking', bookingId: '7', calendarColor: '#06b6d4' },
+    // Sample blockouts
+    { id: '8', customerName: 'Staff Meeting', petName: '', service: '', title: 'Staff Meeting', startDate: format(addDays(new Date(), 1), 'yyyy-MM-dd'), startTime: '9:00 AM', status: 'Confirmed', duration: 60, eventType: 'blockout', blockoutId: '1', location: 'Conference Room', calendarColor: '#9333ea' },
+    { id: '9', customerName: 'Maintenance', petName: '', service: '', title: 'Equipment Maintenance', startDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), startTime: '3:00 PM', status: 'Confirmed', duration: 120, eventType: 'blockout', blockoutId: '2', location: 'Grooming Area', calendarColor: '#a855f7' },
   ])
 
   const timeSlots = [
@@ -320,7 +396,7 @@ export function CalendarPage() {
       const newDate = over.data.current?.date as Date
       if (newDate) {
         const newDateStr = format(newDate, 'yyyy-MM-dd')
-        setBookings(prev => prev.map(b => 
+        setBookings(prev => prev.map(b =>
           b.id === bookingId ? { ...b, date: newDateStr } : b
         ))
       }
@@ -329,10 +405,37 @@ export function CalendarPage() {
       const newDate = over.data.current?.date as Date
       if (newTime && newDate) {
         const newDateStr = format(newDate, 'yyyy-MM-dd')
-        setBookings(prev => prev.map(b => 
+        setBookings(prev => prev.map(b =>
           b.id === bookingId ? { ...b, date: newDateStr, time: newTime } : b
         ))
       }
+    }
+  }
+
+  const { addToast } = useToastStore()
+
+  const handleCalendarItemClick = async (item: Booking) => {
+    if (isLoadingDetails) return // Prevent multiple clicks
+
+    try {
+      setIsLoadingDetails(true)
+
+      if (item.eventType === 'blockout' && item.blockoutId) {
+        // Fetch full blockout data from API
+        const blockoutData = await blockoutsApi.getById(item.blockoutId)
+        setSelectedBlockout(blockoutData)
+        setIsBlockoutModalOpen(true)
+      } else if (item.bookingId) {
+        // Fetch full booking data from API
+        const bookingData = await bookingsApi.getById(item.bookingId)
+        setSelectedBooking(bookingData)
+        setIsBookingModalOpen(true)
+      }
+    } catch (error) {
+      console.error('Error fetching calendar item details:', error)
+      addToast('Could not load details', 'error')
+    } finally {
+      setIsLoadingDetails(false)
     }
   }
 
@@ -385,12 +488,13 @@ export function CalendarPage() {
                     const isLastDay = booking.endDate ? isSameDay(parseISO(booking.endDate), day) : true
                     
                     return (
-                      <ResizableDraggableBooking 
-                        key={`${booking.id}-${day.toISOString()}`} 
+                      <ResizableDraggableBooking
+                        key={`${booking.id}-${day.toISOString()}`}
                         booking={booking}
                         isMultiDay={booking.isMultiDay}
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
+                        onClick={handleCalendarItemClick}
                       />
                     )
                   })}
@@ -435,9 +539,16 @@ export function CalendarPage() {
                 // Check if there's a multi-day booking spanning this day
                 const multiDayBooking = bookings.find((b: Booking) => {
                   if (!b.isMultiDay || !b.endDate) return false
-                  const bookingStart = parseISO(b.startDate)
-                  const bookingEnd = parseISO(b.endDate)
-                  return isWithinInterval(day, { start: bookingStart, end: bookingEnd }) && b.startTime === time
+                  try {
+                    const bookingStart = parseISO(b.startDate)
+                    const bookingEnd = parseISO(b.endDate)
+                    // Validate dates before using isWithinInterval
+                    if (isNaN(bookingStart.getTime()) || isNaN(bookingEnd.getTime())) return false
+                    if (bookingStart > bookingEnd) return false
+                    return isWithinInterval(day, { start: bookingStart, end: bookingEnd }) && b.startTime === time
+                  } catch {
+                    return false
+                  }
                 })
                 
                 const displayBooking = booking || multiDayBooking
@@ -449,11 +560,12 @@ export function CalendarPage() {
                     date={day}
                   >
                     {displayBooking && (
-                      <ResizableDraggableBooking 
+                      <ResizableDraggableBooking
                         booking={displayBooking}
                         isMultiDay={displayBooking.isMultiDay}
                         isFirstDay={isSameDay(parseISO(displayBooking.startDate), day)}
                         isLastDay={displayBooking.endDate ? isSameDay(parseISO(displayBooking.endDate), day) : true}
+                        onClick={handleCalendarItemClick}
                       />
                     )}
                   </DroppableTimeSlot>
@@ -485,7 +597,7 @@ export function CalendarPage() {
                 date={currentDate}
               >
                 {booking ? (
-                  <ResizableDraggableBooking 
+                  <ResizableDraggableBooking
                     booking={{
                       id: booking.id,
                       time: booking.startTime,
@@ -494,15 +606,16 @@ export function CalendarPage() {
                       service: booking.service,
                       duration: booking.duration,
                       date: booking.startDate,
-                    }} 
-                    isDayView={true} 
+                    }}
+                    isDayView={true}
                     style={{ height: `${heightPx - 10}px` }}
                     onResize={(id, newDuration) => {
-                      setBookings(prev => prev.map(b => 
+                      setBookings(prev => prev.map(b =>
                         b.id === id ? { ...b, duration: newDuration } : b
                       ))
                     }}
                     slotHeight={slotHeight}
+                    onClick={() => handleCalendarItemClick(booking)}
                   />
                 ) : (
                   <div className="flex-1" style={{ minHeight: `${slotHeight - 10}px` }} />
@@ -684,6 +797,26 @@ export function CalendarPage() {
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Booking Detail Modal */}
+      <BookingDetailModal
+        isOpen={isBookingModalOpen}
+        onClose={() => {
+          setIsBookingModalOpen(false)
+          setSelectedBooking(null)
+        }}
+        booking={selectedBooking}
+      />
+
+      {/* Blockout Detail Modal */}
+      <BlockoutDetailModal
+        isOpen={isBlockoutModalOpen}
+        onClose={() => {
+          setIsBlockoutModalOpen(false)
+          setSelectedBlockout(null)
+        }}
+        blockout={selectedBlockout}
+      />
     </DndContext>
   )
 }

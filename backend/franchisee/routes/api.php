@@ -40,6 +40,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Blockouts
     Route::apiResource('blockouts', \App\Http\Controllers\Api\BlockoutController::class);
 
+    // Calendar Events
+    Route::apiResource('calendar-events', \App\Http\Controllers\Api\CalendarEventController::class);
+    Route::get('calendar-events/month', [\App\Http\Controllers\Api\CalendarEventController::class, 'getByMonth']);
+    Route::post('calendar-events/sync', [\App\Http\Controllers\Api\CalendarEventController::class, 'syncEvents']);
+
     // Services
     Route::apiResource('services', \App\Http\Controllers\Api\ServiceController::class);
 
@@ -54,4 +59,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('forum/threads/{forumThread}/comments', [\App\Http\Controllers\Api\ForumController::class, 'addComment']);
     Route::post('forum/threads/{forumThread}/like', [\App\Http\Controllers\Api\ForumController::class, 'like']);
     Route::delete('forum/threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'destroy']);
+
+    // Forum Comments
+    Route::post('forum/comments/{forumComment}/like', [\App\Http\Controllers\Api\ForumController::class, 'likeComment']);
+    Route::post('forum/comments/{forumComment}/reply', [\App\Http\Controllers\Api\ForumController::class, 'replyToComment']);
+
+    // Forum Groups
+    Route::get('forum/groups', [\App\Http\Controllers\Api\ForumGroupController::class, 'index']);
+    Route::post('forum/groups', [\App\Http\Controllers\Api\ForumGroupController::class, 'store']);
+    Route::get('forum/groups/{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'show']);
+    Route::put('forum/groups/{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'update']);
+    Route::delete('forum/groups/{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'destroy']);
+    Route::post('forum/groups/{forumGroup}/join', [\App\Http\Controllers\Api\ForumGroupController::class, 'join']);
+    Route::post('forum/groups/{forumGroup}/leave', [\App\Http\Controllers\Api\ForumGroupController::class, 'leave']);
+    Route::get('forum/groups/{forumGroup}/members', [\App\Http\Controllers\Api\ForumGroupController::class, 'members']);
 });

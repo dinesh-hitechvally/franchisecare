@@ -3,10 +3,12 @@
 namespace Database\Seeders;
 
 use App\Models\Booking;
+use App\Models\BookingDetail;
 use App\Models\Customer;
 use App\Models\Service;
 use App\Models\CustomerItem;
 use App\Models\ServiceCategory;
+use App\Models\Company;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 
@@ -17,6 +19,10 @@ class BookingSeeder extends Seeder
      */
     public function run(): void
     {
+        $company = Company::where('slug', 'mate-franchise-care')->first();
+        if (!$company) {
+            return;
+        }
         // 1. Create Service Categories
         $categories = [
             ['name' => 'Grooming', 'description' => 'Complete grooming services'],
@@ -82,17 +88,17 @@ class BookingSeeder extends Seeder
 
             $items = $data['items'];
             unset($data['items']);
-            $data['company_id'] = '1';
+            $data['company_id'] = $company->id;
             $data['address'] = $data['street_address'] . ', ' . $data['suburb'] . ' ' . $data['postcode'] . ' ' . $data['state'];
             $customer = Customer::create($data);
 
             foreach ($items as $item) {
                 $item['customer_id'] = $customer->id;
-                $item['company_id'] = '1';
+                $item['company_id'] = $company->id;
                 $item['is_active'] = true;
                 CustomerItem::create($item);
             }
-            
+
         }
 
         $allCustomers = Customer::all();
@@ -112,7 +118,7 @@ class BookingSeeder extends Seeder
 
             $booking = Booking::create([
                 'customer_id' => $customer->id,
-                'company_id' => '1',
+                'company_id' => $company->id,
                 'start_date' => Carbon::now()->addDays(rand(-10, 15))->toDateString(),
                 'start_time' => $start_time,
                 'end_time' => Carbon::parse($start_time)->addMinutes(rand(60, 150))->format('H:i'),

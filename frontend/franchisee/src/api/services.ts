@@ -1,5 +1,5 @@
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, NewsItem, DashboardMetrics, User } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, NewsItem, DashboardMetrics, User } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -31,8 +31,12 @@ function mapBookingFromApi(b: any): Booking {
   if (b.details) {
     b.details = (b.details as any[]).map((d) => {
       const rawD = d as any
-      d.petId = rawD.pet_id || d.petId
+      d.petId = rawD.pet_id || rawD.item_id || d.petId
       d.serviceId = rawD.service_id || d.serviceId
+      // Map 'item' to 'pet' for consistency with frontend
+      if (rawD.item && !d.pet) {
+        d.pet = rawD.item
+      }
       return d
     })
   }
@@ -107,6 +111,27 @@ function mapRecurringFromApi(r: any): any {
 function mapRecurringsFromApi(rows: unknown): any[] {
   if (!Array.isArray(rows)) return []
   return rows.map((row) => mapRecurringFromApi(row))
+}
+
+function mapBlockoutFromApi(b: any): any {
+  const raw = b as any
+  b.startDate = raw.start_date || b.startDate
+  b.startTime = raw.start_time || b.startTime
+  b.endDate = raw.end_date || b.endDate
+  b.endTime = raw.end_time || b.endTime
+  b.isRecurring = raw.is_recurring !== undefined ? !!raw.is_recurring : b.isRecurring
+  b.repeatEvery = raw.repeat_every || b.repeatEvery
+  b.repeatOn = raw.repeat_on || b.repeatOn
+  b.repeatUntil = raw.repeat_until || b.repeatUntil
+  b.companyId = raw.company_id || b.companyId
+  b.createdAt = raw.created_at || b.createdAt
+  b.updatedAt = raw.updated_at || b.updatedAt
+  return b as any
+}
+
+function mapBlockoutsFromApi(rows: unknown): any[] {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => mapBlockoutFromApi(row))
 }
 
 export const authApi = {
@@ -245,7 +270,7 @@ export const bookingsApi = {
         meta: res.meta,
       })),
   
-  getById: (id: string) => apiClient.get<Booking>(`/bookings/${id}`),
+  getById: (id: string) => apiClient.get<Booking>(`/bookings/${id}`).then((data) => mapBookingFromApi(data)),
   
   getSchedule: (days: number = 5) =>
     apiClient.get<Booking[]>('/bookings/schedule', { params: { days } }),
@@ -326,7 +351,7 @@ export const recurringBookingsApi = {
 
 export const blockoutsApi = {
   getAll: (params?: { company_id?: string; is_recurring?: boolean; search?: string }) =>
-    apiClient.get<Blockout[]>('/blockouts', { params }),
+    apiClient.get<Blockout[]>('/blockouts', { params }).then((data) => mapBlockoutsFromApi(data)),
 
   getPaginated: (params: {
     page: number
@@ -341,13 +366,16 @@ export const blockoutsApi = {
         page: params.page,
         per_page: params.per_page ?? 25,
       },
-    }),
+    }).then((res) => ({
+      data: mapBlockoutsFromApi(res.data),
+      meta: res.meta,
+    })),
 
-  getById: (id: string) => apiClient.get<Blockout>(`/blockouts/${id}`),
+  getById: (id: string) => apiClient.get<Blockout>(`/blockouts/${id}`).then((data) => mapBlockoutFromApi(data)),
 
-  create: (data: Partial<Blockout>) => apiClient.post<Blockout>('/blockouts', data),
+  create: (data: Partial<Blockout>) => apiClient.post<Blockout>('/blockouts', data).then((data) => mapBlockoutFromApi(data)),
 
-  update: (id: string, data: Partial<Blockout>) => apiClient.put<Blockout>(`/blockouts/${id}`, data),
+  update: (id: string, data: Partial<Blockout>) => apiClient.put<Blockout>(`/blockouts/${id}`, data).then((data) => mapBlockoutFromApi(data)),
 
   delete: (id: string) => apiClient.delete(`/blockouts/${id}`),
 }
@@ -439,20 +467,45 @@ export const communicationApi = {
 }
 
 export const forumApi = {
-  getThreads: (params?: { topic?: string; search?: string; page?: number; per_page?: number }) =>
+  getThreads: (params?: { topic?: string; search?: string; page?: number; per_page?: number; group_id?: string; no_group?: boolean }) =>
     apiClient.get<{ data: ForumThread[]; meta: PaginationMeta }>('/forum/threads', { params }),
-  
+
   getThread: (id: string) => apiClient.get<ForumThread>(`/forum/threads/${id}`),
-  
-  createThread: (data: { title?: string; content: string; topic?: string }) =>
+
+  createThread: (data: { title?: string; content: string; topic?: string; group_id?: string }) =>
     apiClient.post<ForumThread>('/forum/threads', data),
-  
+
   addComment: (threadId: string, content: string) =>
     apiClient.post<ForumComment>(`/forum/threads/${threadId}/comments`, { content }),
-  
+
   likeThread: (id: string) => apiClient.post<{ likes_count: number }>(`/forum/threads/${id}/like`),
-  
+
+  likeComment: (commentId: string) => apiClient.post<{ likes_count: number }>(`/forum/comments/${commentId}/like`),
+
+  replyToComment: (commentId: string, content: string) =>
+    apiClient.post<ForumComment>(`/forum/comments/${commentId}/reply`, { content }),
+
   deleteThread: (id: string) => apiClient.delete(`/forum/threads/${id}`),
+
+  // Groups
+  getGroups: (params?: { type?: 'topic' | 'state' | 'custom'; my_groups?: boolean }) =>
+    apiClient.get<ForumGroup[]>('/forum/groups', { params }),
+
+  getGroup: (id: string) => apiClient.get<ForumGroup>(`/forum/groups/${id}`),
+
+  createGroup: (data: { name: string; description?: string; type: 'topic' | 'state' | 'custom'; icon?: string; color?: string; is_public?: boolean }) =>
+    apiClient.post<ForumGroup>('/forum/groups', data),
+
+  updateGroup: (id: string, data: Partial<ForumGroup>) =>
+    apiClient.put<ForumGroup>(`/forum/groups/${id}`, data),
+
+  deleteGroup: (id: string) => apiClient.delete(`/forum/groups/${id}`),
+
+  joinGroup: (id: string) => apiClient.post(`/forum/groups/${id}/join`),
+
+  leaveGroup: (id: string) => apiClient.post(`/forum/groups/${id}/leave`),
+
+  getGroupMembers: (id: string) => apiClient.get<User[]>(`/forum/groups/${id}/members`),
 }
 
 export const newsApi = {
@@ -490,9 +543,38 @@ export const newsApi = {
 
 export const dashboardApi = {
   getMetrics: () => apiClient.get<DashboardMetrics>('/dashboard/metrics'),
-  
+
   getActivities: (limit: number = 10) =>
     apiClient.get('/dashboard/activities', { params: { limit } }),
-  
+
   getRecentNews: () => apiClient.get<NewsItem[]>('/dashboard/news'),
+}
+
+export const calendarApi = {
+  getEvents: (params: {
+    company_id: string
+    start_date: string
+    end_date: string
+    event_type?: string
+  }) =>
+    apiClient.get<any[]>('/calendar-events', { params }),
+
+  getByMonth: (params: {
+    company_id: string
+    year: number
+    month: number
+  }) =>
+    apiClient.get<any[]>('/calendar-events/month', { params }),
+
+  create: (data: any) =>
+    apiClient.post('/calendar-events', data),
+
+  update: (id: string, data: any) =>
+    apiClient.put(`/calendar-events/${id}`, data),
+
+  delete: (id: string) =>
+    apiClient.delete(`/calendar-events/${id}`),
+
+  sync: (companyId: string) =>
+    apiClient.post('/calendar-events/sync', { company_id: companyId }),
 }

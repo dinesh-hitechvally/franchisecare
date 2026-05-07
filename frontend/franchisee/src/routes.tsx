@@ -88,6 +88,7 @@ import { TrackingReportPage } from './pages/reports/TrackingReportPage'
 
 // Other Pages
 import { ForumPage } from './pages/forum/ForumPage'
+import { UserProfilePage } from './pages/user-profile/UserProfilePage'
 import { LatestNewsPage } from './pages/news/LatestNewsPage'
 import { NewsPage } from './pages/news/NewsPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
@@ -202,6 +203,7 @@ export function AppRoutes() {
 
         {/* Other Routes */}
         <Route path="forum" element={<ForumPage />} />
+        <Route path="user/:userId" element={<UserProfilePage />} />
         <Route path="news" element={<LatestNewsPage />} />
         <Route path="news/manage" element={<NewsPage />} />
         {/* Documents Routes */}

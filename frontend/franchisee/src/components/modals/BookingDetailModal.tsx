@@ -4,7 +4,7 @@ import { format, addDays } from 'date-fns'
 import { useQuery } from '@tanstack/react-query'
 import { bookingsApi } from '../../api/services'
 import {
-  X, Edit2, Trash2, Eye, Mail,
+  X, Edit2, Trash2, Eye, Mail, XCircle,
   ChevronDown, ChevronUp, FileText,
   RotateCcw, ImageIcon, Calendar, Clock, Loader2
 } from 'lucide-react'
@@ -142,7 +142,9 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                     <div>
                       <label className="block text-[13px] font-bold text-gray-800 mb-2">Date/Time</label>
                       <p className="text-sm text-gray-600">
-                        {booking.date ? format(new Date(booking.date), 'EEEE, do MMM yyyy') : 'No date'} {booking.startTime}
+                        {booking.startDate && !isNaN(new Date(booking.startDate).getTime())
+                          ? format(new Date(booking.startDate), 'EEEE, do MMM yyyy')
+                          : 'No date'} {booking.startTime || 'No time'}
                       </p>
                     </div>
 
@@ -186,12 +188,20 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
 
                   {/* Action Buttons */}
                   <div className="flex items-center gap-12 pt-4 justify-center underline-offset-4">
-                    <button className="px-10 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm">
-                      Edit
-                    </button>
-                    <button className="text-[#4a5ebc] text-sm font-bold hover:underline">
-                      Mark Complete
-                    </button>
+                    {/* Edit button - only show if not cancelled or completed */}
+                    {booking.status !== 'cancelled' && booking.status !== 'completed' && (
+                      <button className="px-10 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm">
+                        Edit
+                      </button>
+                    )}
+
+                    {/* Mark Complete button - only show if not completed */}
+                    {booking.status !== 'completed' && booking.status !== 'cancelled' && (
+                      <button className="text-[#4a5ebc] text-sm font-bold hover:underline">
+                        Mark Complete
+                      </button>
+                    )}
+
                     <button className="flex items-center gap-2 text-[#4a5ebc] text-sm font-bold hover:underline">
                       Rebook <RotateCcw className="w-4 h-4" />
                     </button>
@@ -211,9 +221,13 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
 
                 {isOptionsOpen && (
                   <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50/30 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider">
-                      Delete <Trash2 className="w-4 h-4" />
-                    </button>
+                    {/* Cancel button - only show if not cancelled */}
+                    {booking.status !== 'cancelled' && (
+                      <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-red-600 text-white rounded font-bold text-xs hover:bg-red-700 transition-colors uppercase tracking-wider">
+                        Cancel Booking <XCircle className="w-4 h-4" />
+                      </button>
+                    )}
+
                     <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider">
                       Preview Invoice <Eye className="w-4 h-4" />
                     </button>
@@ -285,21 +299,26 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {upcomingBookings.slice(0, 5).map(b => (
-                        <div key={b.id} className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100/50 rounded-lg group transition-all hover:bg-blue-50">
-                          <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-500">
-                            <Calendar className="w-3.5 h-3.5" />
+                      {upcomingBookings.slice(0, 5).map(b => {
+                        const bookingDate = b.startDate ? new Date(b.startDate) : null
+                        const isValidDate = bookingDate && !isNaN(bookingDate.getTime())
+
+                        return (
+                          <div key={b.id} className="flex items-center gap-3 p-3 bg-blue-50/50 border border-blue-100/50 rounded-lg group transition-all hover:bg-blue-50">
+                            <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm text-blue-500">
+                              <Calendar className="w-3.5 h-3.5" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-[13px] font-bold text-gray-800">
+                                {isValidDate ? format(bookingDate, 'MMM do, yyyy') : 'No date'}
+                              </p>
+                              <p className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" /> {b.startTime || 'No time'}
+                              </p>
+                            </div>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-bold text-gray-800">
-                              {format(new Date(b.date), 'MMM do, yyyy')}
-                            </p>
-                            <p className="text-[11px] text-gray-500 font-medium flex items-center gap-1.5">
-                              <Clock className="w-3 h-3" /> {b.startTime}
-                            </p>
-                          </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -310,7 +329,9 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
           <div className="mt-8 pt-6 border-t border-gray-50 flex justify-between items-center text-gray-400">
             <span className="text-[10px] font-medium tracking-tight uppercase">ID: {String(booking.id).slice(-8)}</span>
             <span className="text-[10px] font-medium italic">
-              Last Updated: {booking.updatedAt ? format(new Date(booking.updatedAt), 'MMMM do yyyy, p') : 'Unknown'}
+              Last Updated: {booking.updatedAt && !isNaN(new Date(booking.updatedAt).getTime())
+                ? format(new Date(booking.updatedAt), 'MMMM do yyyy, p')
+                : 'Unknown'}
             </span>
           </div>
         </div>

@@ -11,8 +11,14 @@ class ForumComment extends Model
 
     protected $fillable = [
         'thread_id',
+        'parent_id',
         'author_id',
         'content',
+        'likes_count',
+    ];
+
+    protected $casts = [
+        'likes_count' => 'integer',
     ];
 
     public function thread()
@@ -23,5 +29,15 @@ class ForumComment extends Model
     public function author()
     {
         return $this->belongsTo(User::class, 'author_id');
+    }
+
+    public function parent()
+    {
+        return $this->belongsTo(ForumComment::class, 'parent_id');
+    }
+
+    public function replies()
+    {
+        return $this->hasMany(ForumComment::class, 'parent_id');
     }
 }

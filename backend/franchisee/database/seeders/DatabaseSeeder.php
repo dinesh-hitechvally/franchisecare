@@ -7,6 +7,7 @@ use App\Models\News;
 use App\Models\ForumThread;
 use App\Models\ForumComment;
 use App\Models\User;
+use App\Models\Company;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,15 +16,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
+        $this->call([
+            CompanySeeder::class,
+        ]);
+
+        $company = Company::where('slug', 'mate-franchise-care')->first();
+
         $user = User::first();
-        if (!$user) {
+        if (!$user && $company) {
             $user = User::create([
                 'name' => 'Mate Support',
                 'email' => 'support@franchisecare.com',
                 'password' => bcrypt('password'),
                 'role' => 'franchise_admin',
+                'company_id' => $company->id,
             ]);
         }
+
+        // Seed booking data including customers, items, and bookings
+        $this->call([
+            BookingSeeder::class,
+        ]);
 
         // Seed News
         News::create([

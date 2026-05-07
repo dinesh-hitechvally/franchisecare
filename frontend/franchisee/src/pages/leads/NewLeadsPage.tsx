@@ -1,24 +1,206 @@
+import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Phone, Globe, ChevronLeft, ChevronRight } from 'lucide-react'
+import { LeadDetailModal } from './LeadDetailModal'
+import { useToastStore } from '../../store/toastStore'
+import type { Lead } from '../../types'
 
-// Dummy data matching the screenshot
-const newLeads = [
-  { id: '1', customer: 'Dev2026 date325', date: 'Wed, 25th Mar 2026 19:06', service: 'Wash only', phone: '9232631262 / 1321651651', address: 'This lead is created from dev team, please ignore if you received., BRISBANE ADELAIDE STREET', notes: 'This lead is created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '2', customer: 'LeadCreated FromDevTeam', date: 'Tue, 17th Mar 2026 15:51', service: 'Wash only', phone: '7989256464 / 7989256115', address: 'Adipisci officiis et, BRISBANE CITY', notes: 'Test lead created from dev team, please ignore it.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '3', customer: 'test test', date: 'Tue, 24th Feb 2026 13:08', service: 'Clip and wash', phone: '1234567890 / 1234567890', address: 'Kealba, KEALBA', notes: 'This lead is created by Mate team - please ignore', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '4', customer: 'Test FromDEVrabi', date: 'Thu, 30th Oct 2025 12:40', service: 'Wash only', phone: '9745100000 / 9745200000', address: 'This lead is created from the dev team, please ignore if you received. Thank you., SOUTH YARRA', notes: 'This lead is created from the dev team, please ignore if you received. Thank you.---Comment', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '5', customer: 'Iona Morgan', date: 'Fri, 17th Oct 2025 13:31', service: 'Wash only', phone: '1796183164 / 1595225721', address: 'Amet ex laboris eaq, SOUTH YARRA', notes: 'Please ignore it(Comment)', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '6', customer: 'Carly Cochran', date: 'Fri, 17th Oct 2025 13:25', service: 'Wash only', phone: '1355618696 / 1984803568', address: 'Quaerat dolorum est, SOUTH YARRA', notes: 'Please ignore this lead (Comment)', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '7', customer: 'first name', date: 'Fri, 17th Oct 2025 12:45', service: 'Wash only', phone: '6666666666', address: 'Australia, SOUTH YARRA', notes: 'Please ignore it. comment.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '8', customer: 'DevTest 20250916', date: 'Tue, 16th Sep 2025 17:42', service: 'Wash only', phone: '9870000000 / 9874100000', address: 'This lead is created from the dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a note or comment from operator', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '9', customer: 'Dev Test', date: 'Mon, 15th Sep 2025 12:54', service: 'Wash only', phone: '9800323232 / 9815515215', address: 'This is a test lead created from dev team, please ignore it, SOUTH YARRA', notes: 'This is a test lead created from dev team, please ignore it', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '10', customer: 'Dev Test', date: 'Mon, 15th Sep 2025 12:54', service: 'Wash only', phone: '9800323232 / 9815515215', address: 'This is a test lead created from dev team, please ignore it, SOUTH YARRA', notes: 'This is a test lead created from dev team, please ignore it', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '11', customer: 'Holly Ashley', date: 'Wed, 10th Sep 2025 14:19', service: 'Wash only', phone: '1656822153 / 1745898725', address: '9802145214, SOUTH YARRA', notes: 'This is comments to an operator/head office', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '12', customer: 'Dinesh Ghimimre', date: 'Tue, 9th Sep 2025 03:09', service: 'Wash and Coat Clipped', phone: '9800000000', address: '14 Sims St, Prahran', notes: 'Please ignore it', from: 'globe', links: ['View', 'Snooze'] },
-  { id: '13', customer: 'TEST TEST', date: 'Thu, 7th Aug 2025 14:07', service: 'Wash only', phone: '7989256263', address: 'Please ignore this lead, created from dev team., SOUTH YARRA', notes: '', from: 'phone', links: ['View', 'Snooze'] },
+// Dummy data matching the screenshot - converted to proper Lead objects
+const newLeads: Lead[] = [
+  {
+    id: '19579',
+    firstName: 'Mate',
+    lastName: 'dognew',
+    customerName: 'Mate dognew',
+    phone: '4563786376',
+    alternatePhone: '7453783783',
+    interestedServices: 'Wash only',
+    email: '',
+    address: 'afg, DARCH, DARCH',
+    suburb: 'DARCH',
+    petBreed: '- (qwerty)',
+    referredBy: 'Internet',
+    additionalNote: '',
+    notes: 'Created from dev team, please ignore it if you received it.',
+    source: 'internet',
+    leadsFrom: 'internet',
+    status: 'new',
+    comments: [],
+    createdAt: '2026-03-25T19:08:00Z',
+    updatedAt: '2026-03-25T19:09:00Z',
+  },
+  {
+    id: '2',
+    firstName: 'Latham',
+    lastName: 'Peterson',
+    customerName: 'Latham Peterson',
+    phone: '9876543210',
+    alternatePhone: '',
+    interestedServices: 'Wash and Coat Clipped',
+    email: 'latham@example.com',
+    address: '123 Main St, BRISBANE CITY',
+    suburb: 'BRISBANE CITY',
+    petBreed: 'Golden Retriever',
+    referredBy: 'Website',
+    additionalNote: 'Prefers morning appointments',
+    notes: 'Lead created',
+    source: 'internet',
+    leadsFrom: 'phone',
+    status: 'new',
+    comments: [],
+    createdAt: '2026-03-19T15:58:00Z',
+    updatedAt: '2026-03-19T15:58:00Z',
+  },
+  {
+    id: '3',
+    firstName: 'Rabee',
+    lastName: 'Peter',
+    customerName: 'Rabee Peter',
+    phone: '9842354545',
+    alternatePhone: '',
+    interestedServices: 'Wash only',
+    email: '',
+    address: 'Testing dev team, DARCH',
+    suburb: 'DARCH',
+    petBreed: '',
+    referredBy: 'Internet',
+    additionalNote: '',
+    notes: 'Test message',
+    source: 'internet',
+    leadsFrom: 'internet',
+    status: 'new',
+    comments: [
+      {
+        id: 'c1',
+        leadId: '3',
+        comment: 'Called and left voicemail',
+        createdBy: 'Mate Support',
+        createdAt: '2026-03-18T14:00:00Z',
+      },
+    ],
+    createdAt: '2026-03-18T13:06:00Z',
+    updatedAt: '2026-03-18T14:00:00Z',
+  },
 ]
 
 export function NewLeadsPage() {
+  const { addToast } = useToastStore()
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [leads, setLeads] = useState<Lead[]>(newLeads)
+
+  const handleViewLead = (lead: Lead) => {
+    setSelectedLead(lead)
+    setIsModalOpen(true)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedLead(null)
+  }
+
+  const handleComment = (leadId: string, comment: string) => {
+    setLeads((prevLeads) =>
+      prevLeads.map((lead) =>
+        lead.id === leadId
+          ? {
+              ...lead,
+              comments: [
+                ...(lead.comments || []),
+                {
+                  id: `c${Date.now()}`,
+                  leadId,
+                  comment,
+                  createdBy: 'Current User',
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : lead
+      )
+    )
+    // Update selected lead to reflect changes
+    if (selectedLead?.id === leadId) {
+      setSelectedLead((prev) =>
+        prev
+          ? {
+              ...prev,
+              comments: [
+                ...(prev.comments || []),
+                {
+                  id: `c${Date.now()}`,
+                  leadId,
+                  comment,
+                  createdBy: 'Current User',
+                  createdAt: new Date().toISOString(),
+                },
+              ],
+              updatedAt: new Date().toISOString(),
+            }
+          : null
+      )
+    }
+    addToast('Comment added successfully', 'success')
+  }
+
+  const handleConvertToCustomer = (leadId: string) => {
+    // In real implementation, this would call an API to convert the lead
+    const lead = leads.find((l) => l.id === leadId)
+    if (lead) {
+      addToast(`Converting "${lead.customerName}" to customer...`, 'success')
+      // Update lead status to converted instead of removing
+      setLeads((prevLeads) =>
+        prevLeads.map((l) =>
+          l.id === leadId ? { ...l, status: 'converted' as const, updatedAt: new Date().toISOString() } : l
+        )
+      )
+      // Update selected lead if it's the one being converted
+      if (selectedLead?.id === leadId) {
+        setSelectedLead((prev) => (prev ? { ...prev, status: 'converted' as const } : null))
+      }
+    }
+  }
+
+  const handleAddMorePets = (leadId: string) => {
+    const lead = leads.find((l) => l.id === leadId)
+    if (lead) {
+      addToast(`Redirecting to add more pets for "${lead.customerName}"...`, 'success')
+      // In real implementation, navigate to add pets page
+      handleCloseModal()
+    }
+  }
+
+  const handleSnooze = (leadId: string, snoozeUntil: string) => {
+    setLeads((prevLeads) =>
+      prevLeads.map((lead) =>
+        lead.id === leadId
+          ? {
+              ...lead,
+              status: 'snoozed',
+              snoozedUntil: snoozeUntil,
+              updatedAt: new Date().toISOString(),
+            }
+          : lead
+      )
+    )
+    addToast('Lead snoozed successfully', 'success')
+    handleCloseModal()
+  }
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString)
+    const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+    const dayName = days[date.getDay()]
+    const day = date.getDate()
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th'
+    const month = months[date.getMonth()]
+    const year = date.getFullYear()
+    const hours = date.getHours().toString().padStart(2, '0')
+    const minutes = date.getMinutes().toString().padStart(2, '0')
+    return `${dayName}, ${day}${suffix} ${month} ${year} ${hours}:${minutes}`
+  }
 
   return (
     <div className="space-y-5 px-1 py-1 w-full">
@@ -45,37 +227,42 @@ export function NewLeadsPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {newLeads.map((row) => (
-                <tr key={row.id} className="relative group hover:-translate-y-[1px] transition-transform hover:bg-gray-50">
+              {leads.map((lead) => (
+                <tr key={lead.id} className="relative group hover:-translate-y-[1px] transition-transform hover:bg-gray-50">
                   <td className="px-3 py-4 align-top text-center">
                     <div className="w-2 h-2 rounded-full bg-red-600 mx-auto mt-2"></div>
                   </td>
                   <td className="px-3 py-4 text-sm text-gray-700 align-top pr-4">
-                    {row.customer}
+                    {lead.customerName}
                   </td>
                   <td className="px-3 py-4 text-sm text-gray-700 align-top leading-snug">
-                    {row.date.split(' ').map((part, index) => {
+                    {formatDate(lead.createdAt).split(' ').map((part, index) => {
                       if (index === 2) return <span key={index}><br/>{part} </span>
                       if (index === 3) return <span key={index}>{part} </span>
                       return <span key={index}>{part} </span>
                     })}
                   </td>
                   <td className="px-3 py-4 text-sm text-gray-700 align-top leading-snug">
-                    {row.service}
+                    {lead.interestedServices}
                   </td>
                   <td className="px-3 py-4 text-sm text-gray-700 align-top leading-snug">
-                    {row.phone.split(' / ').map((part, index) => (
-                       <span key={index}>{part}{index === 0 && ' /'}<br/></span>
-                    ))}
+                    {lead.phone}
+                    {lead.alternatePhone && (
+                      <>
+                        {' / '}
+                        <br />
+                        {lead.alternatePhone}
+                      </>
+                    )}
                   </td>
                   <td className="px-3 py-4 text-sm text-gray-700 align-top leading-snug pr-8">
-                    {row.address}
+                    {lead.address}
                   </td>
                   <td className="px-3 py-4 text-sm text-gray-700 align-top leading-snug pr-8">
-                    {row.notes}
+                    {lead.notes}
                   </td>
                   <td className="px-3 py-4 align-top text-center text-blue-700">
-                    {row.from === 'phone' ? (
+                    {lead.leadsFrom === 'phone' ? (
                        <Phone className="w-4 h-4 mx-auto rotate-90" />
                     ) : (
                        <Globe className="w-4 h-4 mx-auto" />
@@ -83,11 +270,19 @@ export function NewLeadsPage() {
                   </td>
                   <td className="px-3 py-4 text-sm align-top leading-relaxed">
                     <div className="flex flex-col gap-0.5">
-                      <button className="text-blue-600 hover:underline text-left">
-                        {row.links[0]} |
+                      <button
+                        onClick={() => handleViewLead(lead)}
+                        className="text-blue-600 hover:underline text-left"
+                      >
+                        View |
                       </button>
-                      <button className="text-blue-600 hover:underline text-left">
-                        {row.links[1]}
+                      <button
+                        onClick={() => {
+                          handleSnooze(lead.id, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+                        }}
+                        className="text-blue-600 hover:underline text-left"
+                      >
+                        Snooze
                       </button>
                     </div>
                   </td>
@@ -108,14 +303,28 @@ export function NewLeadsPage() {
                 <option>100</option>
               </select>
             </div>
-            <span>1-25 of 33</span>
+            <span>1-{leads.length} of {leads.length}</span>
             <div className="flex items-center gap-4 text-gray-400">
               <ChevronLeft className="w-5 h-5 cursor-not-allowed" />
-              <ChevronRight className="w-5 h-5 cursor-pointer hover:text-gray-700" />
+              <ChevronRight className="w-5 h-5 cursor-not-allowed" />
             </div>
           </div>
         </div>
       </Card>
+
+      {/* Lead Detail Modal */}
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onComment={handleComment}
+          onConvert={handleConvertToCustomer}
+          onSnooze={handleSnooze}
+          onAddMorePets={handleAddMorePets}
+        />
+      )}
     </div>
   )
 }
+

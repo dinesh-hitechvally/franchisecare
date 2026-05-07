@@ -1,14 +1,15 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { List, ListOrdered, Link, Type, Image as ImageIcon, Heart, MessageSquare, Search, Settings } from 'lucide-react'
+import { List, ListOrdered, Link, Type, Image as ImageIcon, Heart, MessageSquare, Search, Settings, Plus, X, Users, MoreVertical, Pin, ArrowLeft, Bell, ChevronDown } from 'lucide-react'
 import { forumApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { format } from 'date-fns'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { cn } from '../../lib/utils'
-import type { ForumThread } from '../../types'
+import type { ForumThread, ForumGroup } from '../../types'
 
 // Mock Data for sidebar (could be dynamic later)
 const teamMembers = [
@@ -26,47 +27,117 @@ const photos = [
   { id: 3, url: 'https://picsum.photos/seed/3/100/100' },
 ]
 
-const topics = [
-  { name: 'Grooming', count: 6 },
-  { name: 'Maintenance & Trailers', count: 24 },
-  { name: 'Marketing', count: null },
-  { name: 'Mate', count: null },
-  { name: 'Operations..', count: 3 },
-  { name: 'Products', count: 10 },
-]
-
-const stateGroups = [
-  { name: 'ACT', count: null },
-  { name: 'ACT - Service Providers And Tradies', count: null },
-  { name: 'NSW - Service Providers And Tradies', count: null },
-  { name: 'NT', count: 3 },
-  { name: 'NT - Service Providers And Tradies', count: null },
-  { name: 'QLD', count: 9 },
-  { name: 'QLD - Service Providers And Tradies', count: 2 },
-  { name: 'SA', count: 9 },
-  { name: 'SA - Service Providers And Tradies', count: 1 },
-  { name: 'TAS', count: 1 },
-]
-
 export function ForumPage() {
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [selectedTopic, setSelectedTopic] = useState<string | undefined>(undefined)
+  const [selectedGroup, setSelectedGroup] = useState<string | null | 'daily-chat'>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [newPostContent, setNewPostContent] = useState('')
   const [commentContents, setCommentContents] = useState<Record<string, string>>({})
+  const [replyingTo, setReplyingTo] = useState<string | null>(null)
+  const [isCreateGroupModalOpen, setIsCreateGroupModalOpen] = useState(false)
+  const [newGroupName, setNewGroupName] = useState('')
+  const [newGroupDescription, setNewGroupDescription] = useState('')
+  const [showAllGroups, setShowAllGroups] = useState(false)
+  const [groupsViewTab, setGroupsViewTab] = useState<'all' | 'my'>('all')
+
+  // Fetch Groups
+  const { data: groups = [] } = useQuery({
+    queryKey: ['forum-groups'],
+    queryFn: () => forumApi.getGroups(),
+  })
+
+  // Fetch My Groups (groups user is a member of)
+  const { data: myGroups = [] } = useQuery({
+    queryKey: ['forum-groups', 'my'],
+    queryFn: () => forumApi.getGroups({ my_groups: true }),
+  })
+
+  // Organize groups by type
+  const topicGroups = groups.filter(g => g.type === 'topic')
+  const stateGroups = groups.filter(g => g.type === 'state')
+  const customGroups = groups.filter(g => g.type === 'custom')
+
+  // Mock notifications data - will be replaced with real API later
+  const mockNotifications = [
+    // Daily Chat notifications (no groupId)
+    {
+      id: 'dc1',
+      groupId: undefined,
+      groupName: 'Daily Chat',
+      message: 'New post in Daily Chat: "Weekly schedule reminder"',
+      time: '1 hour ago',
+      read: false,
+    },
+    {
+      id: 'dc2',
+      groupId: undefined,
+      groupName: 'Daily Chat',
+      message: 'Sarah replied to your comment',
+      time: '3 hours ago',
+      read: false,
+    },
+    // Group-specific notifications
+    {
+      id: '1',
+      groupId: topicGroups.find(g => g.name === 'Grooming')?.id,
+      groupName: 'Grooming',
+      message: 'New post in Grooming: "Best practices for difficult coats"',
+      time: '2 hours ago',
+      read: false,
+    },
+    {
+      id: '2',
+      groupId: topicGroups.find(g => g.name === 'Marketing')?.id,
+      groupName: 'Marketing',
+      message: 'John commented on your post',
+      time: '5 hours ago',
+      read: false,
+    },
+  ]
+
+  // Get notifications for selected group
+  const currentNotifications = selectedGroup && selectedGroup !== 'daily-chat'
+    ? mockNotifications.filter(n => n.groupId === selectedGroup)
+    : mockNotifications.filter(n => !n.groupId) // Show only daily chat notifications when no group selected
+
+  // Get notification count for a group
+  const getNotificationCount = (groupId: string) => {
+    return mockNotifications.filter(n => n.groupId === groupId && !n.read).length
+  }
+
+  // Get selected group name and details
+  const selectedGroupData = selectedGroup && selectedGroup !== 'daily-chat'
+    ? groups.find(g => g.id === selectedGroup)
+    : null
+  const displayTitle = selectedGroupData
+    ? selectedGroupData.name
+    : 'Latest Posts (Daily Chat)'
+
+  // Fetch group members when a group is selected
+  const { data: groupMembers = [] } = useQuery({
+    queryKey: ['forum-group-members', selectedGroup],
+    queryFn: () => selectedGroup && selectedGroup !== 'daily-chat'
+      ? forumApi.getGroupMembers(selectedGroup)
+      : Promise.resolve([]),
+    enabled: !!selectedGroup && selectedGroup !== 'daily-chat',
+  })
 
   // Fetch Threads
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['forum-threads', selectedTopic, searchTerm, page, perPage],
+    queryKey: ['forum-threads', selectedTopic, selectedGroup, searchTerm, page, perPage],
     queryFn: () => forumApi.getThreads({
       topic: selectedTopic,
       search: searchTerm,
       page,
-      per_page: perPage
+      per_page: perPage,
+      group_id: selectedGroup && selectedGroup !== 'daily-chat' ? selectedGroup : undefined,
+      no_group: selectedGroup === 'daily-chat',
     }),
   })
 
@@ -75,13 +146,30 @@ export function ForumPage() {
 
   // Mutations
   const createThreadMutation = useMutation({
-    mutationFn: (content: string) => forumApi.createThread({ content, topic: selectedTopic || 'General' }),
+    mutationFn: (content: string) => forumApi.createThread({
+      content,
+      topic: selectedTopic || 'General',
+      group_id: selectedGroup && selectedGroup !== 'daily-chat' ? selectedGroup : undefined,
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
       setNewPostContent('')
       addToast('Post created successfully', 'success')
     },
     onError: () => addToast('Failed to create post', 'error')
+  })
+
+  const createGroupMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string }) =>
+      forumApi.createGroup({ ...data, type: 'custom', is_public: true }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum-groups'] })
+      setIsCreateGroupModalOpen(false)
+      setNewGroupName('')
+      setNewGroupDescription('')
+      addToast('Group created successfully', 'success')
+    },
+    onError: () => addToast('Failed to create group', 'error')
   })
 
   const addCommentMutation = useMutation({
@@ -102,6 +190,25 @@ export function ForumPage() {
     }
   })
 
+  const likeCommentMutation = useMutation({
+    mutationFn: (commentId: string) => forumApi.likeComment(commentId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+    }
+  })
+
+  const replyToCommentMutation = useMutation({
+    mutationFn: ({ commentId, content }: { commentId: string, content: string }) =>
+      forumApi.replyToComment(commentId, content),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      setCommentContents({})
+      setReplyingTo(null)
+      addToast('Reply added', 'success')
+    },
+    onError: () => addToast('Failed to add reply', 'error')
+  })
+
   const handleCreatePost = () => {
     if (!newPostContent.trim()) return
     createThreadMutation.mutate(newPostContent)
@@ -113,9 +220,15 @@ export function ForumPage() {
     addCommentMutation.mutate({ threadId, content })
   }
 
+  const handleReplyToComment = (commentId: string) => {
+    const content = commentContents[`reply-${commentId}`]
+    if (!content?.trim()) return
+    replyToCommentMutation.mutate({ commentId, content })
+  }
+
   return (
-    <div className="w-full flex-grow p-4 lg:p-6 pb-20 bg-[#f4f6f8]">
-      <div className="max-w-[1400px] mx-auto flex flex-col lg:flex-row gap-6">
+    <>
+    <div className="flex flex-col lg:flex-row gap-6">
 
         {/* LEFT COLUMN */}
         <div className="w-full lg:w-[280px] flex-shrink-0 space-y-6">
@@ -155,21 +268,57 @@ export function ForumPage() {
           {/* Team Members */}
           <div>
             <div className="border-b-2 border-blue-700 pb-2 mb-4 inline-block">
-              <h3 className="text-lg text-gray-800">Team Members - 201</h3>
+              <h3 className="text-lg text-gray-800">
+                Team Members - {selectedGroupData ? groupMembers.length : 201}
+              </h3>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {teamMembers.map((member) => (
-                <div key={member.id} className="relative aspect-square rounded-md overflow-hidden group cursor-pointer bg-gray-200">
-                  <img src={member.image} alt={member.name} className="object-cover w-full h-full" />
-                  <div className="absolute bottom-0 left-0 w-full bg-black/60 p-1 text-[10px] text-white truncate text-center">
-                    {member.name}
-                  </div>
+            {selectedGroupData && groupMembers.length > 0 ? (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  {groupMembers.slice(0, 6).map((member) => (
+                    <div
+                      key={member.id}
+                      onClick={() => navigate(`/user/${member.id}`)}
+                      className="relative aspect-square rounded-md overflow-hidden group cursor-pointer bg-gray-200 hover:ring-2 hover:ring-blue-500 transition-all"
+                    >
+                      <img
+                        src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`}
+                        alt={member.name}
+                        className="object-cover w-full h-full"
+                      />
+                      <div className="absolute bottom-0 left-0 w-full bg-black/60 p-1 text-[10px] text-white truncate text-center">
+                        {member.name}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <button className="text-blue-700 hover:text-blue-800 text-sm mt-4 flex items-center gap-1 font-medium">
-              See all Team Members <span className="text-lg leading-none">&rarr;</span>
-            </button>
+                {groupMembers.length > 6 && (
+                  <button className="text-blue-700 hover:text-blue-800 text-sm mt-4 flex items-center gap-1 font-medium">
+                    See all Team Members <span className="text-lg leading-none">&rarr;</span>
+                  </button>
+                )}
+              </>
+            ) : selectedGroupData ? (
+              <div className="text-sm text-gray-500 py-4 text-center">
+                No members yet
+              </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-3 gap-2">
+                  {teamMembers.map((member) => (
+                    <div key={member.id} className="relative aspect-square rounded-md overflow-hidden group cursor-pointer bg-gray-200">
+                      <img src={member.image} alt={member.name} className="object-cover w-full h-full" />
+                      <div className="absolute bottom-0 left-0 w-full bg-black/60 p-1 text-[10px] text-white truncate text-center">
+                        {member.name}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <button className="text-blue-700 hover:text-blue-800 text-sm mt-4 flex items-center gap-1 font-medium">
+                  See all Team Members <span className="text-lg leading-none">&rarr;</span>
+                </button>
+              </>
+            )}
           </div>
 
           {/* Photos */}
@@ -177,13 +326,33 @@ export function ForumPage() {
             <div className="border-b-2 border-blue-700 pb-2 mb-4 inline-block">
               <h3 className="text-lg text-gray-800">Photos</h3>
             </div>
-            <div className="grid grid-cols-3 gap-2">
-              {photos.map((photo) => (
-                <div key={photo.id} className="aspect-square rounded-md overflow-hidden bg-gray-200">
-                  <img src={photo.url} alt="Photo" className="object-cover w-full h-full" />
+            {selectedGroupData ? (
+              threads.length > 0 ? (
+                <div className="grid grid-cols-3 gap-2">
+                  {threads.slice(0, 6).map((thread, idx) => (
+                    <div key={thread.id || idx} className="aspect-square rounded-md overflow-hidden bg-gray-200">
+                      <img
+                        src={thread.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(thread.author?.name || 'User')}&background=random`}
+                        alt="Photo"
+                        className="object-cover w-full h-full"
+                      />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              ) : (
+                <div className="text-sm text-gray-500 py-4 text-center">
+                  No photos yet
+                </div>
+              )
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                {photos.map((photo) => (
+                  <div key={photo.id} className="aspect-square rounded-md overflow-hidden bg-gray-200">
+                    <img src={photo.url} alt="Photo" className="object-cover w-full h-full" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -191,10 +360,26 @@ export function ForumPage() {
         {/* MIDDLE COLUMN */}
         <div className="flex-1 flex flex-col space-y-4">
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-2xl text-gray-800">Latest Posts (Daily Chat)</h2>
-            <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded shadow-sm uppercase tracking-wide">
-              Forum Etiquette
-            </button>
+            <div>
+              <h2 className="text-2xl text-gray-800">{displayTitle}</h2>
+              <div className="w-16 h-1 bg-blue-700 mt-1"></div>
+            </div>
+            {selectedGroup && selectedGroup !== 'daily-chat' ? (
+              <button
+                onClick={() => {
+                  setSelectedGroup('daily-chat');
+                  setPage(1);
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded shadow-sm flex items-center gap-2 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back to Daily Chat
+              </button>
+            ) : (
+              <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded shadow-sm uppercase tracking-wide">
+                Forum Etiquette
+              </button>
+            )}
           </div>
 
           {/* Create Post Card */}
@@ -255,13 +440,19 @@ export function ForumPage() {
                 <div className="p-6">
                   {/* Post Header */}
                   <div className="flex items-center gap-3 mb-4">
-                    <img 
-                      src={thread.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(thread.author?.name || 'User')}&background=random`} 
-                      alt={thread.author?.name} 
-                      className="w-12 h-12 rounded-full" 
+                    <img
+                      src={thread.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(thread.author?.name || 'User')}&background=random`}
+                      alt={thread.author?.name}
+                      onClick={() => thread.author?.id && navigate(`/user/${thread.author.id}`)}
+                      className="w-12 h-12 rounded-full cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                     />
                     <div>
-                      <h4 className="text-gray-800 font-medium">{thread.author?.name}</h4>
+                      <h4
+                        onClick={() => thread.author?.id && navigate(`/user/${thread.author.id}`)}
+                        className="text-gray-800 font-medium cursor-pointer hover:text-blue-600 transition-colors"
+                      >
+                        {thread.author?.name}
+                      </h4>
                       <div className="text-gray-400 text-xs">{format(new Date(thread.created_at), 'MMMM do yyyy, h:mm a')}</div>
                     </div>
                   </div>
@@ -290,18 +481,125 @@ export function ForumPage() {
                   {thread.comments && thread.comments.length > 0 && (
                     <div className="space-y-4 mb-6 ml-4 border-l-2 border-gray-100 pl-4">
                       {thread.comments.map((comment) => (
-                        <div key={comment.id} className="flex gap-3 items-start">
-                          <img 
-                            src={comment.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.name || 'User')}&background=random`} 
-                            alt={comment.author?.name} 
-                            className="w-8 h-8 rounded-full" 
-                          />
-                          <div className="flex-1 bg-gray-50 rounded-lg p-3">
-                            <div className="flex justify-between items-center mb-1">
-                              <span className="text-xs font-bold text-gray-700">{comment.author?.name}</span>
-                              <span className="text-[10px] text-gray-400">{format(new Date(comment.created_at), 'MMM d, h:mm a')}</span>
+                        <div key={comment.id} className="space-y-3">
+                          {/* Main Comment */}
+                          <div className="flex gap-3 items-start">
+                            <img
+                              src={comment.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.name || 'User')}&background=random`}
+                              alt={comment.author?.name}
+                              onClick={() => comment.author?.id && navigate(`/user/${comment.author.id}`)}
+                              className="w-8 h-8 rounded-full cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                            />
+                            <div className="flex-1">
+                              <div className="bg-gray-50 rounded-lg p-3">
+                                <div className="flex justify-between items-center mb-1">
+                                  <span
+                                    onClick={() => comment.author?.id && navigate(`/user/${comment.author.id}`)}
+                                    className="text-xs font-bold text-gray-700 cursor-pointer hover:text-blue-600 transition-colors"
+                                  >
+                                    {comment.author?.name}
+                                  </span>
+                                  <span className="text-[10px] text-gray-400">{format(new Date(comment.created_at), 'MMM d, h:mm a')}</span>
+                                </div>
+                                <p className="text-sm text-gray-600 whitespace-pre-wrap">{comment.content}</p>
+                              </div>
+
+                              {/* Comment Actions */}
+                              <div className="flex gap-4 mt-2 text-xs">
+                                <button
+                                  onClick={() => likeCommentMutation.mutate(comment.id)}
+                                  className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors"
+                                >
+                                  <Heart className="w-3.5 h-3.5" />
+                                  <span>{comment.likes_count || 0}</span>
+                                </button>
+                                <button
+                                  onClick={() => setReplyingTo(replyingTo === comment.id ? null : comment.id)}
+                                  className="flex items-center gap-1 text-gray-500 hover:text-blue-500 transition-colors"
+                                >
+                                  <MessageSquare className="w-3.5 h-3.5" />
+                                  <span>Reply</span>
+                                </button>
+                              </div>
+
+                              {/* Reply Input */}
+                              {replyingTo === comment.id && (
+                                <div className="mt-3 flex gap-3 items-start">
+                                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0 text-xs">
+                                    {user?.name?.slice(0, 2).toUpperCase() || 'U'}
+                                  </div>
+                                  <div className="flex-1 border border-gray-200 rounded-md bg-white">
+                                    <textarea
+                                      className="w-full text-sm outline-none resize-none placeholder-gray-500 p-2 min-h-[60px] bg-white"
+                                      placeholder="Type your reply..."
+                                      value={commentContents[`reply-${comment.id}`] || ''}
+                                      onChange={(e) => setCommentContents(prev => ({ ...prev, [`reply-${comment.id}`]: e.target.value }))}
+                                    ></textarea>
+                                    <div className="p-2 flex justify-end gap-2 border-t border-gray-100">
+                                      <button
+                                        onClick={() => setReplyingTo(null)}
+                                        className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1"
+                                      >
+                                        Cancel
+                                      </button>
+                                      <button
+                                        onClick={() => handleReplyToComment(comment.id)}
+                                        disabled={!commentContents[`reply-${comment.id}`]?.trim() || replyToCommentMutation.isPending}
+                                        className={cn(
+                                          "text-xs font-semibold px-4 py-1 rounded transition-colors",
+                                          commentContents[`reply-${comment.id}`]?.trim()
+                                            ? "bg-blue-600 text-white hover:bg-blue-700"
+                                            : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                        )}
+                                      >
+                                        {replyToCommentMutation.isPending ? 'Sending...' : 'Reply'}
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {/* Nested Replies */}
+                              {comment.replies && comment.replies.length > 0 && (
+                                <div className="mt-3 space-y-3 ml-6 border-l-2 border-gray-100 pl-3">
+                                  {comment.replies.map((reply) => (
+                                    <div key={reply.id} className="flex gap-2 items-start">
+                                      <img
+                                        src={reply.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.author?.name || 'User')}&background=random`}
+                                        alt={reply.author?.name}
+                                        onClick={() => reply.author?.id && navigate(`/user/${reply.author.id}`)}
+                                        className="w-6 h-6 rounded-full cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                                      />
+                                      <div className="flex-1">
+                                        <div className="bg-blue-50 rounded-lg p-2">
+                                          <div className="flex justify-between items-center mb-1">
+                                            <span
+                                              onClick={() => reply.author?.id && navigate(`/user/${reply.author.id}`)}
+                                              className="text-[11px] font-bold text-gray-700 cursor-pointer hover:text-blue-600 transition-colors"
+                                            >
+                                              {reply.author?.name}
+                                            </span>
+                                            <span className="text-[10px] text-gray-400">{format(new Date(reply.created_at), 'MMM d, h:mm a')}</span>
+                                          </div>
+                                          <p className="text-xs text-gray-600 whitespace-pre-wrap">{reply.content}</p>
+                                        </div>
+
+                                        {/* Reply Actions */}
+                                        <div className="flex gap-3 mt-1 text-xs">
+                                          <button
+                                            onClick={() => likeCommentMutation.mutate(reply.id)}
+                                            className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors"
+                                          >
+                                            <Heart className="w-3 h-3" />
+                                            <span>{reply.likes_count || 0}</span>
+                                          </button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <p className="text-sm text-gray-600 whitespace-pre-wrap">{comment.content}</p>
                           </div>
                         </div>
                       ))}
@@ -365,36 +663,106 @@ export function ForumPage() {
 
         {/* RIGHT COLUMN */}
         <div className="w-full lg:w-[280px] flex-shrink-0 space-y-8 mt-2">
-          
+
+          {/* Notifications */}
+          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
+              <Bell className="w-4 h-4 text-gray-600" />
+              <h3 className="text-sm font-semibold text-gray-800">
+                {selectedGroup && selectedGroup !== 'daily-chat'
+                  ? `${selectedGroupData?.name} Notifications`
+                  : 'Notifications'}
+              </h3>
+            </div>
+
+            <div className="p-3">
+              {/* Notifications List */}
+              <div className="space-y-2">
+                {currentNotifications.length > 0 ? (
+                  currentNotifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={cn(
+                        "p-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50",
+                        notification.read
+                          ? "bg-white border-gray-200"
+                          : "bg-blue-50 border-blue-200"
+                      )}
+                    >
+                      <p className="text-sm text-gray-800 mb-1">{notification.message}</p>
+                      <p className="text-xs text-gray-500">{notification.time}</p>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-6 text-gray-400">
+                    <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-xs">
+                      {selectedGroup && selectedGroup !== 'daily-chat'
+                        ? 'No new notifications in this group'
+                        : 'No new notifications'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
           {/* Topics */}
           <div>
-            <div className="border-b border-gray-200 pb-2 mb-4">
+            <div className="mb-4">
               <h3 className="text-[17px] text-gray-800">Topics</h3>
+              <div className="w-12 h-1 bg-blue-700 mt-1"></div>
             </div>
             <div className="flex flex-wrap gap-x-2 gap-y-3">
-              <button 
-                onClick={() => { setSelectedTopic(undefined); setPage(1); }}
-                className={cn(
-                  "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
-                  !selectedTopic ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
-                )}
-              >
-                All Posts
-              </button>
-              {topics.map((topic, i) => (
-                <div key={i} className="relative inline-block mt-2 mr-2">
-                  <button 
-                    onClick={() => { setSelectedTopic(topic.name); setPage(1); }}
+              {topicGroups.map((group) => {
+                const notificationCount = getNotificationCount(group.id)
+                return (
+                  <div key={group.id} className="relative inline-block mt-2 mr-2">
+                    <button
+                      onClick={() => { setSelectedGroup(group.id); setPage(1); }}
+                      className={cn(
+                        "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
+                        selectedGroup === group.id ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
+                      )}
+                    >
+                      {group.name}
+                    </button>
+                    {notificationCount > 0 ? (
+                      <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
+                        {notificationCount}
+                      </div>
+                    ) : (group.threads_count ?? 0) > 0 ? (
+                      <div className="absolute -top-2.5 -right-2.5 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
+                        {group.threads_count}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* State Groups */}
+          <div>
+            <div className="mb-4">
+              <h3 className="text-[17px] text-gray-800">State Groups</h3>
+              <div className="w-12 h-1 bg-blue-700 mt-1"></div>
+            </div>
+            <div className="flex flex-wrap gap-x-2 gap-y-3">
+              {stateGroups.map((group) => (
+                <div key={group.id} className="relative inline-block mt-2 mr-2">
+                  <button
+                    onClick={() => { setSelectedGroup(group.id); setPage(1); }}
                     className={cn(
                       "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
-                      selectedTopic === topic.name ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
+                      selectedGroup === group.id ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
                     )}
                   >
-                    {topic.name}
+                    {group.name}
                   </button>
-                  {topic.count !== null && (
+                  {(group.threads_count ?? 0) > 0 && (
                     <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
-                      {topic.count}
+                      {group.threads_count}
                     </div>
                   )}
                 </div>
@@ -402,31 +770,262 @@ export function ForumPage() {
             </div>
           </div>
 
-          {/* State Groups */}
+          {/* User Groups */}
           <div>
-            <div className="border-b border-gray-200 pb-2 mb-4">
-              <h3 className="text-[17px] text-gray-800">State Groups</h3>
+            <div className="mb-4">
+              <h3 className="text-[17px] text-gray-800">User Groups</h3>
+              <div className="w-12 h-1 bg-blue-700 mt-1"></div>
             </div>
-            <div className="flex flex-wrap gap-x-2 gap-y-3">
-              {stateGroups.map((group, i) => (
-                <div key={i} className="relative inline-block mt-2 mr-2">
-                  <button className="bg-white border border-gray-200 text-gray-800 text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors">
-                    {group.name}
-                  </button>
-                  {group.count !== null && (
-                    <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
-                      {group.count}
-                    </div>
-                  )}
-                </div>
-              ))}
+            {customGroups.length > 0 ? (
+              <div className="flex flex-wrap gap-x-2 gap-y-3">
+                {customGroups.map((group) => (
+                  <div key={group.id} className="relative inline-block mt-2 mr-2">
+                    <button
+                      onClick={() => { setSelectedGroup(group.id); setPage(1); }}
+                      className={cn(
+                        "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
+                        selectedGroup === group.id ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
+                      )}
+                    >
+                      #{group.name}
+                    </button>
+                    {(group.threads_count ?? 0) > 0 && (
+                      <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
+                        {group.threads_count}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-gray-500 italic py-2">No user groups yet. Create one below!</p>
+            )}
+          </div>
+
+          {/* All Groups / My Groups Toggle */}
+          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => { setGroupsViewTab('all'); setShowAllGroups(true); }}
+                className={cn(
+                  "flex-1 px-4 py-3 text-sm font-semibold transition-colors",
+                  groupsViewTab === 'all'
+                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                All Groups
+              </button>
+              <button
+                onClick={() => { setGroupsViewTab('my'); setShowAllGroups(true); }}
+                className={cn(
+                  "flex-1 px-4 py-3 text-sm font-semibold transition-colors",
+                  groupsViewTab === 'my'
+                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                My Groups
+              </button>
             </div>
           </div>
 
         </div>
 
       </div>
-    </div>
+
+      {/* Create Group Modal */}
+      {isCreateGroupModalOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800">Create Custom Group</h3>
+              <button
+                onClick={() => setIsCreateGroupModalOpen(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Group Name</label>
+                <input
+                  type="text"
+                  value={newGroupName}
+                  onChange={(e) => setNewGroupName(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter group name"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Description (Optional)</label>
+                <textarea
+                  value={newGroupDescription}
+                  onChange={(e) => setNewGroupDescription(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={3}
+                  placeholder="Enter group description"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
+              <button
+                onClick={() => setIsCreateGroupModalOpen(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (newGroupName.trim()) {
+                    createGroupMutation.mutate({
+                      name: newGroupName,
+                      description: newGroupDescription || undefined,
+                    });
+                  }
+                }}
+                disabled={!newGroupName.trim() || createGroupMutation.isPending}
+                className={cn(
+                  "px-4 py-2 text-sm font-semibold rounded transition-colors",
+                  newGroupName.trim()
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
+                )}
+              >
+                {createGroupMutation.isPending ? 'Creating...' : 'Create Group'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* All Groups / My Groups Modal */}
+      {showAllGroups && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-800">
+                {groupsViewTab === 'all' ? 'All Groups' : 'My Groups'}
+              </h3>
+              <button
+                onClick={() => setShowAllGroups(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+              <button
+                onClick={() => setGroupsViewTab('all')}
+                className={cn(
+                  "flex-1 px-4 py-3 text-sm font-semibold transition-colors",
+                  groupsViewTab === 'all'
+                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                All Groups
+              </button>
+              <button
+                onClick={() => setGroupsViewTab('my')}
+                className={cn(
+                  "flex-1 px-4 py-3 text-sm font-semibold transition-colors",
+                  groupsViewTab === 'my'
+                    ? "text-blue-600 border-b-2 border-blue-600 bg-blue-50"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                )}
+              >
+                My Groups
+              </button>
+            </div>
+
+            {/* Groups List */}
+            <div className="overflow-y-auto max-h-[calc(80vh-140px)] p-4">
+              <div className="space-y-3">
+                {(groupsViewTab === 'all' ? groups : myGroups).map((group) => (
+                  <div
+                    key={group.id}
+                    className="flex items-center gap-4 p-4 bg-white border border-gray-200 rounded-lg hover:shadow-md transition-shadow cursor-pointer"
+                    onClick={() => {
+                      setSelectedGroup(group.id);
+                      setShowAllGroups(false);
+                      setPage(1);
+                    }}
+                  >
+                    {/* Group Avatar */}
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center flex-shrink-0">
+                      {group.icon ? (
+                        <img src={group.icon} alt={group.name} className="w-full h-full rounded-full object-cover" />
+                      ) : (
+                        <Users className="w-6 h-6 text-white" />
+                      )}
+                    </div>
+
+                    {/* Group Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="font-semibold text-gray-900 truncate">
+                          {group.type === 'custom' || groupsViewTab === 'my' ? `#${group.name}` : group.name}
+                        </h4>
+                        {group.type === 'topic' && (
+                          <Pin className="w-4 h-4 text-blue-600" />
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        {format(new Date(group.created_at || new Date()), 'MMMM dd yyyy, h:mm a')}
+                      </p>
+                      <div className="mt-2 inline-block">
+                        <span className="px-2 py-1 bg-green-500 text-white text-[10px] font-bold rounded uppercase">
+                          {group.members_count || 0} MEMBERS
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Options Menu */}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <MoreVertical className="w-5 h-5 text-gray-400" />
+                    </button>
+                  </div>
+                ))}
+
+                {(groupsViewTab === 'all' ? groups : myGroups).length === 0 && (
+                  <div className="text-center py-12 text-gray-500">
+                    <Users className="w-12 h-12 mx-auto mb-3 text-gray-300" />
+                    <p className="text-sm">
+                      {groupsViewTab === 'all' ? 'No groups available' : 'You are not a member of any groups yet'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Create Custom Group Button - Only in My Groups tab */}
+                {groupsViewTab === 'my' && (
+                  <div className="pt-4">
+                    <button
+                      onClick={() => {
+                        setShowAllGroups(false);
+                        setIsCreateGroupModalOpen(true);
+                      }}
+                      className="w-full bg-blue-600 text-white text-sm font-semibold py-3 px-4 rounded-lg shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Create Custom Group
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 
