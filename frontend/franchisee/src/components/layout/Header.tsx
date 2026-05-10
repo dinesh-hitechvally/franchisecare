@@ -1,9 +1,10 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { CalendarDays, BookOpen, List, UserPlus, Bell, User } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
 export function Header() {
   const user = useAuthStore((state) => state.user)
+  const navigate = useNavigate()
 
   return (
     <header className="bg-header-bg px-4 py-2.5 shadow-md">
@@ -61,13 +62,17 @@ export function Header() {
           </button>
 
           {/* User Avatar */}
-          <div className="ml-1">
+          <button
+            onClick={() => navigate('/forum/profile')}
+            className="ml-1 p-1 rounded-full hover:bg-white/10 transition-colors"
+            title="View your profile"
+          >
             <img
               src={user?.avatar || 'https://ui-avatars.com/api/?name=Admin&background=6b7280&color=fff'}
               alt={user?.name || 'Admin'}
-              className="w-8 h-8 rounded-full object-cover border-2 border-white/20"
+              className="w-8 h-8 rounded-full object-cover border-2 border-white/20 cursor-pointer"
             />
-          </div>
+          </button>
         </div>
       </div>
     </header>

@@ -1,5 +1,5 @@
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, NewsItem, DashboardMetrics, User } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, User } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -143,6 +143,19 @@ export const authApi = {
   me: () => apiClient.get<User>('/user'),
 
   changePassword: (data: any) => apiClient.post('/change-password', data),
+}
+
+export const usersApi = {
+  getById: (id: string) => apiClient.get<User>(`/users/${id}`),
+  
+  getPosts: (userId: string, params?: { per_page?: number; page?: number }) =>
+    apiClient.get<{ data: ForumThread[]; meta: PaginationMeta }>(`/users/${userId}/posts`, { params }),
+
+  createPost: (data: { title?: string; content: string; topic?: string; group_id?: string | number }) =>
+    apiClient.post<ForumThread>('/profile/posts', data),
+
+  updatePost: (threadId: string | number, data: { title?: string; content: string; topic?: string }) =>
+    apiClient.patch<ForumThread>(`/profile/posts/${threadId}`, data),
 }
 
 export const leadsApi = {
@@ -478,14 +491,23 @@ export const forumApi = {
   addComment: (threadId: string, content: string) =>
     apiClient.post<ForumComment>(`/forum/threads/${threadId}/comments`, { content }),
 
-  likeThread: (id: string) => apiClient.post<{ likes_count: number }>(`/forum/threads/${id}/like`),
+  likeThread: (id: string) => apiClient.post<{ likes_count: number; liked: boolean }>(`/forum/threads/${id}/like`),
 
-  likeComment: (commentId: string) => apiClient.post<{ likes_count: number }>(`/forum/comments/${commentId}/like`),
+  likeComment: (commentId: string) => apiClient.post<{ likes_count: number; liked: boolean }>(`/forum/comments/${commentId}/like`),
 
   replyToComment: (commentId: string, content: string) =>
     apiClient.post<ForumComment>(`/forum/comments/${commentId}/reply`, { content }),
 
-  deleteThread: (id: string) => apiClient.delete(`/forum/threads/${id}`),
+  getNotifications: (params?: { group_id?: string; no_group?: boolean; unread_only?: boolean; limit?: number }) =>
+    apiClient.get<ForumNotification[]>('/forum/notifications', { params }),
+
+  markAllNotificationsAsRead: (params?: { group_id?: string; no_group?: boolean }) =>
+    apiClient.post<{ updated: number }>('/forum/notifications/read-all', params),
+
+  markNotificationAsRead: (id: string) =>
+    apiClient.post<ForumNotification>(`/forum/notifications/${id}/read`),
+
+  deleteThread: (id: string | number) => apiClient.delete(`/forum/threads/${id}`),
 
   // Groups
   getGroups: (params?: { type?: 'topic' | 'state' | 'custom'; my_groups?: boolean }) =>

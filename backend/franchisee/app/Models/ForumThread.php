@@ -38,4 +38,10 @@ class ForumThread extends Model
     {
         return $this->belongsTo(ForumGroup::class, 'group_id');
     }
+
+    public function likedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'forum_thread_likes', 'forum_thread_id', 'user_id')
+            ->withTimestamps();
+    }
 }

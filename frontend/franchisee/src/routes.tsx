@@ -203,7 +203,8 @@ export function AppRoutes() {
 
         {/* Other Routes */}
         <Route path="forum" element={<ForumPage />} />
-        <Route path="user/:userId" element={<UserProfilePage />} />
+        <Route path="forum/profile" element={<UserProfilePage />} />
+        <Route path="forum/user/:userId" element={<UserProfilePage />} />
         <Route path="news" element={<LatestNewsPage />} />
         <Route path="news/manage" element={<NewsPage />} />
         {/* Documents Routes */}

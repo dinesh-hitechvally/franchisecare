@@ -40,4 +40,10 @@ class ForumComment extends Model
     {
         return $this->hasMany(ForumComment::class, 'parent_id');
     }
+
+    public function likedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'forum_comment_likes', 'forum_comment_id', 'user_id')
+            ->withTimestamps();
+    }
 }

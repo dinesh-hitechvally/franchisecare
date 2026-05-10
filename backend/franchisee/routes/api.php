@@ -10,6 +10,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/user', function (Request $request) {
         return $request->user();
     });
+    Route::get('/users/{user}', [\App\Http\Controllers\Api\UserProfileController::class, 'show']);
+    Route::get('/users/{user}/posts', [\App\Http\Controllers\Api\UserProfileController::class, 'userPosts']);
+    Route::post('/profile/posts', [\App\Http\Controllers\Api\UserProfileController::class, 'createPost']);
+    Route::patch('/profile/posts/{thread}', [\App\Http\Controllers\Api\UserProfileController::class, 'updatePost']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 
@@ -58,6 +62,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('forum/threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'show']);
     Route::post('forum/threads/{forumThread}/comments', [\App\Http\Controllers\Api\ForumController::class, 'addComment']);
     Route::post('forum/threads/{forumThread}/like', [\App\Http\Controllers\Api\ForumController::class, 'like']);
+    Route::get('forum/notifications', [\App\Http\Controllers\Api\ForumController::class, 'notifications']);
+    Route::post('forum/notifications/read-all', [\App\Http\Controllers\Api\ForumController::class, 'markAllNotificationsAsRead']);
+    Route::post('forum/notifications/{forumNotification}/read', [\App\Http\Controllers\Api\ForumController::class, 'markNotificationAsRead']);
     Route::delete('forum/threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'destroy']);
 
     // Forum Comments

@@ -1,15 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
-import { List, ListOrdered, Link, Type, Image as ImageIcon, Heart, MessageSquare, Search, Settings, Plus, X, Users, MoreVertical, Pin, ArrowLeft, Bell, ChevronDown } from 'lucide-react'
+import { List, ListOrdered, Link, Type, Image as ImageIcon, Heart, MessageSquare, Search, Settings, Plus, X, Users, MoreVertical, Pin, ArrowLeft, Bell, ChevronDown, CheckCheck } from 'lucide-react'
 import { forumApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
-import { format } from 'date-fns'
+import { format, formatDistanceToNow } from 'date-fns'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { cn } from '../../lib/utils'
-import type { ForumThread, ForumGroup } from '../../types'
+import type { ForumThread, ForumNotification } from '../../types'
 
 // Mock Data for sidebar (could be dynamic later)
 const teamMembers = [
@@ -32,6 +32,16 @@ export function ForumPage() {
   const { addToast } = useToastStore()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  
+  // Helper function to navigate to profile - own profile goes to /forum/profile, others to /forum/user/:userId
+  const navigateToProfile = (userId: string | number) => {
+    if (user?.id?.toString() === userId?.toString()) {
+      navigate('/forum/profile')
+    } else {
+      navigate(`/forum/user/${userId}`)
+    }
+  }
+  
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
   const [selectedTopic, setSelectedTopic] = useState<string | undefined>(undefined)
@@ -45,6 +55,11 @@ export function ForumPage() {
   const [newGroupDescription, setNewGroupDescription] = useState('')
   const [showAllGroups, setShowAllGroups] = useState(false)
   const [groupsViewTab, setGroupsViewTab] = useState<'all' | 'my'>('all')
+  const [notificationFilter, setNotificationFilter] = useState<'all' | 'unread'>('all')
+  const [showMarkAllReadConfirm, setShowMarkAllReadConfirm] = useState(false)
+  const [highlightedThreadId, setHighlightedThreadId] = useState<string | null>(null)
+  const [highlightedCommentId, setHighlightedCommentId] = useState<string | null>(null)
+  const [focusedThread, setFocusedThread] = useState<ForumThread | null>(null)
 
   // Fetch Groups
   const { data: groups = [] } = useQuery({
@@ -63,52 +78,23 @@ export function ForumPage() {
   const stateGroups = groups.filter(g => g.type === 'state')
   const customGroups = groups.filter(g => g.type === 'custom')
 
-  // Mock notifications data - will be replaced with real API later
-  const mockNotifications = [
-    // Daily Chat notifications (no groupId)
-    {
-      id: 'dc1',
-      groupId: undefined,
-      groupName: 'Daily Chat',
-      message: 'New post in Daily Chat: "Weekly schedule reminder"',
-      time: '1 hour ago',
-      read: false,
-    },
-    {
-      id: 'dc2',
-      groupId: undefined,
-      groupName: 'Daily Chat',
-      message: 'Sarah replied to your comment',
-      time: '3 hours ago',
-      read: false,
-    },
-    // Group-specific notifications
-    {
-      id: '1',
-      groupId: topicGroups.find(g => g.name === 'Grooming')?.id,
-      groupName: 'Grooming',
-      message: 'New post in Grooming: "Best practices for difficult coats"',
-      time: '2 hours ago',
-      read: false,
-    },
-    {
-      id: '2',
-      groupId: topicGroups.find(g => g.name === 'Marketing')?.id,
-      groupName: 'Marketing',
-      message: 'John commented on your post',
-      time: '5 hours ago',
-      read: false,
-    },
-  ]
+  const { data: allNotifications = [] } = useQuery({
+    queryKey: ['forum-notifications'],
+    queryFn: () => forumApi.getNotifications({ limit: 200 }),
+  })
 
-  // Get notifications for selected group
-  const currentNotifications = selectedGroup && selectedGroup !== 'daily-chat'
-    ? mockNotifications.filter(n => n.groupId === selectedGroup)
-    : mockNotifications.filter(n => !n.groupId) // Show only daily chat notifications when no group selected
+  const currentNotifications = useMemo(() => {
+    const unreadOnly = notificationFilter === 'unread'
 
-  // Get notification count for a group
+    if (selectedGroup && selectedGroup !== 'daily-chat') {
+      return allNotifications.filter(n => n.group_id === selectedGroup && (!unreadOnly || !n.is_read))
+    }
+
+    return allNotifications.filter(n => !n.group_id && (!unreadOnly || !n.is_read))
+  }, [allNotifications, selectedGroup, notificationFilter])
+
   const getNotificationCount = (groupId: string) => {
-    return mockNotifications.filter(n => n.groupId === groupId && !n.read).length
+    return allNotifications.filter(n => n.group_id === groupId && !n.is_read).length
   }
 
   // Get selected group name and details
@@ -144,6 +130,18 @@ export function ForumPage() {
   const threads = listResult?.data ?? []
   const listMeta = listResult?.meta
 
+  const displayThreads = useMemo(() => {
+    if (!focusedThread) {
+      return threads
+    }
+
+    if (threads.some((thread) => thread.id === focusedThread.id)) {
+      return threads
+    }
+
+    return [focusedThread, ...threads]
+  }, [threads, focusedThread])
+
   // Mutations
   const createThreadMutation = useMutation({
     mutationFn: (content: string) => forumApi.createThread({
@@ -153,6 +151,7 @@ export function ForumPage() {
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
       setNewPostContent('')
       addToast('Post created successfully', 'success')
     },
@@ -177,6 +176,7 @@ export function ForumPage() {
       forumApi.addComment(threadId, content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
       setCommentContents({})
       addToast('Comment added', 'success')
     },
@@ -187,6 +187,7 @@ export function ForumPage() {
     mutationFn: (threadId: string) => forumApi.likeThread(threadId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
     }
   })
 
@@ -194,6 +195,7 @@ export function ForumPage() {
     mutationFn: (commentId: string) => forumApi.likeComment(commentId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
     }
   })
 
@@ -202,11 +204,28 @@ export function ForumPage() {
       forumApi.replyToComment(commentId, content),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-threads'] })
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
       setCommentContents({})
       setReplyingTo(null)
       addToast('Reply added', 'success')
     },
     onError: () => addToast('Failed to add reply', 'error')
+  })
+
+  const markNotificationReadMutation = useMutation({
+    mutationFn: (id: string) => forumApi.markNotificationAsRead(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
+    }
+  })
+
+  const markAllNotificationsReadMutation = useMutation({
+    mutationFn: (params: { group_id?: string; no_group?: boolean }) => forumApi.markAllNotificationsAsRead(params),
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ['forum-notifications'] })
+      addToast(`${result.updated} notification(s) marked as read`, 'success')
+    },
+    onError: () => addToast('Failed to mark notifications as read', 'error')
   })
 
   const handleCreatePost = () => {
@@ -225,6 +244,61 @@ export function ForumPage() {
     if (!content?.trim()) return
     replyToCommentMutation.mutate({ commentId, content })
   }
+
+  const handleNotificationClick = async (notification: ForumNotification) => {
+    const targetGroupId = notification.group_id ?? 'daily-chat'
+
+    setSelectedGroup(targetGroupId)
+    setPage(1)
+    setHighlightedThreadId(notification.thread_id)
+    setHighlightedCommentId(notification.comment_id ?? null)
+
+    if (!notification.is_read) {
+      markNotificationReadMutation.mutate(notification.id)
+    }
+
+    try {
+      const thread = await forumApi.getThread(notification.thread_id)
+      setFocusedThread(thread)
+    } catch {
+      addToast('Could not open related post', 'error')
+    }
+  }
+
+  const handleMarkAllAsRead = () => {
+    setShowMarkAllReadConfirm(false)
+
+    markAllNotificationsReadMutation.mutate({
+      group_id: selectedGroup && selectedGroup !== 'daily-chat' ? selectedGroup : undefined,
+      no_group: !selectedGroup || selectedGroup === 'daily-chat',
+    })
+  }
+
+  useEffect(() => {
+    if (!highlightedThreadId) {
+      return
+    }
+
+    const element = document.getElementById(`thread-${highlightedThreadId}`)
+    if (!element) {
+      return
+    }
+
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [displayThreads, highlightedThreadId])
+
+  useEffect(() => {
+    if (!highlightedThreadId && !highlightedCommentId) {
+      return
+    }
+
+    const timeoutId = setTimeout(() => {
+      setHighlightedThreadId(null)
+      setHighlightedCommentId(null)
+    }, 4000)
+
+    return () => clearTimeout(timeoutId)
+  }, [highlightedThreadId, highlightedCommentId])
 
   return (
     <>
@@ -249,7 +323,10 @@ export function ForumPage() {
               <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
                 <Settings className="w-4 h-4 text-gray-500" />
               </button>
-              <button className="flex-1 bg-blue-700 text-white text-xs font-semibold py-2 rounded shadow-sm hover:bg-blue-800 transition-colors uppercase">
+              <button
+                onClick={() => navigate('/forum/profile')}
+                className="flex-1 bg-blue-700 text-white text-xs font-semibold py-2 rounded shadow-sm hover:bg-blue-800 transition-colors uppercase"
+              >
                 My Profile
               </button>
               <div className="relative flex-1">
@@ -278,7 +355,7 @@ export function ForumPage() {
                   {groupMembers.slice(0, 6).map((member) => (
                     <div
                       key={member.id}
-                      onClick={() => navigate(`/user/${member.id}`)}
+                      onClick={() => navigateToProfile(member.id)}
                       className="relative aspect-square rounded-md overflow-hidden group cursor-pointer bg-gray-200 hover:ring-2 hover:ring-blue-500 transition-all"
                     >
                       <img
@@ -434,21 +511,27 @@ export function ForumPage() {
           {/* Feed Card */}
           {isLoading ? (
             <div className="p-12 text-center text-gray-400 italic">Loading posts...</div>
-          ) : threads.length > 0 ? (
-            threads.map((thread: ForumThread) => (
-              <Card key={thread.id} className="bg-white shadow-sm border border-gray-200">
+          ) : displayThreads.length > 0 ? (
+            displayThreads.map((thread: ForumThread) => (
+              <div key={thread.id} id={`thread-${thread.id}`}>
+              <Card
+                className={cn(
+                  "bg-white shadow-sm border",
+                  highlightedThreadId === thread.id ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-200"
+                )}
+              >
                 <div className="p-6">
                   {/* Post Header */}
                   <div className="flex items-center gap-3 mb-4">
                     <img
                       src={thread.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(thread.author?.name || 'User')}&background=random`}
                       alt={thread.author?.name}
-                      onClick={() => thread.author?.id && navigate(`/user/${thread.author.id}`)}
+                      onClick={() => thread.author?.id && navigateToProfile(thread.author.id)}
                       className="w-12 h-12 rounded-full cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                     />
                     <div>
                       <h4
-                        onClick={() => thread.author?.id && navigate(`/user/${thread.author.id}`)}
+                        onClick={() => thread.author?.id && navigateToProfile(thread.author.id)}
                         className="text-gray-800 font-medium cursor-pointer hover:text-blue-600 transition-colors"
                       >
                         {thread.author?.name}
@@ -468,7 +551,7 @@ export function ForumPage() {
                       onClick={() => likeThreadMutation.mutate(thread.id)}
                       className="flex items-center gap-1.5 hover:text-red-500 transition-colors"
                     >
-                      <Heart className={cn("w-4 h-4", thread.likes_count > 0 && "fill-red-500 text-red-500")} /> 
+                      <Heart className={cn("w-4 h-4", thread.liked && "fill-red-500 text-red-500")} /> 
                       {thread.likes_count} Likes
                     </button>
                     <button className="flex items-center gap-1.5 hover:text-blue-600 text-blue-500">
@@ -487,14 +570,19 @@ export function ForumPage() {
                             <img
                               src={comment.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(comment.author?.name || 'User')}&background=random`}
                               alt={comment.author?.name}
-                              onClick={() => comment.author?.id && navigate(`/user/${comment.author.id}`)}
+                              onClick={() => comment.author?.id && navigateToProfile(comment.author.id)}
                               className="w-8 h-8 rounded-full cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                             />
                             <div className="flex-1">
-                              <div className="bg-gray-50 rounded-lg p-3">
+                              <div
+                                className={cn(
+                                  "bg-gray-50 rounded-lg p-3 transition-colors",
+                                  highlightedCommentId === comment.id && "bg-yellow-50 ring-1 ring-yellow-300"
+                                )}
+                              >
                                 <div className="flex justify-between items-center mb-1">
                                   <span
-                                    onClick={() => comment.author?.id && navigate(`/user/${comment.author.id}`)}
+                                    onClick={() => comment.author?.id && navigateToProfile(comment.author.id)}
                                     className="text-xs font-bold text-gray-700 cursor-pointer hover:text-blue-600 transition-colors"
                                   >
                                     {comment.author?.name}
@@ -510,7 +598,7 @@ export function ForumPage() {
                                   onClick={() => likeCommentMutation.mutate(comment.id)}
                                   className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors"
                                 >
-                                  <Heart className="w-3.5 h-3.5" />
+                                  <Heart className={cn("w-3.5 h-3.5", comment.liked && "fill-red-500 text-red-500")} />
                                   <span>{comment.likes_count || 0}</span>
                                 </button>
                                 <button
@@ -567,14 +655,19 @@ export function ForumPage() {
                                       <img
                                         src={reply.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(reply.author?.name || 'User')}&background=random`}
                                         alt={reply.author?.name}
-                                        onClick={() => reply.author?.id && navigate(`/user/${reply.author.id}`)}
+                                        onClick={() => reply.author?.id && navigateToProfile(reply.author.id)}
                                         className="w-6 h-6 rounded-full cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
                                       />
                                       <div className="flex-1">
-                                        <div className="bg-blue-50 rounded-lg p-2">
+                                        <div
+                                          className={cn(
+                                            "bg-blue-50 rounded-lg p-2 transition-colors",
+                                            highlightedCommentId === reply.id && "bg-yellow-50 ring-1 ring-yellow-300"
+                                          )}
+                                        >
                                           <div className="flex justify-between items-center mb-1">
                                             <span
-                                              onClick={() => reply.author?.id && navigate(`/user/${reply.author.id}`)}
+                                              onClick={() => reply.author?.id && navigateToProfile(reply.author.id)}
                                               className="text-[11px] font-bold text-gray-700 cursor-pointer hover:text-blue-600 transition-colors"
                                             >
                                               {reply.author?.name}
@@ -590,7 +683,7 @@ export function ForumPage() {
                                             onClick={() => likeCommentMutation.mutate(reply.id)}
                                             className="flex items-center gap-1 text-gray-500 hover:text-red-500 transition-colors"
                                           >
-                                            <Heart className="w-3 h-3" />
+                                            <Heart className={cn("w-3 h-3", reply.liked && "fill-red-500 text-red-500")} />
                                             <span>{reply.likes_count || 0}</span>
                                           </button>
                                         </div>
@@ -642,6 +735,7 @@ export function ForumPage() {
                   </div>
                 </div>
               </Card>
+              </div>
             ))
           ) : (
             <div className="p-12 text-left text-gray-400 italic">No posts found.</div>
@@ -673,6 +767,29 @@ export function ForumPage() {
                   ? `${selectedGroupData?.name} Notifications`
                   : 'Notifications'}
               </h3>
+              <div className="ml-auto flex items-center gap-2">
+                <select
+                  value={notificationFilter}
+                  onChange={(e) => setNotificationFilter(e.target.value as 'all' | 'unread')}
+                  className="text-[12px] font-medium px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="all">All</option>
+                  <option value="unread">Unread</option>
+                </select>
+                <button
+                  onClick={() => setShowMarkAllReadConfirm(true)}
+                  disabled={currentNotifications.filter(n => !n.is_read).length === 0 || markAllNotificationsReadMutation.isPending}
+                  title="Mark all as read"
+                  className={cn(
+                    "p-1.5 rounded border",
+                    currentNotifications.filter(n => !n.is_read).length > 0
+                      ? "bg-white text-blue-700 border-blue-300 hover:bg-blue-50"
+                      : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
+                  )}
+                >
+                  <CheckCheck className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="p-3">
@@ -682,24 +799,29 @@ export function ForumPage() {
                   currentNotifications.map((notification) => (
                     <div
                       key={notification.id}
+                      onClick={() => handleNotificationClick(notification)}
                       className={cn(
                         "p-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50",
-                        notification.read
+                        notification.is_read
                           ? "bg-white border-gray-200"
                           : "bg-blue-50 border-blue-200"
                       )}
                     >
                       <p className="text-sm text-gray-800 mb-1">{notification.message}</p>
-                      <p className="text-xs text-gray-500">{notification.time}</p>
+                      <p className="text-xs text-gray-500">
+                        {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
+                      </p>
                     </div>
                   ))
                 ) : (
                   <div className="text-center py-6 text-gray-400">
                     <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
                     <p className="text-xs">
-                      {selectedGroup && selectedGroup !== 'daily-chat'
-                        ? 'No new notifications in this group'
-                        : 'No new notifications'}
+                      {notificationFilter === 'unread'
+                        ? 'No unread notifications'
+                        : selectedGroup && selectedGroup !== 'daily-chat'
+                          ? 'No notifications in this group'
+                          : 'No notifications'}
                     </p>
                   </div>
                 )}
@@ -727,15 +849,11 @@ export function ForumPage() {
                     >
                       {group.name}
                     </button>
-                    {notificationCount > 0 ? (
+                    {notificationCount > 0 && (
                       <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
                         {notificationCount}
                       </div>
-                    ) : (group.threads_count ?? 0) > 0 ? (
-                      <div className="absolute -top-2.5 -right-2.5 bg-blue-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
-                        {group.threads_count}
-                      </div>
-                    ) : null}
+                    )}
                   </div>
                 )
               })}
@@ -749,7 +867,10 @@ export function ForumPage() {
               <div className="w-12 h-1 bg-blue-700 mt-1"></div>
             </div>
             <div className="flex flex-wrap gap-x-2 gap-y-3">
-              {stateGroups.map((group) => (
+              {stateGroups.map((group) => {
+                const notificationCount = getNotificationCount(group.id)
+
+                return (
                 <div key={group.id} className="relative inline-block mt-2 mr-2">
                   <button
                     onClick={() => { setSelectedGroup(group.id); setPage(1); }}
@@ -760,13 +881,14 @@ export function ForumPage() {
                   >
                     {group.name}
                   </button>
-                  {(group.threads_count ?? 0) > 0 && (
+                  {notificationCount > 0 && (
                     <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
-                      {group.threads_count}
+                      {notificationCount}
                     </div>
                   )}
                 </div>
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -778,7 +900,10 @@ export function ForumPage() {
             </div>
             {customGroups.length > 0 ? (
               <div className="flex flex-wrap gap-x-2 gap-y-3">
-                {customGroups.map((group) => (
+                {customGroups.map((group) => {
+                  const notificationCount = getNotificationCount(group.id)
+
+                  return (
                   <div key={group.id} className="relative inline-block mt-2 mr-2">
                     <button
                       onClick={() => { setSelectedGroup(group.id); setPage(1); }}
@@ -789,13 +914,14 @@ export function ForumPage() {
                     >
                       #{group.name}
                     </button>
-                    {(group.threads_count ?? 0) > 0 && (
+                    {notificationCount > 0 && (
                       <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
-                        {group.threads_count}
+                        {notificationCount}
                       </div>
                     )}
                   </div>
-                ))}
+                  )
+                })}
               </div>
             ) : (
               <p className="text-sm text-gray-500 italic py-2">No user groups yet. Create one below!</p>
@@ -894,6 +1020,40 @@ export function ForumPage() {
                 )}
               >
                 {createGroupMutation.isPending ? 'Creating...' : 'Create Group'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mark All Read Confirmation Modal */}
+      {showMarkAllReadConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-base font-semibold text-gray-800">Mark all notifications as read?</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                This will mark all visible unread notifications as read.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
+              <button
+                onClick={() => setShowMarkAllReadConfirm(false)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleMarkAllAsRead}
+                disabled={markAllNotificationsReadMutation.isPending}
+                className={cn(
+                  "px-4 py-2 text-sm font-semibold rounded transition-colors",
+                  markAllNotificationsReadMutation.isPending
+                    ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                )}
+              >
+                {markAllNotificationsReadMutation.isPending ? 'Marking...' : 'Yes, mark all'}
               </button>
             </div>
           </div>

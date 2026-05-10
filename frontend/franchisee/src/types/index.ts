@@ -6,7 +6,12 @@ export interface User {
   name: string
   role: 'owner' | 'franchise_admin' | 'staff'
   companyId?: string
+  company_id?: string
+  company_name?: string
   avatar?: string
+  phone?: string
+  location?: string
+  territory?: string
 }
 
 export interface Lead {
@@ -239,6 +244,7 @@ export interface ForumThread {
   group_id?: string | null
   group?: ForumGroup
   topic?: string
+  liked?: boolean
   likes_count: number
   comments: ForumComment[]
   isPinned: boolean
@@ -275,10 +281,25 @@ export interface ForumComment {
   content: string
   authorId: string
   author?: User
+  liked?: boolean
   likesCount: number
   likes_count: number
   replies?: ForumComment[]
   createdAt: string
+  created_at: string
+}
+
+export interface ForumNotification {
+  id: string
+  user_id: string
+  actor_id?: string | null
+  actor?: User
+  group_id?: string | null
+  thread_id: string
+  comment_id?: string | null
+  type: 'post' | 'comment' | 'reply' | 'like_thread' | 'like_comment' | string
+  message: string
+  is_read: boolean
   created_at: string
 }
 
