@@ -56,6 +56,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('news', \App\Http\Controllers\Api\NewsController::class);
     Route::patch('news/{news}/publish', [\App\Http\Controllers\Api\NewsController::class, 'publish']);
 
+    // Dashboard
+    Route::get('dashboard/metrics', [\App\Http\Controllers\Api\DashboardController::class, 'metrics']);
+    Route::get('dashboard/activities', [\App\Http\Controllers\Api\DashboardController::class, 'activities']);
+    Route::get('dashboard/news', [\App\Http\Controllers\Api\DashboardController::class, 'news']);
+    Route::get('dashboard/booking-schedule', [\App\Http\Controllers\Api\DashboardController::class, 'bookingSchedule']);
+    Route::get('dashboard/forecast', [\App\Http\Controllers\Api\DashboardController::class, 'forecast']);
+
     // Forum
     Route::get('forum/threads', [\App\Http\Controllers\Api\ForumController::class, 'index']);
     Route::post('forum/threads', [\App\Http\Controllers\Api\ForumController::class, 'store']);
@@ -80,4 +87,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('forum/groups/{forumGroup}/join', [\App\Http\Controllers\Api\ForumGroupController::class, 'join']);
     Route::post('forum/groups/{forumGroup}/leave', [\App\Http\Controllers\Api\ForumGroupController::class, 'leave']);
     Route::get('forum/groups/{forumGroup}/members', [\App\Http\Controllers\Api\ForumGroupController::class, 'members']);
+
+    // Stock Take
+    Route::get('stock-take/last/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getLast']);
+    Route::get('stock-take/history/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getHistory']);
+    Route::post('stock-take', [\App\Http\Controllers\Api\StockTakeController::class, 'store']);
 });

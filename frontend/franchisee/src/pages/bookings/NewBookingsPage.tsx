@@ -8,13 +8,16 @@ import { Select } from '../../components/ui/Select'
 import { TimePicker } from '../../components/ui/TimePicker'
 import { customersApi, servicesApi, bookingsApi, recurringBookingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import { useNavigate, Link } from 'react-router-dom'
+import { useNavigate, Link, useParams } from 'react-router-dom'
 import type { Customer } from '../../types'
 
 export function NewBookingsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const { id: editBookingId } = useParams<{ id: string }>()
+  const isEditMode = Boolean(editBookingId)
   const { addToast } = useToastStore()
+  const hasInitializedEditForm = useRef(false)
 
   const [recurringSettingsOpen, setRecurringSettingsOpen] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -72,6 +75,18 @@ export function NewBookingsPage() {
     enabled: !!bookingDate,
   })
 
+  const { data: bookingToEdit } = useQuery({
+    queryKey: ['bookings', 'edit', editBookingId],
+    queryFn: () => bookingsApi.getById(String(editBookingId)),
+    enabled: !!editBookingId,
+  })
+
+  const { data: editCustomerData } = useQuery({
+    queryKey: ['customers', 'edit', bookingToEdit?.customerId],
+    queryFn: () => customersApi.getById(String(bookingToEdit?.customerId)),
+    enabled: !!bookingToEdit?.customerId,
+  })
+
   // Handle click outside for search results
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -102,6 +117,62 @@ export function NewBookingsPage() {
     },
     onError: () => addToast('Failed to create recurring booking', 'error')
   })
+
+  const updateBookingMutation = useMutation({
+    mutationFn: ({ bookingId, data }: { bookingId: string; data: any }) =>
+      bookingsApi.update(bookingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      addToast('Booking updated successfully', 'success')
+      navigate('/bookings/manage')
+    },
+    onError: () => addToast('Failed to update booking', 'error'),
+  })
+
+  useEffect(() => {
+    if (!isEditMode || !bookingToEdit || hasInitializedEditForm.current) {
+      return
+    }
+
+    const prefillCustomer = (editCustomerData || bookingToEdit.customer) as Customer | undefined
+    if (prefillCustomer) {
+      setSelectedCustomer(prefillCustomer)
+      setSearchTerm('')
+      setShowSearchResults(false)
+    }
+
+    setBookingDate(bookingToEdit.startDate || '')
+    setBookingStartTime(bookingToEdit.startTime || '')
+    setBookingEndTime(bookingToEdit.endTime || '')
+    setBookingNotes(bookingToEdit.notes || '')
+    setSendSmsConfirmation(!!bookingToEdit.sendSms)
+    setSendEmailConfirmation(!!bookingToEdit.sendEmail)
+    setCalendarColor(bookingToEdit.calendarColor || '#4F46E5')
+    setIsRecurring(!!bookingToEdit.isRecurring)
+
+    const detailMap = (bookingToEdit.details || []).reduce((acc, detail) => {
+      const petId = String(detail.petId)
+      if (!petId || !detail.serviceId) {
+        return acc
+      }
+
+      if (!acc[petId]) {
+        acc[petId] = []
+      }
+
+      acc[petId].push({
+        serviceId: String(detail.serviceId),
+        price: Number(detail.price || 0),
+      })
+
+      return acc
+    }, {} as Record<string, { serviceId: string; price: number }[]>)
+
+    setPetServices(detailMap)
+    setExpandedPetIds(Object.keys(detailMap))
+
+    hasInitializedEditForm.current = true
+  }, [isEditMode, bookingToEdit, editCustomerData])
 
   const bookingTotal = useMemo(() => {
     let total = 0
@@ -146,6 +217,27 @@ export function NewBookingsPage() {
         duration: serviceDurationMap[s.serviceId] || 30
       }))
     )
+
+    if (isEditMode) {
+      updateBookingMutation.mutate({
+        bookingId: String(editBookingId),
+        data: {
+          customer_id: selectedCustomer.id,
+          services: services,
+          start_date: bookingDate,
+          start_time: bookingStartTime,
+          end_time: bookingEndTime,
+          calendar_color: calendarColor,
+          status: bookingToEdit?.status || 'active',
+          total: parseFloat(bookingTotal),
+          duration: totalDuration,
+          notes: bookingNotes,
+          send_sms: sendSmsConfirmation,
+          send_email: sendEmailConfirmation,
+        },
+      })
+      return
+    }
 
     if (isRecurring) {
       // Create recurring booking via BookingRecurringController
@@ -225,7 +317,7 @@ export function NewBookingsPage() {
     <div className="space-y-6 px-4 py-6 w-full max-w-[1600px] mx-auto bg-gray-50/30 min-h-screen">
       {/* Header Card */}
       <Card className="px-6 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-none bg-white">
-        <h1 className="text-xl font-bold text-gray-800">New Bookings</h1>
+        <h1 className="text-xl font-bold text-gray-800">{isEditMode ? 'Edit Booking' : 'New Bookings'}</h1>
       </Card>
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
@@ -233,7 +325,9 @@ export function NewBookingsPage() {
           {/* Main Booking Form Card */}
           <Card className="p-5 border-none shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white overflow-visible">
             <p className="text-[13px] text-gray-500 mb-8 leading-relaxed">
-              Start your booking by simply searching customer by name or pet name. Once Pet/Services are assigned, you can choose to create recurring booking
+              {isEditMode
+                ? 'Update booking details below. Adjust pet services, date/time, notes, and confirmation settings before saving.'
+                : 'Start your booking by simply searching customer by name or pet name. Once Pet/Services are assigned, you can choose to create recurring booking'}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 mb-10">
@@ -661,7 +755,7 @@ export function NewBookingsPage() {
            </Button>
            <Button
              onClick={handleCreateBooking}
-             isLoading={createBookingMutation.isPending || createRecurringBookingMutation.isPending}
+             isLoading={createBookingMutation.isPending || createRecurringBookingMutation.isPending || updateBookingMutation.isPending}
              disabled={!selectedCustomer || !bookingDate || !bookingStartTime || Object.values(petServices).every(services => !services || services.length === 0)}
              className={`px-10 py-3 rounded-lg font-bold text-[14px] transition-all ${
                (!selectedCustomer || !bookingDate || !bookingStartTime || Object.values(petServices).every(services => !services || services.length === 0))
@@ -669,7 +763,7 @@ export function NewBookingsPage() {
                  : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg active:scale-95'
              }`}
            >
-             Create New Booking
+             {isEditMode ? 'Save Booking Changes' : 'Create New Booking'}
            </Button>
          </div>
          {/* Spacer to align with the sidebar in desktop view */}

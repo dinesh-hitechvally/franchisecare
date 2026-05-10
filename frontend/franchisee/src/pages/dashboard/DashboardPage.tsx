@@ -1,60 +1,68 @@
 import { useState } from 'react'
-import { Card } from '../../components/ui/Card'
-import { Button } from '../../components/ui/Button'
+import { useQuery } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
+import { dashboardApi } from '../../api/services'
+import { format } from 'date-fns'
 import {
-  Users, CalendarDays, XCircle, MessageSquare, DollarSign,
-  CheckCircle, Clock, Ban, Bell, Download, CreditCard,
-  ChevronRight, Printer, X, BarChart3, Shield, Cake
+  Users, CalendarDays, XCircle, MessageSquare,
+  Ban, Bell, Download, CreditCard,
+  ChevronRight, Printer, X, Cake
 } from 'lucide-react'
 
 export function DashboardPage() {
   const [showForecastTable, setShowForecastTable] = useState(false)
+  const navigate = useNavigate()
 
-  // Mock data
-  const newsItems = [
-    { id: '1', title: 'Forum now on the App', description: 'Great news, you can now access the Forum from the App. Its accessible from the main menu', date: 'Tuesday, 31st Mar 2026', isLink: true },
-    { id: '2', title: "Next Week's Treat Special - Chicken Jerky", description: 'Hi Team, Chicken Jerky 500g are 10% off for 1 week from Monday 25th March. Only $10.35 for 500g.', date: 'Thursday, 19th Mar 2026' },
-    { id: '3', title: 'Blues News Autumn 2026', description: 'is now available for download, just scroll down to the Blues News section and you can download from there.', date: 'Tuesday, 3rd Mar 2026' },
-  ]
+  const { data: metrics } = useQuery({
+    queryKey: ['dashboard-metrics'],
+    queryFn: () => dashboardApi.getMetrics(),
+  })
 
-  const bluesNewsItems = [
-    { id: '1', title: 'Blues News Autumn 2026', description: 'Please read your Blues News - Autumn Edition 2026', date: 'Tuesday, 3rd Mar 2026' },
-    { id: '2', title: 'Blues News Summer 2025', description: 'Blues News Summer 2025', date: 'Monday, 1st Dec 2025' },
-    { id: '3', title: 'Blues News Spring 2025', description: 'Please read your Blues News - Spring Edition 2025', date: 'Monday, 1st Sep 2025' },
-    { id: '4', title: 'Blues News Winter 2025', description: 'Please read your Blues News - Winter Edition 2025', date: 'Sunday, 1st Jun 2025' },
-    { id: '5', title: 'Blues News Autumn 2025', description: 'Please read your Blues News - Autumn Edition 2025', date: 'Monday, 3rd Mar 2025' },
-    { id: '6', title: 'Blues News Summer 2024', description: 'Please read your Blues News - Summer Edition 2024', date: 'Monday, 2nd Dec 2024' },
-  ]
+  const { data: dashboardNews } = useQuery({
+    queryKey: ['dashboard-news'],
+    queryFn: () => dashboardApi.getRecentNews(),
+  })
 
-  const recentActivities = [
-    { id: '1', message: 'Successfully Logged in from 172.69.76.144 - 2nd April, 2026 06:57:02 PM' },
-    { id: '2', message: 'Successfully Logged in from 172.69.76.145 - 2nd April, 2026 06:45:32 PM' },
-    { id: '3', message: 'Successfully Logged in from 172.69.76.144 - 2nd April, 2026 12:29:04 PM' },
-    { id: '4', message: 'Successfully Logged in from 172.71.124.204 - 1st April, 2026 07:25:53 PM' },
-    { id: '5', message: 'Successfully Logged in from 172.69.76.145 - 31st March, 2026 06:21:06 PM' },
-  ]
+  const { data: activities } = useQuery({
+    queryKey: ['dashboard-activities'],
+    queryFn: () => dashboardApi.getActivities(10),
+  })
 
-  const bookingSchedule = [
-    { id: '1', customer: 'Rabee (Account) Subedi', date: 'Thursday, 2nd Apr 2026', time: '4:22 PM', total: '$135.00' },
-    { id: '2', customer: 'Rabee (Account) Subedi', date: 'Monday, 6th Apr 2026', time: '3:04 PM', total: '$100.00' },
-    { id: '3', customer: 'Rabee (Account) Subedi', date: 'Monday, 6th Apr 2026', time: '4:15 PM', total: '$125.00' },
-    { id: '4', customer: 'Rabee (Account) Subedi', date: 'Monday, 6th Apr 2026', time: '4:15 PM', total: '$95.00' },
-  ]
+  const { data: bookingSchedule } = useQuery({
+    queryKey: ['dashboard-booking-schedule'],
+    queryFn: () => dashboardApi.getBookingSchedule(5),
+  })
 
-  const forecastData = [
-    { id: '1', week: '30th Mar - 5th Apr', bookings: 4, income: '$381.00', services: 8 },
-    { id: '2', week: '6th Apr - 12th Apr', bookings: 0, income: '$0', services: 0 },
-    { id: '3', week: '13th Apr - 19th Apr', bookings: 0, income: '$0', services: 0 },
-    { id: '4', week: '20th Apr - 26th Apr', bookings: 0, income: '$0', services: 0 },
-    { id: '5', week: '27th Apr - 3rd May', bookings: 0, income: '$0', services: 0 },
-    { id: '6', week: '4th May - 10th May', bookings: 0, income: '$0', services: 0 },
-    { id: '7', week: '11th May - 17th May', bookings: 0, income: '$0', services: 0 },
-    { id: '8', week: '18th May - 24th May', bookings: 0, income: '$0', services: 0 },
-    { id: '9', week: '25th May - 31st May', bookings: 0, income: '$0', services: 0 },
-    { id: '10', week: '1st Jun - 7th Jun', bookings: 0, income: '$0', services: 0 },
-    { id: '11', week: '8th Jun - 14th Jun', bookings: 0, income: '$0', services: 0 },
-    { id: '12', week: '15th Jun - 21st Jun', bookings: 0, income: '$0', services: 0 },
-  ]
+  const { data: forecastData } = useQuery({
+    queryKey: ['dashboard-forecast'],
+    queryFn: () => dashboardApi.getForecast(12),
+  })
+
+  const newsItems = dashboardNews?.news ?? []
+  const bluesNewsItems = dashboardNews?.bluesNews ?? []
+  const recentActivities = activities ?? []
+  const scheduleRows = bookingSchedule ?? []
+  const forecastRows = forecastData ?? []
+
+  const maxIncome = Math.max(...forecastRows.map((r) => r.income), 1)
+  const revenueBars = (forecastRows.length > 0 ? forecastRows : [{ income: 0 }]).slice(0, 11)
+
+  const formatDateTime = (input?: string) => {
+    if (!input) {
+      return '-'
+    }
+
+    const date = new Date(input)
+    return Number.isNaN(date.getTime()) ? '-' : format(date, 'EEEE, do MMM yyyy')
+  }
+
+  const formatMoney = (value: number) =>
+    new Intl.NumberFormat('en-AU', {
+      style: 'currency',
+      currency: 'AUD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value || 0)
 
   return (
     <div className="flex flex-col xl:flex-row gap-5">
@@ -66,19 +74,24 @@ export function DashboardPage() {
             <h3 className="text-base font-semibold text-gray-800">News</h3>
           </div>
           <div className="divide-y divide-gray-100">
-            {newsItems.map(item => (
+            {newsItems.map((item) => (
               <div key={item.id} className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors cursor-pointer group">
                 <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5">
                   <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(item.title.charAt(0))}&background=ddd&color=888&size=40`} alt="" className="w-10 h-10 rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-medium text-red-600 group-hover:text-red-700 truncate">{item.title}</h4>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
-                  <p className="text-[11px] text-gray-400 mt-1">{item.date}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.content}</p>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {formatDateTime(item.published_at || item.publishedAt || item.created_at || item.createdAt)}
+                  </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300 mt-1 flex-shrink-0" />
               </div>
             ))}
+            {newsItems.length === 0 && (
+              <div className="px-4 py-5 text-sm text-gray-500">No news available.</div>
+            )}
           </div>
         </div>
 
@@ -88,19 +101,24 @@ export function DashboardPage() {
             <h3 className="text-base font-semibold text-gray-800">Blues News</h3>
           </div>
           <div className="divide-y divide-gray-100">
-            {bluesNewsItems.map(item => (
+            {bluesNewsItems.map((item) => (
               <div key={item.id} className="px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors cursor-pointer group">
                 <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5">
                   <img src={`https://ui-avatars.com/api/?name=${encodeURIComponent(item.title.charAt(0))}&background=ddd&color=888&size=40`} alt="" className="w-10 h-10 rounded-full" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h4 className="text-sm font-medium text-blue-600 group-hover:text-blue-700">{item.title}</h4>
-                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.description}</p>
-                  <p className="text-[11px] text-gray-400 mt-1">{item.date}</p>
+                  <p className="text-xs text-gray-500 mt-0.5 line-clamp-2">{item.content}</p>
+                  <p className="text-[11px] text-gray-400 mt-1">
+                    {formatDateTime(item.published_at || item.publishedAt || item.created_at || item.createdAt)}
+                  </p>
                 </div>
                 <ChevronRight className="w-4 h-4 text-gray-300 mt-1 flex-shrink-0" />
               </div>
             ))}
+            {bluesNewsItems.length === 0 && (
+              <div className="px-4 py-5 text-sm text-gray-500">No blues news available.</div>
+            )}
           </div>
         </div>
 
@@ -110,7 +128,7 @@ export function DashboardPage() {
             <h3 className="text-base font-semibold text-gray-800">Recent Activities</h3>
           </div>
           <div className="divide-y divide-gray-100">
-            {recentActivities.map(item => (
+            {recentActivities.map((item) => (
               <div key={item.id} className="px-4 py-3 flex items-start gap-3">
                 <div className="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center mt-0.5">
                   <img src="https://ui-avatars.com/api/?name=U&background=ddd&color=888&size=40" alt="" className="w-10 h-10 rounded-full" />
@@ -118,6 +136,9 @@ export function DashboardPage() {
                 <p className="text-xs text-gray-600 leading-relaxed">{item.message}</p>
               </div>
             ))}
+            {recentActivities.length === 0 && (
+              <div className="px-4 py-5 text-sm text-gray-500">No recent activities.</div>
+            )}
           </div>
           <div className="px-4 py-3 border-t border-gray-100">
             <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">Load More</button>
@@ -130,10 +151,21 @@ export function DashboardPage() {
         {/* Top Strip: Attention, Daily Diary, 2FA */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Attention Card */}
-          <div className="card p-4 flex items-center gap-4 col-span-1 sm:col-span-1 lg:col-span-2">
+          <div
+            className="card p-4 flex items-center gap-4 col-span-1 sm:col-span-1 lg:col-span-2 cursor-pointer hover:shadow-md transition-shadow"
+            role="button"
+            tabIndex={0}
+            onClick={() => navigate('/bookings/manage')}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault()
+                navigate('/bookings/manage')
+              }
+            }}
+          >
             <div>
               <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">ATTENTION</p>
-              <p className="text-3xl font-bold text-gray-900 mt-1">17</p>
+              <p className="text-3xl font-bold text-gray-900 mt-1">{metrics?.attentionCount ?? 0}</p>
               <p className="text-xs text-gray-500 mt-1">Bookings that needs to be completed</p>
             </div>
             <div className="flex-1 flex items-end justify-end gap-0.5 h-14 opacity-40">
@@ -163,18 +195,18 @@ export function DashboardPage() {
 
         {/* Stats Row 1: 4 colored cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard number="250" label="Active Customers" color="bg-blue-600" icon={<Users className="w-6 h-6" />} />
-          <StatCard number="76" label="Active Bookings (CY)" color="bg-red-500" icon={<CalendarDays className="w-6 h-6" />} />
-          <StatCard number="67" label="Cancellations (CY)" color="bg-green-600" icon={<XCircle className="w-6 h-6" />} />
-          <StatCard number="72" label="Forum Notification" color="bg-green-700" icon={<Bell className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.activeCustomers ?? 0)} label="Active Customers" color="bg-blue-600" icon={<Users className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.activeBookings ?? 0)} label="Active Bookings (CY)" color="bg-red-500" icon={<CalendarDays className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.cancellations ?? 0)} label="Cancellations (CY)" color="bg-green-600" icon={<XCircle className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.forumNotifications ?? 0)} label="Forum Notification" color="bg-green-700" icon={<Bell className="w-6 h-6" />} />
         </div>
 
         {/* Stats Row 2: 4 colored cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard number="6" label="Birthday This Month" color="bg-blue-700" icon={<Cake className="w-6 h-6" />} />
-          <StatCard number="33" label="Leads Count" color="bg-blue-800" icon={<Users className="w-6 h-6" />} />
-          <StatCard number="0" label="Cancel Requests" color="bg-gray-600" icon={<Ban className="w-6 h-6" />} />
-          <StatCard number="6" label="Operator Messages" color="bg-green-600" icon={<MessageSquare className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.birthdayThisMonth ?? 0)} label="Birthday This Month" color="bg-blue-700" icon={<Cake className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.leadsCount ?? 0)} label="Leads Count" color="bg-blue-800" icon={<Users className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.cancelRequests ?? 0)} label="Cancel Requests" color="bg-gray-600" icon={<Ban className="w-6 h-6" />} />
+          <StatCard number={String(metrics?.operatorMessages ?? 0)} label="Operator Messages" color="bg-green-600" icon={<MessageSquare className="w-6 h-6" />} />
         </div>
 
         {/* Download App Card */}
@@ -211,17 +243,22 @@ export function DashboardPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {bookingSchedule.map(booking => (
+                {scheduleRows.map((booking) => (
                   <tr key={booking.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-4 py-3 text-sm text-gray-700">{booking.customer}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{booking.date}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{formatDateTime(booking.date)}</td>
                     <td className="px-4 py-3 text-sm text-gray-700">{booking.startTime}</td>
-                    <td className="px-4 py-3 text-sm text-gray-700">{booking.total}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{formatMoney(booking.total)}</td>
                     <td className="px-4 py-3">
                       <button className="text-sm text-blue-600 hover:text-blue-700 font-medium">View</button>
                     </td>
                   </tr>
                 ))}
+                {scheduleRows.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-4 py-6 text-sm text-gray-500 text-center">No bookings in the next 5 days.</td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
@@ -232,16 +269,20 @@ export function DashboardPage() {
           {/* Total Revenue */}
           <div className="card p-5 md:col-span-2">
             <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider">TOTAL REVENUE</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">$11032.00</p>
+            <p className="text-2xl font-bold text-gray-900 mt-1">{formatMoney(metrics?.totalRevenue ?? 0)}</p>
             <p className="text-xs text-gray-400 mt-0.5">Financial YTD revenue<br />(Inc GST)</p>
             <div className="flex items-end gap-1 h-16 mt-4">
-              {[35, 20, 50, 15, 45, 60, 30, 70, 25, 55, 40].map((h, i) => (
+              {revenueBars.map((row, i) => {
+                const height = Math.max(8, Math.round(((row.income || 0) / maxIncome) * 100))
+
+                return (
                 <div
                   key={i}
                   className={`flex-1 rounded-t ${i % 2 === 0 ? 'bg-green-500' : 'bg-blue-600'}`}
-                  style={{ height: `${h}%` }}
+                  style={{ height: `${height}%` }}
                 />
-              ))}
+                )
+              })}
             </div>
           </div>
 
@@ -251,7 +292,7 @@ export function DashboardPage() {
               <p className="text-sm text-gray-500">Revenue</p>
               <p className="text-sm text-gray-400">This Month</p>
             </div>
-            <p className="text-2xl font-bold text-gray-900 mt-3">$0.00</p>
+            <p className="text-2xl font-bold text-gray-900 mt-3">{formatMoney(metrics?.thisMonthRevenue ?? 0)}</p>
             <p className="text-xs text-gray-400 mt-0.5">Revenue<br />this month<br />(Inc GST)</p>
           </div>
         </div>
@@ -293,14 +334,19 @@ export function DashboardPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {forecastData.map((row, i) => (
+                  {forecastRows.map((row, i) => (
                     <tr key={row.id} className={`${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'} hover:bg-blue-50 transition-colors`}>
                       <td className="px-4 py-3 text-sm text-gray-700">{row.week}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{row.bookings}</td>
-                      <td className="px-4 py-3 text-sm text-gray-700">{row.income}</td>
+                      <td className="px-4 py-3 text-sm text-gray-700">{formatMoney(row.income)}</td>
                       <td className="px-4 py-3 text-sm text-gray-700">{row.services}</td>
                     </tr>
                   ))}
+                  {forecastRows.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-6 text-sm text-gray-500 text-center">No forecast data available.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

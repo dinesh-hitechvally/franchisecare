@@ -1,5 +1,5 @@
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, User } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -567,9 +567,15 @@ export const dashboardApi = {
   getMetrics: () => apiClient.get<DashboardMetrics>('/dashboard/metrics'),
 
   getActivities: (limit: number = 10) =>
-    apiClient.get('/dashboard/activities', { params: { limit } }),
+    apiClient.get<DashboardActivity[]>('/dashboard/activities', { params: { limit } }),
 
-  getRecentNews: () => apiClient.get<NewsItem[]>('/dashboard/news'),
+  getRecentNews: () => apiClient.get<DashboardNewsPayload>('/dashboard/news'),
+
+  getBookingSchedule: (days: number = 5) =>
+    apiClient.get<DashboardScheduleItem[]>('/dashboard/booking-schedule', { params: { days } }),
+
+  getForecast: (weeks: number = 12) =>
+    apiClient.get<DashboardForecastItem[]>('/dashboard/forecast', { params: { weeks } }),
 }
 
 export const calendarApi = {
@@ -599,4 +605,21 @@ export const calendarApi = {
 
   sync: (companyId: string) =>
     apiClient.post('/calendar-events/sync', { company_id: companyId }),
+}
+
+export const stockTakeApi = {
+  getLast: (categoryId: string) =>
+    apiClient.get<StockTake>(`/stock-take/last/${categoryId}`),
+
+  getLastForCategory: (inventoryCategoryId: string) =>
+    apiClient.get<StockTake>(`/stock-take/category/${inventoryCategoryId}`),
+
+  update: (categoryId: string, data: Record<string, { qty: string; percent: string }>) =>
+    apiClient.post(`/stock-take/${categoryId}`, { values: data }),
+
+  submit: (inventoryCategoryId: string, data: Record<string, { qty: string; percent: string }>) =>
+    apiClient.post('/stock-take', { inventory_category_id: inventoryCategoryId, values: data }),
+
+  getHistory: (categoryId: string) =>
+    apiClient.get<StockTakeLog[]>(`/stock-take/history/${categoryId}`),
 }

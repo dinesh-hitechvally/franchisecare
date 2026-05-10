@@ -123,6 +123,7 @@ export function AppRoutes() {
         <Route path="bookings/completed" element={<CompletedBookingsPage />} />
         <Route path="bookings/manage" element={<ManageBookingsPage />} />
         <Route path="bookings/new" element={<NewBookingsPage />} />
+        <Route path="bookings/edit/:id" element={<NewBookingsPage />} />
         <Route path="bookings/recurring" element={<RecurringBookingsPage />} />
         <Route path="bookings/cancelled-recurring" element={<CancelledRecurringPage />} />
 
@@ -212,6 +213,7 @@ export function AppRoutes() {
         <Route path="documents/templates" element={<TemplatesPage />} />
         <Route path="documents/other" element={<OtherFilesPage />} />
         <Route path="settings" element={<SettingsPage />} />
+        <Route path="settings/manage-bookings" element={<ManageBookingsPage />} />
         <Route path="settings/change-password" element={<ChangePasswordPage />} />
         <Route path="orders/completed" element={<CompletedOrdersPage />} />
       </Route>

@@ -331,9 +331,65 @@ export interface DashboardMetrics {
   activeCustomers: number
   activeBookings: number
   cancellations: number
+  forumNotifications: number
+  birthdayThisMonth: number
   leadsCount: number
   cancelRequests: number
   operatorMessages: number
+  attentionCount: number
   totalRevenue: number
   thisMonthRevenue: number
+}
+
+export interface DashboardActivity {
+  id: string
+  message: string
+  createdAt: string
+}
+
+export interface DashboardScheduleItem {
+  id: string
+  customer: string
+  date: string
+  startTime: string
+  total: number
+}
+
+export interface DashboardForecastItem {
+  id: string
+  week: string
+  bookings: number
+  income: number
+  services: number
+}
+
+export interface DashboardNewsPayload {
+  news: NewsItem[]
+  bluesNews: NewsItem[]
+}
+
+export interface StockTake {
+  id?: string
+  stockTakeID?: string
+  appID?: string
+  companyID?: string
+  inventory_category_id?: string
+  updated_at?: string
+  createdAt?: string
+  values?: Record<string, { qty: string; percent: string }>
+}
+
+export interface StockTakeLog {
+  id?: string
+  stockTakeLogID?: string
+  logID?: string
+  inventory_id?: string
+  inventory_item_name?: string
+  no_of_bookings?: number
+  current_stock?: number
+  remaining_percent?: number
+  log_quantity?: number
+  log_remaining_percent?: number
+  log_created_at?: string
+  createdAt?: string
 }
