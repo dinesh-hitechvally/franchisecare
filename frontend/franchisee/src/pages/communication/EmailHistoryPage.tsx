@@ -1,116 +1,162 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Table } from '../../components/ui/Table'
-import { Button } from '../../components/ui/Button'
+import { TablePagination } from '../../components/ui/TablePagination'
+import { Modal } from '../../components/ui/Modal'
+import { communicationHistoryApi } from '../../api/services'
+import type { EmailHistory } from '../../types'
+import { format, parseISO } from 'date-fns'
+
+function formatDateTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return '—'
+  try {
+    return format(parseISO(dateStr), 'EEEE, do MMM yyyy')
+  } catch {
+    return dateStr
+  }
+}
+
+function formatTime(dateStr: string | null | undefined): string {
+  if (!dateStr) return ''
+  try {
+    return format(parseISO(dateStr), 'h:mm a')
+  } catch {
+    return ''
+  }
+}
 
 export function EmailHistoryPage() {
-  const [activeTab, setActiveTab] = useState('SUCCESSFULLY SENT')
+  const [activeTab, setActiveTab] = useState<'SUCCESSFULLY SENT' | 'ON QUEUES'>('SUCCESSFULLY SENT')
+  const [perPage, setPerPage] = useState(25)
+  const [page, setPage] = useState(1)
+  const [viewEmail, setViewEmail] = useState<EmailHistory | null>(null)
 
-  const emails = [
-    { 
-      id: '1', 
-      dateTime: 'Wednesday, 1st Apr 2026 \n 4:25 pm', 
-      subject: 'Booking Remainder: Your booking information', 
-      fromEmail: 'noreply@franchisecare.com.au', 
-      toEmail: 'rabi@hitechvalley.com.au'
-    },
-    { 
-      id: '2', 
-      dateTime: 'Tuesday, 31st Mar 2026 \n 9:15 am', 
-      subject: 'Test Email', 
-      fromEmail: 'support@franchisecare.com.au', 
-      toEmail: 'testuser@example.com' 
-    },
-    { 
-      id: '3', 
-      dateTime: 'Monday, 30th Mar 2026 \n 2:40 pm', 
-      subject: 'New Mate Lead Added', 
-      fromEmail: 'system@franchisecare.com.au', 
-      toEmail: 'admin@franchisecare.com.au' 
-    },
-  ]
+  const status = activeTab === 'SUCCESSFULLY SENT' ? 'sent' : 'queued'
 
-  const tabs = ['SUCCESSFULLY SENT', 'ON QUEUES']
+  const { data, isLoading } = useQuery({
+    queryKey: ['email-history', status, page, perPage],
+    queryFn: () =>
+      communicationHistoryApi.getEmailHistory({ status, page, per_page: perPage }),
+  })
+
+  const emails: EmailHistory[] = data?.data?.data ?? []
+  const meta = data?.data?.meta
+
+  const tabs = ['SUCCESSFULLY SENT', 'ON QUEUES'] as const
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 text-center sm:text-left">
-        Email History
-      </h1>
+    <div className="space-y-5 px-1 py-1">
+      <Card className="px-6 py-4 shadow-sm border-gray-200">
+        <h1 className="text-xl font-bold text-gray-800">Email History</h1>
+      </Card>
 
-      <div className="flex border-b border-gray-200 gap-8 px-2">
-        {tabs.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setActiveTab(tab)}
-            className={`pb-4 text-sm font-semibold tracking-wide transition-colors relative ${
-              activeTab === tab 
-                ? 'text-pink-600' 
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-          >
-            {tab}
-            {activeTab === tab && (
-              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-pink-600"></span>
-            )}
-          </button>
-        ))}
-      </div>
-
-      <Card className="border border-gray-200 shadow-sm overflow-hidden">
-        <Table
-          columns={[
-            { 
-              key: 'dateTime', 
-              title: 'Date/Time',
-              render: (row) => <span className="text-gray-600 text-sm whitespace-pre-line leading-relaxed">{row.dateTime}</span>
-            },
-            { 
-              key: 'subject', 
-              title: 'Subject',
-              render: (row) => <span className="text-gray-800 text-sm">{row.subject}</span>
-            },
-            { 
-              key: 'fromEmail', 
-              title: 'From Email',
-              render: (row) => <span className="text-gray-800 text-sm">{row.fromEmail}</span>
-            },
-            { 
-              key: 'toEmail', 
-              title: 'To Email',
-              render: (row) => <span className="text-gray-800 text-sm">{row.toEmail}</span>
-            },
-            { 
-              key: 'viewEmail', 
-              title: 'View Email',
-              render: () => (
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white font-bold tracking-wider text-xs px-6 py-[0.4rem] rounded uppercase">
-                  VIEW
-                </Button>
-              )
-            },
-          ]}
-          data={emails}
-          keyExtractor={(row) => row.id}
-        />
-
-        {/* Footer/Pagination mockup for matching design */}
-        <div className="p-4 border-t border-gray-100 bg-white flex justify-end items-center gap-6 text-sm text-gray-600">
-          <div className="flex items-center gap-2">
-            <span>Rows per page:</span>
-            <select className="border-0 bg-transparent text-gray-800 focus:ring-0 cursor-pointer">
-              <option>25</option>
-              <option>50</option>
-              <option>100</option>
-            </select>
-          </div>
-          <span>1-25 of 200</span>
-          <div className="flex items-center gap-4">
-            <button className="text-gray-400 hover:text-gray-600 focus:outline-none">&lt;</button>
-            <button className="text-gray-600 hover:text-gray-800 focus:outline-none">&gt;</button>
-          </div>
+      <Card className="shadow-sm border-gray-200">
+        <div className="flex gap-8 px-5 border-b border-gray-200">
+          {tabs.map((tab) => (
+            <button
+              key={tab}
+              onClick={() => { setActiveTab(tab); setPage(1) }}
+              className={`pb-3 pt-3 text-sm font-semibold tracking-wide transition-colors relative ${
+                activeTab === tab
+                  ? 'text-pink-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {tab}
+              {activeTab === tab && (
+                <span className="absolute bottom-0 left-0 w-full h-0.5 bg-pink-600" />
+              )}
+            </button>
+          ))}
         </div>
       </Card>
+
+      <Card className="shadow-sm border-gray-200 overflow-visible">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-gray-200">
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800">Date/Time</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800">Subject</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800">From Email</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800">To Email</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800 text-right">View Email</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {isLoading ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-gray-500 italic">Loading email history...</td>
+                </tr>
+              ) : emails.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-8 text-center text-gray-500 italic">No email history found.</td>
+                </tr>
+              ) : (
+                emails.map((row) => (
+                  <tr key={row.id} className="hover:bg-gray-50">
+                    <td className="relative px-5 py-4 text-sm text-gray-700 align-top whitespace-nowrap">
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-green-400" />
+                      <div>{formatDateTime(row.sent_at ?? row.created_at)}</div>
+                      <div className="text-gray-400 text-xs mt-0.5">{formatTime(row.sent_at ?? row.created_at)}</div>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-700 align-top">{row.subject}</td>
+                    <td className="px-5 py-4 text-sm text-gray-600 align-top">{row.from_email}</td>
+                    <td className="px-5 py-4 text-sm text-gray-600 align-top">{row.to_email}</td>
+                    <td className="px-5 py-4 align-top text-right">
+                      <button
+                        onClick={() => setViewEmail(row)}
+                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold tracking-wider rounded uppercase transition-colors"
+                      >
+                        VIEW
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {meta && (
+          <TablePagination
+            meta={meta}
+            onPageChange={setPage}
+            onPerPageChange={setPerPage}
+            isLoading={isLoading}
+          />
+        )}
+      </Card>
+
+      {/* Email body viewer modal */}
+      {viewEmail && (
+        <Modal
+          isOpen={!!viewEmail}
+          onClose={() => setViewEmail(null)}
+          title={viewEmail.subject}
+        >
+          <div className="space-y-3 text-sm text-gray-700">
+            <div className="flex gap-2">
+              <span className="font-semibold w-20 shrink-0">From:</span>
+              <span>{viewEmail.from_email}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-semibold w-20 shrink-0">To:</span>
+              <span>{viewEmail.to_email}</span>
+            </div>
+            <div className="flex gap-2">
+              <span className="font-semibold w-20 shrink-0">Sent:</span>
+              <span>{formatDateTime(viewEmail.sent_at ?? viewEmail.created_at)}</span>
+            </div>
+            <hr />
+            <div
+              className="prose max-w-none text-gray-800"
+              dangerouslySetInnerHTML={{ __html: viewEmail.body ?? '<em>No content</em>' }}
+            />
+          </div>
+        </Modal>
+      )}
     </div>
   )
 }
+

@@ -234,6 +234,33 @@ export interface CommunicationLog {
   createdAt: string
 }
 
+export interface SmsHistory {
+  id: string
+  user_id?: string | null
+  to_number: string
+  customer_name?: string | null
+  message: string
+  status: 'queued' | 'sent' | 'failed'
+  gateway_response?: string | null
+  sent_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface EmailHistory {
+  id: string
+  user_id?: string | null
+  from_email: string
+  to_email: string
+  subject: string
+  body?: string | null
+  status: 'queued' | 'sent' | 'failed'
+  mailer_response?: string | null
+  sent_at?: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface ForumThread {
   id: string
   title: string

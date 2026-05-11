@@ -1,5 +1,5 @@
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -477,6 +477,32 @@ export const communicationApi = {
   
   getLogs: (params?: { recipientId?: string }) =>
     apiClient.get<CommunicationLog[]>('/communication/logs', { params }),
+}
+
+export const communicationHistoryApi = {
+  getSmsHistory: (params?: { status?: 'sent' | 'queued'; page?: number; per_page?: number }) =>
+    apiClient.get<{ data: SmsHistory[]; meta: PaginationMeta }>('/communication/sms-history', { params }),
+
+  createSmsHistory: (data: Omit<SmsHistory, 'id' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<SmsHistory>('/communication/sms-history', data),
+
+  getSmsHistoryItem: (id: string) =>
+    apiClient.get<SmsHistory>(`/communication/sms-history/${id}`),
+
+  deleteSmsHistory: (id: string) =>
+    apiClient.delete(`/communication/sms-history/${id}`),
+
+  getEmailHistory: (params?: { status?: 'sent' | 'queued'; page?: number; per_page?: number }) =>
+    apiClient.get<{ data: EmailHistory[]; meta: PaginationMeta }>('/communication/email-history', { params }),
+
+  createEmailHistory: (data: Omit<EmailHistory, 'id' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<EmailHistory>('/communication/email-history', data),
+
+  getEmailHistoryItem: (id: string) =>
+    apiClient.get<EmailHistory>(`/communication/email-history/${id}`),
+
+  deleteEmailHistory: (id: string) =>
+    apiClient.delete(`/communication/email-history/${id}`),
 }
 
 export const forumApi = {

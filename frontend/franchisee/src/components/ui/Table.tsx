@@ -77,8 +77,28 @@ export function Table<T>({
 
   if (data.length === 0) {
     return (
-      <div className="text-center py-12 text-secondary-500">
-        {emptyMessage}
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead>
+            <tr className="border-b border-secondary-200 bg-secondary-50">
+              {columns.map((column) => (
+                <th
+                  key={column.key}
+                  className="px-4 py-3 text-left text-sm font-semibold text-secondary-700"
+                >
+                  {column.title}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colSpan={columns.length} className="text-center py-12 text-secondary-500">
+                {emptyMessage}
+              </td>
+            </tr>
+          </tbody>
+        </table>
       </div>
     )
   }

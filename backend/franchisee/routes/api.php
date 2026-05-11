@@ -92,4 +92,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('stock-take/last/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getLast']);
     Route::get('stock-take/history/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getHistory']);
     Route::post('stock-take', [\App\Http\Controllers\Api\StockTakeController::class, 'store']);
+
+    // Communication History
+    Route::get('communication/sms-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsIndex']);
+    Route::post('communication/sms-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsStore']);
+    Route::get('communication/sms-history/{smsHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsShow']);
+    Route::delete('communication/sms-history/{smsHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsDestroy']);
+
+    Route::get('communication/email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailIndex']);
+    Route::post('communication/email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailStore']);
+    Route::get('communication/email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailShow']);
+    Route::delete('communication/email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailDestroy']);
 });
