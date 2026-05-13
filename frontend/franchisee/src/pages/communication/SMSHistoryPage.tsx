@@ -6,6 +6,11 @@ import { communicationHistoryApi } from '../../api/services'
 import type { SmsHistory } from '../../types'
 import { format, parseISO } from 'date-fns'
 
+type StatusTab = {
+  label: 'SUCCESSFULLY SENT' | 'ON QUEUES'
+  status: 'sent' | 'queued'
+}
+
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   try {
@@ -25,43 +30,56 @@ function formatTime(dateStr: string | null | undefined): string {
 }
 
 export function SMSHistoryPage() {
-  const [activeTab, setActiveTab] = useState<'SUCCESSFULLY SENT' | 'ON QUEUES'>('SUCCESSFULLY SENT')
+  const [activeStatus, setActiveStatus] = useState<'sent' | 'queued'>('sent')
   const [perPage, setPerPage] = useState(25)
   const [page, setPage] = useState(1)
 
-  const status = activeTab === 'SUCCESSFULLY SENT' ? 'sent' : 'queued'
-
   const { data, isLoading } = useQuery({
-    queryKey: ['sms-history', status, page, perPage],
+    queryKey: ['sms-history', activeStatus, page, perPage],
     queryFn: () =>
-      communicationHistoryApi.getSmsHistory({ status, page, per_page: perPage }),
+      communicationHistoryApi.getSmsHistory({ status: activeStatus, page, per_page: perPage }),
   })
 
-  const messages: SmsHistory[] = data?.data?.data ?? []
-  const meta = data?.data?.meta
+  const messages: SmsHistory[] = data?.data ?? []
+  const meta = data?.meta
 
-  const tabs = ['SUCCESSFULLY SENT', 'ON QUEUES'] as const
+  const tabs: StatusTab[] = [
+    { label: 'SUCCESSFULLY SENT', status: 'sent' },
+    { label: 'ON QUEUES', status: 'queued' },
+  ]
+
+  const getCustomerName = (row: SmsHistory) => {
+    if (row.customer_name && row.customer_name.trim().length > 0) {
+      return row.customer_name
+    }
+
+    const match = row.message.match(/Name\s*-\s*([^()\n]+)/i)
+    return match?.[1]?.trim() || '—'
+  }
 
   return (
     <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">SMS History</h1>
-      </Card>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">SMS History</h1>
+      </div>
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex gap-8 px-5 border-b border-gray-200">
           {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setPage(1) }}
+              key={tab.status}
+              onClick={() => {
+                setActiveStatus(tab.status)
+                setPage(1)
+              }}
               className={`pb-3 pt-3 text-sm font-semibold tracking-wide transition-colors relative ${
-                activeTab === tab
+                activeStatus === tab.status
                   ? 'text-pink-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab}
-              {activeTab === tab && (
+              {tab.label}
+              {activeStatus === tab.status && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-pink-600" />
               )}
             </button>
@@ -88,7 +106,7 @@ export function SMSHistoryPage() {
                 </tr>
               ) : messages.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-gray-500 italic">No SMS history found.</td>
+                  <td colSpan={5} className="px-5 py-8 text-center text-gray-500 italic">No SMS history found</td>
                 </tr>
               ) : (
                 messages.map((row) => (
@@ -99,7 +117,7 @@ export function SMSHistoryPage() {
                       <div className="text-gray-400 text-xs mt-0.5">{formatTime(row.sent_at ?? row.created_at)}</div>
                     </td>
                     <td className="px-5 py-4 text-sm font-semibold text-gray-700 align-top">{row.to_number}</td>
-                    <td className="px-5 py-4 text-sm text-gray-700 align-top">{row.customer_name ?? '—'}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700 align-top">{getCustomerName(row)}</td>
                     <td className="px-5 py-4 text-sm text-gray-600 align-top max-w-sm">{row.message}</td>
                     <td className={`px-5 py-4 text-sm font-medium align-top ${
                       row.status === 'sent' ? 'text-green-700' : row.status === 'failed' ? 'text-red-600' : 'text-yellow-600'

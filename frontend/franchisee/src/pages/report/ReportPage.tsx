@@ -22,7 +22,9 @@ const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444']
 export function ReportPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-secondary-900">Reports</h1>
+      <Card className="px-4 py-3 shadow-sm border-gray-200">
+        <h1 className="text-xl font-bold text-gray-800">Reports</h1>
+      </Card>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card title="Revenue Overview" className="p-4">

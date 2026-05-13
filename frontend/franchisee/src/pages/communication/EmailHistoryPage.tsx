@@ -7,6 +7,11 @@ import { communicationHistoryApi } from '../../api/services'
 import type { EmailHistory } from '../../types'
 import { format, parseISO } from 'date-fns'
 
+type StatusTab = {
+  label: 'SUCCESSFULLY SENT' | 'ON QUEUES'
+  status: 'sent' | 'queued'
+}
+
 function formatDateTime(dateStr: string | null | undefined): string {
   if (!dateStr) return '—'
   try {
@@ -26,44 +31,48 @@ function formatTime(dateStr: string | null | undefined): string {
 }
 
 export function EmailHistoryPage() {
-  const [activeTab, setActiveTab] = useState<'SUCCESSFULLY SENT' | 'ON QUEUES'>('SUCCESSFULLY SENT')
+  const [activeStatus, setActiveStatus] = useState<'sent' | 'queued'>('sent')
   const [perPage, setPerPage] = useState(25)
   const [page, setPage] = useState(1)
   const [viewEmail, setViewEmail] = useState<EmailHistory | null>(null)
 
-  const status = activeTab === 'SUCCESSFULLY SENT' ? 'sent' : 'queued'
-
   const { data, isLoading } = useQuery({
-    queryKey: ['email-history', status, page, perPage],
+    queryKey: ['email-history', activeStatus, page, perPage],
     queryFn: () =>
-      communicationHistoryApi.getEmailHistory({ status, page, per_page: perPage }),
+      communicationHistoryApi.getEmailHistory({ status: activeStatus, page, per_page: perPage }),
   })
 
-  const emails: EmailHistory[] = data?.data?.data ?? []
-  const meta = data?.data?.meta
+  const emails: EmailHistory[] = data?.data ?? []
+  const meta = data?.meta
 
-  const tabs = ['SUCCESSFULLY SENT', 'ON QUEUES'] as const
+  const tabs: StatusTab[] = [
+    { label: 'SUCCESSFULLY SENT', status: 'sent' },
+    { label: 'ON QUEUES', status: 'queued' },
+  ]
 
   return (
     <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Email History</h1>
-      </Card>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Email History</h1>
+      </div>
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex gap-8 px-5 border-b border-gray-200">
           {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => { setActiveTab(tab); setPage(1) }}
+              key={tab.status}
+              onClick={() => {
+                setActiveStatus(tab.status)
+                setPage(1)
+              }}
               className={`pb-3 pt-3 text-sm font-semibold tracking-wide transition-colors relative ${
-                activeTab === tab
+                activeStatus === tab.status
                   ? 'text-pink-600'
                   : 'text-gray-500 hover:text-gray-700'
               }`}
             >
-              {tab}
-              {activeTab === tab && (
+              {tab.label}
+              {activeStatus === tab.status && (
                 <span className="absolute bottom-0 left-0 w-full h-0.5 bg-pink-600" />
               )}
             </button>
@@ -90,7 +99,7 @@ export function EmailHistoryPage() {
                 </tr>
               ) : emails.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-5 py-8 text-center text-gray-500 italic">No email history found.</td>
+                  <td colSpan={5} className="px-5 py-8 text-center text-gray-500 italic">No email history found</td>
                 </tr>
               ) : (
                 emails.map((row) => (

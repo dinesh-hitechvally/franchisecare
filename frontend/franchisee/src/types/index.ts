@@ -32,7 +32,16 @@ export interface Lead {
   notes?: string
   source: 'phone' | 'internet' | 'walk-in' | 'referral'
   leadsFrom: 'phone' | 'internet'
-  status: 'new' | 'contacted' | 'qualified' | 'converted' | 'lost' | 'snoozed' | 'completed'
+  status:
+    | 'new'
+    | 'contacted'
+    | 'qualified'
+    | 'converted'
+    | 'lost'
+    | 'snoozed'
+    | 'completed'
+    | 'cancellation_request'
+    | 'message_for_operator'
   companyId?: string
   snoozedUntil?: string
   comments?: LeadComment[]
@@ -179,28 +188,61 @@ export interface OrderItem {
   unitCost: number
 }
 
+export interface IncomeCategory {
+  id: string
+  company_id?: string
+  name: string
+  description?: string
+  gst_inclusive: boolean
+  is_active: boolean
+  is_system: boolean
+  incomes_count?: number
+  created_at: string
+  updated_at: string
+}
+
+export interface ExpenseCategory {
+  id: string
+  company_id?: string
+  name: string
+  description?: string
+  gst_inclusive: boolean
+  is_active: boolean
+  is_system: boolean
+  expenses_count?: number
+  created_at: string
+  updated_at: string
+}
+
 export interface Income {
   id: string
+  company_id: string
+  income_category_id?: string
+  booking_id?: string
+  title: string
+  description?: string
   amount: number
-  description: string
-  category: string
-  date: string
-  bookingId?: string
-  companyId: string
-  isRecurring: boolean
-  createdAt: string
+  income_date: string
+  is_active: boolean
+  recurring_income_id?: string
+  category?: IncomeCategory
+  created_at: string
+  updated_at: string
 }
 
 export interface Expense {
   id: string
+  company_id: string
+  expense_category_id?: string
+  title: string
+  description?: string
   amount: number
-  description: string
-  category: string
-  date: string
-  orderId?: string
-  companyId: string
-  isRecurring: boolean
-  createdAt: string
+  expense_date: string
+  is_active: boolean
+  recurring_expense_id?: string
+  category?: ExpenseCategory
+  created_at: string
+  updated_at: string
 }
 
 export interface Document {
@@ -211,6 +253,7 @@ export interface Document {
   fileType: string
   companyId?: string
   visibility: 'global' | 'franchise'
+  category?: 'manual' | 'template' | 'other' | 'general' | string
   uploadedBy: string
   createdAt: string
 }

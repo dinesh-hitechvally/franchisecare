@@ -1,7 +1,10 @@
+import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
-import { Check, X } from 'lucide-react'
+import { Check, X, MoreVertical } from 'lucide-react'
 
 export function ExpenseCategoriesPage() {
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
   const expenseTypes = [
     {
       type: 'Administration',
@@ -35,10 +38,6 @@ export function ExpenseCategoriesPage() {
         <h1 className="text-2xl font-bold text-gray-800">Expense Categories</h1>
       </div>
 
-      <div className="bg-white py-4 px-8 border-b border-gray-200 -mx-8 bg-gray-50/50">
-        <h2 className="text-xl font-bold text-gray-700">Expense Categories</h2>
-      </div>
-
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
@@ -49,7 +48,8 @@ export function ExpenseCategoriesPage() {
                 <th className="px-6 py-4 font-bold text-gray-900 border-r border-gray-100 uppercase text-xs tracking-wider">Description</th>
                 <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100 uppercase text-xs tracking-wider"># of Entries</th>
                 <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100 uppercase text-xs tracking-wider">Gst Inclusive</th>
-                <th className="px-6 py-4 font-bold text-gray-900 text-center uppercase text-xs tracking-wider">Status</th>
+                <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100 uppercase text-xs tracking-wider">Status</th>
+                <th className="px-6 py-4 font-bold text-gray-900 text-center uppercase text-xs tracking-wider">Mgmt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
@@ -81,6 +81,41 @@ export function ExpenseCategoriesPage() {
                         <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
                       </div>
                     </td>
+                    <td className="px-6 py-4 text-center relative">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const rowId = `${typeGroup.type}-${cat.name}`
+                          setOpenMenuId(openMenuId === rowId ? null : rowId)
+                        }}
+                        className="p-1 rounded hover:bg-gray-100"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
+                      </button>
+
+                      {openMenuId === `${typeGroup.type}-${cat.name}` && (
+                        <div className="absolute right-6 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            View Entries
+                          </button>
+                          <button
+                            type="button"
+                            className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                          >
+                            {cat.status ? 'Deactivate' : 'Activate'}
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))
               ))}
@@ -88,15 +123,6 @@ export function ExpenseCategoriesPage() {
           </table>
         </div>
       </Card>
-
-      {/* Footer Support Info */}
-      <div className="text-center text-xs text-gray-400 pt-10 pb-6 border-t border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-        <span>Copyright FranchiseCare © 2026</span>
-        <div className="flex flex-col text-right">
-          <span>For Mate Support, please call 03 9514 9606</span>
-          <span>Monday – Friday: 9:00 AM – 10:30 PM | Saturday – Sunday: 9:00 AM – 6:00 PM</span>
-        </div>
-      </div>
     </div>
   )
 }

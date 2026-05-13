@@ -1,48 +1,39 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Search, Download, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
+import { format } from 'date-fns'
+import { documentsApi } from '../../api/services'
+import type { Document } from '../../types'
 
 export function TemplatesPage() {
   const [searchTerm, setSearchTerm] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
-  const templates = [
-    {
-      id: '1',
-      title: 'New Customer Intake Form',
-      file: 'Templates',
-      description: 'Pet Health Intake Form',
-      type: 'pdf',
-      lastUpdated: '2025-07-08 04:00:49'
-    },
-    {
-      id: '2',
-      title: 'CO-BRANDED WAIVER TO GROOM SENIOR DOGS',
-      file: 'Templates',
-      description: 'Waiver for grooming pregnant dogs.',
-      type: 'pdf',
-      lastUpdated: '2025-07-08 04:01:05'
-    },
-    {
-      id: '3',
-      title: 'Cologne Waiver',
-      file: 'Templates',
-      description: 'Customer agreement for scents.',
-      type: 'pdf',
-      lastUpdated: '2025-07-08 04:01:10'
-    }
-  ]
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['documents', 'templates'],
+    queryFn: () => documentsApi.getAll({ category: 'template' }),
+  })
+
+  const filteredTemplates = templates.filter((template) => {
+    const q = searchTerm.trim().toLowerCase()
+    if (!q) return true
+    return (
+      template.title.toLowerCase().includes(q) ||
+      template.description.toLowerCase().includes(q)
+    )
+  })
 
   return (
     <div className="space-y-6">
-      {/* Top Header Card */}
       <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Templates</h1>
       </div>
 
       {/* Search Card */}
-      <div className="max-w-4xl mx-auto w-full">
+      <div className="w-full">
         <Card className="p-6 bg-white border border-gray-100 shadow-sm mb-6">
-          <div className="relative max-w-lg mx-auto">
+          <div className="relative max-w-lg">
             <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             <input
               type="text"
@@ -65,25 +56,47 @@ export function TemplatesPage() {
                   <th className="px-6 py-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Description</th>
                   <th className="px-6 py-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Type</th>
                   <th className="px-6 py-4 font-bold text-gray-400 uppercase text-xs tracking-wider">Last Updated</th>
-                  <th className="px-6 py-4 font-bold text-gray-400 uppercase text-xs tracking-wider font-semibold">Download</th>
+                  <th className="px-6 py-4 font-bold text-gray-400 uppercase text-xs tracking-wider text-center">Mgmt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50 bg-white">
-                {templates.map((template) => (
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500 italic">Loading templates...</td>
+                  </tr>
+                ) : filteredTemplates.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-6 py-10 text-center text-gray-500 italic">No templates found</td>
+                  </tr>
+                ) : filteredTemplates.map((template: Document) => (
                   <tr key={template.id} className="hover:bg-gray-50/50 transition-colors">
                     <td className="px-6 py-4 text-gray-800 font-medium">{template.title}</td>
-                    <td className="px-6 py-4 text-gray-600">{template.file}</td>
+                    <td className="px-6 py-4 text-gray-600">Templates</td>
                     <td className="px-6 py-4 text-gray-500 max-w-xs truncate">{template.description}</td>
                     <td className="px-6 py-4">
                       <div className="w-8 h-10 bg-red-50 text-red-500 flex items-center justify-center rounded">
-                        <span className="text-[10px] font-bold uppercase">{template.type}</span>
+                        <span className="text-[10px] font-bold uppercase">{template.fileType}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{template.lastUpdated}</td>
-                    <td className="px-6 py-4">
-                      <button className="text-blue-500 hover:text-blue-700 transition-colors">
-                        <Download className="w-6 h-6" />
+                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{format(new Date(template.createdAt), 'yyyy-MM-dd HH:mm:ss')}</td>
+                    <td className="px-6 py-4 text-center relative">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === template.id ? null : template.id)}
+                        className="p-1 rounded hover:bg-gray-100"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
+                      {openMenuId === template.id && (
+                        <div className="absolute right-6 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                          <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                            View
+                          </button>
+                          <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                            <Download className="w-4 h-4" /> Download
+                          </button>
+                        </div>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -101,7 +114,7 @@ export function TemplatesPage() {
                 <option>100</option>
               </select>
             </div>
-            <span className="text-sm text-gray-600">1-{templates.length} of {templates.length}</span>
+            <span className="text-sm text-gray-600">{filteredTemplates.length === 0 ? '0-0' : `1-${filteredTemplates.length}`} of {filteredTemplates.length}</span>
             <div className="flex items-center gap-1">
               <button className="p-1 hover:bg-gray-100 rounded-full disabled:opacity-30" disabled>
                 <ChevronLeft className="w-5 h-5" />
@@ -112,15 +125,6 @@ export function TemplatesPage() {
             </div>
           </div>
         </Card>
-      </div>
-
-      {/* Footer Support Info */}
-      <div className="text-center text-xs text-gray-400 pt-10 pb-6 border-t border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-        <span>Copyright FranchiseCare © 2026</span>
-        <div className="flex flex-col text-right">
-          <span>For Mate Support, please call 03 9514 9606</span>
-          <span>Monday – Friday: 9:00 AM – 10:30 PM | Saturday – Sunday: 9:00 AM – 6:00 PM</span>
-        </div>
       </div>
     </div>
   )

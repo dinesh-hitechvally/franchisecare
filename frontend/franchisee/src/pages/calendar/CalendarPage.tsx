@@ -701,14 +701,14 @@ export function CalendarPage() {
     >
       <div className="space-y-6">
         {/* Header with View Tabs */}
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-900">Calendar</h1>
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm">
-              <Filter className="w-4 h-4 mr-2" />
-              Filter
-            </Button>
-          </div>
+        <div className="flex items-center justify-between gap-4">
+          <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
+            <h1 className="text-xl font-bold text-gray-800">Calendar</h1>
+          </Card>
+          <Button variant="secondary" size="sm" className="flex-shrink-0">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
         </div>
 
         {/* View Mode Tabs */}

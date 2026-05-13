@@ -1,5 +1,39 @@
+// Booking Reports API
+export const bookingReportsApi = {
+  getReport: (params?: { date_from?: string; date_to?: string; status?: string; customer_id?: string; min?: string; max?: string }) =>
+    apiClient.get<any>('/reports/booking', { params }),
+};
+
+export const serviceReportsApi = {
+  getReport: (params?: { date_from?: string; date_to?: string; service_id?: string; min?: string; max?: string }) =>
+    apiClient.get<any>('/reports/service', { params }),
+};
+
+export const suburbReportsApi = {
+  getReport: (params?: { date_from?: string; date_to?: string; suburb?: string; min?: string; max?: string }) =>
+    apiClient.get<any>('/reports/suburb', { params }),
+};
+
+export const customerReportsApi = {
+  getReport: (params?: { date_from?: string; date_to?: string; customer_id?: string; min?: string; max?: string }) =>
+    apiClient.get<any>('/reports/customer', { params }),
+};
+
+export const unbookedCustomerReportsApi = {
+  getReport: (params?: {
+    date_from?: string;
+    date_to?: string;
+    customer_id?: string;
+    min?: string;
+    max?: string;
+    number_of_pets?: string;
+    phone?: string;
+    state?: string;
+  }) => apiClient.get<any>('/reports/customer/unbooked', { params }),
+};
+
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -134,6 +168,63 @@ function mapBlockoutsFromApi(rows: unknown): any[] {
   return rows.map((row) => mapBlockoutFromApi(row))
 }
 
+function mapLeadFromApi(l: any): Lead {
+  const raw = l as any
+  return {
+    id: String(raw.id),
+    firstName: raw.first_name || raw.firstName || '',
+    lastName: raw.last_name || raw.lastName || '',
+    customerName: raw.customer_name || raw.customerName || `${raw.first_name || ''} ${raw.last_name || ''}`.trim(),
+    email: raw.email || '',
+    phone: raw.phone || '',
+    alternatePhone: raw.alternate_phone || raw.alternatePhone || '',
+    interestedServices: raw.interested_services || raw.interestedServices || '',
+    address: raw.address || '',
+    suburb: raw.suburb || '',
+    postcode: raw.postcode || '',
+    petBreed: raw.pet_breed || raw.petBreed || '',
+    referredBy: raw.referred_by || raw.referredBy || '',
+    additionalNote: raw.additional_note || raw.additionalNote || '',
+    notes: raw.notes || '',
+    source: raw.source || 'internet',
+    leadsFrom: raw.leads_from || raw.leadsFrom || 'internet',
+    status: raw.status || 'new',
+    companyId: raw.company_id || raw.companyId,
+    snoozedUntil: raw.snoozed_until || raw.snoozedUntil,
+    comments: raw.comments || [],
+    createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+    updatedAt: raw.updated_at || raw.updatedAt || new Date().toISOString(),
+  } as Lead
+}
+
+function mapLeadsFromApi(rows: unknown): Lead[] {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => mapLeadFromApi(row))
+}
+
+function mapLeadToApi(data: Partial<Lead>) {
+  return {
+    first_name: data.firstName,
+    last_name: data.lastName,
+    customer_name: data.customerName,
+    email: data.email,
+    phone: data.phone,
+    alternate_phone: data.alternatePhone,
+    interested_services: data.interestedServices,
+    address: data.address,
+    suburb: data.suburb,
+    postcode: data.postcode,
+    pet_breed: data.petBreed,
+    referred_by: data.referredBy,
+    additional_note: data.additionalNote,
+    notes: data.notes,
+    source: data.source,
+    leads_from: data.leadsFrom,
+    status: data.status,
+    snoozed_until: data.snoozedUntil,
+  }
+}
+
 export const authApi = {
   login: (email: string, password: string) =>
     apiClient.post<{ access_token: string; user: User }>('/login', { email, password }),
@@ -159,16 +250,25 @@ export const usersApi = {
 }
 
 export const leadsApi = {
-  getAll: (params?: { status?: string }) =>
-    apiClient.get<Lead[]>('/leads', { params }),
+  getAll: async (params?: { status?: string; search?: string }) => {
+    const rows = await apiClient.get<any[]>('/leads', { params })
+    return mapLeadsFromApi(rows)
+  },
 
-  getById: (id: string) => apiClient.get<Lead>(`/leads/${id}`),
+  getById: async (id: string) => {
+    const lead = await apiClient.get<any>(`/leads/${id}`)
+    return mapLeadFromApi(lead)
+  },
 
-  create: (data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) =>
-    apiClient.post<Lead>('/leads', data),
+  create: async (data: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>) => {
+    const lead = await apiClient.post<any>('/leads', mapLeadToApi(data))
+    return mapLeadFromApi(lead)
+  },
 
-  update: (id: string, data: Partial<Lead>) =>
-    apiClient.put<Lead>(`/leads/${id}`, data),
+  update: async (id: string, data: Partial<Lead>) => {
+    const lead = await apiClient.put<any>(`/leads/${id}`, mapLeadToApi(data))
+    return mapLeadFromApi(lead)
+  },
 
   delete: (id: string) => apiClient.delete(`/leads/${id}`),
 
@@ -442,21 +542,70 @@ export const financeApi = {
     apiClient.get<{ income: number; expenses: number; net: number }>('/finance/summary', { params }),
 }
 
+function mapDocumentFromApi(row: any): Document {
+  const raw = row as any
+  return {
+    id: String(raw.id),
+    title: raw.title || '',
+    description: raw.description || '',
+    fileUrl: raw.file_url || raw.fileUrl || '',
+    fileType: raw.file_type || raw.fileType || 'file',
+    companyId: raw.company_id ? String(raw.company_id) : raw.companyId,
+    visibility: (raw.visibility || 'global') as Document['visibility'],
+    category: raw.category || 'other',
+    uploadedBy: String(raw.user_id || raw.uploaded_by || raw.uploadedBy || ''),
+    createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+  }
+}
+
+function mapDocumentsFromApi(rows: unknown): Document[] {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => mapDocumentFromApi(row))
+}
+
 export const documentsApi = {
-  getAll: (params?: { franchiseId?: string }) =>
-    apiClient.get<Document[]>('/documents', { params }),
-  
-  upload: (file: File, metadata: { title: string; description: string; visibility: string; franchiseId?: string }) => {
-    const formData = new FormData()
-    formData.append('file', file)
-    formData.append('metadata', JSON.stringify(metadata))
-    return apiClient.post<Document>('/documents', formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
+  getAll: async (params?: { franchiseId?: string; visibility?: 'global' | 'franchise'; category?: string; search?: string }) => {
+    const rows = await apiClient.get<any[]>('/documents', {
+      params: {
+        company_id: params?.franchiseId,
+        visibility: params?.visibility,
+        category: params?.category,
+        search: params?.search,
+      },
     })
+    return mapDocumentsFromApi(rows)
   },
   
-  update: (id: string, data: Partial<Document>) =>
-    apiClient.put<Document>(`/documents/${id}`, data),
+  upload: (file: File, metadata: { title: string; description: string; visibility: string; franchiseId?: string; category?: string }) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    formData.append('title', metadata.title)
+    formData.append('description', metadata.description)
+    formData.append('visibility', metadata.visibility)
+    if (metadata.category) {
+      formData.append('category', metadata.category)
+    }
+    if (metadata.franchiseId) {
+      formData.append('company_id', metadata.franchiseId)
+    }
+
+    return apiClient.post<any>('/documents', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(mapDocumentFromApi)
+  },
+  
+  update: async (id: string, data: Partial<Document>) => {
+    const payload: Record<string, unknown> = {
+      title: data.title,
+      description: data.description,
+      file_url: data.fileUrl,
+      file_type: data.fileType,
+      visibility: data.visibility,
+      category: data.category,
+    }
+    const updated = await apiClient.put<any>(`/documents/${id}`, payload)
+    return mapDocumentFromApi(updated)
+  },
   
   delete: (id: string) => apiClient.delete(`/documents/${id}`),
 }
@@ -648,4 +797,104 @@ export const stockTakeApi = {
 
   getHistory: (categoryId: string) =>
     apiClient.get<StockTakeLog[]>(`/stock-take/history/${categoryId}`),
+
+}
+
+export type PaginatedIncomes = {
+  data: Income[]
+  meta: PaginationMeta
+}
+
+export type PaginatedExpenses = {
+  data: Expense[]
+  meta: PaginationMeta
+}
+
+export const incomeCategoriesApi = {
+  getAll: () => apiClient.get<IncomeCategory[]>('/income-categories'),
+
+  getById: (id: string) => apiClient.get<IncomeCategory>(`/income-categories/${id}`),
+
+  create: (data: { name: string; description?: string; gst_inclusive?: boolean; is_active?: boolean }) =>
+    apiClient.post<IncomeCategory>('/income-categories', data),
+
+  update: (id: string, data: Partial<{ name: string; description: string; gst_inclusive: boolean; is_active: boolean }>) =>
+    apiClient.put<IncomeCategory>(`/income-categories/${id}`, data),
+
+  delete: (id: string) => apiClient.delete(`/income-categories/${id}`),
+}
+
+export const expenseCategoriesApi = {
+  getAll: () => apiClient.get<ExpenseCategory[]>('/expense-categories'),
+
+  getById: (id: string) => apiClient.get<ExpenseCategory>(`/expense-categories/${id}`),
+
+  create: (data: { name: string; description?: string; gst_inclusive?: boolean; is_active?: boolean }) =>
+    apiClient.post<ExpenseCategory>('/expense-categories', data),
+
+  update: (id: string, data: Partial<{ name: string; description: string; gst_inclusive: boolean; is_active: boolean }>) =>
+    apiClient.put<ExpenseCategory>(`/expense-categories/${id}`, data),
+
+  delete: (id: string) => apiClient.delete(`/expense-categories/${id}`),
+}
+
+export const incomesApi = {
+  getPaginated: (params: {
+    page?: number
+    per_page?: number
+    search?: string
+    date_from?: string
+    date_to?: string
+    category_id?: string
+  }) =>
+    apiClient.get<PaginatedIncomes>('/incomes', { params }),
+
+  getById: (id: string) => apiClient.get<Income>(`/incomes/${id}`),
+
+  create: (data: Omit<Income, 'id' | 'company_id' | 'category' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<Income>('/incomes', data),
+
+  update: (id: string, data: Partial<Income>) =>
+    apiClient.put<Income>(`/incomes/${id}`, data),
+
+  delete: (id: string) => apiClient.delete(`/incomes/${id}`),
+}
+
+export const expensesApi = {
+  getPaginated: (params: {
+    page?: number
+    per_page?: number
+    search?: string
+    date_from?: string
+    date_to?: string
+    category_id?: string
+  }) =>
+    apiClient.get<PaginatedExpenses>('/expenses', { params }),
+
+  getById: (id: string) => apiClient.get<Expense>(`/expenses/${id}`),
+
+  create: (data: Omit<Expense, 'id' | 'company_id' | 'category' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<Expense>('/expenses', data),
+
+  update: (id: string, data: Partial<Expense>) =>
+    apiClient.put<Expense>(`/expenses/${id}`, data),
+
+  delete: (id: string) => apiClient.delete(`/expenses/${id}`),
+}
+
+export const reportsApi = {
+  getBenchmarking: (params?: { date_from?: string; date_to?: string; year?: number; month?: number }) =>
+    apiClient.get<{
+      success: boolean
+      data: Array<{
+        heading: string
+        your_details: string
+        state_average: string
+        national_average: string
+        state_comparison: string
+        national_comparison: string
+      }>
+      rank: string
+      message: string
+    }>('/reports/benchmarking', { params }),
 }

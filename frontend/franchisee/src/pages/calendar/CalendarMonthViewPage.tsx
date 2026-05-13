@@ -22,13 +22,15 @@ export function CalendarMonthViewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-900">Calendar - Month View</h1>
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between gap-4">
+        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
+          <h1 className="text-xl font-bold text-gray-800">Calendar - Month View</h1>
+        </Card>
+        <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-md border border-gray-200 shadow-sm">
           <Button variant="secondary" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
             <ChevronLeft className="w-4 h-4" />
           </Button>
-          <span className="text-lg font-medium min-w-[150px] text-center">
+          <span className="text-sm font-medium min-w-[120px] text-center">
             {format(currentMonth, 'MMMM yyyy')}
           </span>
           <Button variant="secondary" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>

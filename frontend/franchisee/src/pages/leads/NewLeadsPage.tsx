@@ -1,93 +1,42 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Phone, Globe, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Phone, Globe, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
 import { LeadDetailModal } from './LeadDetailModal'
 import { useToastStore } from '../../store/toastStore'
+import { leadsApi } from '../../api/services'
 import type { Lead } from '../../types'
 
-// Dummy data matching the screenshot - converted to proper Lead objects
-const newLeads: Lead[] = [
-  {
-    id: '19579',
-    firstName: 'Mate',
-    lastName: 'dognew',
-    customerName: 'Mate dognew',
-    phone: '4563786376',
-    alternatePhone: '7453783783',
-    interestedServices: 'Wash only',
-    email: '',
-    address: 'afg, DARCH, DARCH',
-    suburb: 'DARCH',
-    petBreed: '- (qwerty)',
-    referredBy: 'Internet',
-    additionalNote: '',
-    notes: 'Created from dev team, please ignore it if you received it.',
-    source: 'internet',
-    leadsFrom: 'internet',
-    status: 'new',
-    comments: [],
-    createdAt: '2026-03-25T19:08:00Z',
-    updatedAt: '2026-03-25T19:09:00Z',
-  },
-  {
-    id: '2',
-    firstName: 'Latham',
-    lastName: 'Peterson',
-    customerName: 'Latham Peterson',
-    phone: '9876543210',
-    alternatePhone: '',
-    interestedServices: 'Wash and Coat Clipped',
-    email: 'latham@example.com',
-    address: '123 Main St, BRISBANE CITY',
-    suburb: 'BRISBANE CITY',
-    petBreed: 'Golden Retriever',
-    referredBy: 'Website',
-    additionalNote: 'Prefers morning appointments',
-    notes: 'Lead created',
-    source: 'internet',
-    leadsFrom: 'phone',
-    status: 'new',
-    comments: [],
-    createdAt: '2026-03-19T15:58:00Z',
-    updatedAt: '2026-03-19T15:58:00Z',
-  },
-  {
-    id: '3',
-    firstName: 'Rabee',
-    lastName: 'Peter',
-    customerName: 'Rabee Peter',
-    phone: '9842354545',
-    alternatePhone: '',
-    interestedServices: 'Wash only',
-    email: '',
-    address: 'Testing dev team, DARCH',
-    suburb: 'DARCH',
-    petBreed: '',
-    referredBy: 'Internet',
-    additionalNote: '',
-    notes: 'Test message',
-    source: 'internet',
-    leadsFrom: 'internet',
-    status: 'new',
-    comments: [
-      {
-        id: 'c1',
-        leadId: '3',
-        comment: 'Called and left voicemail',
-        createdBy: 'Mate Support',
-        createdAt: '2026-03-18T14:00:00Z',
-      },
-    ],
-    createdAt: '2026-03-18T13:06:00Z',
-    updatedAt: '2026-03-18T14:00:00Z',
-  },
-]
-
 export function NewLeadsPage() {
+  const queryClient = useQueryClient()
   const { addToast } = useToastStore()
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [leads, setLeads] = useState<Lead[]>(newLeads)
+  const [leads, setLeads] = useState<Lead[]>([])
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+
+  const { data: fetchedLeads = [] } = useQuery({
+    queryKey: ['leads', 'new'],
+    queryFn: () => leadsApi.getAll({ status: 'new' }),
+  })
+
+  const updateLeadMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Lead> }) => leadsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
+  const convertLeadMutation = useMutation({
+    mutationFn: (id: string) => leadsApi.convert(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
+  useEffect(() => {
+    setLeads(fetchedLeads)
+  }, [fetchedLeads])
 
   const handleViewLead = (lead: Lead) => {
     setSelectedLead(lead)
@@ -100,66 +49,20 @@ export function NewLeadsPage() {
   }
 
   const handleComment = (leadId: string, comment: string) => {
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) =>
-        lead.id === leadId
-          ? {
-              ...lead,
-              comments: [
-                ...(lead.comments || []),
-                {
-                  id: `c${Date.now()}`,
-                  leadId,
-                  comment,
-                  createdBy: 'Current User',
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-              updatedAt: new Date().toISOString(),
-            }
-          : lead
-      )
+    updateLeadMutation.mutate(
+      { id: leadId, data: { notes: comment } },
+      {
+        onSuccess: () => addToast('Comment added successfully', 'success'),
+        onError: () => addToast('Failed to save comment', 'error'),
+      }
     )
-    // Update selected lead to reflect changes
-    if (selectedLead?.id === leadId) {
-      setSelectedLead((prev) =>
-        prev
-          ? {
-              ...prev,
-              comments: [
-                ...(prev.comments || []),
-                {
-                  id: `c${Date.now()}`,
-                  leadId,
-                  comment,
-                  createdBy: 'Current User',
-                  createdAt: new Date().toISOString(),
-                },
-              ],
-              updatedAt: new Date().toISOString(),
-            }
-          : null
-      )
-    }
-    addToast('Comment added successfully', 'success')
   }
 
   const handleConvertToCustomer = (leadId: string) => {
-    // In real implementation, this would call an API to convert the lead
-    const lead = leads.find((l) => l.id === leadId)
-    if (lead) {
-      addToast(`Converting "${lead.customerName}" to customer...`, 'success')
-      // Update lead status to converted instead of removing
-      setLeads((prevLeads) =>
-        prevLeads.map((l) =>
-          l.id === leadId ? { ...l, status: 'converted' as const, updatedAt: new Date().toISOString() } : l
-        )
-      )
-      // Update selected lead if it's the one being converted
-      if (selectedLead?.id === leadId) {
-        setSelectedLead((prev) => (prev ? { ...prev, status: 'converted' as const } : null))
-      }
-    }
+    convertLeadMutation.mutate(leadId, {
+      onSuccess: () => addToast('Lead converted to customer', 'success'),
+      onError: () => addToast('Failed to convert lead', 'error'),
+    })
   }
 
   const handleAddMorePets = (leadId: string) => {
@@ -172,20 +75,22 @@ export function NewLeadsPage() {
   }
 
   const handleSnooze = (leadId: string, snoozeUntil: string) => {
-    setLeads((prevLeads) =>
-      prevLeads.map((lead) =>
-        lead.id === leadId
-          ? {
-              ...lead,
-              status: 'snoozed',
-              snoozedUntil: snoozeUntil,
-              updatedAt: new Date().toISOString(),
-            }
-          : lead
-      )
+    updateLeadMutation.mutate(
+      {
+        id: leadId,
+        data: {
+          status: 'snoozed',
+          snoozedUntil: snoozeUntil,
+        },
+      },
+      {
+        onSuccess: () => {
+          addToast('Lead snoozed successfully', 'success')
+          handleCloseModal()
+        },
+        onError: () => addToast('Failed to snooze lead', 'error'),
+      }
     )
-    addToast('Lead snoozed successfully', 'success')
-    handleCloseModal()
   }
 
   const formatDate = (dateString: string) => {
@@ -204,10 +109,9 @@ export function NewLeadsPage() {
 
   return (
     <div className="space-y-5 px-1 py-1 w-full">
-      {/* Top Header Card */}
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">List Of New Leads</h1>
-      </Card>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">List Of New Leads</h1>
+      </div>
 
       {/* Data Table Card */}
       <Card className="shadow-sm border-gray-200 overflow-hidden">
@@ -216,18 +120,25 @@ export function NewLeadsPage() {
             <thead>
               <tr className="border-b border-gray-200">
                 <th className="px-3 py-4 w-12 text-center text-sm font-semibold text-gray-800"></th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Customer Name</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Added Date</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-28">Interested<br/>Services</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Name</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Date</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-28">Services</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-36">Phone</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 max-w-xs">Address</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 max-w-[200px]">Notes</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-20 text-center">Leads<br/>From</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-24">Mgmt</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-20 text-center">From</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-24 text-right">Mgmt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {leads.map((lead) => (
+              {leads.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-3 py-10 text-center text-sm text-gray-500">
+                    No leads found
+                  </td>
+                </tr>
+              ) : (
+                leads.map((lead) => (
                 <tr key={lead.id} className="relative group hover:-translate-y-[1px] transition-transform hover:bg-gray-50">
                   <td className="px-3 py-4 align-top text-center">
                     <div className="w-2 h-2 rounded-full bg-red-600 mx-auto mt-2"></div>
@@ -268,26 +179,44 @@ export function NewLeadsPage() {
                        <Globe className="w-4 h-4 mx-auto" />
                     )}
                   </td>
-                  <td className="px-3 py-4 text-sm align-top leading-relaxed">
-                    <div className="flex flex-col gap-0.5">
+                  <td className="px-3 py-4 text-sm align-top leading-relaxed relative">
+                    <div className="flex justify-end">
                       <button
-                        onClick={() => handleViewLead(lead)}
-                        className="text-blue-600 hover:underline text-left"
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === lead.id ? null : lead.id)}
+                        className="p-1 rounded hover:bg-gray-100"
                       >
-                        View |
-                      </button>
-                      <button
-                        onClick={() => {
-                          handleSnooze(lead.id, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
-                        }}
-                        className="text-blue-600 hover:underline text-left"
-                      >
-                        Snooze
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
                     </div>
+                    {openMenuId === lead.id && (
+                      <div className="absolute right-3 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleViewLead(lead)
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleSnooze(lead.id, new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString())
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Snooze
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>

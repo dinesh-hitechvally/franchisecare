@@ -80,7 +80,7 @@ export function Table<T>({
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-secondary-200 bg-secondary-50">
+            <tr className="border-b">
               {columns.map((column) => (
                 <th
                   key={column.key}
@@ -107,7 +107,7 @@ export function Table<T>({
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
-          <tr className="border-b border-secondary-200 bg-secondary-50">
+          <tr className="border-b">
             {columns.map((column) => (
               <th
                 key={column.key}

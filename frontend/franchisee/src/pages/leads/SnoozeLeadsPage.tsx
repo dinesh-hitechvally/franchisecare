@@ -1,25 +1,163 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Globe, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { Globe, ChevronLeft, ChevronRight, Search, MoreVertical } from 'lucide-react'
+import { useToastStore } from '../../store/toastStore'
+import { leadsApi } from '../../api/services'
+import { LeadDetailModal } from './LeadDetailModal'
+import type { Lead } from '../../types'
 
-// Dummy data matching the screenshot
-const snoozeLeads = [
-  { id: '1', customer: '44 55', date: 'Fri, 6th Jun 2025 05:00', service: 'Wash', phone: '0311387785', address: 'South Yarra, South Yarra', notes: 'db lead create', snoozeNotes: 'I need to update THIS on other\nlead section', from: 'globe', links: ['View', 'Re-activate'] },
-  { id: '2', customer: 'DB One Ten', date: 'Fri, 6th Jun 2025 05:00', service: 'Wash', phone: '0311689567', address: 'South Yarra, South Yarra', notes: 'db lead create', snoozeNotes: 'Phone Rang out', from: 'globe', links: ['View', 'Re-activate'] },
-  { id: '3', customer: 'Dinesh Ghimire', date: 'Sun, 14th Jul 2024 10:00', service: 'Wash', phone: '9800000000', address: 'South Yarra, South Yarra', notes: 'Notes2', snoozeNotes: 'Phone Rang out', from: 'globe', links: ['View', 'Re-activate'] },
-  { id: '4', customer: 'Maureen McKenzie', date: 'Wed, 2nd Feb 2022 11:58', service: 'Wash Only', phone: '+61418826058', address: 'Unit 8, 2-8 Barnet Road,,', notes: 'I have a Mini Labradoodle named River\nshe is 18mths old. She had a bad\nexperience having her toe nails cut at a\nsalon. I hope you will be a better fit.', snoozeNotes: 'Phone Rang out', from: 'globe', links: ['View', 'Re-activate'] },
-  { id: '5', customer: 'Louisa Lovo', date: 'Wed, 2nd Feb 2022 11:28', service: 'Wash and Coat Clipped', phone: '0478171879', address: '53 Casuarina Circuit,', notes: 'Hi, we have a 20kg Labradoodle and we\nare looking for a groomer. We live in\nHeathwood.', snoozeNotes: 'Phone Rang out', from: 'globe', links: ['View', 'Re-activate'] },
-]
+type SnoozeRow = {
+  id: string
+  customer: string
+  date: string
+  service: string
+  phone: string
+  address: string
+  notes: string
+  snoozeNotes: string
+  from: string
+  links: string[]
+}
 
 export function SnoozeLeadsPage() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToastStore()
   const [searchTerm, setSearchTerm] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [rows, setRows] = useState<SnoozeRow[]>([])
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const { data: fetchedLeads = [] } = useQuery({
+    queryKey: ['leads', 'snoozed'],
+    queryFn: () => leadsApi.getAll({ status: 'snoozed' }),
+  })
+
+  const updateLeadMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Lead> }) => leadsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
+  const convertLeadMutation = useMutation({
+    mutationFn: (id: string) => leadsApi.convert(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
+  useEffect(() => {
+    setRows(
+      fetchedLeads.map((lead) => ({
+        id: lead.id,
+        customer: lead.customerName,
+        date: new Date(lead.createdAt).toLocaleString(),
+        service: lead.interestedServices || '-',
+        phone: lead.phone,
+        address: lead.address || '-',
+        notes: lead.notes || '-',
+        snoozeNotes: lead.additionalNote || '-',
+        from: lead.leadsFrom,
+        links: ['View', 'Re-activate'],
+      }))
+    )
+  }, [fetchedLeads])
+
+  const mapRowToLead = (row: SnoozeRow): Lead => ({
+    id: row.id,
+    firstName: row.customer.split(' ')[0] || 'Unknown',
+    lastName: row.customer.split(' ').slice(1).join(' ') || '-',
+    customerName: row.customer,
+    email: '',
+    phone: row.phone,
+    interestedServices: row.service,
+    address: row.address,
+    suburb: '',
+    petBreed: '',
+    referredBy: 'Internet',
+    additionalNote: row.snoozeNotes,
+    notes: row.notes,
+    source: 'internet',
+    leadsFrom: 'internet',
+    status: 'snoozed',
+    comments: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  const handleView = (rowId: string) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    setSelectedLead(mapRowToLead(row))
+    setIsModalOpen(true)
+    setOpenMenuId(null)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedLead(null)
+  }
+
+  const handleComment = () => {
+    if (!selectedLead) return
+    updateLeadMutation.mutate(
+      { id: selectedLead.id, data: { notes: selectedLead.notes || '' } },
+      {
+        onSuccess: () => addToast('Comment saved', 'success'),
+        onError: () => addToast('Failed to save comment', 'error'),
+      }
+    )
+  }
+
+  const handleConvert = (leadId: string) => {
+    convertLeadMutation.mutate(leadId, {
+      onSuccess: () => addToast(`Lead ${leadId} converted`, 'success'),
+      onError: () => addToast('Failed to convert lead', 'error'),
+    })
+  }
+
+  const handleSnoozeFromModal = (leadId: string, snoozeUntil: string) => {
+    updateLeadMutation.mutate(
+      { id: leadId, data: { status: 'snoozed', snoozedUntil } },
+      {
+        onSuccess: () => addToast('Snooze time updated', 'success'),
+        onError: () => addToast('Failed to update snooze time', 'error'),
+      }
+    )
+  }
+
+  const handleReactivate = async (rowId: string) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    try {
+      await leadsApi.update(rowId, { status: 'new' })
+      setRows((prev) => prev.filter((item) => item.id !== rowId))
+      addToast(`Lead ${row.customer} re-activated`, 'success')
+    } catch {
+      setRows((prev) => prev.filter((item) => item.id !== rowId))
+      addToast('Lead API unavailable, updated only on current screen', 'info')
+    }
+    setOpenMenuId(null)
+  }
+
+  const filteredRows = rows.filter((row) => {
+    const q = searchTerm.trim().toLowerCase()
+    if (!q) return true
+    return (
+      row.customer.toLowerCase().includes(q) ||
+      row.phone.toLowerCase().includes(q) ||
+      row.address.toLowerCase().includes(q) ||
+      row.notes.toLowerCase().includes(q)
+    )
+  })
 
   return (
     <div className="space-y-5 px-1 py-1 w-full">
-      {/* Top Header Card */}
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Snooze Leads</h1>
-      </Card>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Snooze Leads</h1>
+      </div>
 
       {/* Search Bar Card */}
       <Card className="px-6 py-8 shadow-sm border-gray-200">
@@ -41,19 +179,26 @@ export function SnoozeLeadsPage() {
           <table className="w-full text-left border-collapse border-b border-gray-200">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="px-5 py-4 text-sm font-semibold text-gray-800 w-36">Customer<br/>Name</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Added Date</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-28">Interested<br/>Services</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800 w-36">Name</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Date</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-28">Services</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-36">Phone</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-40">Address</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 max-w-[200px]">Notes</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-40">Snooze Notes</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-16 text-center">Leads<br/>From</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-24">Mgmt</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-16 text-center">From</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-24 text-right">Mgmt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {snoozeLeads.map((row) => (
+              {filteredRows.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-3 py-10 text-center text-sm text-gray-500">
+                    No leads found
+                  </td>
+                </tr>
+              ) : (
+                filteredRows.map((row) => (
                 <tr key={row.id} className="relative group hover:-translate-y-[1px] transition-transform hover:bg-gray-50">
                   <td className="px-5 py-4 text-sm text-gray-700 align-top pr-4">
                     {row.customer}
@@ -83,15 +228,38 @@ export function SnoozeLeadsPage() {
                   <td className="px-3 py-4 align-top text-center text-blue-700">
                     <Globe className="w-4 h-4 mx-auto" />
                   </td>
-                  <td className="px-3 py-4 text-sm align-top leading-relaxed">
-                    <div className="flex flex-col gap-0.5">
-                      <button className="text-blue-600 hover:underline text-left whitespace-nowrap">
-                        {row.links[0]} | <span className="text-blue-600 hover:underline">{row.links[1]}</span>
+                  <td className="px-3 py-4 text-sm align-top leading-relaxed relative">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                        className="p-1 rounded hover:bg-gray-100"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
                     </div>
+                    {openMenuId === row.id && (
+                      <div className="absolute right-3 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        <button
+                          type="button"
+                          onClick={() => handleView(row.id)}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {row.links[0]}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleReactivate(row.id)}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {row.links[1]}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -107,7 +275,7 @@ export function SnoozeLeadsPage() {
                 <option>100</option>
               </select>
             </div>
-            <span>1-5 of 5</span>
+            <span>{filteredRows.length === 0 ? '0-0' : `1-${filteredRows.length}`} of {filteredRows.length}</span>
             <div className="flex items-center gap-4 text-gray-400">
               <ChevronLeft className="w-5 h-5 cursor-not-allowed" />
               <ChevronRight className="w-5 h-5 cursor-not-allowed" />
@@ -115,6 +283,17 @@ export function SnoozeLeadsPage() {
           </div>
         </div>
       </Card>
+
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onComment={handleComment}
+          onConvert={handleConvert}
+          onSnooze={handleSnoozeFromModal}
+        />
+      )}
     </div>
   )
 }

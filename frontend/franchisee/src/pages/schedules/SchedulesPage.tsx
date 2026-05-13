@@ -8,7 +8,9 @@ export function SchedulesPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-secondary-900">Schedules</h1>
+      <Card className="px-4 py-3 shadow-sm border-gray-200">
+        <h1 className="text-xl font-bold text-gray-800">Schedules</h1>
+      </Card>
       
       <Card className="p-6">
         <div className="flex items-center gap-4 mb-6">

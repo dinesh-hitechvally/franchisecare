@@ -1,30 +1,145 @@
+import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Phone, Globe, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Phone, Globe, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
+import { useToastStore } from '../../store/toastStore'
+import { leadsApi } from '../../api/services'
+import { LeadDetailModal } from './LeadDetailModal'
+import type { Lead } from '../../types'
 
-// Dummy data matching the screenshot
-const completedLeads = [
-  { id: '1', customer: 'Rabee Subedi2026', date: 'Tue, 24th Mar 2026 17:13', service: 'Wash only', phone: '9124185262 / 9246526556', address: 'Germany is a Western European country, BRISBANE ADELAIDE STREET', notes: 'Please ignore it.....', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '2', customer: 'test test2162026', date: 'Mon, 16th Feb 2026 16:40', service: 'Wash only', phone: '0213215416 / 9801312132', address: 'This is a lead created from dev team, please ignore if you received it., BRISBANE ADELAIDE STREET', notes: 'This lead is created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '3', customer: '1247 11545test', date: 'Tue, 27th Jan 2026 19:35', service: 'Wash only', phone: '1213416546 / 5455446465', address: 'This is a lead created from dev team, please ignore if you received it., BRISBANE ADELAIDE STREET', notes: 'This is a lead created from dev team, please ignore if you received it.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '4', customer: 'TestLeadForHahah Pet', date: 'Tue, 27th Jan 2026 18:59', service: 'Wash only', phone: '0245655565 / 0245466656', address: 'This is a lead created from dev team, please ignore if you received it., BERALA', notes: 'This is a lead created from dev team, please ignore if you received it.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '5', customer: 'TestForConverLead ByDevTeamRabi', date: 'Wed, 7th Jan 2026 13:27', service: 'Wash only', phone: '0756559889 / 0658979845', address: 'This is the lead created from dev team, please ignore if you received it., STRATHFIELD', notes: 'This is the lead created from dev team, please ignore if you received it.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '6', customer: 'Laura Rach', date: 'Sat, 3rd Jan 2026 16:30', service: 'Clip and wash', phone: '0419895960', address: 'CLOUDES ST, SOUTH YARRA', notes: 'Pls call back re inquiry for a dog wash and also discussing other options in area for wash and clip.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '7', customer: 'testlead pratik6', date: 'Wed, 3rd Dec 2025 17:35', service: 'Wash only', phone: '8565787867 / 4567686564', address: 'This is a lead created from dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a lead created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '8', customer: 'TestLeadFrom Pratikdev5', date: 'Wed, 3rd Dec 2025 17:34', service: 'Clip and wash', phone: '4567863786 / 6786786865', address: 'This is a lead created from dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a lead created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '9', customer: 'testlead pratik4', date: 'Wed, 3rd Dec 2025 16:49', service: 'Wash only', phone: '4245637868 / 4165465464', address: 'This is a lead created from dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a lead created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '10', customer: 'testfromdev pratik3', date: 'Wed, 3rd Dec 2025 16:48', service: 'Wash only', phone: '2115616541 / 2165465465', address: 'This is a lead created from dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a lead created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '11', customer: 'TestLead Pratik2', date: 'Wed, 3rd Dec 2025 12:46', service: 'Wash only', phone: '2652324651 / 4654215641', address: 'This is a lead created from dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a lead created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-  { id: '12', customer: 'TestDevTeam Pratik1', date: 'Wed, 3rd Dec 2025 12:45', service: 'Wash only', phone: '1616546546 / 5464654616', address: 'This is a lead created from dev team, please ignore if you received., SOUTH YARRA', notes: 'This is a lead created from dev team, please ignore if you received.', from: 'phone', links: ['View', 'Snooze'] },
-]
+type CompletedRow = {
+  id: string
+  customer: string
+  date: string
+  service: string
+  phone: string
+  address: string
+  notes: string
+  from: string
+  links: string[]
+}
 
 export function CompletedLeadsPage() {
+  const queryClient = useQueryClient()
+  const { addToast } = useToastStore()
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [rows, setRows] = useState<CompletedRow[]>([])
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+
+  const { data: fetchedLeads = [] } = useQuery({
+    queryKey: ['leads', 'completed'],
+    queryFn: () => leadsApi.getAll({ status: 'completed' }),
+  })
+
+  const updateLeadMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Lead> }) => leadsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
+  const convertLeadMutation = useMutation({
+    mutationFn: (id: string) => leadsApi.convert(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
+  useEffect(() => {
+    setRows(
+      fetchedLeads.map((lead) => ({
+        id: lead.id,
+        customer: lead.customerName,
+        date: new Date(lead.createdAt).toLocaleString(),
+        service: lead.interestedServices || '-',
+        phone: [lead.phone, lead.alternatePhone].filter(Boolean).join(' / '),
+        address: lead.address || '-',
+        notes: lead.notes || '-',
+        from: lead.leadsFrom,
+        links: ['View', 'Snooze'],
+      }))
+    )
+  }, [fetchedLeads])
+
+  const mapRowToLead = (row: CompletedRow): Lead => ({
+    id: row.id,
+    firstName: row.customer.split(' ')[0] || 'Unknown',
+    lastName: row.customer.split(' ').slice(1).join(' ') || '-',
+    customerName: row.customer,
+    email: '',
+    phone: row.phone.split(' / ')[0] || '',
+    alternatePhone: row.phone.split(' / ')[1] || '',
+    interestedServices: row.service,
+    address: row.address,
+    suburb: '',
+    petBreed: '',
+    referredBy: row.from === 'phone' ? 'Phone' : 'Internet',
+    additionalNote: row.notes,
+    notes: row.notes,
+    source: row.from === 'phone' ? 'phone' : 'internet',
+    leadsFrom: row.from === 'phone' ? 'phone' : 'internet',
+    status: 'completed',
+    comments: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  })
+
+  const handleView = (rowId: string) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    setSelectedLead(mapRowToLead(row))
+    setIsModalOpen(true)
+    setOpenMenuId(null)
+  }
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false)
+    setSelectedLead(null)
+  }
+
+  const handleComment = () => {
+    if (!selectedLead) return
+    updateLeadMutation.mutate(
+      { id: selectedLead.id, data: { notes: selectedLead.notes || '' } },
+      {
+        onSuccess: () => addToast('Comment saved', 'success'),
+        onError: () => addToast('Failed to save comment', 'error'),
+      }
+    )
+  }
+
+  const handleConvert = (leadId: string) => {
+    convertLeadMutation.mutate(leadId, {
+      onSuccess: () => addToast(`Lead ${leadId} converted`, 'success'),
+      onError: () => addToast('Failed to convert lead', 'error'),
+    })
+  }
+
+  const handleSnoozeFromModal = async (leadId: string) => {
+    await handleSnooze(leadId)
+    handleCloseModal()
+  }
+
+  const handleSnooze = async (rowId: string) => {
+    const row = rows.find((item) => item.id === rowId)
+    if (!row) return
+    try {
+      await leadsApi.update(rowId, { status: 'snoozed' })
+      setRows((prev) => prev.filter((item) => item.id !== rowId))
+      addToast(`Lead ${row.customer} moved to snooze`, 'success')
+    } catch {
+      setRows((prev) => prev.filter((item) => item.id !== rowId))
+      addToast('Lead API unavailable, updated only on current screen', 'info')
+    }
+    setOpenMenuId(null)
+  }
 
   return (
     <div className="space-y-5 px-1 py-1 w-full">
-      {/* Top Header Card */}
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Completed Leads</h1>
-      </Card>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
+        <h1 className="text-2xl font-bold text-gray-800">Completed Leads</h1>
+      </div>
 
       {/* Data Table Card */}
       <Card className="shadow-sm border-gray-200 overflow-hidden">
@@ -32,18 +147,25 @@ export function CompletedLeadsPage() {
           <table className="w-full text-left border-collapse border-b border-gray-200">
             <thead>
               <tr className="border-b border-gray-200">
-                <th className="px-5 py-4 text-sm font-semibold text-gray-800 w-40">Customer Name</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Added Date</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-28">Interested<br/>Services</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800 w-40">Name</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-32">Date</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-28">Services</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-40">Phone</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 max-w-sm">Address</th>
                 <th className="px-3 py-4 text-sm font-semibold text-gray-800 max-w-[200px]">Notes</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-20 text-center">Leads<br/>From</th>
-                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-24">Mgmt</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-20 text-center">From</th>
+                <th className="px-3 py-4 text-sm font-semibold text-gray-800 w-24 text-right">Mgmt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {completedLeads.map((row) => (
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-3 py-10 text-center text-sm text-gray-500">
+                    No leads found
+                  </td>
+                </tr>
+              ) : (
+                rows.map((row) => (
                 <tr key={row.id} className="relative group hover:-translate-y-[1px] transition-transform hover:bg-gray-50">
                   <td className="px-5 py-4 text-sm text-gray-700 align-top pr-4">
                     {row.customer}
@@ -76,18 +198,38 @@ export function CompletedLeadsPage() {
                        <Globe className="w-4 h-4 mx-auto" />
                     )}
                   </td>
-                  <td className="px-3 py-4 text-sm align-top leading-relaxed">
-                    <div className="flex flex-col gap-0.5">
-                      <button className="text-blue-600 hover:underline text-left">
-                        {row.links[0]} |
-                      </button>
-                      <button className="text-blue-600 hover:underline text-left">
-                        {row.links[1]}
+                  <td className="px-3 py-4 text-sm align-top leading-relaxed relative">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                        className="p-1 rounded hover:bg-gray-100"
+                      >
+                        <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
                     </div>
+                    {openMenuId === row.id && (
+                      <div className="absolute right-3 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                        <button
+                          type="button"
+                          onClick={() => handleView(row.id)}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {row.links[0]}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void handleSnooze(row.id)}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          {row.links[1]}
+                        </button>
+                      </div>
+                    )}
                   </td>
                 </tr>
-              ))}
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -103,7 +245,7 @@ export function CompletedLeadsPage() {
                 <option>100</option>
               </select>
             </div>
-            <span>1-25 of 74</span>
+            <span>{rows.length === 0 ? '0-0' : `1-${rows.length}`} of {rows.length}</span>
             <div className="flex items-center gap-4 text-gray-400">
               <ChevronLeft className="w-5 h-5 cursor-not-allowed" />
               <ChevronRight className="w-5 h-5 cursor-pointer hover:text-gray-700" />
@@ -111,6 +253,17 @@ export function CompletedLeadsPage() {
           </div>
         </div>
       </Card>
+
+      {selectedLead && (
+        <LeadDetailModal
+          lead={selectedLead}
+          isOpen={isModalOpen}
+          onClose={handleCloseModal}
+          onComment={handleComment}
+          onConvert={handleConvert}
+          onSnooze={handleSnoozeFromModal}
+        />
+      )}
     </div>
   )
 }

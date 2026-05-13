@@ -103,6 +103,29 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('service_id')->references('id')->on('services')->onDelete('cascade');
         });
+
+        // 2026_05_12_000001_create_income_categories_table.php
+        Schema::table('income_categories', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+        });
+
+        // 2026_05_12_000002_create_expense_categories_table.php
+        Schema::table('expense_categories', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+        });
+
+        // 2026_05_12_000003_create_incomes_table.php
+        Schema::table('incomes', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+            $table->foreign('income_category_id')->references('id')->on('income_categories')->onDelete('set null');
+            $table->foreign('booking_id')->references('id')->on('bookings')->onDelete('set null');
+        });
+
+        // 2026_05_12_000004_create_expenses_table.php
+        Schema::table('expenses', function (Blueprint $table) {
+            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
+            $table->foreign('expense_category_id')->references('id')->on('expense_categories')->onDelete('set null');
+        });
     }
 
     /**

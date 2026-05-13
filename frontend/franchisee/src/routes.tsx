@@ -157,8 +157,11 @@ export function AppRoutes() {
         {/* Finance Routes */}
         <Route path="finance/income" element={<ListIncomesPage />} />
         <Route path="finance/income/add" element={<AddIncomePage />} />
+        <Route path="finance/income/view/:id" element={<AddIncomePage />} />
+        <Route path="finance/income/edit/:id" element={<AddIncomePage />} />
         <Route path="finance/income/categories" element={<IncomeCategoriesPage />} />
         <Route path="finance/income/add-category" element={<AddIncomeCategoryPage />} />
+        <Route path="finance/income/edit-category/:id" element={<AddIncomeCategoryPage />} />
         <Route path="finance/income/recurring" element={<RecurringIncomePage />} />
         <Route path="finance/expense" element={<ListExpensePage />} />
         <Route path="finance/expense/add" element={<AddExpensePage />} />

@@ -19,10 +19,8 @@ class CommunicationHistoryController extends Controller
 
         $query = SmsHistory::query()->orderByDesc('created_at');
 
-        if ($status === 'sent') {
-            $query->where('status', 'sent');
-        } elseif ($status === 'queued') {
-            $query->where('status', 'queued');
+        if (in_array($status, ['sent', 'queued'], true)) {
+            $query->where('status', $status);
         }
 
         $data = $query->paginate($perPage);
@@ -78,10 +76,8 @@ class CommunicationHistoryController extends Controller
 
         $query = EmailHistory::query()->orderByDesc('created_at');
 
-        if ($status === 'sent') {
-            $query->where('status', 'sent');
-        } elseif ($status === 'queued') {
-            $query->where('status', 'queued');
+        if (in_array($status, ['sent', 'queued'], true)) {
+            $query->where('status', $status);
         }
 
         $data = $query->paginate($perPage);

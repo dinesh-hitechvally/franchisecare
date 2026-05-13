@@ -1,64 +1,144 @@
+import { useMemo, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
-import { Link } from 'react-router-dom'
+import { Button } from '../../components/ui/Button'
+import { Modal } from '../../components/ui/Modal'
+import { Input } from '../../components/ui/Input'
+import { communicationApi } from '../../api/services'
+import { useToastStore } from '../../store/toastStore'
+import type { CommunicationTemplate } from '../../types'
 
 export function MessageTemplatesPage() {
-  const templates = [
-    { 
-      id: '1', 
-      name: 'Booking Reminder Mass Email', 
-      message: 'Dear ##firstname##, This Is A Reminder About Your Booking On ##datetime##, See You At ##serviceaddress##. Blue Wheelers', 
+  const queryClient = useQueryClient()
+  const addToast = useToastStore((state) => state.addToast)
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [editingTemplate, setEditingTemplate] = useState<CommunicationTemplate | null>(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    type: 'email' as CommunicationTemplate['type'],
+    subject: '',
+    body: '',
+    variables: '',
+  })
+
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ['communication-templates'],
+    queryFn: communicationApi.getTemplates,
+  })
+
+  const upsertTemplateMutation = useMutation({
+    mutationFn: async () => {
+      const payload: Omit<CommunicationTemplate, 'id'> = {
+        name: formData.name,
+        type: formData.type,
+        subject: formData.subject.trim() || undefined,
+        body: formData.body,
+        variables: formData.variables
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean),
+      }
+
+      if (editingTemplate) {
+        return communicationApi.updateTemplate(editingTemplate.id, payload)
+      }
+
+      return communicationApi.createTemplate(payload)
     },
-    { 
-      id: '2', 
-      name: 'Booking Confirmed', 
-      message: 'Dear ##firstname##, Your Booking Is Confirmed On ##datetime##, See You At ##serviceaddress##.', 
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['communication-templates'] })
+      addToast(editingTemplate ? 'Template updated' : 'Template created', 'success')
+      closeModal()
     },
-    { 
-      id: '3', 
-      name: 'Booking Reminder', 
-      message: 'Dear ##firstname##, This Is A Reminder About Your Booking On ##datetime##, See You At ##serviceaddress##.', 
+    onError: () => {
+      addToast('Failed to save template', 'error')
     },
-  ]
+  })
+
+  const mappedTemplates = useMemo(
+    () =>
+      templates.map((template) => ({
+        ...template,
+        message: template.body,
+      })),
+    [templates]
+  )
+
+  const openCreateModal = () => {
+    setEditingTemplate(null)
+    setFormData({
+      name: '',
+      type: 'email',
+      subject: '',
+      body: '',
+      variables: '',
+    })
+    setIsModalOpen(true)
+  }
+
+  const openEditModal = (template: CommunicationTemplate) => {
+    setEditingTemplate(template)
+    setFormData({
+      name: template.name,
+      type: template.type,
+      subject: template.subject ?? '',
+      body: template.body,
+      variables: template.variables.join(', '),
+    })
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setEditingTemplate(null)
+  }
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 text-center sm:text-left">
-        Message Template
-      </h1>
-      
-      <h2 className="text-xl font-medium text-gray-800">
-        Message Template
-      </h2>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-900">Message Template</h1>
+        <Button size="sm" onClick={openCreateModal}>New Template</Button>
+      </div>
 
       <Card className="border border-gray-200 shadow-sm overflow-hidden">
         <Table
           columns={[
-            { 
-              key: 'name', 
+            {
+              key: 'name',
               title: 'Template Name',
-              render: (row) => <span className="text-gray-800 font-medium">{row.name}</span>
+              render: (row: CommunicationTemplate) => <span className="text-gray-800 font-medium">{row.name}</span>,
             },
-            { 
-              key: 'message', 
+            {
+              key: 'type',
+              title: 'Type',
+              render: (row: CommunicationTemplate) => <span className="uppercase text-xs font-semibold text-gray-600">{row.type}</span>,
+            },
+            {
+              key: 'message',
               title: 'Message',
-              render: (row) => <span className="text-gray-600 block max-w-4xl">{row.message}</span>
+              render: (row: CommunicationTemplate) => <span className="text-gray-600 block max-w-4xl truncate">{row.body}</span>,
             },
-            { 
-              key: 'mgmt', 
+            {
+              key: 'mgmt',
               title: 'Mgmt',
-              render: () => (
-                <Link to="#" className="text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap">
+              render: (row: CommunicationTemplate) => (
+                <button
+                  type="button"
+                  onClick={() => openEditModal(row)}
+                  className="text-blue-600 hover:text-blue-800 font-medium whitespace-nowrap"
+                >
                   Edit
-                </Link>
-              )
+                </button>
+              ),
             },
           ]}
-          data={templates}
-          keyExtractor={(row) => row.id}
+          data={mappedTemplates}
+          keyExtractor={(row: CommunicationTemplate) => row.id}
+          isLoading={isLoading}
+          emptyMessage="No message templates found"
         />
         
-        {/* Footer/Pagination mockup for matching design */}
         <div className="p-4 border-t border-gray-100 bg-white flex justify-end items-center gap-6 text-sm text-gray-600">
           <div className="flex items-center gap-2">
             <span>Rows per page:</span>
@@ -68,13 +148,73 @@ export function MessageTemplatesPage() {
               <option>100</option>
             </select>
           </div>
-          <span>1-3 of 3</span>
+          <span>{mappedTemplates.length === 0 ? '0-0' : `1-${mappedTemplates.length}`} of {mappedTemplates.length}</span>
           <div className="flex items-center gap-4">
             <button className="text-gray-400 hover:text-gray-600 focus:outline-none">&lt;</button>
             <button className="text-gray-600 hover:text-gray-800 focus:outline-none">&gt;</button>
           </div>
         </div>
       </Card>
+
+      <Modal
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        title={editingTemplate ? 'Edit Message Template' : 'New Message Template'}
+        footer={
+          <>
+            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
+            <Button
+              onClick={() => upsertTemplateMutation.mutate()}
+              isLoading={upsertTemplateMutation.isPending}
+              disabled={!formData.name.trim() || !formData.body.trim()}
+            >
+              Save
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-4">
+          <Input
+            label="Template Name"
+            value={formData.name}
+            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+          />
+
+          <div>
+            <label className="text-sm font-medium text-secondary-700">Type</label>
+            <select
+              className="input mt-1"
+              value={formData.type}
+              onChange={(e) => setFormData((prev) => ({ ...prev, type: e.target.value as CommunicationTemplate['type'] }))}
+            >
+              <option value="email">Email</option>
+              <option value="sms">SMS</option>
+            </select>
+          </div>
+
+          <Input
+            label="Subject"
+            value={formData.subject}
+            onChange={(e) => setFormData((prev) => ({ ...prev, subject: e.target.value }))}
+          />
+
+          <div>
+            <label className="text-sm font-medium text-secondary-700">Body</label>
+            <textarea
+              className="input mt-1"
+              rows={4}
+              value={formData.body}
+              onChange={(e) => setFormData((prev) => ({ ...prev, body: e.target.value }))}
+            />
+          </div>
+
+          <Input
+            label="Variables (comma separated)"
+            value={formData.variables}
+            onChange={(e) => setFormData((prev) => ({ ...prev, variables: e.target.value }))}
+          />
+        </div>
+      </Modal>
     </div>
   )
 }

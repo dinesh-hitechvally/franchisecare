@@ -4,7 +4,9 @@ import { Calculator, TrendingUp, TrendingDown, DollarSign } from 'lucide-react'
 export function AccountingPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-secondary-900">Accounting</h1>
+      <Card className="px-4 py-3 shadow-sm border-gray-200">
+        <h1 className="text-xl font-bold text-gray-800">Accounting</h1>
+      </Card>
       
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">

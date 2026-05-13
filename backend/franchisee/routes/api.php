@@ -22,6 +22,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\BookingController::class, 'updateStatus']);
     Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
     Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);
+    // Booking Reports
+    Route::get('reports/booking', [\App\Http\Controllers\Api\BookingReportController::class, 'index']);
+    Route::get('reports/service', [\App\Http\Controllers\Api\ServiceReportController::class, 'index']);
+    Route::get('reports/suburb', [\App\Http\Controllers\Api\SuburbReportController::class, 'index']);
+    Route::get('reports/customer', [\App\Http\Controllers\Api\CustomerReportController::class, 'index']);
+    Route::get('reports/customer/unbooked', [\App\Http\Controllers\Api\UnbookedCustomerReportController::class, 'index']);
 
     // Recurring Bookings
     Route::apiResource('booking-recurrings', \App\Http\Controllers\Api\BookingRecurringController::class);
@@ -32,6 +38,10 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('customers/{customer}/audits', [\App\Http\Controllers\Api\CustomerController::class, 'getHistory']);
     Route::post('customers/{customer}/restore', [\App\Http\Controllers\Api\CustomerController::class, 'restore']);
     Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class);
+
+    // Leads
+    Route::apiResource('leads', \App\Http\Controllers\Api\LeadController::class);
+    Route::post('leads/{lead}/convert', [\App\Http\Controllers\Api\LeadController::class, 'convert']);
 
     // Pets
     Route::apiResource('pets', \App\Http\Controllers\Api\PetController::class);
@@ -103,4 +113,28 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('communication/email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailStore']);
     Route::get('communication/email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailShow']);
     Route::delete('communication/email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailDestroy']);
+
+    // Income Categories
+    Route::apiResource('income-categories', \App\Http\Controllers\Api\IncomeCategoryController::class);
+
+    // Expense Categories
+    Route::apiResource('expense-categories', \App\Http\Controllers\Api\ExpenseCategoryController::class);
+
+    // Incomes
+    Route::apiResource('incomes', \App\Http\Controllers\Api\IncomeController::class);
+
+    // Recurring Incomes
+    Route::apiResource('recurring-incomes', \App\Http\Controllers\Api\RecurringIncomeController::class);
+
+    // Expenses
+    Route::apiResource('expenses', \App\Http\Controllers\Api\ExpenseController::class);
+
+    // Recurring Expenses
+    Route::apiResource('recurring-expenses', \App\Http\Controllers\Api\RecurringExpenseController::class);
+
+    // Documents
+    Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class);
+
+    // Reports
+    Route::get('reports/benchmarking', [\App\Http\Controllers\Api\BenchmarkingController::class, 'index']);
 });

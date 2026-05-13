@@ -8,7 +8,8 @@ import { Input } from '../../components/ui/Input'
 import { leadsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Lead } from '../../types'
-import { Plus, Search, Upload, ArrowRightLeft } from 'lucide-react'
+import { Plus, Search, Upload, ArrowRightLeft, MoreVertical } from 'lucide-react'
+import { LeadDetailModal } from './LeadDetailModal'
 
 export function LeadsPage() {
   const queryClient = useQueryClient()
@@ -16,19 +17,23 @@ export function LeadsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isConvertModalOpen, setIsConvertModalOpen] = useState(false)
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
+  const [detailLead, setDetailLead] = useState<Lead | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
   const [filterStatus, setFilterStatus] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [formData, setFormData] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    source: 'internet' as Lead['source'],
+    notes: '',
+  })
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['leads', filterStatus],
-    queryFn: async () => {
-      // Mock data - replace with actual API
-      return [
-        { id: '1', firstName: 'John', lastName: 'Doe', email: 'john@example.com', phone: '555-0101', source: 'Website', status: 'new', notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '2', firstName: 'Jane', lastName: 'Smith', email: 'jane@example.com', phone: '555-0102', source: 'Referral', status: 'contacted', notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '3', firstName: 'Bob', lastName: 'Johnson', email: 'bob@example.com', phone: '555-0103', source: 'Social Media', status: 'qualified', notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-      ] as Lead[]
-    },
+    queryFn: () => leadsApi.getAll(filterStatus ? { status: filterStatus } : undefined),
   })
 
   const createMutation = useMutation({
@@ -50,9 +55,62 @@ export function LeadsPage() {
     },
   })
 
+  const updateLeadMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: Partial<Lead> }) => leadsApi.update(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['leads'] })
+    },
+  })
+
   const handleConvert = (lead: Lead) => {
     setSelectedLead(lead)
     setIsConvertModalOpen(true)
+  }
+
+  const handleViewLead = (lead: Lead) => {
+    setDetailLead(lead)
+    setIsDetailModalOpen(true)
+  }
+
+  const handleCloseDetailModal = () => {
+    setIsDetailModalOpen(false)
+    setDetailLead(null)
+  }
+
+  const handleDetailComment = (leadId: string, comment: string) => {
+    updateLeadMutation.mutate(
+      { id: leadId, data: { notes: comment } },
+      {
+        onSuccess: () => addToast(`Comment saved for lead ${leadId}`, 'success'),
+        onError: () => addToast('Failed to save comment', 'error'),
+      }
+    )
+  }
+
+  const handleDetailConvert = (leadId: string) => {
+    const lead = leads?.find((item) => item.id === leadId)
+    if (lead) {
+      handleConvert(lead)
+    }
+  }
+
+  const handleDetailSnooze = (leadId: string) => {
+    updateLeadMutation.mutate(
+      {
+        id: leadId,
+        data: {
+          status: 'snoozed',
+          snoozedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        },
+      },
+      {
+        onSuccess: () => {
+          addToast(`Lead ${leadId} snoozed`, 'success')
+          handleCloseDetailModal()
+        },
+        onError: () => addToast('Failed to snooze lead', 'error'),
+      }
+    )
   }
 
   const filteredLeads = leads?.filter((lead) =>
@@ -72,17 +130,19 @@ export function LeadsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">Leads</h1>
-        <div className="flex gap-3">
-          <Button variant="secondary" size="sm">
-            <Upload className="w-4 h-4 mr-2" />
-            Import
-          </Button>
-          <Button onClick={() => setIsModalOpen(true)} size="sm">
-            <Plus className="w-4 h-4 mr-2" />
-            Add Lead
-          </Button>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold text-gray-800">Leads</h1>
+          <div className="flex gap-3">
+            <Button variant="secondary" size="sm">
+              <Upload className="w-4 h-4 mr-2" />
+              Import
+            </Button>
+            <Button onClick={() => setIsModalOpen(true)} size="sm">
+              <Plus className="w-4 h-4 mr-2" />
+              Add Lead
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -129,19 +189,49 @@ export function LeadsPage() {
             },
             {
               key: 'actions',
-              title: 'Actions',
+              title: 'Mgmt',
               render: (row: Lead) => (
-                <div className="flex gap-2">
-                  {row.status !== 'converted' && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleConvert(row)}
-                    >
-                      <ArrowRightLeft className="w-4 h-4" />
-                    </Button>
+                <div className="relative flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                    className="p-1 rounded hover:bg-gray-100"
+                  >
+                    <MoreVertical className="w-5 h-5 text-gray-600" />
+                  </button>
+                  {openMenuId === row.id && (
+                    <div className="absolute right-0 top-7 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          handleViewLead(row)
+                          setOpenMenuId(null)
+                        }}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        View
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenMenuId(null)}
+                        className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                      >
+                        Edit
+                      </button>
+                      {row.status !== 'converted' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleConvert(row)
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                          Convert
+                        </button>
+                      )}
+                    </div>
                   )}
-                  <Button variant="ghost" size="sm">Edit</Button>
                 </div>
               ),
             },
@@ -149,6 +239,7 @@ export function LeadsPage() {
           data={filteredLeads ?? []}
           keyExtractor={(row) => row.id}
           isLoading={isLoading}
+          emptyMessage="No leads found"
         />
       </Card>
 
@@ -162,15 +253,24 @@ export function LeadsPage() {
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={() => createMutation.mutate({
-              firstName: 'New',
-              lastName: 'Lead',
-              email: 'new@example.com',
-              phone: '',
-              source: 'Manual',
-              status: 'new',
-              notes: '',
-            } as Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>)}>
+            <Button
+              onClick={() =>
+                createMutation.mutate({
+                  firstName: formData.firstName,
+                  lastName: formData.lastName,
+                  customerName: `${formData.firstName} ${formData.lastName}`.trim(),
+                  email: formData.email,
+                  phone: formData.phone,
+                  interestedServices: '',
+                  address: '',
+                  source: formData.source,
+                  leadsFrom: formData.source === 'phone' ? 'phone' : 'internet',
+                  status: 'new',
+                  notes: formData.notes,
+                } as Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>)
+              }
+              isLoading={createMutation.isPending}
+            >
               Create Lead
             </Button>
           </>
@@ -178,23 +278,49 @@ export function LeadsPage() {
       >
         <div className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
-            <Input label="First Name" />
-            <Input label="Last Name" />
+            <Input
+              label="First Name"
+              value={formData.firstName}
+              onChange={(e) => setFormData((prev) => ({ ...prev, firstName: e.target.value }))}
+            />
+            <Input
+              label="Last Name"
+              value={formData.lastName}
+              onChange={(e) => setFormData((prev) => ({ ...prev, lastName: e.target.value }))}
+            />
           </div>
-          <Input label="Email" type="email" />
-          <Input label="Phone" />
+          <Input
+            label="Email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData((prev) => ({ ...prev, email: e.target.value }))}
+          />
+          <Input
+            label="Phone"
+            value={formData.phone}
+            onChange={(e) => setFormData((prev) => ({ ...prev, phone: e.target.value }))}
+          />
           <div>
             <label className="text-sm font-medium text-secondary-700">Source</label>
-            <select className="input mt-1">
-              <option>Website</option>
-              <option>Referral</option>
-              <option>Social Media</option>
-              <option>Other</option>
+            <select
+              className="input mt-1"
+              value={formData.source}
+              onChange={(e) => setFormData((prev) => ({ ...prev, source: e.target.value as Lead['source'] }))}
+            >
+              <option value="internet">Internet</option>
+              <option value="phone">Phone</option>
+              <option value="walk-in">Walk In</option>
+              <option value="referral">Referral</option>
             </select>
           </div>
           <div>
             <label className="text-sm font-medium text-secondary-700">Notes</label>
-            <textarea className="input mt-1" rows={3} />
+            <textarea
+              className="input mt-1"
+              rows={3}
+              value={formData.notes}
+              onChange={(e) => setFormData((prev) => ({ ...prev, notes: e.target.value }))}
+            />
           </div>
         </div>
       </Modal>
@@ -240,6 +366,17 @@ export function LeadsPage() {
           </div>
         </div>
       </Modal>
+
+      {detailLead && (
+        <LeadDetailModal
+          lead={detailLead}
+          isOpen={isDetailModalOpen}
+          onClose={handleCloseDetailModal}
+          onComment={handleDetailComment}
+          onConvert={handleDetailConvert}
+          onSnooze={handleDetailSnooze}
+        />
+      )}
     </div>
   )
 }

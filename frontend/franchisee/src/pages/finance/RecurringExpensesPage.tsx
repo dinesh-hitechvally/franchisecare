@@ -29,13 +29,8 @@ export function RecurringExpensesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Card */}
       <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Recurring Expenses</h1>
-      </div>
-
-      <div className="py-2">
-        <h2 className="text-xl font-bold text-gray-700">Recurring Expenses</h2>
       </div>
 
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
@@ -103,15 +98,6 @@ export function RecurringExpensesPage() {
           </div>
         </div>
       </Card>
-
-      {/* Footer Support Info */}
-      <div className="text-center text-xs text-gray-400 pt-10 pb-6 border-t border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-        <span>Copyright FranchiseCare © 2026</span>
-        <div className="flex flex-col text-right">
-          <span>For Mate Support, please call 03 9514 9606</span>
-          <span>Monday – Friday: 9:00 AM – 10:30 PM | Saturday – Sunday: 9:00 AM – 6:00 PM</span>
-        </div>
-      </div>
     </div>
   )
 }

@@ -51,6 +51,7 @@ class ForumSeeder extends Seeder
         ];
 
         foreach ($sampleThreads as $threadData) {
+
             $thread = ForumThread::create([
                 'author_id' => $users->random()->id,
                 'title' => $threadData['title'],
@@ -68,13 +69,16 @@ class ForumSeeder extends Seeder
                     'content' => $this->getRandomComment(),
                 ]);
             }
+
         }
 
         $this->command->info('Forum seeded successfully with sample threads and comments.');
+
     }
 
     private function getRandomComment(): string
     {
+        
         $comments = [
             'Thanks for sharing this!',
             'Great idea! I\'ll definitely try this out.',
@@ -87,5 +91,6 @@ class ForumSeeder extends Seeder
         ];
 
         return $comments[array_rand($comments)];
+
     }
 }

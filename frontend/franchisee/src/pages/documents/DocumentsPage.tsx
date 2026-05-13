@@ -5,25 +5,24 @@ import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
+import { documentsApi } from '../../api/services'
 import type { Document } from '../../types'
-import { Plus, FileText, Download, Eye, Upload, Trash2 } from 'lucide-react'
+import { Plus, FileText, Download, Upload, MoreVertical } from 'lucide-react'
 import { format } from 'date-fns'
 
 export function DocumentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filterVisibility, setFilterVisibility] = useState('')
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ['documents', filterVisibility],
-    queryFn: async () => {
-      // Mock data
-      return [
-        { id: '1', title: 'Service Agreement Template', description: 'Standard service agreement for customers', fileUrl: '#', fileType: 'pdf', visibility: 'global', uploadedBy: '1', createdAt: new Date().toISOString() },
-        { id: '2', title: 'Staff Handbook', description: 'Employee guidelines and policies', fileUrl: '#', fileType: 'pdf', visibility: 'global', uploadedBy: '1', createdAt: new Date(Date.now() - 86400000).toISOString() },
-        { id: '3', title: 'Franchise Operations Manual', description: 'Local franchise procedures', fileUrl: '#', fileType: 'pdf', visibility: 'franchise', franchise_id: '1', uploadedBy: '1', createdAt: new Date(Date.now() - 172800000).toISOString() },
-        { id: '4', title: 'Safety Procedures', description: 'Health and safety guidelines', fileUrl: '#', fileType: 'docx', visibility: 'global', uploadedBy: '1', createdAt: new Date(Date.now() - 259200000).toISOString() },
-      ] as Document[]
-    },
+    queryFn: () =>
+      documentsApi.getAll(
+        filterVisibility
+          ? { visibility: filterVisibility as Document['visibility'] }
+          : undefined
+      ),
   })
 
   const visibilityColors = {
@@ -31,14 +30,12 @@ export function DocumentsPage() {
     franchise: 'bg-green-100 text-green-700',
   }
 
-  const filteredDocuments = filterVisibility
-    ? documents?.filter((d) => d.visibility === filterVisibility)
-    : documents
+  const filteredDocuments = documents ?? []
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">Documents</h1>
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-800">Documents</h1>
         <Button onClick={() => setIsModalOpen(true)} size="sm">
           <Plus className="w-4 h-4 mr-2" />
           Upload Document
@@ -81,21 +78,32 @@ export function DocumentsPage() {
                 {row.visibility}
               </span>
             )},
-            { key: 'createdAt', title: 'Uploaded', render: (row: Document) => format(new Date(row.created_at), 'MMM d, yyyy') },
+            { key: 'createdAt', title: 'Uploaded', render: (row: Document) => format(new Date(row.createdAt), 'MMM d, yyyy') },
             {
               key: 'actions',
-              title: 'Actions',
-              render: () => (
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="sm">
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-red-600 hover:text-red-700">
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+              title: 'Mgmt',
+              render: (row: Document) => (
+                <div className="relative flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                    className="p-1 rounded hover:bg-gray-100"
+                  >
+                    <MoreVertical className="w-5 h-5 text-gray-600" />
+                  </button>
+                  {openMenuId === row.id && (
+                    <div className="absolute right-0 top-7 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                      <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
+                        View
+                      </button>
+                      <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
+                        <Download className="w-4 h-4" /> Download
+                      </button>
+                      <button type="button" className="w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50">
+                        Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               ),
             },

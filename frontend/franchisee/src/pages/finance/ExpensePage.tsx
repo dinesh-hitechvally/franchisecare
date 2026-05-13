@@ -60,9 +60,9 @@ export function ExpensePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">Expenses</h1>
-        <Button onClick={() => setIsModalOpen(true)} size="sm">
+      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-bold text-gray-800">Expenses</h1>
+        <Button onClick={() => setIsModalOpen(true)} size="sm" className="flex-shrink-0">
           <Plus className="w-4 h-4 mr-2" />
           Add Expense
         </Button>

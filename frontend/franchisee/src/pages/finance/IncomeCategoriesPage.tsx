@@ -1,13 +1,40 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Check, X } from 'lucide-react'
+import { Button } from '../../components/ui/Button'
+import { Check, X, MoreVertical, Edit3, Trash2, Plus, Loader2 } from 'lucide-react'
+import { incomeCategoriesApi } from '../../api/services'
+import type { IncomeCategory } from '../../types'
 
 export function IncomeCategoriesPage() {
-  const [categories] = useState([
-    { id: '1', name: 'Booking Income', description: 'Income from Bookings', entries: 1489, gst: true, status: true, isSystem: true },
-    { id: '2', name: 'Test', description: 'This is a testing tax inc.', entries: 0, gst: true, status: true, isSystem: false },
-    { id: '3', name: 'Test Category', description: 'Testing category description', entries: 0, gst: false, status: true, isSystem: false },
-  ])
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const { data: categories = [], isLoading, isError, error } = useQuery({
+    queryKey: ['income-categories'],
+    queryFn: () => incomeCategoriesApi.getAll(),
+  })
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => incomeCategoriesApi.delete(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['income-categories'] })
+      setOpenMenuId(null)
+    },
+  })
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   return (
     <div className="space-y-6">
@@ -16,71 +43,123 @@ export function IncomeCategoriesPage() {
         <h1 className="text-2xl font-bold text-gray-800">Income Categories</h1>
       </div>
 
-      <div className="bg-white py-4 px-8 border-b border-gray-200 -mx-8 bg-gray-50/50">
-        <h2 className="text-xl font-bold text-gray-700">Income Categories</h2>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-3">
+        <Button
+          onClick={() => navigate('/finance/income/add-category')}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Category
+        </Button>
       </div>
 
-      <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left border-collapse">
-            <thead className="bg-white border-b border-gray-200">
-              <tr>
-                <th className="px-6 py-4 font-bold text-gray-900 border-r border-gray-100">Income Category</th>
-                <th className="px-6 py-4 font-bold text-gray-900 border-r border-gray-100">Description</th>
-                <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100"># of Entries</th>
-                <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100">GST Inclusive</th>
-                <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100">Status</th>
-                <th className="px-6 py-4 font-bold text-gray-900">Mgmt</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100 bg-white">
-              {categories.map((cat) => (
-                <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-gray-700 font-medium">{cat.name}</td>
-                  <td className="px-6 py-4 text-gray-600">{cat.description}</td>
-                  <td className="px-6 py-4 text-center text-gray-700 font-medium">{cat.entries}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center">
-                      {cat.gst ? (
-                        <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
-                      ) : (
-                        <X className="w-5 h-5 text-gray-400" strokeWidth={3} />
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex justify-center">
-                      {cat.status ? (
-                        <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
-                      ) : (
-                        <X className="w-5 h-5 text-gray-400" strokeWidth={3} />
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    {!cat.isSystem && (
-                      <div className="flex items-center gap-1">
-                        <button className="text-blue-600 hover:underline font-semibold">Edit</button>
-                        <span className="text-gray-400 font-light"> | </span>
-                        <button className="text-blue-600 hover:underline font-semibold">Delete</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      {/* Error State */}
+      {isError && (
+        <Card className="p-6 bg-red-50 border border-red-200">
+          <p className="text-red-700">
+            Error loading categories: {error instanceof Error ? error.message : 'Unknown error'}
+          </p>
+        </Card>
+      )}
 
-      {/* Footer Support Info */}
-      <div className="text-center text-xs text-gray-400 pt-10 pb-6 border-t border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-        <span>Copyright FranchiseCare © 2026</span>
-        <div className="flex flex-col text-right">
-          <span>For Mate Support, please call 03 9514 9606</span>
-          <span>Monday – Friday: 9:00 AM – 10:30 PM | Saturday – Sunday: 9:00 AM – 6:00 PM</span>
-        </div>
-      </div>
+      {/* Loading State */}
+      {isLoading ? (
+        <Card className="p-8 flex items-center justify-center">
+          <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+          <span className="ml-2 text-gray-600">Loading categories...</span>
+        </Card>
+      ) : (
+        <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
+          {categories.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              <p>No income categories found. Create your first category to get started.</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left border-collapse">
+                <thead className="bg-white border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-4 font-bold text-gray-900 border-r border-gray-100">Income Category</th>
+                    <th className="px-6 py-4 font-bold text-gray-900 border-r border-gray-100">Description</th>
+                    <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100">GST Inclusive</th>
+                    <th className="px-6 py-4 font-bold text-gray-900 text-center border-r border-gray-100">Status</th>
+                    <th className="px-6 py-4 font-bold text-gray-900 text-right">Mgmt</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {categories.map((cat: IncomeCategory) => (
+                    <tr key={cat.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 text-gray-700 font-medium">{cat.name}</td>
+                      <td className="px-6 py-4 text-gray-600">{cat.description || '-'}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          {cat.gst_inclusive ? (
+                            <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
+                          ) : (
+                            <X className="w-5 h-5 text-gray-400" strokeWidth={3} />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-center">
+                          {cat.is_active ? (
+                            <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
+                          ) : (
+                            <X className="w-5 h-5 text-gray-400" strokeWidth={3} />
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 relative flex justify-end">
+                        {!cat.is_system && (
+                          <>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setOpenMenuId(openMenuId === String(cat.id) ? null : String(cat.id))
+                              }}
+                              className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
+                            >
+                              <MoreVertical className="w-5 h-5" />
+                            </button>
+                            {openMenuId === String(cat.id) && (
+                              <div
+                                ref={menuRef}
+                                className="absolute right-4 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
+                              >
+                                <button
+                                  onClick={() => {
+                                    navigate(`/finance/income/edit-category/${cat.id}`)
+                                    setOpenMenuId(null)
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                                >
+                                  <Edit3 className="w-4 h-4 text-gray-400" />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    deleteMutation.mutate(String(cat.id))
+                                  }}
+                                  disabled={deleteMutation.isPending}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 disabled:opacity-50"
+                                >
+                                  <Trash2 className="w-4 h-4 text-red-400" />
+                                  {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </Card>
+      )}
     </div>
   )
 }

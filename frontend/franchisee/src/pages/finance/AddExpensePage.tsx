@@ -22,9 +22,9 @@ export function AddExpensePage() {
         <h1 className="text-2xl font-bold text-gray-800">Add Expense</h1>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-8 max-w-7xl mx-auto">
+      <div className="flex flex-col xl:flex-row gap-6 w-full">
         {/* Left Column - Form */}
-        <div className="flex-[3]">
+        <div className="flex-1 min-w-0">
           <Card className="p-8 shadow-md border border-gray-100 bg-white min-h-[600px]">
             <div className="mb-10">
               <h2 className="text-3xl font-light text-gray-400 uppercase tracking-tight">Add Expense</h2>
@@ -180,7 +180,7 @@ export function AddExpensePage() {
         </div>
 
         {/* Right Column - Receipt */}
-        <div className="flex-1">
+        <div className="xl:w-[360px] xl:flex-none">
           <Card className="p-8 shadow-md border border-gray-100 bg-white h-fit">
             <h2 className="text-3xl font-light text-gray-400 uppercase tracking-tight mb-8">Add/Update Receipt</h2>
             
@@ -196,15 +196,6 @@ export function AddExpensePage() {
               </div>
             </div>
           </Card>
-        </div>
-      </div>
-
-      {/* Footer Support Info */}
-      <div className="text-center text-xs text-gray-400 pt-10 pb-6 border-t border-gray-100 flex flex-col md:flex-row justify-between gap-4">
-        <span>Copyright FranchiseCare © 2026</span>
-        <div className="flex flex-col text-right">
-          <span>For Mate Support, please call 03 9514 9606</span>
-          <span>Monday – Friday: 9:00 AM – 10:30 PM | Saturday – Sunday: 9:00 AM – 6:00 PM</span>
         </div>
       </div>
     </div>
