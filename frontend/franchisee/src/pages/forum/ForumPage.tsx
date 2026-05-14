@@ -1,8 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { Card } from '../../components/ui/Card'
-import { List, ListOrdered, Link, Type, Image as ImageIcon, Heart, MessageSquare, Search, Settings, Plus, X, Users, MoreVertical, Pin, ArrowLeft, Bell, ChevronDown, CheckCheck } from 'lucide-react'
+import { List, ListOrdered, Link, Type, Image as ImageIcon, Heart, MessageSquare, Search, Settings, Plus, X, Users, MoreVertical, Pin, ArrowLeft, Bell, CheckCheck } from 'lucide-react'
 import { forumApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
@@ -44,7 +43,7 @@ export function ForumPage() {
   
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(10)
-  const [selectedTopic, setSelectedTopic] = useState<string | undefined>(undefined)
+  const [selectedTopic, _setSelectedTopic] = useState<string | undefined>(undefined)
   const [selectedGroup, setSelectedGroup] = useState<string | null | 'daily-chat'>(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [newPostContent, setNewPostContent] = useState('')
@@ -302,52 +301,102 @@ export function ForumPage() {
 
   return (
     <>
-    <div className="flex flex-col lg:flex-row gap-6">
-
-        {/* LEFT COLUMN */}
-        <div className="w-full lg:w-[280px] flex-shrink-0 space-y-6">
-          {/* Main User Card */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100 relative">
-            <div className="h-40 bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center p-4">
-              <div className="flex gap-2 items-center opacity-80">
-                <span className="text-blue-500 font-extrabold text-2xl italic tracking-tighter">BLUE WHEELERS</span>
-                <span className="text-red-500 font-extrabold text-2xl tracking-tighter mix-blend-multiply">DASH DOG WASH</span>
+    <div className="min-h-[calc(100vh-64px)] bg-[#f3f5f8]">
+      {/* Forum Banner Header */}
+      <div className="bg-white shadow-sm mb-6">
+        <div className="relative h-32 md:h-40 bg-gradient-to-r from-blue-600 via-blue-500 to-indigo-600 overflow-hidden">
+          {/* Decorative Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
+          </div>
+          
+          {/* Banner Content */}
+          <div className="absolute inset-0 flex items-center justify-between px-6 md:px-8">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <MessageSquare className="w-8 h-8 md:w-10 md:h-10 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl md:text-3xl font-bold text-white">Community Forum</h1>
+                <p className="text-blue-100 text-sm md:text-base">Connect, share, and grow together</p>
               </div>
             </div>
-            <div className="h-16 bg-gradient-to-t from-gray-900 to-transparent absolute bottom-[72px] w-full" />
-            <div className="absolute bottom-[72px] left-0 p-4 text-white">
-              <div className="font-semibold text-sm">{user?.name || 'Mate Support'}</div>
-              <div className="text-xs text-gray-200">South Yarra</div>
-            </div>
-            <div className="p-4 flex gap-2 border-t border-gray-100 items-center">
-              <button className="p-2 text-gray-600 hover:bg-gray-100 rounded">
-                <Settings className="w-4 h-4 text-gray-500" />
-              </button>
+            
+            {/* Quick Actions */}
+            <div className="hidden md:flex items-center gap-3">
               <button
                 onClick={() => navigate('/forum/profile')}
-                className="flex-1 bg-blue-700 text-white text-xs font-semibold py-2 rounded shadow-sm hover:bg-blue-800 transition-colors uppercase"
+                className="px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-white hover:bg-white/30 transition-all text-sm font-medium flex items-center gap-2"
               >
+                <Users className="w-4 h-4" />
                 My Profile
               </button>
-              <div className="relative flex-1">
+              <div className="relative">
                 <input 
                   type="text" 
-                  placeholder="SEARCH"
+                  placeholder="Search posts..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full bg-blue-700 text-white text-xs font-semibold py-2 px-3 rounded shadow-sm hover:bg-blue-800 transition-colors focus:outline-none placeholder-blue-300"
+                  className="w-48 px-4 py-2 bg-white/20 backdrop-blur-sm rounded-lg text-white placeholder-blue-200 focus:outline-none focus:bg-white/30 transition-all text-sm"
                 />
-                <Search className="w-3 h-3 text-blue-300 absolute right-2 top-1/2 -translate-y-1/2" />
+                <Search className="w-4 h-4 text-blue-200 absolute right-3 top-1/2 -translate-y-1/2" />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="px-4 md:px-6 lg:px-8 pb-6">
+        <div className="flex flex-col lg:flex-row gap-5 xl:gap-6">
+
+        {/* LEFT COLUMN */}
+        <div className="w-full lg:w-[260px] xl:w-[280px] flex-shrink-0 space-y-5">
+          {/* Main User Card */}
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+            <div className="h-24 bg-gradient-to-br from-amber-400 via-orange-400 to-red-400 relative">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="flex gap-2 items-center opacity-90">
+                  <span className="text-white font-extrabold text-lg italic tracking-tighter drop-shadow-md">BLUE WHEELERS</span>
+                </div>
+              </div>
+            </div>
+            <div className="relative px-4 pb-4">
+              <div className="flex items-end gap-3 -mt-8">
+                <img
+                  src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=f59e0b&color=fff&size=80`}
+                  alt={user?.name}
+                  className="w-16 h-16 rounded-full border-4 border-white shadow-lg bg-amber-100"
+                />
+                <div className="pb-1">
+                  <div className="font-semibold text-gray-900">{user?.name || 'Mate Support'}</div>
+                  <div className="text-xs text-gray-500">South Yarra</div>
+                </div>
+              </div>
+              <div className="flex gap-2 mt-4">
+                <button
+                  onClick={() => navigate('/forum/profile')}
+                  className="flex-1 bg-blue-600 text-white text-xs font-semibold py-2.5 rounded-lg shadow-sm hover:bg-blue-700 transition-colors"
+                >
+                  View Profile
+                </button>
+                <button 
+                  onClick={() => navigate('/forum/settings')}
+                  className="p-2.5 text-gray-500 hover:bg-gray-100 rounded-lg border border-gray-200"
+                >
+                  <Settings className="w-4 h-4" />
+                </button>
               </div>
             </div>
           </div>
 
           {/* Team Members */}
-          <div>
-            <div className="border-b-2 border-blue-700 pb-2 mb-4 inline-block">
-              <h3 className="text-lg text-gray-800">
-                Team Members - {selectedGroupData ? groupMembers.length : 201}
-              </h3>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-800">Team Members</h3>
+              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                {selectedGroupData ? groupMembers.length : 201}
+              </span>
             </div>
             {selectedGroupData && groupMembers.length > 0 ? (
               <>
@@ -356,22 +405,22 @@ export function ForumPage() {
                     <div
                       key={member.id}
                       onClick={() => navigateToProfile(member.id)}
-                      className="relative aspect-square rounded-md overflow-hidden group cursor-pointer bg-gray-200 hover:ring-2 hover:ring-blue-500 transition-all"
+                      className="relative aspect-square rounded-lg overflow-hidden group cursor-pointer bg-gray-200 hover:ring-2 hover:ring-blue-500 transition-all"
                     >
                       <img
                         src={member.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name || 'User')}&background=random`}
                         alt={member.name}
                         className="object-cover w-full h-full"
                       />
-                      <div className="absolute bottom-0 left-0 w-full bg-black/60 p-1 text-[10px] text-white truncate text-center">
+                      <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/70 to-transparent p-1.5 text-[10px] text-white truncate text-center">
                         {member.name}
                       </div>
                     </div>
                   ))}
                 </div>
                 {groupMembers.length > 6 && (
-                  <button className="text-blue-700 hover:text-blue-800 text-sm mt-4 flex items-center gap-1 font-medium">
-                    See all Team Members <span className="text-lg leading-none">&rarr;</span>
+                  <button className="w-full text-blue-600 hover:text-blue-700 text-sm mt-4 flex items-center justify-center gap-1 font-medium py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+                    See all members →
                   </button>
                 )}
               </>
@@ -383,31 +432,31 @@ export function ForumPage() {
               <>
                 <div className="grid grid-cols-3 gap-2">
                   {teamMembers.map((member) => (
-                    <div key={member.id} className="relative aspect-square rounded-md overflow-hidden group cursor-pointer bg-gray-200">
+                    <div key={member.id} className="relative aspect-square rounded-lg overflow-hidden group cursor-pointer bg-gray-200 hover:ring-2 hover:ring-blue-500 transition-all">
                       <img src={member.image} alt={member.name} className="object-cover w-full h-full" />
-                      <div className="absolute bottom-0 left-0 w-full bg-black/60 p-1 text-[10px] text-white truncate text-center">
+                      <div className="absolute bottom-0 left-0 w-full bg-gradient-to-t from-black/70 to-transparent p-1.5 text-[10px] text-white truncate text-center">
                         {member.name}
                       </div>
                     </div>
                   ))}
                 </div>
-                <button className="text-blue-700 hover:text-blue-800 text-sm mt-4 flex items-center gap-1 font-medium">
-                  See all Team Members <span className="text-lg leading-none">&rarr;</span>
+                <button className="w-full text-blue-600 hover:text-blue-700 text-sm mt-4 flex items-center justify-center gap-1 font-medium py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+                  See all members →
                 </button>
               </>
             )}
           </div>
 
           {/* Photos */}
-          <div>
-            <div className="border-b-2 border-blue-700 pb-2 mb-4 inline-block">
-              <h3 className="text-lg text-gray-800">Photos</h3>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-800">Photos</h3>
             </div>
             {selectedGroupData ? (
               threads.length > 0 ? (
                 <div className="grid grid-cols-3 gap-2">
                   {threads.slice(0, 6).map((thread, idx) => (
-                    <div key={thread.id || idx} className="aspect-square rounded-md overflow-hidden bg-gray-200">
+                    <div key={thread.id || idx} className="aspect-square rounded-lg overflow-hidden bg-gray-200">
                       <img
                         src={thread.author?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(thread.author?.name || 'User')}&background=random`}
                         alt="Photo"
@@ -424,7 +473,7 @@ export function ForumPage() {
             ) : (
               <div className="grid grid-cols-3 gap-2">
                 {photos.map((photo) => (
-                  <div key={photo.id} className="aspect-square rounded-md overflow-hidden bg-gray-200">
+                  <div key={photo.id} className="aspect-square rounded-lg overflow-hidden bg-gray-200">
                     <img src={photo.url} alt="Photo" className="object-cover w-full h-full" />
                   </div>
                 ))}
@@ -435,11 +484,12 @@ export function ForumPage() {
 
 
         {/* MIDDLE COLUMN */}
-        <div className="flex-1 flex flex-col space-y-4">
-          <div className="flex items-center justify-between mb-2">
+        <div className="flex-1 min-w-0 flex flex-col space-y-4">
+          {/* Section Header */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center justify-between">
             <div>
-              <h2 className="text-2xl text-gray-800">{displayTitle}</h2>
-              <div className="w-16 h-1 bg-blue-700 mt-1"></div>
+              <h2 className="text-xl font-bold text-gray-800">{displayTitle}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">Share updates and connect with the community</p>
             </div>
             {selectedGroup && selectedGroup !== 'daily-chat' ? (
               <button
@@ -447,77 +497,81 @@ export function ForumPage() {
                   setSelectedGroup('daily-chat');
                   setPage(1);
                 }}
-                className="bg-gray-600 hover:bg-gray-700 text-white text-sm font-semibold py-2 px-4 rounded shadow-sm flex items-center gap-2 transition-colors"
+                className="bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium py-2 px-4 rounded-lg flex items-center gap-2 transition-colors"
               >
                 <ArrowLeft className="w-4 h-4" />
                 Back to Daily Chat
               </button>
             ) : (
-              <button className="bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 px-4 rounded shadow-sm uppercase tracking-wide">
+              <button className="bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2 px-4 rounded-lg shadow-sm">
                 Forum Etiquette
               </button>
             )}
           </div>
 
           {/* Create Post Card */}
-          <Card className="p-0 overflow-hidden bg-white shadow-sm border border-gray-200">
-            <div className="flex p-4 gap-4 items-start border-b border-gray-100">
-              <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0 italic">
-                {user?.name?.slice(0, 2).toUpperCase() || 'BW'}
-              </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="flex p-5 gap-4 items-start">
+              <img
+                src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=3b82f6&color=fff`}
+                alt={user?.name}
+                className="w-12 h-12 rounded-full"
+              />
               <div className="flex-1">
                 {/* Rich Text Editor Toolbar Mockup */}
-                <div className="flex flex-wrap gap-2 mb-3 text-gray-600 border-b border-gray-100 pb-2">
-                  <button className="p-1 hover:bg-gray-100 rounded text-sm font-bold w-6 h-6 flex justify-center items-center">B</button>
-                  <button className="p-1 hover:bg-gray-100 rounded text-sm italic w-6 h-6 flex justify-center items-center">I</button>
-                  <button className="p-1 hover:bg-gray-100 rounded text-sm underline w-6 h-6 flex justify-center items-center">U</button>
-                  <button className="p-1 hover:bg-gray-100 rounded text-sm line-through w-6 h-6 flex justify-center items-center">S</button>
-                  <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button className="p-1 hover:bg-gray-100 rounded text-sm font-bold">H1</button>
-                  <button className="p-1 hover:bg-gray-100 rounded text-sm font-bold">H2</button>
-                  <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button className="p-1 hover:bg-gray-100 rounded"><List className="w-4 h-4" /></button>
-                  <button className="p-1 hover:bg-gray-100 rounded"><ListOrdered className="w-4 h-4" /></button>
-                  <div className="w-px h-5 bg-gray-200 mx-1"></div>
-                  <button className="p-1 hover:bg-gray-100 rounded"><Link className="w-4 h-4" /></button>
-                  <button className="p-1 hover:bg-gray-100 rounded"><Type className="w-4 h-4" /></button>
+                <div className="flex flex-wrap gap-1 mb-3 text-gray-500 border-b border-gray-100 pb-3">
+                  <button className="p-1.5 hover:bg-gray-100 rounded text-sm font-bold">B</button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded text-sm italic">I</button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded text-sm underline">U</button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded text-sm line-through">S</button>
+                  <div className="w-px h-5 bg-gray-200 mx-1 mt-1"></div>
+                  <button className="p-1.5 hover:bg-gray-100 rounded text-xs font-bold">H1</button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded text-xs font-bold">H2</button>
+                  <div className="w-px h-5 bg-gray-200 mx-1 mt-1"></div>
+                  <button className="p-1.5 hover:bg-gray-100 rounded"><List className="w-4 h-4" /></button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded"><ListOrdered className="w-4 h-4" /></button>
+                  <div className="w-px h-5 bg-gray-200 mx-1 mt-1"></div>
+                  <button className="p-1.5 hover:bg-gray-100 rounded"><Link className="w-4 h-4" /></button>
+                  <button className="p-1.5 hover:bg-gray-100 rounded"><Type className="w-4 h-4" /></button>
                 </div>
                 <textarea 
-                  className="w-full text-base outline-none resize-none placeholder-gray-400 min-h-[60px]"
-                  placeholder="Start a Post..."
+                  className="w-full text-base outline-none resize-none placeholder-gray-400 min-h-[80px]"
+                  placeholder="What's on your mind? Start a post..."
                   value={newPostContent}
                   onChange={(e) => setNewPostContent(e.target.value)}
                 ></textarea>
               </div>
             </div>
             {/* Create Post Actions */}
-            <div className="flex justify-between items-center p-3 px-5 bg-white">
-              <button className="text-gray-500 font-medium text-xs flex items-center gap-2 hover:text-gray-700">
+            <div className="flex justify-between items-center px-5 py-3 bg-gray-50 border-t border-gray-100">
+              <button className="text-gray-500 font-medium text-sm flex items-center gap-2 hover:text-gray-700">
                 <ImageIcon className="w-5 h-5" /> Add Photos/Album
               </button>
               <button 
                 onClick={handleCreatePost}
                 disabled={!newPostContent.trim() || createThreadMutation.isPending}
                 className={cn(
-                  "uppercase font-semibold text-sm tracking-wide transition-colors",
-                  newPostContent.trim() ? "text-blue-600 hover:text-blue-700" : "text-gray-300 cursor-not-allowed"
+                  "px-5 py-2 rounded-lg font-semibold text-sm transition-colors",
+                  newPostContent.trim() 
+                    ? "bg-blue-600 text-white hover:bg-blue-700" 
+                    : "bg-gray-200 text-gray-400 cursor-not-allowed"
                 )}
               >
                 {createThreadMutation.isPending ? 'Posting...' : 'Post'}
               </button>
             </div>
-          </Card>
+          </div>
 
-          {/* Feed Card */}
+          {/* Feed Cards */}
           {isLoading ? (
-            <div className="p-12 text-center text-gray-400 italic">Loading posts...</div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-gray-400 italic">Loading posts...</div>
           ) : displayThreads.length > 0 ? (
             displayThreads.map((thread: ForumThread) => (
               <div key={thread.id} id={`thread-${thread.id}`}>
-              <Card
+              <div
                 className={cn(
-                  "bg-white shadow-sm border",
-                  highlightedThreadId === thread.id ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-200"
+                  "bg-white rounded-xl shadow-sm border",
+                  highlightedThreadId === thread.id ? "border-blue-400 ring-2 ring-blue-100" : "border-gray-100"
                 )}
               >
                 <div className="p-6">
@@ -701,31 +755,35 @@ export function ForumPage() {
 
                   {/* Comment Box */}
                   <div className="flex gap-4 items-start">
-                    <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center font-bold text-blue-700 flex-shrink-0 italic text-sm">
-                      {user?.name?.slice(0, 2).toUpperCase() || 'BW'}
-                    </div>
-                    <div className="flex-1 border border-gray-200 rounded-md bg-white">
-                      <div className="flex flex-wrap gap-2 p-2 border-b border-gray-100 text-gray-600">
+                    <img
+                      src={user?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user?.name || 'User')}&background=3b82f6&color=fff`}
+                      alt={user?.name}
+                      className="w-10 h-10 rounded-full"
+                    />
+                    <div className="flex-1 border border-gray-200 rounded-lg bg-white overflow-hidden">
+                      <div className="flex flex-wrap gap-2 p-2 border-b border-gray-100 text-gray-500">
                         {/* Toolbar mockup */}
-                        <button className="p-1 hover:bg-gray-100 rounded text-xs font-bold w-6 h-6 flex justify-center items-center">B</button>
-                        <button className="p-1 hover:bg-gray-100 rounded text-xs italic w-6 h-6 flex justify-center items-center">I</button>
-                        <button className="p-1 hover:bg-gray-100 rounded text-xs underline w-6 h-6 flex justify-center items-center">U</button>
+                        <button className="p-1 hover:bg-gray-100 rounded text-xs font-bold">B</button>
+                        <button className="p-1 hover:bg-gray-100 rounded text-xs italic">I</button>
+                        <button className="p-1 hover:bg-gray-100 rounded text-xs underline">U</button>
                         <div className="w-px h-4 bg-gray-200 mx-1 mt-1"></div>
                         <button className="p-1 hover:bg-gray-100 rounded"><ImageIcon className="w-3.5 h-3.5" /></button>
                       </div>
                       <textarea 
-                        className="w-full text-sm outline-none resize-none placeholder-gray-500 p-3 min-h-[50px] bg-white border-b border-gray-100"
-                        placeholder="Type Comments"
+                        className="w-full text-sm outline-none resize-none placeholder-gray-400 p-3 min-h-[60px] bg-white"
+                        placeholder="Write a comment..."
                         value={commentContents[thread.id] || ''}
                         onChange={(e) => setCommentContents(prev => ({ ...prev, [thread.id]: e.target.value }))}
                       ></textarea>
-                      <div className="p-3 flex justify-end">
+                      <div className="px-3 py-2 flex justify-end border-t border-gray-100 bg-gray-50">
                         <button 
                           onClick={() => handleAddComment(thread.id)}
                           disabled={!commentContents[thread.id]?.trim() || addCommentMutation.isPending}
                           className={cn(
-                            "uppercase font-semibold px-6 py-2 rounded text-xs tracking-wide transition-colors",
-                            commentContents[thread.id]?.trim() ? "text-blue-600 hover:text-blue-700" : "text-gray-300 cursor-not-allowed bg-gray-50"
+                            "px-4 py-1.5 rounded-lg font-medium text-sm transition-colors",
+                            commentContents[thread.id]?.trim() 
+                              ? "bg-blue-600 text-white hover:bg-blue-700" 
+                              : "bg-gray-200 text-gray-400 cursor-not-allowed"
                           )}
                         >
                           Post
@@ -734,16 +792,16 @@ export function ForumPage() {
                     </div>
                   </div>
                 </div>
-              </Card>
+              </div>
               </div>
             ))
           ) : (
-            <div className="p-12 text-left text-gray-400 italic">No posts found.</div>
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12 text-center text-gray-400 italic">No posts found.</div>
           )}
 
           {/* Pagination */}
           {listMeta && (
-            <div className="mt-4">
+            <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-100 p-4">
               <TablePagination
                 meta={listMeta}
                 onPageChange={setPage}
@@ -756,12 +814,12 @@ export function ForumPage() {
 
 
         {/* RIGHT COLUMN */}
-        <div className="w-full lg:w-[280px] flex-shrink-0 space-y-8 mt-2">
+        <div className="w-full lg:w-[280px] xl:w-[320px] flex-shrink-0 space-y-5">
 
           {/* Notifications */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gray-50">
-              <Bell className="w-4 h-4 text-gray-600" />
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 bg-gradient-to-r from-blue-50 to-indigo-50">
+              <Bell className="w-4 h-4 text-blue-600" />
               <h3 className="text-sm font-semibold text-gray-800">
                 {selectedGroup && selectedGroup !== 'daily-chat'
                   ? `${selectedGroupData?.name} Notifications`
@@ -771,7 +829,7 @@ export function ForumPage() {
                 <select
                   value={notificationFilter}
                   onChange={(e) => setNotificationFilter(e.target.value as 'all' | 'unread')}
-                  className="text-[12px] font-medium px-2 py-1 rounded border border-gray-300 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="text-[11px] font-medium px-2 py-1 rounded-lg border border-gray-200 bg-white text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="all">All</option>
                   <option value="unread">Unread</option>
@@ -781,9 +839,9 @@ export function ForumPage() {
                   disabled={currentNotifications.filter(n => !n.is_read).length === 0 || markAllNotificationsReadMutation.isPending}
                   title="Mark all as read"
                   className={cn(
-                    "p-1.5 rounded border",
+                    "p-1.5 rounded-lg border transition-colors",
                     currentNotifications.filter(n => !n.is_read).length > 0
-                      ? "bg-white text-blue-700 border-blue-300 hover:bg-blue-50"
+                      ? "bg-white text-blue-600 border-blue-200 hover:bg-blue-50"
                       : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                   )}
                 >
@@ -792,7 +850,7 @@ export function ForumPage() {
               </div>
             </div>
 
-            <div className="p-3">
+            <div className="p-3 max-h-[300px] overflow-y-auto">
               {/* Notifications List */}
               <div className="space-y-2">
                 {currentNotifications.length > 0 ? (
@@ -801,22 +859,22 @@ export function ForumPage() {
                       key={notification.id}
                       onClick={() => handleNotificationClick(notification)}
                       className={cn(
-                        "p-3 rounded-lg border transition-colors cursor-pointer hover:bg-gray-50",
+                        "p-3 rounded-lg border transition-all cursor-pointer hover:shadow-sm",
                         notification.is_read
-                          ? "bg-white border-gray-200"
-                          : "bg-blue-50 border-blue-200"
+                          ? "bg-white border-gray-100 hover:border-gray-200"
+                          : "bg-blue-50 border-blue-200 hover:border-blue-300"
                       )}
                     >
-                      <p className="text-sm text-gray-800 mb-1">{notification.message}</p>
+                      <p className="text-sm text-gray-800 mb-1 line-clamp-2">{notification.message}</p>
                       <p className="text-xs text-gray-500">
                         {formatDistanceToNow(new Date(notification.created_at), { addSuffix: true })}
                       </p>
                     </div>
                   ))
                 ) : (
-                  <div className="text-center py-6 text-gray-400">
-                    <Bell className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p className="text-xs">
+                  <div className="text-center py-8 text-gray-400">
+                    <Bell className="w-10 h-10 mx-auto mb-2 opacity-20" />
+                    <p className="text-sm">
                       {notificationFilter === 'unread'
                         ? 'No unread notifications'
                         : selectedGroup && selectedGroup !== 'daily-chat'
@@ -830,27 +888,26 @@ export function ForumPage() {
           </div>
 
           {/* Topics */}
-          <div>
-            <div className="mb-4">
-              <h3 className="text-[17px] text-gray-800">Topics</h3>
-              <div className="w-12 h-1 bg-blue-700 mt-1"></div>
-            </div>
-            <div className="flex flex-wrap gap-x-2 gap-y-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <h3 className="font-semibold text-gray-800 mb-4">Topics</h3>
+            <div className="flex flex-wrap gap-2">
               {topicGroups.map((group) => {
                 const notificationCount = getNotificationCount(group.id)
                 return (
-                  <div key={group.id} className="relative inline-block mt-2 mr-2">
+                  <div key={group.id} className="relative">
                     <button
                       onClick={() => { setSelectedGroup(group.id); setPage(1); }}
                       className={cn(
-                        "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
-                        selectedGroup === group.id ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
+                        "text-sm font-medium py-2 px-3 rounded-lg transition-all",
+                        selectedGroup === group.id 
+                          ? "bg-blue-600 text-white shadow-sm" 
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       )}
                     >
                       {group.name}
                     </button>
                     {notificationCount > 0 && (
-                      <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
+                      <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                         {notificationCount}
                       </div>
                     )}
@@ -861,28 +918,27 @@ export function ForumPage() {
           </div>
 
           {/* State Groups */}
-          <div>
-            <div className="mb-4">
-              <h3 className="text-[17px] text-gray-800">State Groups</h3>
-              <div className="w-12 h-1 bg-blue-700 mt-1"></div>
-            </div>
-            <div className="flex flex-wrap gap-x-2 gap-y-3">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <h3 className="font-semibold text-gray-800 mb-4">State Groups</h3>
+            <div className="flex flex-wrap gap-2">
               {stateGroups.map((group) => {
                 const notificationCount = getNotificationCount(group.id)
 
                 return (
-                <div key={group.id} className="relative inline-block mt-2 mr-2">
+                <div key={group.id} className="relative">
                   <button
                     onClick={() => { setSelectedGroup(group.id); setPage(1); }}
                     className={cn(
-                      "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
-                      selectedGroup === group.id ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
+                      "text-sm font-medium py-2 px-3 rounded-lg transition-all",
+                      selectedGroup === group.id 
+                        ? "bg-blue-600 text-white shadow-sm" 
+                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                     )}
                   >
                     {group.name}
                   </button>
                   {notificationCount > 0 && (
-                    <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
+                    <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                       {notificationCount}
                     </div>
                   )}
@@ -893,29 +949,30 @@ export function ForumPage() {
           </div>
 
           {/* User Groups */}
-          <div>
-            <div className="mb-4">
-              <h3 className="text-[17px] text-gray-800">User Groups</h3>
-              <div className="w-12 h-1 bg-blue-700 mt-1"></div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-800">User Groups</h3>
             </div>
             {customGroups.length > 0 ? (
-              <div className="flex flex-wrap gap-x-2 gap-y-3">
+              <div className="flex flex-wrap gap-2">
                 {customGroups.map((group) => {
                   const notificationCount = getNotificationCount(group.id)
 
                   return (
-                  <div key={group.id} className="relative inline-block mt-2 mr-2">
+                  <div key={group.id} className="relative">
                     <button
                       onClick={() => { setSelectedGroup(group.id); setPage(1); }}
                       className={cn(
-                        "bg-white border text-sm font-medium py-2 px-4 shadow-[0_1px_2px_rgba(0,0,0,0.05)] hover:bg-gray-50 transition-colors",
-                        selectedGroup === group.id ? "border-blue-500 text-blue-600" : "border-gray-200 text-gray-800"
+                        "text-sm font-medium py-2 px-3 rounded-lg transition-all",
+                        selectedGroup === group.id 
+                          ? "bg-blue-600 text-white shadow-sm" 
+                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
                       )}
                     >
                       #{group.name}
                     </button>
                     {notificationCount > 0 && (
-                      <div className="absolute -top-2.5 -right-2.5 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border border-white">
+                      <div className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                         {notificationCount}
                       </div>
                     )}
@@ -924,13 +981,13 @@ export function ForumPage() {
                 })}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 italic py-2">No user groups yet. Create one below!</p>
+              <p className="text-sm text-gray-500 italic">No user groups yet. Create one below!</p>
             )}
           </div>
 
           {/* All Groups / My Groups Toggle */}
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-            <div className="flex border-b border-gray-200">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="flex">
               <button
                 onClick={() => { setGroupsViewTab('all'); setShowAllGroups(true); }}
                 className={cn(
@@ -959,12 +1016,14 @@ export function ForumPage() {
         </div>
 
       </div>
+      </div>
+    </div>
 
       {/* Create Group Modal */}
       {isCreateGroupModalOpen && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b border-gray-100">
               <h3 className="text-lg font-semibold text-gray-800">Create Custom Group</h3>
               <button
                 onClick={() => setIsCreateGroupModalOpen(false)}
@@ -980,7 +1039,7 @@ export function ForumPage() {
                   type="text"
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Enter group name"
                 />
               </div>
@@ -989,13 +1048,13 @@ export function ForumPage() {
                 <textarea
                   value={newGroupDescription}
                   onChange={(e) => setNewGroupDescription(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   rows={3}
                   placeholder="Enter group description"
                 />
               </div>
             </div>
-            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-200">
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-gray-100 bg-gray-50 rounded-b-xl">
               <button
                 onClick={() => setIsCreateGroupModalOpen(false)}
                 className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 transition-colors"

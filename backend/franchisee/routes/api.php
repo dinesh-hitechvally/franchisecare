@@ -21,8 +21,14 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('bookings', \App\Http\Controllers\Api\BookingController::class);
     Route::post('bookings/{booking}/rebook', [\App\Http\Controllers\Api\BookingController::class, 'rebook']);
     Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\BookingController::class, 'updateStatus']);
+    Route::get('bookings/{booking}/audits', [\App\Http\Controllers\Api\BookingController::class, 'getHistory']);
+    Route::get('bookings/{booking}/inventory-audits', [\App\Http\Controllers\Api\BookingController::class, 'getInventoryHistory']);
     Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
     Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);
+    Route::post('bookings/{booking}/send-invoice', [\App\Http\Controllers\Api\BookingController::class, 'sendInvoice']);
+    Route::post('bookings/{booking}/send-receipt', [\App\Http\Controllers\Api\BookingController::class, 'sendReceipt']);
+    Route::post('bookings/{booking}/send-sms-confirmation', [\App\Http\Controllers\Api\BookingController::class, 'sendSmsConfirmation']);
+    Route::post('bookings/{booking}/send-email-confirmation', [\App\Http\Controllers\Api\BookingController::class, 'sendEmailConfirmation']);
     // Booking Reports
     Route::get('reports/booking', [\App\Http\Controllers\Api\BookingReportController::class, 'index']);
     Route::get('reports/service', [\App\Http\Controllers\Api\ServiceReportController::class, 'index']);
@@ -62,6 +68,16 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Services
     Route::apiResource('services', \App\Http\Controllers\Api\ServiceController::class);
+    Route::apiResource('service-inventory-usages', \App\Http\Controllers\Api\ServiceInventoryUsageController::class)->except(['show', 'create', 'edit']);
+
+    // Inventory
+    Route::get('inventory/items', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
+    Route::post('inventory/items', [\App\Http\Controllers\Api\InventoryController::class, 'store']);
+    Route::put('inventory/items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'update']);
+    Route::delete('inventory/items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'destroy']);
+
+    // Inventory Orders
+    Route::apiResource('inventory/orders', \App\Http\Controllers\Api\InventoryOrderController::class);
 
     // News
     Route::apiResource('news', \App\Http\Controllers\Api\NewsController::class);
@@ -139,4 +155,16 @@ Route::middleware('auth:sanctum')->group(function () {
     // Reports
     Route::get('reports/benchmarking', [\App\Http\Controllers\Api\BenchmarkingController::class, 'index']);
     Route::get('reports/income', [\App\Http\Controllers\Api\IncomeReportController::class, 'index']);
+    Route::get('reports/tracking', [\App\Http\Controllers\Api\ReportController::class, 'tracking']);
+    Route::get('reports/gst', [\App\Http\Controllers\Api\ReportController::class, 'gstSummary']);
+    Route::get('reports/profit-loss', [\App\Http\Controllers\Api\ReportController::class, 'profitLoss']);
+
+    // Website Settings
+    Route::get('website-settings', [\App\Http\Controllers\Api\WebsiteSettingsController::class, 'show']);
+    Route::put('website-settings', [\App\Http\Controllers\Api\WebsiteSettingsController::class, 'update']);
+
+    // SMS Credits
+    Route::get('sms-credits', [\App\Http\Controllers\Api\SmsCreditController::class, 'index']);
+    Route::post('sms-credits/purchase', [\App\Http\Controllers\Api\SmsCreditController::class, 'purchase']);
+    Route::get('sms-credits/history', [\App\Http\Controllers\Api\SmsCreditController::class, 'history']);
 });

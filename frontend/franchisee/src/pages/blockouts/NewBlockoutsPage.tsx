@@ -76,7 +76,6 @@ export function NewBlockoutsPage() {
       active: true,
     }
 
-    console.log('Blockout payload:', payload)
     createMutation.mutate(payload)
   }
 

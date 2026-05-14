@@ -141,6 +141,66 @@ export interface Booking {
   updatedAt: string
 }
 
+export interface BookingAuditEntry {
+  id: string
+  booking_id: string
+  customer_id?: string | null
+  company_id?: string | null
+  action_type: string
+  previous_status?: string | null
+  status?: string | null
+  start_date?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  total?: number | string | null
+  duration?: number | null
+  calendar_color?: string | null
+  send_sms?: boolean
+  send_email?: boolean
+  notes?: string | null
+  details_summary?: Array<{
+    pet_id?: string | number | null
+    pet_name?: string | null
+    service_id?: string | number | null
+    service_name?: string | null
+    price?: number | string | null
+    duration?: number | null
+  }>
+  meta?: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface BookingInventoryAuditEntry {
+  id: string
+  booking_id: string
+  company_id?: string | null
+  inventory_id?: string | null
+  inventory_item_name?: string | null
+  change_type: string
+  quantity_before?: number | null
+  quantity_after?: number | null
+  quantity_change?: number | null
+  notes?: string | null
+  meta?: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ServiceInventoryUsage {
+  id: string
+  company_id?: string | null
+  service_id: string
+  service?: Service
+  inventory_name: string
+  quantity_per_booking: number | string
+  unit: string
+  notes?: string | null
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface Blockout {
   id: string
   companyId: string
@@ -169,23 +229,36 @@ export interface InventoryItem {
   minStock: number
   unitPrice: number
   companyId: string
+  unit?: string
+  notes?: string
+  isActive?: boolean
 }
 
 export interface InventoryOrder {
   id: string
-  type: 'office' | 'shampoo' | 'treats' | 'uniforms' | 'marketing'
-  items: OrderItem[]
-  status: 'pending' | 'ordered' | 'received' | 'completed'
-  totalCost: number
-  companyId: string
-  createdAt: string
-  updatedAt: string
+  order_number: string
+  type: 'inventory' | 'treats' | 'marketing'
+  items: InventoryOrderItem[]
+  status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
+  total: number
+  notes?: string
+  ordered_at?: string
+  shipped_at?: string
+  delivered_at?: string
+  created_at: string
+  updated_at: string
+  user?: { id: string; name: string }
 }
 
-export interface OrderItem {
-  itemId: string
+export interface InventoryOrderItem {
+  id: string
+  inventory_order_id: string
+  inventory_item_id?: string
+  product_name: string
+  product_sku?: string
   quantity: number
-  unitCost: number
+  unit_price: number
+  total_price: number
 }
 
 export interface IncomeCategory {

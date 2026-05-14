@@ -143,6 +143,7 @@ export function EmailHistoryPage() {
           isOpen={!!viewEmail}
           onClose={() => setViewEmail(null)}
           title={viewEmail.subject}
+          size="xl"
         >
           <div className="space-y-3 text-sm text-gray-700">
             <div className="flex gap-2">
@@ -158,10 +159,16 @@ export function EmailHistoryPage() {
               <span>{formatDateTime(viewEmail.sent_at ?? viewEmail.created_at)}</span>
             </div>
             <hr />
-            <div
-              className="prose max-w-none text-gray-800"
-              dangerouslySetInnerHTML={{ __html: viewEmail.body ?? '<em>No content</em>' }}
-            />
+            {/* Render HTML email in iframe for proper isolation */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
+              <iframe
+                srcDoc={viewEmail.body || '<p style="padding: 20px; color: #666;">No content</p>'}
+                title="Email Preview"
+                className="w-full border-0"
+                style={{ minHeight: '500px', height: '60vh' }}
+                sandbox="allow-same-origin"
+              />
+            </div>
           </div>
         </Modal>
       )}

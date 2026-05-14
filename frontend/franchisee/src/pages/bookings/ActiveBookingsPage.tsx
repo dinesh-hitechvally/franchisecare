@@ -10,9 +10,11 @@ import type { Booking } from '../../types'
 import { Link } from 'react-router-dom'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
+import { useToastStore } from '../../store/toastStore'
 
 export function ActiveBookingsPage() {
   const queryClient = useQueryClient()
+  const { addToast } = useToastStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -53,6 +55,31 @@ export function ActiveBookingsPage() {
       queryClient.invalidateQueries({ queryKey: ['bookings', 'completed'] })
       setOpenMenuId(null)
       setMenuPos(null)
+    },
+  })
+
+  const sendInvoiceMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.sendInvoice(bookingId),
+    onSuccess: (response) => {
+      addToast(response.message || 'Invoice sent successfully', 'success')
+      setOpenMenuId(null)
+      setMenuPos(null)
+    },
+    onError: (error: any) => {
+      addToast(error?.response?.data?.message || 'Failed to send invoice', 'error')
+    },
+  })
+
+  const cancelBookingMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'cancelled'),
+    onSuccess: () => {
+      addToast('Booking cancelled successfully', 'success')
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      setOpenMenuId(null)
+      setMenuPos(null)
+    },
+    onError: (error: any) => {
+      addToast(error?.response?.data?.message || 'Failed to cancel booking', 'error')
     },
   })
 
@@ -195,7 +222,12 @@ export function ActiveBookingsPage() {
                             <Edit3 className="w-4 h-4 text-gray-400" />
                             Edit
                           </Link>
-                          <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors">
+                          <button
+                            onClick={() => {
+                              sendInvoiceMutation.mutate(row.id)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
                             <Mail className="w-4 h-4 text-gray-400" />
                             Email Invoice
                           </button>
@@ -224,7 +256,10 @@ export function ActiveBookingsPage() {
                             <Check className="w-4 h-4 text-emerald-500" />
                             Mark Complete
                           </button>
-                          <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1">
+                          <button
+                            onClick={() => cancelBookingMutation.mutate(row.id)}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1"
+                          >
                             <Trash2 className="w-4 h-4 text-red-400" />
                             Cancel
                           </button>

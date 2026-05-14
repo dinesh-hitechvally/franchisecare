@@ -1,64 +1,24 @@
 import { useState } from 'react'
-import { Printer, Download, Search, TrendingDown, TrendingUp, DollarSign } from 'lucide-react'
-
-interface PLCategory {
-  name: string
-  values: { [key: string]: number | null }
-  total: number
-}
-
-interface PLSection {
-  title: string
-  categories: PLCategory[]
-  total: number
-}
+import { useQuery } from '@tanstack/react-query'
+import { Printer, Download, Search, TrendingUp } from 'lucide-react'
+import { reportsApi } from '../../api/services'
+import { format, startOfYear, endOfYear } from 'date-fns'
 
 export function ProfitLossPage() {
-  const [fromDate, setFromDate] = useState('2026-03-05')
-  const [toDate, setToDate] = useState('2026-04-02')
+  const [dateFrom, setDateFrom] = useState(format(startOfYear(new Date()), 'yyyy-MM-dd'))
+  const [dateTo, setDateTo] = useState(format(endOfYear(new Date()), 'yyyy-MM-dd'))
 
-  const salesSection: PLSection = {
-    title: 'Sales',
-    categories: [
-      { name: 'Booking Income', values: { 'Mar 2026': 659.09, 'Apr 2026': null }, total: 659.09 },
-      { name: 'Test', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-      { name: 'Test Category', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-    ],
-    total: 659.09
-  }
+  const { data, isLoading, refetch } = useQuery({
+    queryKey: ['profit-loss', dateFrom, dateTo],
+    queryFn: () => reportsApi.getProfitLoss({ date_from: dateFrom, date_to: dateTo }),
+  })
 
-  const expenseSections: PLSection[] = [
-    {
-      title: 'Administration',
-      categories: [
-        { name: 'Franchise Fees', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-        { name: 'Mate Fees', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-        { name: 'Internet', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-        { name: 'Accountancy', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-      ],
-      total: 0
-    },
-    {
-      title: 'Motor Vehicle',
-      categories: [
-        { name: 'Fuel', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-        { name: 'Registration', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-        { name: 'Maintenance', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-      ],
-      total: 0
-    },
-    {
-      title: 'Trailer/Mobile Salon',
-      categories: [
-        { name: 'Equipment', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-        { name: 'Shampoos/Cologne', values: { 'Mar 2026': null, 'Apr 2026': null }, total: 0 },
-      ],
-      total: 0
-    }
-  ]
-
-  const totalExpenses = expenseSections.reduce((acc, sec) => acc + sec.total, 0)
-  const netProfit = salesSection.total - totalExpenses
+  const salesItems = data?.sales?.items ?? []
+  const totalSales = data?.sales?.total ?? 0
+  const expenseItems = data?.expenses?.items ?? []
+  const totalExpenses = data?.expenses?.total ?? 0
+  const netProfit = data?.net_profit ?? 0
+  const profitMargin = data?.profit_margin ?? 0
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
@@ -77,8 +37,8 @@ export function ProfitLossPage() {
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">From</label>
             <input
               type="date"
-              value={fromDate}
-              onChange={(e) => setFromDate(e.target.value)}
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
               className="w-full text-sm p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
           </div>
@@ -86,12 +46,15 @@ export function ProfitLossPage() {
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest">To</label>
             <input
               type="date"
-              value={toDate}
-              onChange={(e) => setToDate(e.target.value)}
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
               className="w-full text-sm p-2.5 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             />
           </div>
-          <button className="flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all shadow-md font-bold text-sm">
+          <button
+            onClick={() => refetch()}
+            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all shadow-md font-bold text-sm"
+          >
             <Search size={18} />
             Generate Statement
           </button>
@@ -111,89 +74,97 @@ export function ProfitLossPage() {
             </button>
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-900">RetailCare Pty Ltd</h2>
-          <p className="text-xs text-gray-500 mt-1">240 Chapel St, 240 Chapel St, Prahran, Victoria, 3141</p>
-          <p className="text-xs text-gray-500">Phone: 0430831238 | Mobile: 0430831237</p>
-          <p className="text-xs text-blue-600 mb-4 cursor-pointer hover:underline">admin@retailcare.com.au</p>
-          <p className="text-xs font-bold text-gray-600 uppercase tracking-widest">ABN: 123457</p>
-          <div className="mt-8">
-            <h3 className="text-lg font-bold text-gray-800 uppercase tracking-[0.2em]">Income/Expense Statement</h3>
-            <p className="text-xs font-medium text-gray-400 mt-1 italic">5th Mar, 2026 - 2nd Apr, 2026</p>
+          <h2 className="text-2xl font-bold text-gray-900">Profit & Loss Statement</h2>
+          <div className="mt-4">
+            <p className="text-xs font-medium text-gray-400 italic">
+              Period: {format(new Date(dateFrom), 'PPP')} - {format(new Date(dateTo), 'PPP')}
+            </p>
           </div>
         </div>
 
-        {/* Statement Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="bg-gray-100/80">
-                <th className="p-2 text-left text-[11px] font-bold text-gray-600 uppercase tracking-wider w-[40%]"></th>
-                <th className="p-2 text-right text-[11px] font-bold text-gray-600 uppercase tracking-wider">Mar 2026</th>
-                <th className="p-2 text-right text-[11px] font-bold text-gray-600 uppercase tracking-wider">Apr 2026</th>
-                <th className="p-2 text-right text-[11px] font-bold text-gray-600 uppercase tracking-wider">Total</th>
-              </tr>
-            </thead>
-            
-            {/* Sales Section */}
-            <tbody>
-              <tr className="bg-gray-50">
-                <td colSpan={4} className="px-4 py-2 text-[12px] font-bold text-gray-700 uppercase tracking-widest border-b border-gray-200">{salesSection.title}</td>
-              </tr>
-              {salesSection.categories.map((cat, idx) => (
-                <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                  <td className="px-6 py-1.5 text-xs text-gray-600">{cat.name}</td>
-                  <td className="px-2 py-1.5 text-xs text-gray-900 border-l border-gray-100 text-right">{cat.values['Mar 2026'] ? `$${cat.values['Mar 2026'].toFixed(2)}` : '-'}</td>
-                  <td className="px-2 py-1.5 text-xs text-gray-900 border-l border-gray-100 text-right">{cat.values['Apr 2026'] ? `$${cat.values['Apr 2026'].toFixed(2)}` : '-'}</td>
-                  <td className="px-2 py-1.5 text-xs text-gray-900 border-l border-gray-100 text-right font-semibold">{cat.total > 0 ? `$${cat.total.toFixed(2)}` : '-'}</td>
+        {isLoading ? (
+          <div className="p-16 text-center text-gray-400">Loading...</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-gray-100/80">
+                  <th className="p-3 text-left text-[11px] font-bold text-gray-600 uppercase tracking-wider w-[60%]">Category</th>
+                  <th className="p-3 text-right text-[11px] font-bold text-gray-600 uppercase tracking-wider">Count</th>
+                  <th className="p-3 text-right text-[11px] font-bold text-gray-600 uppercase tracking-wider">Amount</th>
                 </tr>
-              ))}
-              <tr className="bg-gray-50/50 font-bold border-t-2 border-gray-200">
-                <td className="px-4 py-2 text-xs text-gray-800 uppercase tracking-wider text-left">Total Sales</td>
-                <td className="px-2 py-2 text-xs text-gray-900 border-l border-gray-100 text-right">$659.09</td>
-                <td className="px-2 py-2 text-xs text-gray-900 border-l border-gray-100 text-right">-</td>
-                <td className="px-2 py-2 text-xs text-gray-900 border-l border-gray-100 text-right font-black">$659.09</td>
-              </tr>
-            </tbody>
-
-            {/* Expenses Section */}
-            <tbody>
-              <tr className="bg-gray-50 border-t-4 border-white">
-                <td colSpan={4} className="px-4 py-2 text-[12px] font-bold text-gray-700 uppercase tracking-widest border-b border-gray-200">Expenses</td>
-              </tr>
-              {expenseSections.map((section, sidx) => (
-                <React.Fragment key={sidx}>
-                  <tr className="bg-white">
-                    <td colSpan={4} className="px-6 py-2 text-[11px] font-bold text-gray-500 uppercase tracking-wider">{section.title}</td>
+              </thead>
+              
+              {/* Sales/Income Section */}
+              <tbody>
+                <tr className="bg-green-50">
+                  <td colSpan={3} className="px-4 py-3 text-[12px] font-bold text-green-700 uppercase tracking-widest border-b border-green-200">
+                    Income / Sales
+                  </td>
+                </tr>
+                {salesItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-xs text-gray-400 italic text-center">No income records</td>
                   </tr>
-                  {section.categories.map((cat, cidx) => (
-                    <tr key={cidx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
-                      <td className="px-8 py-1 text-xs text-gray-600">{cat.name}</td>
-                      <td className="px-2 py-1 text-xs text-gray-400 border-l border-gray-100 text-right">-</td>
-                      <td className="px-2 py-1 text-xs text-gray-400 border-l border-gray-100 text-right">-</td>
-                      <td className="px-2 py-1 text-xs text-gray-400 border-l border-gray-100 text-right">-</td>
+                ) : (
+                  salesItems.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-2 text-sm text-gray-700">{item.category}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500 text-right">{item.count}</td>
+                      <td className="px-3 py-2 text-sm text-green-600 font-semibold text-right">${item.amount.toLocaleString()}</td>
                     </tr>
-                  ))}
-                </React.Fragment>
-              ))}
-              <tr className="bg-gray-50 font-bold border-t-2 border-gray-200">
-                <td className="px-4 py-3 text-sm text-gray-800 uppercase tracking-wider text-left">Total Expenses</td>
-                <td className="px-2 py-3 text-sm text-gray-400 border-l border-gray-100 text-right">-</td>
-                <td className="px-2 py-3 text-sm text-gray-400 border-l border-gray-100 text-right">-</td>
-                <td className="px-2 py-3 text-sm text-gray-400 border-l border-gray-100 text-right">-</td>
-              </tr>
-            </tbody>
+                  ))
+                )}
+                <tr className="bg-green-50 font-bold border-t-2 border-green-200">
+                  <td className="px-4 py-3 text-sm text-green-800 uppercase tracking-wider text-left">Total Income</td>
+                  <td className="px-3 py-3 text-sm text-green-700 text-right"></td>
+                  <td className="px-3 py-3 text-sm text-green-700 font-black text-right">${totalSales.toLocaleString()}</td>
+                </tr>
+              </tbody>
 
-            {/* Bottom Summary */}
-            <tfoot>
-              <tr className="bg-gray-900 text-white font-black">
-                <td className="px-4 py-4 text-sm uppercase tracking-[0.1em] text-left">Profit / Loss</td>
-                <td className="px-2 py-4 text-sm border-l border-gray-800 text-right">$659.09</td>
-                <td className="px-2 py-4 text-sm border-l border-gray-800 text-right">-</td>
-                <td className="px-2 py-4 text-sm border-l border-gray-800 text-right">$659.09</td>
-              </tr>
-            </tfoot>
-          </table>
-        </div>
+              {/* Expenses Section */}
+              <tbody>
+                <tr className="bg-red-50 border-t-4 border-white">
+                  <td colSpan={3} className="px-4 py-3 text-[12px] font-bold text-red-700 uppercase tracking-widest border-b border-red-200">
+                    Expenses
+                  </td>
+                </tr>
+                {expenseItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-4 text-xs text-gray-400 italic text-center">No expense records</td>
+                  </tr>
+                ) : (
+                  expenseItems.map((item, idx) => (
+                    <tr key={idx} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                      <td className="px-6 py-2 text-sm text-gray-700">{item.category}</td>
+                      <td className="px-3 py-2 text-sm text-gray-500 text-right">{item.count}</td>
+                      <td className="px-3 py-2 text-sm text-red-600 font-semibold text-right">${item.amount.toLocaleString()}</td>
+                    </tr>
+                  ))
+                )}
+                <tr className="bg-red-50 font-bold border-t-2 border-red-200">
+                  <td className="px-4 py-3 text-sm text-red-800 uppercase tracking-wider text-left">Total Expenses</td>
+                  <td className="px-3 py-3 text-sm text-red-700 text-right"></td>
+                  <td className="px-3 py-3 text-sm text-red-700 font-black text-right">${totalExpenses.toLocaleString()}</td>
+                </tr>
+              </tbody>
+
+              {/* Bottom Summary */}
+              <tfoot>
+                <tr className={`${netProfit >= 0 ? 'bg-green-900' : 'bg-red-900'} text-white font-black`}>
+                  <td className="px-4 py-4 text-sm uppercase tracking-[0.1em] text-left">
+                    Net {netProfit >= 0 ? 'Profit' : 'Loss'}
+                    <span className="ml-2 text-xs font-normal opacity-75">({profitMargin}% margin)</span>
+                  </td>
+                  <td className="px-3 py-4 text-sm text-right"></td>
+                  <td className="px-3 py-4 text-lg font-black text-right">
+                    {netProfit >= 0 ? '' : '-'}${Math.abs(netProfit).toLocaleString()}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   )

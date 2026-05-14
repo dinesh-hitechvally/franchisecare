@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
+import { Link } from 'react-router-dom'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Card } from '../../components/ui/Card'
 import { TablePagination } from '../../components/ui/TablePagination'
@@ -10,6 +10,7 @@ import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Check, X } from 'lucide-react'
 import type { Booking } from '../../types'
 import { createPortal } from 'react-dom'
+import { useToastStore } from '../../store/toastStore'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
@@ -104,7 +105,8 @@ function DropdownItem({
 }
 
 export function CompletedBookingsPage() {
-  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const { addToast } = useToastStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [perPage, setPerPage] = useState(25)
@@ -112,7 +114,44 @@ export function CompletedBookingsPage() {
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
+
+  // Cancel booking mutation
+  const cancelBookingMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'cancelled'),
+    onSuccess: () => {
+      addToast('Booking cancelled successfully', 'success')
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      setCancellingBookingId(null)
+    },
+    onError: () => {
+      addToast('Failed to cancel booking', 'error')
+      setCancellingBookingId(null)
+    },
+  })
+
+  // Send receipt mutation
+  const sendReceiptMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.sendReceipt(bookingId),
+    onSuccess: () => {
+      addToast('Receipt sent successfully', 'success')
+    },
+    onError: () => {
+      addToast('Failed to send receipt', 'error')
+    },
+  })
+
+  const handleCancelBooking = (bookingId: string) => {
+    if (window.confirm('Are you sure you want to cancel this booking?')) {
+      setCancellingBookingId(bookingId)
+      cancelBookingMutation.mutate(bookingId)
+    }
+  }
+
+  const handleSendReceipt = (bookingId: string) => {
+    sendReceiptMutation.mutate(bookingId)
+  }
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400)
@@ -281,12 +320,12 @@ export function CompletedBookingsPage() {
                             <DropdownItem
                               onClick={() => {
                                 setOpenMenuId(null)
-                                // TODO: Cancel booking
+                                handleCancelBooking(row.id)
                               }}
                               icon={XCircle}
                               className="text-red-600 hover:text-red-700"
                             >
-                              Cancel
+                              {cancellingBookingId === row.id ? 'Cancelling...' : 'Cancel'}
                             </DropdownItem>
                             <div className="border-t border-gray-200 my-1" />
                             <DropdownItem
@@ -301,11 +340,11 @@ export function CompletedBookingsPage() {
                             <DropdownItem
                               onClick={() => {
                                 setOpenMenuId(null)
-                                // TODO: Send receipt
+                                handleSendReceipt(row.id)
                               }}
                               icon={Send}
                             >
-                              Send Receipt
+                              {sendReceiptMutation.isPending ? 'Sending...' : 'Send Receipt'}
                             </DropdownItem>
                           </DropdownMenu>
                         </div>

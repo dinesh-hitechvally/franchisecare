@@ -33,7 +33,7 @@ export const unbookedCustomerReportsApi = {
 };
 
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -166,6 +166,28 @@ function mapBlockoutFromApi(b: any): any {
 function mapBlockoutsFromApi(rows: unknown): any[] {
   if (!Array.isArray(rows)) return []
   return rows.map((row) => mapBlockoutFromApi(row))
+}
+
+function mapInventoryItemFromApi(row: any): InventoryItem {
+  const raw = row as any
+  return {
+    id: String(raw.id),
+    name: raw.name || '',
+    category: raw.category || 'office',
+    sku: raw.sku || '',
+    quantity: Number(raw.quantity ?? 0),
+    minStock: Number(raw.min_stock ?? raw.minStock ?? 0),
+    unitPrice: Number(raw.unit_price ?? raw.unitPrice ?? 0),
+    companyId: raw.company_id ? String(raw.company_id) : raw.companyId,
+    unit: raw.unit || undefined,
+    notes: raw.notes || undefined,
+    isActive: raw.is_active !== undefined ? !!raw.is_active : raw.isActive,
+  }
+}
+
+function mapInventoryItemsFromApi(rows: unknown): InventoryItem[] {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => mapInventoryItemFromApi(row))
 }
 
 function mapLeadFromApi(l: any): Lead {
@@ -400,6 +422,24 @@ export const bookingsApi = {
   updateStatus: (id: string, status: Booking['status']) =>
     apiClient.patch<Booking>(`/bookings/${id}/status`, { status }),
 
+  getAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: BookingAuditEntry[]; current_page: number; last_page: number }>(`/bookings/${id}/audits?page=${page}`),
+
+  getInventoryAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: BookingInventoryAuditEntry[]; current_page: number; last_page: number }>(`/bookings/${id}/inventory-audits?page=${page}`),
+
+  sendInvoice: (id: string) =>
+    apiClient.post<{ message: string }>(`/bookings/${id}/send-invoice`),
+
+  sendReceipt: (id: string) =>
+    apiClient.post<{ message: string }>(`/bookings/${id}/send-receipt`),
+
+  sendSmsConfirmation: (id: string) =>
+    apiClient.post<{ message: string }>(`/bookings/${id}/send-sms-confirmation`),
+
+  sendEmailConfirmation: (id: string) =>
+    apiClient.post<{ message: string }>(`/bookings/${id}/send-email-confirmation`),
+
   delete: (id: string) => apiClient.delete(`/bookings/${id}`),
 
   generateInvoice: (id: string) => {
@@ -498,24 +538,60 @@ export const blockoutsApi = {
 
 export const inventoryApi = {
   getItems: (params?: { category?: string; franchiseId?: string }) =>
-    apiClient.get<InventoryItem[]>('/inventory/items', { params }),
+    apiClient.get<InventoryItem[]>('/inventory/items', { params }).then((rows) => mapInventoryItemsFromApi(rows)),
   
-  createItem: (data: Omit<InventoryItem, 'id'>) =>
-    apiClient.post<InventoryItem>('/inventory/items', data),
+  createItem: (data: Omit<InventoryItem, 'id' | 'companyId'>) =>
+    apiClient.post<InventoryItem>('/inventory/items', {
+      name: data.name,
+      category: data.category,
+      sku: data.sku,
+      quantity: data.quantity,
+      min_stock: data.minStock,
+      unit_price: data.unitPrice,
+      unit: data.unit,
+      notes: data.notes,
+      is_active: data.isActive,
+    }).then((row) => mapInventoryItemFromApi(row)),
   
   updateItem: (id: string, data: Partial<InventoryItem>) =>
-    apiClient.put<InventoryItem>(`/inventory/items/${id}`, data),
+    apiClient.put<InventoryItem>(`/inventory/items/${id}`, {
+      name: data.name,
+      category: data.category,
+      sku: data.sku,
+      quantity: data.quantity,
+      min_stock: data.minStock,
+      unit_price: data.unitPrice,
+      unit: data.unit,
+      notes: data.notes,
+      is_active: data.isActive,
+    }).then((row) => mapInventoryItemFromApi(row)),
   
   deleteItem: (id: string) => apiClient.delete(`/inventory/items/${id}`),
   
-  getOrders: (params?: { status?: string; franchiseId?: string }) =>
-    apiClient.get<InventoryOrder[]>('/inventory/orders', { params }),
+  getOrders: (params?: { type?: string; status?: string }) =>
+    apiClient.get<{ data: InventoryOrder[]; meta: PaginationMeta }>('/inventory/orders', { params }),
   
-  createOrder: (data: Omit<InventoryOrder, 'id' | 'createdAt' | 'updatedAt'>) =>
-    apiClient.post<InventoryOrder>('/inventory/orders', data),
+  createOrder: (data: { type: string; notes?: string; items: Array<{ product_name: string; product_sku?: string; inventory_item_id?: string; quantity: number; unit_price: number }> }) =>
+    apiClient.post<{ message: string; data: InventoryOrder }>('/inventory/orders', data),
   
-  updateOrderStatus: (id: string, status: InventoryOrder['status']) =>
-    apiClient.patch<InventoryOrder>(`/inventory/orders/${id}/status`, { status }),
+  updateOrder: (id: string, data: { status?: string; notes?: string }) =>
+    apiClient.put<{ message: string; data: InventoryOrder }>(`/inventory/orders/${id}`, data),
+
+  deleteOrder: (id: string) =>
+    apiClient.delete(`/inventory/orders/${id}`),
+}
+
+export const serviceInventoryUsageApi = {
+  getAll: (params?: { service_id?: string; search?: string; page?: number; per_page?: number }) =>
+    apiClient.get<{ data: ServiceInventoryUsage[]; meta?: PaginationMeta } | ServiceInventoryUsage[]>('/service-inventory-usages', { params }),
+
+  create: (data: Omit<ServiceInventoryUsage, 'id' | 'service' | 'created_at' | 'updated_at'>) =>
+    apiClient.post<ServiceInventoryUsage>('/service-inventory-usages', data),
+
+  update: (id: string, data: Partial<ServiceInventoryUsage>) =>
+    apiClient.put<ServiceInventoryUsage>(`/service-inventory-usages/${id}`, data),
+
+  delete: (id: string) => apiClient.delete(`/service-inventory-usages/${id}`),
 }
 
 export const financeApi = {
@@ -931,4 +1007,106 @@ export const reportsApi = {
       }>
       message: string
     }>('/reports/income', { params }),
+
+  getTracking: (params?: { year?: number }) =>
+    apiClient.get<{
+      year: number
+      monthly_data: Array<{
+        month: string
+        month_number: number
+        total_bookings: number
+        completed_bookings: number
+        cancelled_bookings: number
+        revenue: number
+      }>
+      totals: {
+        total_bookings: number
+        completed_bookings: number
+        cancelled_bookings: number
+        total_revenue: number
+      }
+    }>('/reports/tracking', { params }),
+
+  getGstSummary: (params?: { date_from?: string; date_to?: string }) =>
+    apiClient.get<{
+      period: { from: string; to: string }
+      gst_collected: {
+        items: Array<{ description: string; date: string; amount: number; gst: number }>
+        total: number
+      }
+      gst_paid: {
+        items: Array<{ description: string; date: string; amount: number; gst: number }>
+        total: number
+      }
+      net_gst: number
+    }>('/reports/gst', { params }),
+
+  getProfitLoss: (params?: { date_from?: string; date_to?: string }) =>
+    apiClient.get<{
+      period: { from: string; to: string }
+      sales: {
+        items: Array<{ category: string; amount: number; count: number }>
+        total: number
+      }
+      expenses: {
+        items: Array<{ category: string; amount: number; count: number }>
+        total: number
+      }
+      gross_profit: number
+      net_profit: number
+      profit_margin: number
+    }>('/reports/profit-loss', { params }),
+}
+
+export interface WebsiteSettings {
+  site_title: string
+  tagline: string
+  contact_email: string
+  enable_online_booking: boolean
+  show_pricing: boolean
+  website_url: string
+  meta_title: string
+  meta_keywords: string
+  meta_description: string
+}
+
+export const websiteSettingsApi = {
+  get: () => apiClient.get<WebsiteSettings>('/website-settings'),
+  update: (data: Partial<WebsiteSettings>) =>
+    apiClient.put<{ message: string; data: WebsiteSettings }>('/website-settings', data),
+}
+
+export interface SmsPackage {
+  id: string
+  title: string
+  price: number
+  quantity: number
+  rate: number
+}
+
+export interface SmsCreditInfo {
+  balance: number
+  total_purchased: number
+  total_used: number
+  packages: SmsPackage[]
+}
+
+export interface SmsCreditPurchase {
+  id: number
+  package_id: string
+  quantity: number
+  amount: number
+  status: string
+  purchased_at: string
+  user?: { id: number; name: string }
+}
+
+export const smsCreditsApi = {
+  get: () => apiClient.get<SmsCreditInfo>('/sms-credits'),
+  purchase: (packageId: string) =>
+    apiClient.post<{ message: string; new_balance: number; purchase: SmsCreditPurchase }>(
+      '/sms-credits/purchase',
+      { package_id: packageId }
+    ),
+  history: () => apiClient.get<{ data: SmsCreditPurchase[] }>('/sms-credits/history'),
 }

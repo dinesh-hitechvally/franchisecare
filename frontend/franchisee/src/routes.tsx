@@ -92,6 +92,7 @@ import { UserProfilePage } from './pages/user-profile/UserProfilePage'
 import { LatestNewsPage } from './pages/news/LatestNewsPage'
 import { NewsPage } from './pages/news/NewsPage'
 import { SettingsPage } from './pages/settings/SettingsPage'
+import { AccountSettingsPage } from './pages/settings/AccountSettingsPage'
 import { ChangePasswordPage } from './pages/settings/ChangePasswordPage'
 import { CompletedOrdersPage } from './pages/orders/CompletedOrdersPage'
 
@@ -125,6 +126,7 @@ export function AppRoutes() {
         <Route path="bookings/new" element={<NewBookingsPage />} />
         <Route path="bookings/edit/:id" element={<NewBookingsPage />} />
         <Route path="bookings/recurring" element={<RecurringBookingsPage />} />
+        <Route path="bookings/recurring/edit/:id" element={<NewBookingsPage />} />
         <Route path="bookings/cancelled-recurring" element={<CancelledRecurringPage />} />
 
         {/* Calendar Routes */}
@@ -208,6 +210,7 @@ export function AppRoutes() {
         {/* Other Routes */}
         <Route path="forum" element={<ForumPage />} />
         <Route path="forum/profile" element={<UserProfilePage />} />
+        <Route path="forum/settings" element={<AccountSettingsPage />} />
         <Route path="forum/user/:userId" element={<UserProfilePage />} />
         <Route path="news" element={<LatestNewsPage />} />
         <Route path="news/manage" element={<NewsPage />} />

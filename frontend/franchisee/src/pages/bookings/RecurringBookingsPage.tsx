@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
@@ -12,6 +13,7 @@ import type { Booking } from '../../types'
 import { RecurringBookingDetailModal } from '../../components/modals/RecurringBookingDetailModal'
 
 export function RecurringBookingsPage() {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [hideExpired, setHideExpired] = useState(true)
   const [debouncedSearch, setDebouncedSearch] = useState('')
@@ -254,7 +256,7 @@ export function RecurringBookingsPage() {
                           <button
                             onClick={() => {
                               setOpenMenuId(null)
-                              // TODO: Navigate to edit
+                              navigate(`/bookings/recurring/edit/${row.id}`)
                             }}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           >

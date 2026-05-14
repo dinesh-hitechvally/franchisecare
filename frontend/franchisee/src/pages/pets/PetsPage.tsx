@@ -61,7 +61,6 @@ export function PetsPage() {
     const canvas = canvasRef.current
     if (canvas) {
       const signature = canvas.toDataURL('image/png')
-      console.log('Signature saved:', signature)
       setIsSignatureModalOpen(false)
       clearSignature()
     }

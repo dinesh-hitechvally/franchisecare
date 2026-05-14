@@ -32,7 +32,7 @@
         <div class="header-section">
             <table class="grid">
                 <tr>
-                    <td><span class="label">Date</span><span class="value">{{ $booking->date }}</span></td>
+                    <td><span class="label">Date</span><span class="value">{{ $booking->start_date?->format('d/m/Y') }}</span></td>
                     <td><span class="label">Time</span><span class="value">{{ $booking->start_time }}</span></td>
                 </tr>
                 <tr>
@@ -54,8 +54,8 @@
             <tbody>
                 @foreach($booking->details as $detail)
                 <tr>
-                    <td>{{ $detail->service->name }}</td>
-                    <td>{{ $detail->pet->name }}</td>
+                    <td>{{ $detail->service->name ?? 'N/A' }}</td>
+                    <td>{{ $detail->item->name ?? 'N/A' }}</td>
                     <td style="text-align: right;">${{ number_format($detail->price, 2) }}</td>
                 </tr>
                 @endforeach

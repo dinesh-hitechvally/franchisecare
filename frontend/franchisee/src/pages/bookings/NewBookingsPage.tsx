@@ -2,20 +2,22 @@ import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Search, ChevronDown, ChevronUp, Plus, Trash2, Calendar, User, Phone, Mail, MapPin, XCircle, Edit2, Info, Check, Clock } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, XCircle, Edit2, Check } from 'lucide-react'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { TimePicker } from '../../components/ui/TimePicker'
 import { customersApi, servicesApi, bookingsApi, recurringBookingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import { useNavigate, Link, useParams } from 'react-router-dom'
+import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
 import type { Customer } from '../../types'
 
 export function NewBookingsPage() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
+  const location = useLocation()
   const { id: editBookingId } = useParams<{ id: string }>()
   const isEditMode = Boolean(editBookingId)
+  const isRecurringEdit = isEditMode && location.pathname.includes('/recurring/')
   const { addToast } = useToastStore()
   const hasInitializedEditForm = useRef(false)
 
@@ -76,15 +78,17 @@ export function NewBookingsPage() {
   })
 
   const { data: bookingToEdit } = useQuery({
-    queryKey: ['bookings', 'edit', editBookingId],
-    queryFn: () => bookingsApi.getById(String(editBookingId)),
+    queryKey: ['bookings', 'edit', editBookingId, isRecurringEdit],
+    queryFn: () => isRecurringEdit 
+      ? recurringBookingsApi.getById(String(editBookingId))
+      : bookingsApi.getById(String(editBookingId)),
     enabled: !!editBookingId,
   })
 
   const { data: editCustomerData } = useQuery({
-    queryKey: ['customers', 'edit', bookingToEdit?.customerId],
-    queryFn: () => customersApi.getById(String(bookingToEdit?.customerId)),
-    enabled: !!bookingToEdit?.customerId,
+    queryKey: ['customers', 'edit', bookingToEdit?.customerId || bookingToEdit?.customer_id],
+    queryFn: () => customersApi.getById(String(bookingToEdit?.customerId || bookingToEdit?.customer_id)),
+    enabled: !!(bookingToEdit?.customerId || bookingToEdit?.customer_id),
   })
 
   // Handle click outside for search results
@@ -129,6 +133,17 @@ export function NewBookingsPage() {
     onError: () => addToast('Failed to update booking', 'error'),
   })
 
+  const updateRecurringBookingMutation = useMutation({
+    mutationFn: ({ bookingId, data }: { bookingId: string; data: any }) =>
+      recurringBookingsApi.update(bookingId, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['recurring-bookings'] })
+      addToast('Recurring booking updated successfully', 'success')
+      navigate('/bookings/recurring')
+    },
+    onError: () => addToast('Failed to update recurring booking', 'error'),
+  })
+
   useEffect(() => {
     if (!isEditMode || !bookingToEdit || hasInitializedEditForm.current) {
       return
@@ -141,18 +156,27 @@ export function NewBookingsPage() {
       setShowSearchResults(false)
     }
 
-    setBookingDate(bookingToEdit.startDate || '')
-    setBookingStartTime(bookingToEdit.startTime || '')
-    setBookingEndTime(bookingToEdit.endTime || '')
+    setBookingDate(bookingToEdit.startDate || bookingToEdit.start_date || '')
+    setBookingStartTime(bookingToEdit.startTime || bookingToEdit.start_time || '')
+    setBookingEndTime(bookingToEdit.endTime || bookingToEdit.end_time || '')
     setBookingNotes(bookingToEdit.notes || '')
-    setSendSmsConfirmation(!!bookingToEdit.sendSms)
-    setSendEmailConfirmation(!!bookingToEdit.sendEmail)
-    setCalendarColor(bookingToEdit.calendarColor || '#4F46E5')
-    setIsRecurring(!!bookingToEdit.isRecurring)
+    setSendSmsConfirmation(!!bookingToEdit.sendSms || !!bookingToEdit.send_sms)
+    setSendEmailConfirmation(!!bookingToEdit.sendEmail || !!bookingToEdit.send_email)
+    setCalendarColor(bookingToEdit.calendarColor || bookingToEdit.calendar_color || '#4F46E5')
+    setIsRecurring(isRecurringEdit || !!bookingToEdit.isRecurring)
 
-    const detailMap = (bookingToEdit.details || []).reduce((acc, detail) => {
-      const petId = String(detail.petId)
-      if (!petId || !detail.serviceId) {
+    // Handle recurring booking specific fields
+    if (isRecurringEdit) {
+      setRecurringFrequency(String(bookingToEdit.frequency || bookingToEdit.recurringFrequency || '1'))
+      setRecurringRepeatDay(bookingToEdit.repeat_day || bookingToEdit.repeatDay || '')
+      setRecurringRepeatTime(bookingToEdit.repeat_time || bookingToEdit.repeatTime || '')
+      setRecurringRepeatUntil(bookingToEdit.repeat_until || bookingToEdit.repeatUntil || '')
+      setRecurringAutoExtend(!!bookingToEdit.auto_extend || !!bookingToEdit.autoExtend)
+    }
+
+    const detailMap = (bookingToEdit.details || []).reduce((acc: Record<string, { serviceId: string; price: number }[]>, detail: any) => {
+      const petId = String(detail.petId || detail.pet_id || detail.item_id)
+      if (!petId || !(detail.serviceId || detail.service_id)) {
         return acc
       }
 
@@ -161,8 +185,8 @@ export function NewBookingsPage() {
       }
 
       acc[petId].push({
-        serviceId: String(detail.serviceId),
-        price: Number(detail.price || 0),
+        serviceId: String(detail.serviceId || detail.service_id),
+        price: Number(detail.price || detail.service_price || 0),
       })
 
       return acc
@@ -172,7 +196,7 @@ export function NewBookingsPage() {
     setExpandedPetIds(Object.keys(detailMap))
 
     hasInitializedEditForm.current = true
-  }, [isEditMode, bookingToEdit, editCustomerData])
+  }, [isEditMode, isRecurringEdit, bookingToEdit, editCustomerData])
 
   const bookingTotal = useMemo(() => {
     let total = 0
@@ -219,23 +243,46 @@ export function NewBookingsPage() {
     )
 
     if (isEditMode) {
-      updateBookingMutation.mutate({
-        bookingId: String(editBookingId),
-        data: {
-          customer_id: selectedCustomer.id,
-          services: services,
-          start_date: bookingDate,
-          start_time: bookingStartTime,
-          end_time: bookingEndTime,
-          calendar_color: calendarColor,
-          status: bookingToEdit?.status || 'active',
-          total: parseFloat(bookingTotal),
-          duration: totalDuration,
-          notes: bookingNotes,
-          send_sms: sendSmsConfirmation,
-          send_email: sendEmailConfirmation,
-        },
-      })
+      if (isRecurringEdit) {
+        updateRecurringBookingMutation.mutate({
+          bookingId: String(editBookingId),
+          data: {
+            customer_id: selectedCustomer.id,
+            services: services,
+            start_date: bookingDate,
+            start_time: bookingStartTime,
+            end_time: bookingEndTime,
+            calendar_color: calendarColor,
+            status: bookingToEdit?.status || 'active',
+            total: parseFloat(bookingTotal),
+            duration: totalDuration,
+            notes: bookingNotes,
+            frequency: parseInt(recurringFrequency),
+            repeat_day: recurringRepeatDay,
+            repeat_time: recurringRepeatTime,
+            repeat_until: recurringRepeatUntil,
+            auto_extend: recurringAutoExtend,
+          },
+        })
+      } else {
+        updateBookingMutation.mutate({
+          bookingId: String(editBookingId),
+          data: {
+            customer_id: selectedCustomer.id,
+            services: services,
+            start_date: bookingDate,
+            start_time: bookingStartTime,
+            end_time: bookingEndTime,
+            calendar_color: calendarColor,
+            status: bookingToEdit?.status || 'active',
+            total: parseFloat(bookingTotal),
+            duration: totalDuration,
+            notes: bookingNotes,
+            send_sms: sendSmsConfirmation,
+            send_email: sendEmailConfirmation,
+          },
+        })
+      }
       return
     }
 
