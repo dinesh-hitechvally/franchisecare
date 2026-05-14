@@ -19,6 +19,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Bookings
     Route::apiResource('bookings', \App\Http\Controllers\Api\BookingController::class);
+    Route::post('bookings/{booking}/rebook', [\App\Http\Controllers\Api\BookingController::class, 'rebook']);
     Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\BookingController::class, 'updateStatus']);
     Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
     Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);

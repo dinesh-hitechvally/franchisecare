@@ -8,6 +8,7 @@ use App\Models\BookingRecurring;
 use App\Models\Income;
 use App\Models\Service;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use PDF;
 
 class BookingController extends Controller
@@ -136,6 +137,68 @@ class BookingController extends Controller
     public function show(Booking $booking)
     {
         return response()->json($booking->load(['customer', 'details.item', 'details.service']));
+    }
+
+    /**
+     * Rebook an existing booking into a new active booking on a different date/time.
+     */
+    public function rebook(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'start_date' => 'required|date',
+            'start_time' => 'required',
+            'end_time' => 'nullable',
+        ]);
+
+        $booking->load(['customer', 'details.item', 'details.service']);
+
+        if ($booking->details->isEmpty()) {
+            return response()->json([
+                'message' => 'Unable to rebook this booking because it has no service details.',
+            ], 422);
+        }
+
+        $details = $booking->details->map(function ($detail) {
+            return [
+                'item_id' => $detail->item_id,
+                'service_id' => $detail->service_id,
+                'service_price' => $detail->price,
+            ];
+        })->values()->all();
+
+        $serviceIds = collect($details)->pluck('service_id')->unique()->toArray();
+        $services = Service::whereIn('id', $serviceIds)->get()->keyBy('id');
+
+        return DB::transaction(function () use ($booking, $validated, $details, $services) {
+            $rebooked = Booking::create([
+                'company_id' => auth()->user()->company_id,
+                'customer_id' => $booking->customer_id,
+                'start_date' => $validated['start_date'],
+                'start_time' => $validated['start_time'],
+                'end_time' => $validated['end_time'] ?? $booking->end_time,
+                'calendar_color' => $booking->calendar_color,
+                'send_sms' => $booking->send_sms,
+                'send_email' => $booking->send_email,
+                'status' => 'active',
+                'total' => $booking->total,
+                'duration' => $booking->duration,
+                'notes' => $booking->notes,
+            ]);
+
+            foreach ($details as $serviceItem) {
+                $serviceId = $serviceItem['service_id'];
+
+                $rebooked->details()->create([
+                    'company_id' => auth()->user()->company_id,
+                    'item_id' => $serviceItem['item_id'],
+                    'service_id' => $serviceId,
+                    'price' => $serviceItem['service_price'],
+                    'duration' => $services->has($serviceId) ? $services[$serviceId]->duration : 0,
+                ]);
+            }
+
+            return response()->json($rebooked->fresh(['customer', 'details.item', 'details.service']), 201);
+        });
     }
 
     /**

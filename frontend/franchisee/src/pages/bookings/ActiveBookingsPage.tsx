@@ -1,16 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { format } from 'date-fns'
-import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X, RotateCcw } from 'lucide-react'
 import type { Booking } from '../../types'
 import { Link } from 'react-router-dom'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 
 export function ActiveBookingsPage() {
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
@@ -18,6 +20,7 @@ export function ActiveBookingsPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
+  const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -42,6 +45,16 @@ export function ActiveBookingsPage() {
 
   const bookings = listResult?.data ?? []
   const meta = listResult?.meta
+
+  const markCompleteMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'completed'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'active'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'completed'] })
+      setOpenMenuId(null)
+      setMenuPos(null)
+    },
+  })
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -193,6 +206,24 @@ export function ActiveBookingsPage() {
                             <FileText className="w-4 h-4 text-gray-400" />
                             View Invoice
                           </button>
+                          <button
+                            onClick={() => {
+                              setRebookBooking(row)
+                              setOpenMenuId(null)
+                              setMenuPos(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors border-t border-gray-100 mt-1"
+                          >
+                            <RotateCcw className="w-4 h-4 text-blue-500" />
+                            Re Book
+                          </button>
+                          <button
+                            onClick={() => markCompleteMutation.mutate(row.id)}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors border-t border-gray-100 mt-1"
+                          >
+                            <Check className="w-4 h-4 text-emerald-500" />
+                            Mark Complete
+                          </button>
                           <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1">
                             <Trash2 className="w-4 h-4 text-red-400" />
                             Cancel
@@ -219,6 +250,12 @@ export function ActiveBookingsPage() {
       </Card>
 
       <BookingDetailModal isOpen={!!viewBooking} onClose={() => setViewBooking(null)} booking={viewBooking} />
+
+      <RebookBookingModal
+        isOpen={!!rebookBooking}
+        onClose={() => setRebookBooking(null)}
+        booking={rebookBooking}
+      />
     </div>
   )
 }

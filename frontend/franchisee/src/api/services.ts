@@ -390,6 +390,9 @@ export const bookingsApi = {
   
   create: (data: Omit<Booking, 'id' | 'createdAt' | 'updatedAt' | 'status'>) =>
     apiClient.post<Booking>('/bookings', data),
+
+  rebook: (id: string, data: { start_date: string; start_time: string; end_time?: string }) =>
+    apiClient.post<Booking>(`/bookings/${id}/rebook`, data),
   
   update: (id: string, data: Partial<Booking>) =>
     apiClient.put<Booking>(`/bookings/${id}`, data),

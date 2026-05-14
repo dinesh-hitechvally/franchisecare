@@ -1,22 +1,35 @@
 import { useState, useEffect } from 'react'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { format } from 'date-fns'
-import { Search, Plus, MoreVertical, Eye } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, RotateCcw, RotateCw } from 'lucide-react'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 
 export function CancelBookingsPage() {
+  const queryClient = useQueryClient()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
+  const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+
+  const restoreBookingMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'active'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'cancelled'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'active'] })
+      setOpenMenuId(null)
+      setMenuPos(null)
+    },
+  })
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400)
@@ -78,7 +91,7 @@ export function CancelBookingsPage() {
                 <th className="px-5 py-4 text-sm font-semibold text-gray-800 text-center">Time</th>
                 <th className="px-5 py-4 text-sm font-semibold text-gray-800 text-right">Total $</th>
                 <th className="px-5 py-4 text-sm font-semibold text-gray-800">Notes</th>
-                <th className="px-5 py-4 text-sm font-semibold text-gray-800">Mgmt</th>
+                <th className="px-5 py-4 text-sm font-semibold text-gray-800 text-right">Mgmt</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -114,38 +127,60 @@ export function CancelBookingsPage() {
 
                     <td className="px-5 py-4 text-sm text-gray-700 leading-snug align-top pr-8">{row.notes}</td>
 
-                    <td className="px-5 py-4 text-sm align-top">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          if (openMenuId === row.id) {
-                            setOpenMenuId(null); setMenuPos(null)
-                          } else {
-                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
-                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
-                            setOpenMenuId(row.id)
-                          }
-                        }}
-                        className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
-                      >
-                        <MoreVertical className="w-5 h-5" />
-                      </button>
+                    <td className="px-5 py-4 text-sm align-top text-right">
+                      <div className="flex justify-end">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (openMenuId === row.id) {
+                              setOpenMenuId(null); setMenuPos(null)
+                            } else {
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                              setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                              setOpenMenuId(row.id)
+                            }
+                          }}
+                          className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
+                        >
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                      </div>
 
                       <PortalMenu
                         isOpen={openMenuId === row.id}
                         onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
                         position={menuPos}
                       >
-                          <button
-                            onClick={() => {
-                              setViewBooking(row)
-                              setOpenMenuId(null); setMenuPos(null)
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <Eye className="w-4 h-4 text-gray-400" />
-                            View
-                          </button>
+                        <button
+                          onClick={() => {
+                            setViewBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <Eye className="w-4 h-4 text-gray-400" />
+                          View
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRebookBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <RotateCcw className="w-4 h-4 text-blue-500" />
+                          Re Book
+                        </button>
+                        <button
+                          onClick={() => {
+                            restoreBookingMutation.mutate(row.id)
+                          }}
+                          disabled={restoreBookingMutation.isPending}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                        >
+                          <RotateCw className="w-4 h-4 text-emerald-500" />
+                          {restoreBookingMutation.isPending ? 'Restoring...' : 'Re Store'}
+                        </button>
                       </PortalMenu>
                     </td>
                   </tr>
@@ -166,6 +201,12 @@ export function CancelBookingsPage() {
       </Card>
 
       <BookingDetailModal isOpen={!!viewBooking} onClose={() => setViewBooking(null)} booking={viewBooking} />
+
+      <RebookBookingModal
+        isOpen={!!rebookBooking}
+        onClose={() => setRebookBooking(null)}
+        booking={rebookBooking}
+      />
     </div>
   )
 }

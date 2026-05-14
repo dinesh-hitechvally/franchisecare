@@ -1,12 +1,13 @@
 import { useState, useRef, useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Card } from '../../components/ui/Card'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
-import { Search, Plus, MoreVertical, Eye, Edit, XCircle, FileText, Send, Check, X } from 'lucide-react'
+import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
+import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Check, X } from 'lucide-react'
 import type { Booking } from '../../types'
 import { createPortal } from 'react-dom'
 
@@ -103,11 +104,13 @@ function DropdownItem({
 }
 
 export function CompletedBookingsPage() {
+  const navigate = useNavigate()
   const [searchTerm, setSearchTerm] = useState('')
   const [debouncedSearch, setDebouncedSearch] = useState('')
   const [perPage, setPerPage] = useState(25)
   const [page, setPage] = useState(1)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
+  const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
 
@@ -269,11 +272,11 @@ export function CompletedBookingsPage() {
                             <DropdownItem
                               onClick={() => {
                                 setOpenMenuId(null)
-                                // TODO: Navigate to edit booking
+                                setRebookBooking(row)
                               }}
-                              icon={Edit}
+                              icon={RotateCcw}
                             >
-                              Edit
+                              Re Book
                             </DropdownItem>
                             <DropdownItem
                               onClick={() => {
@@ -330,6 +333,16 @@ export function CompletedBookingsPage() {
         isOpen={!!viewBooking}
         onClose={() => setViewBooking(null)}
         booking={viewBooking}
+        onRebook={(booking) => {
+          setViewBooking(null)
+          setRebookBooking(booking)
+        }}
+      />
+
+      <RebookBookingModal
+        isOpen={!!rebookBooking}
+        onClose={() => setRebookBooking(null)}
+        booking={rebookBooking}
       />
     </div>
   )

@@ -1,7 +1,8 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Modal } from '../ui/Modal'
 import { format, addDays } from 'date-fns'
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { bookingsApi } from '../../api/services'
 import {
   X, Edit2, Trash2, Eye, Mail, XCircle,
@@ -16,9 +17,12 @@ interface BookingDetailModalProps {
   isOpen: boolean
   onClose: () => void
   booking: Booking | null
+  onRebook?: (booking: Booking) => void
 }
 
-export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, onClose, booking }) => {
+export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, onClose, booking, onRebook }) => {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const [isOptionsOpen, setIsOptionsOpen] = useState(false)
   const [isWaiverModalOpen, setIsWaiverModalOpen] = useState(false)
   const [selectedPetForWaiver, setSelectedPetForWaiver] = useState<Pet | null>(null)
@@ -30,6 +34,42 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
       dateFrom: format(addDays(new Date(), 1), 'yyyy-MM-dd')
     }) : Promise.resolve([]),
     enabled: !!booking?.customer?.id && isOpen,
+  })
+
+  const markCompleteMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'completed'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      onClose()
+    },
+  })
+
+  const cancelBookingMutation = useMutation({
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'cancelled'),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+      onClose()
+    },
+  })
+
+  const sendSMSMutation = useMutation({
+    mutationFn: (bookingId: string) => 
+      fetch(`/api/bookings/${bookingId}/send-sms`, { method: 'POST' })
+        .then(res => res.json()),
+    onSuccess: () => {
+      alert('SMS confirmation sent successfully!')
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    },
+  })
+
+  const sendEmailMutation = useMutation({
+    mutationFn: (bookingId: string) => 
+      fetch(`/api/bookings/${bookingId}/send-email`, { method: 'POST' })
+        .then(res => res.json()),
+    onSuccess: () => {
+      alert('Email confirmation sent successfully!')
+      queryClient.invalidateQueries({ queryKey: ['bookings'] })
+    },
   })
 
   if (!booking) return null
@@ -81,7 +121,9 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                     <h3 className="text-xl font-medium text-[#4a5ebc] capitalize">
                       {booking.customer?.first_name} {booking.customer?.last_name} - {booking.customer?.phone}
                     </h3>
-                    <button className="text-gray-400 hover:text-[#4a5ebc] transition-colors">
+                    <button 
+                      onClick={() => navigate(`/bookings/edit/${booking.id}`)}
+                      className="text-gray-400 hover:text-[#4a5ebc] transition-colors">
                       <Edit2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -190,19 +232,29 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                   <div className="flex items-center gap-12 pt-4 justify-center underline-offset-4">
                     {/* Edit button - only show if not cancelled or completed */}
                     {booking.status !== 'cancelled' && booking.status !== 'completed' && (
-                      <button className="px-10 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm">
+                      <button
+                        onClick={() => navigate(`/bookings/edit/${booking.id}`)}
+                        className="px-10 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-sm hover:bg-blue-700 transition-colors shadow-sm"
+                      >
                         Edit
                       </button>
                     )}
 
                     {/* Mark Complete button - only show if not completed */}
                     {booking.status !== 'completed' && booking.status !== 'cancelled' && (
-                      <button className="text-[#4a5ebc] text-sm font-bold hover:underline">
-                        Mark Complete
+                      <button
+                        onClick={() => markCompleteMutation.mutate(booking.id)}
+                        disabled={markCompleteMutation.isPending}
+                        className="text-[#4a5ebc] text-sm font-bold hover:underline disabled:opacity-50"
+                      >
+                        {markCompleteMutation.isPending ? 'Processing...' : 'Mark Complete'}
                       </button>
                     )}
 
-                    <button className="flex items-center gap-2 text-[#4a5ebc] text-sm font-bold hover:underline">
+                    <button
+                      onClick={() => onRebook?.(booking)}
+                      className="flex items-center gap-2 text-[#4a5ebc] text-sm font-bold hover:underline"
+                    >
                       Rebook <RotateCcw className="w-4 h-4" />
                     </button>
                   </div>
@@ -223,19 +275,38 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                   <div className="p-8 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-gray-50/30 animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* Cancel button - only show if not cancelled */}
                     {booking.status !== 'cancelled' && (
-                      <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-red-600 text-white rounded font-bold text-xs hover:bg-red-700 transition-colors uppercase tracking-wider">
-                        Cancel Booking <XCircle className="w-4 h-4" />
+                      <button
+                        onClick={() => {
+                          if (confirm('Are you sure you want to cancel this booking?')) {
+                            cancelBookingMutation.mutate(booking.id)
+                          }
+                        }}
+                        disabled={cancelBookingMutation.isPending}
+                        className="flex items-center justify-center gap-3 px-6 py-2.5 bg-red-600 text-white rounded font-bold text-xs hover:bg-red-700 transition-colors uppercase tracking-wider disabled:opacity-50"
+                      >
+                        {cancelBookingMutation.isPending ? 'Cancelling...' : 'Cancel Booking'} <XCircle className="w-4 h-4" />
                       </button>
                     )}
 
-                    <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider">
+                    <button
+                      onClick={() => bookingsApi.generateInvoice(booking.id)}
+                      className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider"
+                    >
                       Preview Invoice <Eye className="w-4 h-4" />
                     </button>
-                    <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider">
-                      Send Sms Confirmation <FileText className="w-4 h-4" />
+                    <button
+                      onClick={() => sendSMSMutation.mutate(booking.id)}
+                      disabled={sendSMSMutation.isPending}
+                      className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider disabled:opacity-50"
+                    >
+                      {sendSMSMutation.isPending ? 'Sending...' : 'Send Sms Confirmation'} <FileText className="w-4 h-4" />
                     </button>
-                    <button className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider">
-                      Send Email Confirmation <Mail className="w-4 h-4" />
+                    <button
+                      onClick={() => sendEmailMutation.mutate(booking.id)}
+                      disabled={sendEmailMutation.isPending}
+                      className="flex items-center justify-center gap-3 px-6 py-2.5 bg-[#4a5ebc] text-white rounded font-bold text-xs hover:bg-blue-700 transition-colors uppercase tracking-wider disabled:opacity-50"
+                    >
+                      {sendEmailMutation.isPending ? 'Sending...' : 'Send Email Confirmation'} <Mail className="w-4 h-4" />
                     </button>
                     <div className="col-span-full flex justify-center pt-2">
                       <button className="text-gray-300 flex flex-col items-center gap-1">

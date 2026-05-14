@@ -5,9 +5,10 @@ import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { format } from 'date-fns'
-import { Search, Plus, MoreVertical, Eye, Check, X } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, Check, X, RotateCcw } from 'lucide-react'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 
 export function ArchivedBookingsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -15,6 +16,7 @@ export function ArchivedBookingsPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
+  const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -132,16 +134,26 @@ export function ArchivedBookingsPage() {
                         onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
                         position={menuPos}
                       >
-                          <button
-                            onClick={() => {
-                              setViewBooking(row)
-                              setOpenMenuId(null); setMenuPos(null)
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <Eye className="w-4 h-4 text-gray-400" />
-                            View
-                          </button>
+                        <button
+                          onClick={() => {
+                            setViewBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <Eye className="w-4 h-4 text-gray-400" />
+                          View
+                        </button>
+                        <button
+                          onClick={() => {
+                            setRebookBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors"
+                        >
+                          <RotateCcw className="w-4 h-4 text-blue-500" />
+                          Re Book
+                        </button>
                       </PortalMenu>
                     </td>
                   </tr>
@@ -162,6 +174,12 @@ export function ArchivedBookingsPage() {
       </Card>
 
       <BookingDetailModal isOpen={!!viewBooking} onClose={() => setViewBooking(null)} booking={viewBooking} />
+
+      <RebookBookingModal
+        isOpen={!!rebookBooking}
+        onClose={() => setRebookBooking(null)}
+        booking={rebookBooking}
+      />
     </div>
   )
 }
