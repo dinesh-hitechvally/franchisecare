@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { TablePagination } from '../../components/ui/TablePagination'
@@ -15,6 +16,7 @@ export function ActiveBookingsPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
@@ -45,6 +47,7 @@ export function ActiveBookingsPage() {
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setOpenMenuId(null)
+        setMenuPos(null)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -137,26 +140,35 @@ export function ActiveBookingsPage() {
                       )}
                     </td>
 
-                    <td className="px-5 py-4 text-sm align-top text-right relative">
+                    <td className="px-5 py-4 text-sm align-top text-right">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setOpenMenuId(openMenuId === row.id ? null : row.id)
+                          if (openMenuId === row.id) {
+                            setOpenMenuId(null)
+                            setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                            setOpenMenuId(row.id)
+                          }
                         }}
                         className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
 
-                      {openMenuId === row.id && (
+                      {openMenuId === row.id && menuPos && createPortal(
                         <div
                           ref={menuRef}
-                          className="absolute right-4 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
+                          style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 9999 }}
+                          className="w-48 bg-white border border-gray-200 rounded-md shadow-lg py-1"
                         >
                           <button
                             onClick={() => {
                               setViewBooking(row)
                               setOpenMenuId(null)
+                              setMenuPos(null)
                             }}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           >
@@ -185,7 +197,8 @@ export function ActiveBookingsPage() {
                             <Trash2 className="w-4 h-4 text-red-400" />
                             Cancel
                           </button>
-                        </div>
+                        </div>,
+                        document.body
                       )}
                     </td>
                   </tr>

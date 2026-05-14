@@ -897,4 +897,35 @@ export const reportsApi = {
       rank: string
       message: string
     }>('/reports/benchmarking', { params }),
+
+  getIncome: (params?: { date_from?: string; date_to?: string; category_id?: string; min?: string; max?: string }) =>
+    apiClient.get<{
+      success: boolean
+      summary: {
+        total_income: number
+        income_count: number
+        category_count: number
+        customer_count: number
+      }
+      category_data: Array<{
+        name: string
+        amount: number
+        income_count: number
+        percentage: number
+        color: string
+      }>
+      top_customer_data: Array<{
+        customer_id: string
+        name: string
+        amount: number
+        income_count: number
+        color: string
+      }>
+      date_range_data: Array<{
+        date: string
+        amount: number
+        income_count: number
+      }>
+      message: string
+    }>('/reports/income', { params }),
 }

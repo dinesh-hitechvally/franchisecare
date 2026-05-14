@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState, useRef } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import type { Booking } from '../../types'
 import { TablePagination } from '../../components/ui/TablePagination'
-import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2 } from 'lucide-react'
+import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle } from 'lucide-react'
 
 function getCustomerName(booking: Booking) {
   return `${booking.customer?.first_name || ''} ${booking.customer?.last_name || ''}`.trim() || 'Unknown'
@@ -44,7 +45,7 @@ export function ManageBookingsPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: bookingsData, isLoading } = useQuery({
     queryKey: ['bookings', 'manage', 'past-active'],
@@ -113,16 +114,6 @@ export function ManageBookingsPage() {
       markCompletedMutation.mutate(selectedIds)
     }
   }
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   return (
     <div className="space-y-5 px-1 py-1">
@@ -215,22 +206,28 @@ export function ManageBookingsPage() {
                         <X className="w-5 h-5 text-red-500 mx-auto" />
                       )}
                     </td>
-                    <td className="px-5 py-4 text-sm align-top text-right relative">
+                    <td className="px-5 py-4 text-sm align-top text-right">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setOpenMenuId(openMenuId === row.id ? null : row.id)
+                          if (openMenuId === row.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                            setOpenMenuId(row.id)
+                          }
                         }}
                         className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
 
-                      {openMenuId === row.id && (
-                        <div
-                          ref={menuRef}
-                          className="absolute right-4 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
-                        >
+                      <PortalMenu
+                        isOpen={openMenuId === row.id}
+                        onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                        position={menuPos}
+                      >
                           <button
                             onClick={() => {
                               setViewBooking(row)
@@ -259,12 +256,21 @@ export function ManageBookingsPage() {
                             <FileText className="w-4 h-4 text-gray-400" />
                             View Invoice
                           </button>
+                          <button
+                            onClick={() => {
+                              markCompletedMutation.mutate([row.id])
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors border-t border-gray-100 mt-1"
+                          >
+                            <CheckCircle className="w-4 h-4 text-emerald-500" />
+                            Mark Complete
+                          </button>
                           <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1">
                             <Trash2 className="w-4 h-4 text-red-400" />
                             Cancel
                           </button>
-                        </div>
-                      )}
+                      </PortalMenu>
                     </td>
                   </tr>
                 ))

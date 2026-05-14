@@ -6,6 +6,7 @@ import { useToastStore } from '../../store/toastStore'
 import { leadsApi } from '../../api/services'
 import { LeadDetailModal } from './LeadDetailModal'
 import type { Lead } from '../../types'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 type SnoozeRow = {
   id: string
@@ -25,6 +26,7 @@ export function SnoozeLeadsPage() {
   const { addToast } = useToastStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [rows, setRows] = useState<SnoozeRow[]>([])
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -232,14 +234,26 @@ export function SnoozeLeadsPage() {
                     <div className="flex justify-end">
                       <button
                         type="button"
-                        onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                        onClick={(e) => {
+                          if (openMenuId === row.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                            setOpenMenuId(row.id)
+                          }
+                        }}
                         className="p-1 rounded hover:bg-gray-100"
                       >
                         <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
                     </div>
-                    {openMenuId === row.id && (
-                      <div className="absolute right-3 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                    <PortalMenu
+                      isOpen={openMenuId === row.id}
+                      onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                      position={menuPos}
+                      width={160}
+                    >
                         <button
                           type="button"
                           onClick={() => handleView(row.id)}
@@ -254,8 +268,7 @@ export function SnoozeLeadsPage() {
                         >
                           {row.links[1]}
                         </button>
-                      </div>
-                    )}
+                    </PortalMenu>
                   </td>
                 </tr>
                 ))

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
 import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2 } from 'lucide-react'
@@ -17,6 +18,7 @@ export function RecurringBlockoutsPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
@@ -146,19 +148,27 @@ export function RecurringBlockoutsPage() {
                     </td>
 
                     <td className="px-5 py-4 text-right align-top">
-                      <div className="relative inline-block">
                         <button
                           onClick={(e) => {
                             e.stopPropagation()
-                            setOpenMenuId(openMenuId === row.id ? null : row.id)
+                            if (openMenuId === row.id) {
+                              setOpenMenuId(null); setMenuPos(null)
+                            } else {
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                              setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                              setOpenMenuId(row.id)
+                            }
                           }}
                           className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                         >
                           <MoreVertical className="w-5 h-5" />
                         </button>
 
-                        {openMenuId === row.id && (
-                          <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-xl z-[9999] py-1">
+                        <PortalMenu
+                          isOpen={openMenuId === row.id}
+                          onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                          position={menuPos}
+                        >
                             <button
                               onClick={() => {
                                 setOpenMenuId(null)
@@ -184,9 +194,7 @@ export function RecurringBlockoutsPage() {
                               <Trash2 className="w-4 h-4 text-red-400" />
                               Delete
                             </button>
-                          </div>
-                        )}
-                      </div>
+                        </PortalMenu>
                     </td>
                   </tr>
                 ))

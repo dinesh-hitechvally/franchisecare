@@ -4,6 +4,7 @@ import { Table } from '../../components/ui/Table'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
 import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2 } from 'lucide-react'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 interface Order {
   id: string
@@ -23,7 +24,7 @@ export function InwardGoodsPage() {
   const [sortColumn, setSortColumn] = useState<string | undefined>(undefined)
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   // Mock data
   const allOrders: Order[] = [
@@ -197,22 +198,31 @@ export function InwardGoodsPage() {
           <button
             onClick={(e) => {
               e.stopPropagation()
-              setOpenMenuId(openMenuId === order.id ? null : order.id)
+              if (openMenuId === order.id) {
+                setOpenMenuId(null)
+                setMenuPos(null)
+              } else {
+                const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                setOpenMenuId(order.id)
+              }
             }}
             className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
           >
             <MoreVertical className="w-5 h-5" />
           </button>
 
-          {openMenuId === order.id && (
-            <div
-              ref={menuRef}
-              className="absolute right-4 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
-            >
+          <PortalMenu
+            isOpen={openMenuId === order.id}
+            onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+            position={menuPos}
+            width={192}
+          >
               <button
                 onClick={() => {
                   // View action
                   setOpenMenuId(null)
+                  setMenuPos(null)
                 }}
                 className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
               >
@@ -224,6 +234,7 @@ export function InwardGoodsPage() {
                   onClick={() => {
                     // Edit action
                     setOpenMenuId(null)
+                    setMenuPos(null)
                   }}
                   className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
@@ -237,8 +248,7 @@ export function InwardGoodsPage() {
                   Cancel
                 </button>
               )}
-            </div>
-          )}
+          </PortalMenu>
         </div>
       ),
     },

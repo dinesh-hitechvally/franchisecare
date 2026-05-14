@@ -10,7 +10,7 @@ interface CardProps {
 
 export function Card({ children, className, title, action, footer }: CardProps) {
   return (
-    <div className={cn('card overflow-hidden', className)}>
+    <div className={cn('card', className, 'overflow-visible')}>
       {(title || action) && (
         <div className="p-4 border-b border-secondary-200 flex items-center justify-between">
           {title && <h3 className="text-lg font-semibold text-secondary-900">{title}</h3>}

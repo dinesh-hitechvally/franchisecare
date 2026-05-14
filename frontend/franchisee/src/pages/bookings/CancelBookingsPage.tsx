@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { format } from 'date-fns'
@@ -15,7 +16,7 @@ export function CancelBookingsPage() {
   const [perPage, setPerPage] = useState(25)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(searchTerm), 400)
@@ -39,16 +40,6 @@ export function CancelBookingsPage() {
 
   const bookings = listResult?.data ?? []
   const meta = listResult?.meta
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   return (
     <div className="space-y-5 px-1 py-1">
@@ -123,31 +114,39 @@ export function CancelBookingsPage() {
 
                     <td className="px-5 py-4 text-sm text-gray-700 leading-snug align-top pr-8">{row.notes}</td>
 
-                    <td className="px-5 py-4 text-sm align-top relative">
+                    <td className="px-5 py-4 text-sm align-top">
                       <button
-                        onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          if (openMenuId === row.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                            setOpenMenuId(row.id)
+                          }
+                        }}
                         className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
 
-                      {openMenuId === row.id && (
-                        <div
-                          ref={menuRef}
-                          className="absolute right-4 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
-                        >
+                      <PortalMenu
+                        isOpen={openMenuId === row.id}
+                        onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                        position={menuPos}
+                      >
                           <button
                             onClick={() => {
                               setViewBooking(row)
-                              setOpenMenuId(null)
+                              setOpenMenuId(null); setMenuPos(null)
                             }}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                           >
                             <Eye className="w-4 h-4 text-gray-400" />
                             View
                           </button>
-                        </div>
-                      )}
+                      </PortalMenu>
                     </td>
                   </tr>
                 ))

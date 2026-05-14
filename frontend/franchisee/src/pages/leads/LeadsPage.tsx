@@ -10,6 +10,7 @@ import { useToastStore } from '../../store/toastStore'
 import type { Lead } from '../../types'
 import { Plus, Search, Upload, ArrowRightLeft, MoreVertical } from 'lucide-react'
 import { LeadDetailModal } from './LeadDetailModal'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function LeadsPage() {
   const queryClient = useQueryClient()
@@ -22,6 +23,7 @@ export function LeadsPage() {
   const [filterStatus, setFilterStatus] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -194,18 +196,32 @@ export function LeadsPage() {
                 <div className="relative flex justify-end">
                   <button
                     type="button"
-                    onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                    onClick={(e) => {
+                      if (openMenuId === row.id) {
+                        setOpenMenuId(null)
+                        setMenuPos(null)
+                      } else {
+                        const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                        setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                        setOpenMenuId(row.id)
+                      }
+                    }}
                     className="p-1 rounded hover:bg-gray-100"
                   >
                     <MoreVertical className="w-5 h-5 text-gray-600" />
                   </button>
-                  {openMenuId === row.id && (
-                    <div className="absolute right-0 top-7 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                  <PortalMenu
+                    isOpen={openMenuId === row.id}
+                    onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                    position={menuPos}
+                    width={160}
+                  >
                       <button
                         type="button"
                         onClick={() => {
                           handleViewLead(row)
                           setOpenMenuId(null)
+                          setMenuPos(null)
                         }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       >
@@ -213,7 +229,7 @@ export function LeadsPage() {
                       </button>
                       <button
                         type="button"
-                        onClick={() => setOpenMenuId(null)}
+                        onClick={() => { setOpenMenuId(null); setMenuPos(null) }}
                         className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                       >
                         Edit
@@ -224,14 +240,14 @@ export function LeadsPage() {
                           onClick={() => {
                             handleConvert(row)
                             setOpenMenuId(null)
+                            setMenuPos(null)
                           }}
                           className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                         >
                           Convert
                         </button>
                       )}
-                    </div>
-                  )}
+                  </PortalMenu>
                 </div>
               ),
             },

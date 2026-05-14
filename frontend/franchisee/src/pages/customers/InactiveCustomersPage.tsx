@@ -1,14 +1,14 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Input } from '../../components/ui/Input'
 import { Search, Plus, Loader2, Archive, MoreVertical, History, Star, Menu, Edit3, UserMinus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { customersApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Customer } from '../../types'
 import { CustomerAuditModal } from '../../components/modals/CustomerAuditModal'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function InactiveCustomersPage() {
   const queryClient = useQueryClient()
@@ -16,7 +16,7 @@ export function InactiveCustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [auditCustomer, setAuditCustomer] = useState<Customer | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: inactiveCustomers, isLoading, isError } = useQuery({
     queryKey: ['customers', 'inactive', searchTerm],
@@ -25,16 +25,6 @@ export function InactiveCustomersPage() {
       search: searchTerm 
     }),
   })
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const archiveMutation = useMutation({
     mutationFn: (id: string) => customersApi.delete(id),
@@ -159,44 +149,50 @@ export function InactiveCustomersPage() {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation()
-                        setOpenMenuId(openMenuId === c.id ? null : c.id)
+                        if (openMenuId === c.id) {
+                          setOpenMenuId(null); setMenuPos(null)
+                        } else {
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                          setOpenMenuId(c.id)
+                        }
                       }}
                       className="text-gray-400 hover:text-gray-600 p-2 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                     >
                       <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    {openMenuId === c.id && (
-                      <div 
-                        ref={menuRef}
-                        className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
+                    <PortalMenu
+                      isOpen={openMenuId === c.id}
+                      onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                      position={menuPos}
+                    >
+                      <Link 
+                        to={`/customers/edit/${c.id}`}
+                        className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                       >
-                        <Link 
-                          to={`/customers/edit/${c.id}`}
-                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
-                          <Edit3 className="w-4 h-4 text-gray-400" />
-                          View/Edit
-                        </Link>
-                        <button 
-                          onClick={() => {
-                            setAuditCustomer(c)
-                            setOpenMenuId(null)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
-                          <History className="w-4 h-4 text-gray-400" />
-                          Audit trail
-                        </button>
-                        <button 
-                          onClick={() => archiveMutation.mutate(c.id)}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <Archive className="w-4 h-4 text-red-400" />
-                          Archive
-                        </button>
-                      </div>
-                    )}
+                        <Edit3 className="w-4 h-4 text-gray-400" />
+                        View/Edit
+                      </Link>
+                      <button 
+                        onClick={() => {
+                          setAuditCustomer(c)
+                          setOpenMenuId(null)
+                          setMenuPos(null)
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <History className="w-4 h-4 text-gray-400" />
+                        Audit trail
+                      </button>
+                      <button 
+                        onClick={() => archiveMutation.mutate(c.id)}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <Archive className="w-4 h-4 text-red-400" />
+                        Archive
+                      </button>
+                    </PortalMenu>
                   </div>
                 </div>
               ))}

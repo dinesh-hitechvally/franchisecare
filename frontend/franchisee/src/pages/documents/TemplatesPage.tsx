@@ -5,10 +5,12 @@ import { Search, Download, ChevronLeft, ChevronRight, MoreVertical } from 'lucid
 import { format } from 'date-fns'
 import { documentsApi } from '../../api/services'
 import type { Document } from '../../types'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function TemplatesPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: templates = [], isLoading } = useQuery({
     queryKey: ['documents', 'templates'],
@@ -82,21 +84,32 @@ export function TemplatesPage() {
                     <td className="px-6 py-4 text-center relative">
                       <button
                         type="button"
-                        onClick={() => setOpenMenuId(openMenuId === template.id ? null : template.id)}
+                        onClick={(e) => {
+                          if (openMenuId === template.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 })
+                            setOpenMenuId(template.id)
+                          }
+                        }}
                         className="p-1 rounded hover:bg-gray-100"
                       >
                         <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
-                      {openMenuId === template.id && (
-                        <div className="absolute right-6 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                      <PortalMenu
+                        isOpen={openMenuId === template.id}
+                        onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                        position={menuPos}
+                        width={144}
+                      >
                           <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                             View
                           </button>
                           <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2">
                             <Download className="w-4 h-4" /> Download
                           </button>
-                        </div>
-                      )}
+                      </PortalMenu>
                     </td>
                   </tr>
                 ))}

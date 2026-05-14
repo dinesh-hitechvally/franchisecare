@@ -1,7 +1,8 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Button } from '../../components/ui/Button'
 import { Check, X, MoreVertical, Edit3, Trash2, Plus, Loader2 } from 'lucide-react'
 import { incomeCategoriesApi } from '../../api/services'
@@ -11,6 +12,7 @@ export function IncomeCategoriesPage() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: categories = [], isLoading, isError, error } = useQuery({
@@ -25,16 +27,6 @@ export function IncomeCategoriesPage() {
       setOpenMenuId(null)
     },
   })
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   return (
     <div className="space-y-6">
@@ -110,23 +102,30 @@ export function IncomeCategoriesPage() {
                           )}
                         </div>
                       </td>
-                      <td className="px-6 py-4 relative flex justify-end">
+                      <td className="px-6 py-4 flex justify-end">
                         {!cat.is_system && (
                           <>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation()
-                                setOpenMenuId(openMenuId === String(cat.id) ? null : String(cat.id))
+                                if (openMenuId === String(cat.id)) {
+                                  setOpenMenuId(null); setMenuPos(null)
+                                } else {
+                                  const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                                  setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                                  setOpenMenuId(String(cat.id))
+                                }
                               }}
                               className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                             >
                               <MoreVertical className="w-5 h-5" />
                             </button>
-                            {openMenuId === String(cat.id) && (
-                              <div
-                                ref={menuRef}
-                                className="absolute right-4 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
-                              >
+                            <PortalMenu
+                              isOpen={openMenuId === String(cat.id)}
+                              onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                              position={menuPos}
+                              width={160}
+                            >
                                 <button
                                   onClick={() => {
                                     navigate(`/finance/income/edit-category/${cat.id}`)
@@ -147,8 +146,7 @@ export function IncomeCategoriesPage() {
                                   <Trash2 className="w-4 h-4 text-red-400" />
                                   {deleteMutation.isPending ? 'Deleting...' : 'Delete'}
                                 </button>
-                              </div>
-                            )}
+                            </PortalMenu>
                           </>
                         )}
                       </td>

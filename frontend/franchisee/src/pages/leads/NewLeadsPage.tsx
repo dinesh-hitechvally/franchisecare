@@ -6,6 +6,7 @@ import { LeadDetailModal } from './LeadDetailModal'
 import { useToastStore } from '../../store/toastStore'
 import { leadsApi } from '../../api/services'
 import type { Lead } from '../../types'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function NewLeadsPage() {
   const queryClient = useQueryClient()
@@ -14,6 +15,7 @@ export function NewLeadsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [leads, setLeads] = useState<Lead[]>([])
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: fetchedLeads = [] } = useQuery({
     queryKey: ['leads', 'new'],
@@ -183,14 +185,26 @@ export function NewLeadsPage() {
                     <div className="flex justify-end">
                       <button
                         type="button"
-                        onClick={() => setOpenMenuId(openMenuId === lead.id ? null : lead.id)}
+                        onClick={(e) => {
+                          if (openMenuId === lead.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                            setOpenMenuId(lead.id)
+                          }
+                        }}
                         className="p-1 rounded hover:bg-gray-100"
                       >
                         <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
                     </div>
-                    {openMenuId === lead.id && (
-                      <div className="absolute right-3 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20">
+                    <PortalMenu
+                      isOpen={openMenuId === lead.id}
+                      onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                      position={menuPos}
+                      width={160}
+                    >
                         <button
                           type="button"
                           onClick={() => {
@@ -211,8 +225,7 @@ export function NewLeadsPage() {
                         >
                           Snooze
                         </button>
-                      </div>
-                    )}
+                    </PortalMenu>
                   </td>
                 </tr>
                 ))

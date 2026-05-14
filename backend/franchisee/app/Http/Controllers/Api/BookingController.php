@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingRecurring;
+use App\Models\Income;
 use App\Models\Service;
 use Illuminate\Http\Request;
 use PDF;
@@ -184,6 +185,7 @@ class BookingController extends Controller
 
     /**
      * Update status only.
+     * When marking as completed, automatically generate an Income record if one does not already exist.
      */
     public function updateStatus(Request $request, Booking $booking)
     {
@@ -191,7 +193,31 @@ class BookingController extends Controller
             'status' => 'required|in:active,cancelled,completed,archived',
         ]);
 
+        $previousStatus = $booking->status;
+
         $booking->update(['status' => $validated['status']]);
+
+        // Auto-generate income when booking is marked completed for the first time
+        if ($validated['status'] === 'completed' && $previousStatus !== 'completed') {
+            $alreadyExists = Income::where('booking_id', $booking->id)->exists();
+
+            if (!$alreadyExists) {
+                $booking->load('customer');
+                $customerName = $booking->customer
+                    ? trim(($booking->customer->first_name ?? '') . ' ' . ($booking->customer->last_name ?? ''))
+                    : 'Unknown Customer';
+
+                Income::create([
+                    'company_id'         => $booking->company_id,
+                    'booking_id'         => $booking->id,
+                    'title'              => 'Booking – ' . $customerName,
+                    'description'        => 'Auto-generated from completed booking #' . $booking->id,
+                    'amount'             => $booking->total ?? 0,
+                    'income_date'        => now()->toDateString(),
+                    'is_active'          => true,
+                ]);
+            }
+        }
 
         return response()->json($booking->load(['customer', 'details.item', 'details.service']));
     }

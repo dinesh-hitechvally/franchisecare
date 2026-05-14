@@ -8,6 +8,7 @@ import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { Search, Plus, MoreVertical, Eye, Edit, XCircle, FileText, Send, Check, X } from 'lucide-react'
 import type { Booking } from '../../types'
+import { createPortal } from 'react-dom'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
@@ -36,8 +37,14 @@ function DropdownMenu({
   triggerRef: React.RefObject<HTMLButtonElement | null>
 }) {
   const menuRef = useRef<HTMLDivElement>(null)
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null)
 
   useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect()
+      setPosition({ top: rect.bottom + 4, left: rect.right - 192 })
+    }
+
     function handleClickOutside(event: MouseEvent) {
       if (
         menuRef.current &&
@@ -60,13 +67,16 @@ function DropdownMenu({
 
   if (!isOpen) return null
 
-  return (
+  return createPortal(
     <div
       ref={menuRef}
-      className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-[100] py-1"
+      className="fixed w-48 bg-white border border-gray-200 rounded-md shadow-lg z-[100] py-1"
+      style={position ? { top: `${position.top}px`, left: `${position.left}px` } : undefined}
     >
       {children}
     </div>
+    ,
+    document.body
   )
 }
 
@@ -237,7 +247,7 @@ export function CompletedBookingsPage() {
                         <div className="relative inline-block">
                           <button
                             ref={menuTriggerRef}
-                            onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                            onClick={() => setOpenMenuId((current) => (current === row.id ? null : row.id))}
                             className="p-1 hover:bg-gray-100 rounded transition-colors"
                           >
                             <MoreVertical className="w-5 h-5 text-gray-500" />

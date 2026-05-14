@@ -9,11 +9,13 @@ import { documentsApi } from '../../api/services'
 import type { Document } from '../../types'
 import { Plus, FileText, Download, Upload, MoreVertical } from 'lucide-react'
 import { format } from 'date-fns'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function DocumentsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filterVisibility, setFilterVisibility] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ['documents', filterVisibility],
@@ -86,13 +88,26 @@ export function DocumentsPage() {
                 <div className="relative flex justify-center">
                   <button
                     type="button"
-                    onClick={() => setOpenMenuId(openMenuId === row.id ? null : row.id)}
+                    onClick={(e) => {
+                      if (openMenuId === row.id) {
+                        setOpenMenuId(null)
+                        setMenuPos(null)
+                      } else {
+                        const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                        setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                        setOpenMenuId(row.id)
+                      }
+                    }}
                     className="p-1 rounded hover:bg-gray-100"
                   >
                     <MoreVertical className="w-5 h-5 text-gray-600" />
                   </button>
-                  {openMenuId === row.id && (
-                    <div className="absolute right-0 top-7 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                  <PortalMenu
+                    isOpen={openMenuId === row.id}
+                    onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                    position={menuPos}
+                    width={160}
+                  >
                       <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                         View
                       </button>
@@ -102,8 +117,7 @@ export function DocumentsPage() {
                       <button type="button" className="w-full px-3 py-2 text-sm text-red-600 hover:bg-gray-50">
                         Delete
                       </button>
-                    </div>
-                  )}
+                  </PortalMenu>
                 </div>
               ),
             },

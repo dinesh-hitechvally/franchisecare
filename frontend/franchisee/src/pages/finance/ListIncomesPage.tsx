@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Button } from '../../components/ui/Button'
 import { Search, ChevronLeft, ChevronRight, Check, X, MoreVertical, Edit3, Trash2, Eye } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -23,6 +24,7 @@ export function ListIncomesPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   // Applied filter state — only updated on button click
   const [appliedSearch, setAppliedSearch] = useState('')
@@ -197,21 +199,28 @@ export function ListIncomesPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-6 py-4 relative flex justify-end">
+                    <td className="px-6 py-4 flex justify-end">
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          setOpenMenuId(openMenuId === income.id ? null : income.id)
+                          if (openMenuId === income.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 176 })
+                            setOpenMenuId(income.id)
+                          }
                         }}
                         className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
-                      {openMenuId === income.id && (
-                        <div
-                          ref={menuRef}
-                          className="absolute right-4 mt-1 w-44 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
-                        >
+                      <PortalMenu
+                        isOpen={openMenuId === income.id}
+                        onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                        position={menuPos}
+                        width={176}
+                      >
                           <button
                             onClick={() => {
                               navigate(`/finance/income/view/${income.id}`)
@@ -242,8 +251,7 @@ export function ListIncomesPage() {
                             <Trash2 className="w-4 h-4 text-red-400" />
                             Delete
                           </button>
-                        </div>
-                      )}
+                      </PortalMenu>
                     </td>
                   </tr>
                 ))

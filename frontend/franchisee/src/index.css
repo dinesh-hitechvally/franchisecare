@@ -46,6 +46,11 @@
   .input {
     @apply w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all duration-200;
   }
+
+  /* Keep horizontal scrolling for tables, but allow dropdowns/popovers to extend vertically. */
+  .overflow-x-auto {
+    overflow-y: visible;
+  }
 }
 
 /* ==========================================

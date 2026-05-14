@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Search, MoreVertical } from 'lucide-react'
 import { bookingsApi } from '../../api/services'
 import type { Booking } from '../../types'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 interface DiaryEntry {
   id: string
@@ -27,6 +28,7 @@ export function DailyDiaryPage() {
   const [appliedFromDate, setAppliedFromDate] = useState(today)
   const [appliedToDate, setAppliedToDate] = useState(today)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [visibleColumns, setVisibleColumns] = useState({
     name: true,
     pets: true,
@@ -227,18 +229,30 @@ export function DailyDiaryPage() {
                   <td className="px-4 py-4 text-center relative">
                     <button
                       type="button"
-                      onClick={() => setOpenMenuId(openMenuId === entry.id ? null : entry.id)}
+                      onClick={(e) => {
+                        if (openMenuId === entry.id) {
+                          setOpenMenuId(null)
+                          setMenuPos(null)
+                        } else {
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 160 })
+                          setOpenMenuId(entry.id)
+                        }
+                      }}
                       className="p-1 rounded hover:bg-gray-100"
                     >
                       <MoreVertical className="w-5 h-5 text-gray-600" />
                     </button>
-                    {openMenuId === entry.id && (
-                      <div className="absolute right-4 mt-1 w-40 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                    <PortalMenu
+                      isOpen={openMenuId === entry.id}
+                      onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                      position={menuPos}
+                      width={160}
+                    >
                         <button type="button" className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50">
                           View
                         </button>
-                      </div>
-                    )}
+                    </PortalMenu>
                   </td>
                 </tr>
               ))}

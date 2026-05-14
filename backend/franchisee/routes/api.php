@@ -137,4 +137,5 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Reports
     Route::get('reports/benchmarking', [\App\Http\Controllers\Api\BenchmarkingController::class, 'index']);
+    Route::get('reports/income', [\App\Http\Controllers\Api\IncomeReportController::class, 'index']);
 });

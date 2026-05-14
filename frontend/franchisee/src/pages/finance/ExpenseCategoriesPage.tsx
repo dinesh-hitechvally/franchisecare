@@ -1,9 +1,11 @@
 import { useState } from 'react'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Card } from '../../components/ui/Card'
 import { Check, X, MoreVertical } from 'lucide-react'
 
 export function ExpenseCategoriesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const expenseTypes = [
     {
@@ -81,20 +83,30 @@ export function ExpenseCategoriesPage() {
                         <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-center relative">
+                    <td className="px-6 py-4 text-center">
                       <button
                         type="button"
-                        onClick={() => {
+                        onClick={(e) => {
                           const rowId = `${typeGroup.type}-${cat.name}`
-                          setOpenMenuId(openMenuId === rowId ? null : rowId)
+                          if (openMenuId === rowId) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 144 })
+                            setOpenMenuId(rowId)
+                          }
                         }}
                         className="p-1 rounded hover:bg-gray-100"
                       >
                         <MoreVertical className="w-5 h-5 text-gray-600" />
                       </button>
 
-                      {openMenuId === `${typeGroup.type}-${cat.name}` && (
-                        <div className="absolute right-6 mt-1 w-36 bg-white border border-gray-200 rounded-md shadow-lg z-20 text-left">
+                      <PortalMenu
+                        isOpen={openMenuId === `${typeGroup.type}-${cat.name}`}
+                        onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                        position={menuPos}
+                        width={144}
+                      >
                           <button
                             type="button"
                             className="w-full px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
@@ -113,8 +125,7 @@ export function ExpenseCategoriesPage() {
                           >
                             {cat.status ? 'Deactivate' : 'Activate'}
                           </button>
-                        </div>
-                      )}
+                      </PortalMenu>
                     </td>
                   </tr>
                 ))

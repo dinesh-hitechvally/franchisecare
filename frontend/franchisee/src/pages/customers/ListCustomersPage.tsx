@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
@@ -9,6 +9,7 @@ import { useToastStore } from '../../store/toastStore'
 import { Search, Plus, Menu, Star, MoreVertical, Loader2, Archive, Edit3, History } from 'lucide-react'
 import type { Customer } from '../../types'
 import { CustomerAuditModal } from '../../components/modals/CustomerAuditModal'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function ListCustomersPage() {
   const queryClient = useQueryClient()
@@ -16,8 +17,8 @@ export function ListCustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [auditCustomer, setAuditCustomer] = useState<Customer | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: customers, isLoading, isError } = useQuery({
     queryKey: ['customers', searchTerm, statusFilter],
@@ -27,22 +28,13 @@ export function ListCustomersPage() {
     }),
   })
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const archiveMutation = useMutation({
     mutationFn: (id: string) => customersApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       addToast('Customer archived successfully', 'success')
       setOpenMenuId(null)
+      setMenuPos(null)
     },
     onError: () => {
       addToast('Failed to archive customer', 'error')
@@ -187,18 +179,26 @@ export function ListCustomersPage() {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation()
-                        setOpenMenuId(openMenuId === c.id ? null : c.id)
+                        if (openMenuId === c.id) {
+                          setOpenMenuId(null)
+                          setMenuPos(null)
+                        } else {
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                          setOpenMenuId(c.id)
+                        }
                       }}
                       className="text-gray-400 hover:text-gray-600 p-2 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                     >
                       <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    {openMenuId === c.id && (
-                      <div 
-                        ref={menuRef}
-                        className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
-                      >
+                    <PortalMenu
+                      isOpen={openMenuId === c.id}
+                      onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                      position={menuPos}
+                      width={192}
+                    >
                         <Link 
                           to={`/customers/edit/${c.id}`}
                           className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -223,8 +223,7 @@ export function ListCustomersPage() {
                           <Archive className="w-4 h-4 text-red-400" />
                           Archive
                         </button>
-                      </div>
-                    )}
+                    </PortalMenu>
                   </div>
                 </div>
               ))}

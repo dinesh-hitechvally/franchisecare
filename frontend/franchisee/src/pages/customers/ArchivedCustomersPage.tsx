@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
@@ -9,6 +9,7 @@ import { customersApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Customer } from '../../types'
 import { CustomerAuditModal } from '../../components/modals/CustomerAuditModal'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 
 export function ArchivedCustomersPage() {
   const queryClient = useQueryClient()
@@ -16,7 +17,7 @@ export function ArchivedCustomersPage() {
   const [searchTerm, setSearchTerm] = useState('')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [auditCustomer, setAuditCustomer] = useState<Customer | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: archivedCustomers, isLoading, isError } = useQuery({
     queryKey: ['customers', 'archived', searchTerm],
@@ -25,16 +26,6 @@ export function ArchivedCustomersPage() {
       search: searchTerm 
     }),
   })
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
 
   const restoreMutation = useMutation({
     mutationFn: (id: string) => customersApi.restore(id),
@@ -159,37 +150,43 @@ export function ArchivedCustomersPage() {
                     <button 
                       onClick={(e) => {
                         e.stopPropagation()
-                        setOpenMenuId(openMenuId === c.id ? null : c.id)
+                        if (openMenuId === c.id) {
+                          setOpenMenuId(null); setMenuPos(null)
+                        } else {
+                          const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                          setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                          setOpenMenuId(c.id)
+                        }
                       }}
                       className="text-gray-400 hover:text-gray-600 p-2 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                     >
                       <MoreVertical className="w-5 h-5" />
                     </button>
 
-                    {openMenuId === c.id && (
-                      <div 
-                        ref={menuRef}
-                        className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50 py-1"
+                    <PortalMenu
+                      isOpen={openMenuId === c.id}
+                      onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                      position={menuPos}
+                    >
+                      <button 
+                        onClick={() => restoreMutation.mutate(c.id)}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors font-medium"
                       >
-                        <button 
-                          onClick={() => restoreMutation.mutate(c.id)}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50 transition-colors font-medium"
-                        >
-                          <RotateCcw className="w-4 h-4 text-blue-500" />
-                          Re-active
-                        </button>
-                        <button 
-                          onClick={() => {
-                            setAuditCustomer(c)
-                            setOpenMenuId(null)
-                          }}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                        >
-                          <History className="w-4 h-4 text-gray-400" />
-                          Audit trail
-                        </button>
-                      </div>
-                    )}
+                        <RotateCcw className="w-4 h-4 text-blue-500" />
+                        Re-active
+                      </button>
+                      <button 
+                        onClick={() => {
+                          setAuditCustomer(c)
+                          setOpenMenuId(null)
+                          setMenuPos(null)
+                        }}
+                        className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                      >
+                        <History className="w-4 h-4 text-gray-400" />
+                        Audit trail
+                      </button>
+                    </PortalMenu>
                   </div>
                 </div>
               ))}

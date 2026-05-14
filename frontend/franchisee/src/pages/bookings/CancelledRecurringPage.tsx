@@ -1,6 +1,7 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { recurringBookingsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
@@ -16,9 +17,9 @@ export function CancelledRecurringPage() {
   const [page, setPage] = useState(1)
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [recurringModalOpen, setRecurringModalOpen] = useState(false)
   const [selectedRecurringBooking, setSelectedRecurringBooking] = useState<Booking | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
   const queryClient = useQueryClient()
@@ -32,22 +33,13 @@ export function CancelledRecurringPage() {
     setPage(1)
   }, [debouncedSearch])
 
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setOpenMenuId(null)
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside)
-    return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [])
-
   const deleteRecurringMutation = useMutation({
     mutationFn: (id: string) => recurringBookingsApi.delete(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['booking-recurrings'] })
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
       setOpenMenuId(null)
+      setMenuPos(null)
       addToast('Recurring booking removed', 'success')
     },
     onError: () => {
@@ -187,23 +179,29 @@ export function CancelledRecurringPage() {
                       )}
                     </td>
                     
-                    <td className="px-5 py-4 text-sm align-top text-right relative">
+                    <td className="px-5 py-4 text-sm align-top text-right">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setOpenMenuId(openMenuId === row.id ? null : row.id)
+                          if (openMenuId === row.id) {
+                            setOpenMenuId(null); setMenuPos(null)
+                          } else {
+                            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                            setMenuPos({ top: rect.bottom + 4, left: rect.right - 192 })
+                            setOpenMenuId(row.id)
+                          }
                         }}
                         className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
                       >
                         <MoreVertical className="w-5 h-5" />
                       </button>
 
-                      {openMenuId === row.id && (
-                        <div
-                          ref={menuRef}
-                          className="absolute right-4 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-[100] py-1"
-                        >
+                      <PortalMenu
+                        isOpen={openMenuId === row.id}
+                        onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                        position={menuPos}
+                      >
                           <button
                             type="button"
                             onClick={() => {
@@ -228,8 +226,7 @@ export function CancelledRecurringPage() {
                             <Trash2 className="w-4 h-4 text-red-400" />
                             Delete
                           </button>
-                        </div>
-                      )}
+                      </PortalMenu>
                     </td>
                   </tr>
                 ))
