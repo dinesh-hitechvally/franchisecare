@@ -83,7 +83,7 @@ export function SettingsPage() {
             <div className="space-y-2">
               <label className="text-sm font-medium text-gray-700">Timezone</label>
               <Select
-                value={formData.startTimezone}
+                value={formData.timezone}
                 options={[
                   { label: 'Select Timezone', value: '' },
                   { label: 'Australia/Sydney', value: 'Australia/Sydney' },

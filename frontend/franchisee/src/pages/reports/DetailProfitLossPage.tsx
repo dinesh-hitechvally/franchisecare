@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { Printer, Download, Search, ChevronDown, TrendingUp } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 

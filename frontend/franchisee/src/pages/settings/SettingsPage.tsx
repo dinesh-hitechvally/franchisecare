@@ -117,7 +117,7 @@ export function SettingsPage() {
           penalty: cancellation.penalty_type === 'percent' ? '% (Percent)' : '$ (Fixed)',
         })
 
-        setSmsSe(prev => ({
+        setSmsSettings(prev => ({
           ...prev,
           attachCancellationPolicy: cancellation.attach_policy,
         }))
