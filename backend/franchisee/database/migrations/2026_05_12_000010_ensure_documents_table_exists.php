@@ -13,6 +13,7 @@ return new class extends Migration
         }
 
         Schema::create('documents', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable()->index();
             $table->unsignedBigInteger('user_id')->nullable();

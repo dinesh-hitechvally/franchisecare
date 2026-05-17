@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('booking_audits', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('booking_id');
             $table->unsignedBigInteger('customer_id')->nullable();

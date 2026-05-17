@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('version_updates', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->string('version_number'); // e.g., #2.1.1008
             $table->string('month'); // e.g., October

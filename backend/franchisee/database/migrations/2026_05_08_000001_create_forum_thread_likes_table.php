@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('forum_thread_likes', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('forum_thread_id');
             $table->unsignedBigInteger('user_id');

@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('calendar_settings', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id');
             $table->boolean('show_booking_total')->default(true);

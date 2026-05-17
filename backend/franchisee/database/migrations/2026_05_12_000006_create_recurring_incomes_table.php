@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('recurring_incomes', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('income_category_id')->nullable();

@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('inventory_order_items', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('inventory_order_id');
             $table->unsignedBigInteger('inventory_item_id')->nullable();

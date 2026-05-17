@@ -12,6 +12,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('income_templates', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id');
             $table->text('income_title_template')->nullable();

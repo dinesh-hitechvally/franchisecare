@@ -9,6 +9,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('forum_comments', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('thread_id');
             $table->unsignedBigInteger('parent_id')->nullable();
