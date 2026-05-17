@@ -6,6 +6,8 @@ import { Button } from '../../components/ui/Button'
 import { stockTakeApi, inventoryApi } from '../../api/services'
 import { StockTakeHistoryModal } from '../../components/modals/StockTakeHistoryModal'
 import type { StockTake } from '../../types'
+import { Package } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 // Static stock items - based on screenshot analysis
 const STOCK_ITEMS = [
@@ -151,9 +153,11 @@ export function StockTakePage() {
 
   return (
     <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Stock Take - Shampoo Order</h1>
-      </Card>
+      <PageHeader
+        title="Stock Take - Shampoo Order"
+        icon={<Package className="w-5 h-5" />}
+        variant="compact"
+      />
 
       {/* Status Alert and Action Button Row */}
       {isLocked ? (

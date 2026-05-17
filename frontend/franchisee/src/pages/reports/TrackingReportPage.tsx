@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { 
+import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line
 } from 'recharts'
 import { Download, Target, TrendingUp, Calendar } from 'lucide-react'
 import { reportsApi } from '../../api/services'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function TrackingReportPage() {
   const [year, setYear] = useState(new Date().getFullYear())
@@ -22,17 +23,17 @@ export function TrackingReportPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
-      {/* Page Title Card */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Target size={24} className="text-red-600" />
-          Tracking Report
-        </h1>
-        <button className="flex items-center gap-2 px-4 py-2 bg-secondary-100 hover:bg-secondary-200 text-secondary-700 rounded-md transition-colors text-sm font-medium">
-          <Download size={18} />
-          Export Report
-        </button>
-      </div>
+      <PageHeader
+        title="Tracking Report"
+        description="Monitor bookings and revenue trends over time"
+        icon={<Target size={20} />}
+        actions={
+          <button className="flex items-center gap-2 px-4 py-2 bg-secondary-100 hover:bg-secondary-200 text-secondary-700 rounded-md transition-colors text-sm font-medium">
+            <Download size={18} />
+            Export Report
+          </button>
+        }
+      />
 
       {/* Filter Card */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">

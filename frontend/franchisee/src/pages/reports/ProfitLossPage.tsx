@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Printer, Download, Search, TrendingUp } from 'lucide-react'
 import { reportsApi } from '../../api/services'
 import { format, startOfYear, endOfYear } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function ProfitLossPage() {
   const [dateFrom, setDateFrom] = useState(format(startOfYear(new Date()), 'yyyy-MM-dd'))
@@ -22,13 +23,11 @@ export function ProfitLossPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
-      {/* Page Title Card */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 mb-2">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <TrendingUp size={24} className="text-green-600" />
-          Profit/Loss Statement
-        </h1>
-      </div>
+      <PageHeader
+        title="Profit/Loss Statement"
+        description="Compare income against expenses"
+        icon={<TrendingUp size={20} />}
+      />
 
       {/* Filter Card */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100 mb-2">
@@ -169,5 +168,3 @@ export function ProfitLossPage() {
     </div>
   )
 }
-
-import React from 'react'

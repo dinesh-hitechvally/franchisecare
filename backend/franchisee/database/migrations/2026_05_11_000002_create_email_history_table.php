@@ -10,17 +10,19 @@ return new class extends Migration
     {
         Schema::create('email_history', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
             $table->string('from_email');
             $table->string('to_email');
             $table->string('subject');
             $table->longText('body')->nullable();
-            $table->string('status')->default('queued'); // queued, sent, failed
+            $table->string('status')->default('queued');
             $table->string('mailer_response')->nullable();
             $table->timestamp('sent_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
+            $table->index('company_id');
+            $table->index('user_id');
         });
     }
 

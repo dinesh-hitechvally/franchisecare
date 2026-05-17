@@ -5,8 +5,9 @@ import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
+import { PageHeader } from '../../components/layout/PageHeader'
 import type { Customer } from '../../types'
-import { Plus, Search, Eye } from 'lucide-react'
+import { Plus, Search, Eye, Users } from 'lucide-react'
 
 export function CustomersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -33,13 +34,16 @@ export function CustomersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">Customers</h1>
-        <Button onClick={() => setIsModalOpen(true)} size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Customer
-        </Button>
-      </div>
+      <PageHeader
+        title="Customers"
+        icon={<Users className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Customer
+          </Button>
+        }
+      />
 
       <Card>
         <div className="flex items-center gap-4 mb-6">

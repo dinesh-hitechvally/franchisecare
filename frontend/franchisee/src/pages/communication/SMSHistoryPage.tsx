@@ -5,6 +5,8 @@ import { TablePagination } from '../../components/ui/TablePagination'
 import { communicationHistoryApi } from '../../api/services'
 import type { SmsHistory } from '../../types'
 import { format, parseISO } from 'date-fns'
+import { MessageSquare } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 type StatusTab = {
   label: 'SUCCESSFULLY SENT' | 'ON QUEUES'
@@ -59,9 +61,10 @@ export function SMSHistoryPage() {
 
   return (
     <div className="space-y-5 px-1 py-1">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">SMS History</h1>
-      </div>
+      <PageHeader
+        title="SMS History"
+        icon={<MessageSquare className="w-5 h-5" />}
+      />
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex gap-8 px-5 border-b border-gray-200">

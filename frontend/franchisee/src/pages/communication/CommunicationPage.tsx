@@ -10,6 +10,7 @@ import { useToastStore } from '../../store/toastStore'
 import type { CommunicationTemplate, CommunicationLog, Customer } from '../../types'
 import { Plus, Send, Mail, MessageSquare, Clock, Eye } from 'lucide-react'
 import { format } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function CommunicationPage() {
   const queryClient = useQueryClient()
@@ -73,13 +74,16 @@ export function CommunicationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">Communication</h1>
-        <Button onClick={() => setIsSendModalOpen(true)} size="sm">
-          <Send className="w-4 h-4 mr-2" />
-          Send Message
-        </Button>
-      </div>
+      <PageHeader
+        title="Communication"
+        icon={<MessageSquare className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsSendModalOpen(true)} size="sm">
+            <Send className="w-4 h-4 mr-2" />
+            Send Message
+          </Button>
+        }
+      />
 
       {/* Tabs */}
       <div className="flex gap-1 bg-secondary-100 p-1 rounded-lg w-fit">

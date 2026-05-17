@@ -1,12 +1,14 @@
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Repeat } from 'lucide-react'
 
 export function RecurringIncomePage() {
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Recurring Income</h1>
-      </div>
+      <PageHeader
+        title="Recurring Income"
+        icon={<Repeat className="w-5 h-5" />}
+      />
 
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">

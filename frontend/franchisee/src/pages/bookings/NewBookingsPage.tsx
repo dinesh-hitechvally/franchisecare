@@ -1,8 +1,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
-import { Search, ChevronDown, ChevronUp, XCircle, Edit2, Check } from 'lucide-react'
+import { Search, ChevronDown, ChevronUp, XCircle, Edit2, Check, Plus } from 'lucide-react'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { TimePicker } from '../../components/ui/TimePicker'
@@ -362,10 +363,11 @@ export function NewBookingsPage() {
 
   return (
     <div className="space-y-6 px-4 py-6 w-full max-w-[1600px] mx-auto bg-gray-50/30 min-h-screen">
-      {/* Header Card */}
-      <Card className="px-6 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-none bg-white">
-        <h1 className="text-xl font-bold text-gray-800">{isEditMode ? 'Edit Booking' : 'New Bookings'}</h1>
-      </Card>
+      <PageHeader
+        title={isEditMode ? 'Edit Booking' : 'New Bookings'}
+        description={isEditMode ? 'Update booking details and services' : 'Create a new booking for your customers'}
+        icon={<Plus className="w-5 h-5" />}
+      />
 
       <div className="flex flex-col lg:flex-row gap-8 items-start">
         <div className="flex-1 space-y-8 min-w-0 w-full">

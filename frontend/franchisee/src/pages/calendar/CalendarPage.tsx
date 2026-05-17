@@ -3,8 +3,8 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Input } from '../../components/ui/Input'
-import { Search, Filter, ChevronLeft, ChevronRight, CalendarDays, Clock, List, GripVertical } from 'lucide-react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, parseISO, isWithinInterval, max, min } from 'date-fns'
+import { Search, Filter, ChevronLeft, ChevronRight, CalendarDays, Clock, List, GripVertical, Calendar } from 'lucide-react'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, parseISO, isWithinInterval } from 'date-fns'
 import {
   DndContext,
   DragOverlay,
@@ -24,6 +24,7 @@ import { BlockoutDetailModal } from '../../components/modals/BlockoutDetailModal
 import { bookingsApi, blockoutsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Booking as BookingType, Blockout } from '../../types'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 type ViewMode = 'month' | 'week' | 'day' | 'agenda'
 
@@ -48,9 +49,13 @@ interface Booking {
 interface DayBooking {
   id: string
   startTime: string
+  time?: string
   customer: string
+  customerName?: string
   pet: string
+  petName?: string
   service: string
+  status?: string
   duration: number
   startDate: string
   endDate?: string
@@ -700,16 +705,17 @@ export function CalendarPage() {
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
-        {/* Header with View Tabs */}
-        <div className="flex items-center justify-between gap-4">
-          <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-            <h1 className="text-xl font-bold text-gray-800">Calendar</h1>
-          </Card>
-          <Button variant="secondary" size="sm" className="flex-shrink-0">
-            <Filter className="w-4 h-4 mr-2" />
-            Filter
-          </Button>
-        </div>
+        <PageHeader
+          title="Calendar"
+          description="Manage your bookings and schedule"
+          icon={<Calendar className="w-5 h-5" />}
+          actions={
+            <Button variant="secondary" size="sm" className="flex-shrink-0">
+              <Filter className="w-4 h-4 mr-2" />
+              Filter
+            </Button>
+          }
+        />
 
         {/* View Mode Tabs */}
         <div className="flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-2">

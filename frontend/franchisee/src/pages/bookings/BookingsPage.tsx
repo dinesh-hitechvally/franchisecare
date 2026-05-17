@@ -17,6 +17,7 @@ import {
   sortableKeyboardCoordinates,
 } from '@dnd-kit/sortable'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
@@ -25,7 +26,7 @@ import { bookingsApi, customersApi, servicesApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
 import type { Booking, Pet } from '../../types'
-import { Plus, CalendarDays, CheckCircle, Clock, XCircle, Play, GripVertical } from 'lucide-react'
+import { Plus, CalendarDays, CheckCircle, Clock, XCircle, Play, GripVertical, Calendar } from 'lucide-react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from 'date-fns'
 import { TablePagination } from '../../components/ui/TablePagination'
 
@@ -215,9 +216,13 @@ export function BookingsPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between gap-4">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Bookings</h1>
-        </Card>
+        <div className="flex-1">
+          <PageHeader
+            title="Bookings"
+            description="Manage all your bookings in list or calendar view"
+            icon={<Calendar className="w-5 h-5" />}
+          />
+        </div>
         <div className="flex gap-3">
           <div className="flex bg-secondary-100 rounded-lg p-1">
             <button

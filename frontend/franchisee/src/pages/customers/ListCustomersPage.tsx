@@ -4,9 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { customersApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import { Search, Plus, Menu, Star, MoreVertical, Loader2, Archive, Edit3, History } from 'lucide-react'
+import { Search, Plus, Menu, Star, MoreVertical, Loader2, Archive, Edit3, History, Users } from 'lucide-react'
 import type { Customer } from '../../types'
 import { CustomerAuditModal } from '../../components/modals/CustomerAuditModal'
 import { PortalMenu } from '../../components/ui/PortalMenu'
@@ -63,26 +64,25 @@ export function ListCustomersPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 min-h-screen">
+    <div className="space-y-6">
+      <PageHeader
+        title={`${customers?.length ?? 0} Customers`}
+        description={statusFilter === 'archived' ? 'Showing archived' : 'Active customers'}
+        icon={<Users className="w-5 h-5" />}
+        actions={
+          <Link to="/customers/add">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm rounded-md">
+              <Plus className="w-5 h-5" />
+              Add Customer
+            </Button>
+          </Link>
+        }
+      />
+
+      <div className="flex flex-col lg:flex-row gap-8 min-h-screen">
       {/* Sidebar */}
       <div className="w-full lg:w-64 shrink-0 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {customers?.length ?? 0} Customers
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {statusFilter === 'archived' ? 'Showing archived' : 'Active customers'}
-          </p>
-        </div>
-        
-        <Link to="/customers/add" className="block">
-          <Button className="w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm rounded-md py-2.5">
-            <Plus className="w-5 h-5" />
-            Add Customer
-          </Button>
-        </Link>
-        
-        <nav className="space-y-1 mt-4">
+        <nav className="space-y-1">
           <button 
             onClick={() => setStatusFilter('all')}
             className={`w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors ${
@@ -230,6 +230,7 @@ export function ListCustomersPage() {
             </div>
           )}
         </Card>
+      </div>
       </div>
 
       <CustomerAuditModal 

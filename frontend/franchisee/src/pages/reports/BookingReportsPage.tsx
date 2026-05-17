@@ -6,11 +6,12 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, PieChart } from 'lucide-react';
 import { bookingReportsApi } from '../../api/services';
 import { useEffect } from 'react';
+import { PageHeader } from '../../components/layout/PageHeader';
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend, CartesianGrid, PieChart as RechartsPieChart, Pie, Cell,
 } from 'recharts'; // recharts components for charts
 
 export function BookingReportsPage() {
@@ -124,9 +125,11 @@ export function BookingReportsPage() {
   // Filter section
   return (
     <div className="space-y-6 px-1 py-1 w-full">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Booking Reports</h1>
-      </div>
+      <PageHeader
+        title="Booking Reports"
+        description="Analyze booking trends and performance metrics"
+        icon={<PieChart size={20} />}
+      />
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <form
@@ -206,7 +209,7 @@ export function BookingReportsPage() {
           {/* Pie Chart */}
           <div className="flex items-center justify-center">
             <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
+              <RechartsPieChart>
                 <Pie
                   data={filteredPieData}
                   cx="50%"
@@ -222,7 +225,7 @@ export function BookingReportsPage() {
                 </Pie>
                 <Tooltip />
                 <Legend content={renderCustomLegend} />
-              </PieChart>
+              </RechartsPieChart>
             </ResponsiveContainer>
           </div>
 

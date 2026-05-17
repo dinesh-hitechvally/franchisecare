@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function CalendarWeekViewPage() {
   const [currentWeek, setCurrentWeek] = useState(new Date())
@@ -14,29 +15,31 @@ export function CalendarWeekViewPage() {
   const timeSlots = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '2:00 PM', '3:00 PM', '4:00 PM', '5:00 PM']
 
   const weekBookings = [
-    { day: 1, time: '10:00 AM', customer: 'John Doe', service: 'Full Groom' },
-    { day: 2, time: '11:00 AM', customer: 'Jane Smith', service: 'Bath & Dry' },
-    { day: 3, time: '2:00 PM', customer: 'Mike Johnson', service: 'Full Groom' },
+    { day: 1, time: '10:00 AM', startTime: '10:00 AM', customer: 'John Doe', service: 'Full Groom' },
+    { day: 2, time: '11:00 AM', startTime: '11:00 AM', customer: 'Jane Smith', service: 'Bath & Dry' },
+    { day: 3, time: '2:00 PM', startTime: '2:00 PM', customer: 'Mike Johnson', service: 'Full Groom' },
   ]
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Calendar - Week View</h1>
-        </Card>
-        <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-md border border-gray-200 shadow-sm">
-          <Button variant="secondary" size="sm" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[160px] text-center">
-            {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
-          </span>
-          <Button variant="secondary" size="sm" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Calendar - Week View"
+        description="View weekly schedule and appointments"
+        icon={<CalendarDays className="w-5 h-5" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setCurrentWeek(subWeeks(currentWeek, 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-medium min-w-[160px] text-center">
+              {format(weekStart, 'MMM d')} - {format(weekEnd, 'MMM d, yyyy')}
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentWeek(addWeeks(currentWeek, 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        }
+      />
 
       <Card className="overflow-x-auto">
         <div className="min-w-[800px]">
@@ -56,7 +59,7 @@ export function CalendarWeekViewPage() {
                 <div key={time} className="bg-white p-3 text-sm text-gray-500 font-medium">
                   {time}
                 </div>
-                {days.map((day, dayIndex) => {
+                {days.map((_, dayIndex) => {
                   const booking = weekBookings.find(b => b.day === dayIndex && b.startTime === time)
                   return (
                     <div key={`${time}-${dayIndex}`} className="bg-white p-2 min-h-[60px] border-t border-gray-100">

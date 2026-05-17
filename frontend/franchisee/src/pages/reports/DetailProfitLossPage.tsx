@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Printer, Download, Search, FileText, ChevronDown, ChevronRight } from 'lucide-react'
+import { Printer, Download, Search, ChevronDown, TrendingUp } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 interface DetailedEntry {
   date: string
@@ -48,21 +49,21 @@ export function DetailProfitLossPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
-      {/* Page Title Card */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <FileText size={24} className="text-blue-600" />
-          Detailed Profit/Loss Statement
-        </h1>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
-            <Download size={14} /> Export CSV
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
-            <Printer size={14} /> Print
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Detailed Profit/Loss Statement"
+        description="Comprehensive income and expense breakdown"
+        icon={<TrendingUp size={20} />}
+        actions={
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
+              <Download size={14} /> Export CSV
+            </button>
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
+              <Printer size={14} /> Print
+            </button>
+          </div>
+        }
+      />
 
       {/* Filter Card */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">
@@ -163,5 +164,3 @@ export function DetailProfitLossPage() {
     </div>
   )
 }
-
-import React from 'react'

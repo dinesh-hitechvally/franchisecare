@@ -8,6 +8,7 @@ import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
 import { inventoryApi } from '../../api/services'
 import type { InventoryItem } from '../../types'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 type InventoryFormState = {
   name: string
@@ -163,16 +164,17 @@ export function InventoryPage() {
 
   return (
     <div className="space-y-6 px-1 py-1">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory</h1>
-          <p className="mt-1 text-sm text-gray-500">Track company-level stock items, stock on hand, and low-stock alerts.</p>
-        </div>
-        <Button onClick={openCreateModal} size="sm">
-          <Plus className="mr-2 h-4 w-4" />
-          Add Item
-        </Button>
-      </div>
+      <PageHeader
+        title="Inventory"
+        description="Track company-level stock items, stock on hand, and low-stock alerts."
+        icon={<Package className="w-5 h-5" />}
+        actions={
+          <Button onClick={openCreateModal} size="sm">
+            <Plus className="mr-2 h-4 w-4" />
+            Add Item
+          </Button>
+        }
+      />
 
       {lowStockItems.length > 0 && (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4">

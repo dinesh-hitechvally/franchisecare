@@ -12,7 +12,7 @@ class SmsHistory extends Model
     protected $table = 'sms_history';
 
     protected $fillable = [
-        'user_id',
+        'company_id',
         'to_number',
         'customer_name',
         'message',
@@ -25,8 +25,8 @@ class SmsHistory extends Model
         'sent_at' => 'datetime',
     ];
 
-    public function user()
+    public function company()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Company::class);
     }
 }

@@ -7,6 +7,7 @@ export interface User {
   role: 'owner' | 'franchise_admin' | 'staff'
   companyId?: string
   company_id?: string
+  franchise_id?: string
   company_name?: string
   avatar?: string
   phone?: string
@@ -75,6 +76,7 @@ export interface Customer {
   is_subscribed?: boolean
   is_active?: boolean
   company_id: string
+  franchise_id?: string
   notes: string
   pets?: Pet[]
   bookings?: Booking[]
@@ -122,17 +124,24 @@ export interface Booking {
   id: string
   customerId: string
   customer?: Customer
+  customerName?: string
   petIds: string[]
+  petName?: string
   serviceIds: string[]
   details?: BookingDetail[]
+  bookings?: Booking[]
   companyId: string
+  date?: string
   startDate: string
   startTime: string
   endTime?: string
+  endDate?: string
+  isMultiDay?: boolean
+  eventType?: string
   calendarColor?: string
   sendSms?: boolean
   sendEmail?: boolean
-  status: 'active' | 'cancelled' | 'completed' | 'archived'
+  status: 'active' | 'cancelled' | 'completed' | 'archived' | 'requested' | 'confirmed' | 'in_progress'
   total: number
   recurringId?: string
   isRecurring?: boolean // Derived from recurringId
@@ -201,9 +210,24 @@ export interface ServiceInventoryUsage {
   updated_at: string
 }
 
+export interface InventoryUsageHistory {
+  id: string
+  booking_id: string
+  service_name: string
+  inventory_name: string
+  quantity_change: number
+  quantity_in_ml: number | null
+  change_type: string
+  customer_name: string
+  date_time: string
+  appointment_date: string
+  appointment_time: string
+}
+
 export interface Blockout {
   id: string
   companyId: string
+  franchise_id?: string
   title: string
   location?: string
   startDate: string
@@ -215,6 +239,7 @@ export interface Blockout {
   repeatOn?: string
   repeatUntil?: string
   notes?: string
+  reason?: string
   active: boolean
   createdAt: string
   updatedAt: string
@@ -290,13 +315,16 @@ export interface ExpenseCategory {
 export interface Income {
   id: string
   company_id: string
+  franchise_id?: string
   income_category_id?: string
   booking_id?: string
   title: string
   description?: string
   amount: number
   income_date: string
+  date?: string
   is_active: boolean
+  isRecurring?: boolean
   recurring_income_id?: string
   category?: IncomeCategory
   created_at: string
@@ -306,12 +334,16 @@ export interface Income {
 export interface Expense {
   id: string
   company_id: string
+  franchise_id?: string
   expense_category_id?: string
   title: string
   description?: string
   amount: number
   expense_date: string
+  date?: string
   is_active: boolean
+  isRecurring?: boolean
+  orderId?: string
   recurring_expense_id?: string
   category?: ExpenseCategory
   created_at: string
@@ -450,6 +482,7 @@ export interface NewsItem {
   id: string
   title: string
   content: string
+  category?: string
   authorId: string
   isPublished: boolean
   publishedAt?: string

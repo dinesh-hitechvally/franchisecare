@@ -3,12 +3,13 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import type { Booking } from '../../types'
 import { TablePagination } from '../../components/ui/TablePagination'
-import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle } from 'lucide-react'
+import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle, Settings } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
 
 function getCustomerName(booking: Booking) {
@@ -141,10 +142,12 @@ export function ManageBookingsPage() {
   }
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-[30px] leading-tight font-bold text-gray-800">Mark Bookings Completed</h1>
-      </Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Mark Bookings Completed"
+        description="List of bookings scheduled in the past. Mark them complete individually or in bulk."
+        icon={<Settings className="w-5 h-5" />}
+      />
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between px-2 py-2">

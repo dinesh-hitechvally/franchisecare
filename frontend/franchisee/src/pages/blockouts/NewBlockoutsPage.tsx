@@ -2,11 +2,12 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useMutation } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { TimePicker } from '../../components/ui/TimePicker'
-import { ChevronUp, ChevronDown, Check } from 'lucide-react'
+import { ChevronUp, ChevronDown, Check, CalendarOff } from 'lucide-react'
 import { blockoutsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
@@ -81,10 +82,11 @@ export function NewBlockoutsPage() {
 
   return (
     <div className="space-y-6 px-4 py-6 w-full max-w-[1600px] mx-auto bg-gray-50/30 min-h-screen">
-      {/* Header Card */}
-      <Card className="px-6 py-4 shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-none bg-white text-left">
-        <h1 className="text-xl font-bold text-gray-800">New Blockouts</h1>
-      </Card>
+      <PageHeader
+        icon={<CalendarOff className="w-6 h-6" />}
+        title="New Blockout"
+        description="Create a new blockout period"
+      />
 
       <form id="blockout-form" onSubmit={handleSubmit} className="flex flex-col lg:flex-row gap-8 items-start pb-20">
         {/* Left Column: Form */}

@@ -201,7 +201,7 @@ const sections: NavSection[] = [
     children: [
       { name: 'Manage Bookings', href: '/settings/manage-bookings' },
       { name: 'Settings', href: '/settings' },
-      { name: 'Inventory Usage', href: '/settings/inventory-usage' },
+      { name: 'Inventory Usage', href: '/inventory/usage' },
       { name: 'Service Prices', href: '/settings/service-prices' },
     ],
   },
@@ -374,8 +374,8 @@ export function Sidebar() {
           <NavLink
             key={item.name}
             to={item.href}
-            className={({ is_active: active }) =>
-              cn('sb-item', active && 'active')
+            className={({ isActive }) =>
+              cn('sb-item', isActive && 'active')
             }
           >
             {item.icon}
@@ -404,8 +404,8 @@ export function Sidebar() {
                   <NavLink
                     key={child.name}
                     to={child.href!}
-                    className={({ is_active: active }) =>
-                      cn('sb-sub-item', active && 'active')
+                    className={({ isActive }) =>
+                      cn('sb-sub-item', isActive && 'active')
                     }
                   >
                     {child.name}
@@ -418,7 +418,7 @@ export function Sidebar() {
 
         {/* Bottom items */}
         <div className="sb-bottom-section">
-          <NavLink to="/version-update" className={({ is_active: active }) => cn('sb-item', active && 'active')}>
+          <NavLink to="/version-update" className={({ isActive: active }) => cn('sb-item', active && 'active')}>
             <SvgIcon type="version" />
             <span>Version Update</span>
           </NavLink>
@@ -443,7 +443,7 @@ export function Sidebar() {
 
       {/* Operations Manual - below download */}
       <div className="sb-after-download">
-        <NavLink to="/operations-manual" className={({ is_active: active }) => cn('sb-item', active && 'active')}>
+        <NavLink to="/operations-manual" className={({ isActive: active }) => cn('sb-item', active && 'active')}>
           <SvgIcon type="manual" />
           <span>Operations Manual</span>
         </NavLink>

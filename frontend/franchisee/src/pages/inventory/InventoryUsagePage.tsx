@@ -1,50 +1,78 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
-import { AlertTriangle, BarChart3, Filter, Plus, Search, Trash2 } from 'lucide-react'
+import { Eye, Package, X, Plus, MoreVertical, History, Loader2 } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
-import { Input } from '../../components/ui/Input'
-import { bookingsApi, serviceInventoryUsageApi, servicesApi } from '../../api/services'
-import type { Booking, Service, ServiceInventoryUsage } from '../../types'
+import { PortalMenu } from '../../components/ui/PortalMenu'
+import { serviceInventoryUsageApi, servicesApi } from '../../api/services'
+import type { Service, ServiceInventoryUsage } from '../../types'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { useToastStore } from '../../store/toastStore'
+import { format } from 'date-fns'
 
-type UsageForecastRow = {
+type ServiceWithInventory = {
   id: string
-  serviceName: string
-  inventoryName: string
-  bookingCount: number
-  quantityPerBooking: number
-  unit: string
-  totalDeduction: number
-  bookingStatuses: string
+  name: string
+  inventoryCount: number
+  rules: ServiceInventoryUsage[]
 }
 
-type RuleFormState = {
-  serviceId: string
+type InventoryRow = {
+  id?: string
   inventoryName: string
-  quantityPerBooking: string
+  usageAmount: string
   unit: string
-  notes: string
   isActive: boolean
 }
 
-const EMPTY_FORM: RuleFormState = {
-  serviceId: '',
-  inventoryName: '',
-  quantityPerBooking: '',
-  unit: '',
-  notes: '',
-  isActive: true,
-}
+// Predefined inventory items list
+const INVENTORY_ITEMS = [
+  'Cologne',
+  'HydroClean Sanitiser',
+  'Herbal Deluxe Shampoo',
+  'Shampoo',
+  'Conditioner',
+  'Flea Treatment',
+  'Ear Cleaner',
+  'Nail Polish',
+  'Paw Balm',
+  'Towels',
+  'Other'
+]
+
+// Usage amount options (1-5 pumps)
+const USAGE_OPTIONS = [
+  '1 pump',
+  '2 pumps',
+  '3 pumps',
+  '4 pumps',
+  '5 pumps'
+]
 
 export function InventoryUsagePage() {
   const queryClient = useQueryClient()
-  const [searchTerm, setSearchTerm] = useState('')
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingRule, setEditingRule] = useState<ServiceInventoryUsage | null>(null)
-  const [form, setForm] = useState<RuleFormState>(EMPTY_FORM)
+  const { addToast } = useToastStore()
+  const [selectedService, setSelectedService] = useState<ServiceWithInventory | null>(null)
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false)
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null)
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+  const [inventoryRows, setInventoryRows] = useState<InventoryRow[]>([
+    { inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }
+  ])
+
+  // Close menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setOpenMenuId(null)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const { data: services = [] } = useQuery({
     queryKey: ['services-list'],
@@ -56,352 +84,460 @@ export function InventoryUsagePage() {
     queryFn: () => serviceInventoryUsageApi.getAll(),
   })
 
-  const { data: bookings = [] } = useQuery({
-    queryKey: ['usage-bookings'],
-    queryFn: () => bookingsApi.getAll(),
-  })
-
   const rules = Array.isArray(ruleResponse) ? ruleResponse : ruleResponse?.data ?? []
 
-  const activeBookings = useMemo(() => {
-    return (bookings as Booking[]).filter((booking) => booking.status === 'active' || booking.status === 'completed')
-  }, [bookings])
+  // Group rules by service
+  const servicesWithInventory = useMemo(() => {
+    const serviceList: ServiceWithInventory[] = []
+    const serviceMap: Record<string, ServiceWithInventory> = {}
 
-  const forecast = useMemo<UsageForecastRow[]>(() => {
-    const totals = new Map<string, UsageForecastRow & { statuses: Record<string, number> }>()
+    // Ensure services is an array
+    const serviceArray = Array.isArray(services) ? services : []
+    const rulesArray = Array.isArray(rules) ? rules : []
 
-    activeBookings.forEach((booking) => {
-      booking.details?.forEach((detail) => {
-        const matchedRules = rules.filter((rule) => rule.is_active && rule.service_id === detail.serviceId)
+    // Initialize with all services
+    serviceArray.forEach((service: Service) => {
+      serviceMap[service.id] = {
+        id: service.id,
+        name: service.name,
+        inventoryCount: 0,
+        rules: [],
+      }
+    })
 
-        matchedRules.forEach((rule) => {
-          const key = `${rule.service_id}:${rule.inventory_name}`
-          const current = totals.get(key) || {
-            id: key,
-            serviceName: detail.service?.name || 'Unknown service',
-            inventoryName: rule.inventory_name,
-            bookingCount: 0,
-            quantityPerBooking: Number(rule.quantity_per_booking) || 0,
-            unit: rule.unit,
-            totalDeduction: 0,
-            bookingStatuses: '',
-            statuses: {},
-          }
+    // Add rules to services
+    rulesArray.forEach((rule: ServiceInventoryUsage) => {
+      const serviceId = rule.service_id
+      if (serviceMap[serviceId]) {
+        serviceMap[serviceId].rules.push(rule)
+        serviceMap[serviceId].inventoryCount = serviceMap[serviceId].rules.length
+      }
+    })
 
-          current.bookingCount += 1
-          current.totalDeduction += Number(rule.quantity_per_booking) || 0
-          current.statuses[booking.status] = (current.statuses[booking.status] || 0) + 1
-          totals.set(key, current)
+    // Convert to array
+    Object.values(serviceMap).forEach(service => {
+      serviceList.push(service)
+    })
+
+    return serviceList
+  }, [services, rules])
+
+  const saveMutation = useMutation({
+    mutationFn: async (data: { serviceId: string; rows: InventoryRow[] }) => {
+      // Delete existing rules for this service
+      const existingRules = rules.filter((r: ServiceInventoryUsage) => r.service_id === data.serviceId)
+      await Promise.all(existingRules.map((rule: ServiceInventoryUsage) =>
+        serviceInventoryUsageApi.delete(rule.id)
+      ))
+
+      // Create new rules
+      const createPromises = data.rows
+        .filter(row => row.inventoryName && row.usageAmount)
+        .map(row => {
+          // Extract number from "X pump(s)" format
+          const usageNumber = parseFloat(row.usageAmount.split(' ')[0]) || 0
+
+          return serviceInventoryUsageApi.create({
+            service_id: data.serviceId,
+            inventory_name: row.inventoryName,
+            quantity_per_booking: usageNumber,
+            unit: 'pumps',
+            notes: '',
+            is_active: row.isActive,
+            company_id: null,
+          })
         })
-      })
-    })
 
-    return Array.from(totals.values()).map(({ statuses, ...row }) => ({
-      ...row,
-      bookingStatuses: Object.entries(statuses).map(([status, count]) => `${status}: ${count}`).join(' | '),
-    }))
-  }, [activeBookings, rules])
-
-  const filteredRules = rules.filter((rule) => {
-    if (!searchTerm.trim()) return true
-
-    const haystack = `${rule.service?.name || ''} ${rule.inventory_name} ${rule.unit} ${rule.notes || ''}`.toLowerCase()
-    return haystack.includes(searchTerm.trim().toLowerCase())
-  })
-
-  const createMutation = useMutation({
-    mutationFn: (payload: RuleFormState) =>
-      serviceInventoryUsageApi.create({
-        service_id: payload.serviceId,
-        inventory_name: payload.inventoryName,
-        quantity_per_booking: Number(payload.quantityPerBooking),
-        unit: payload.unit,
-        notes: payload.notes,
-        is_active: payload.isActive,
-        company_id: null,
-      }),
+      return Promise.all(createPromises)
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['service-inventory-usages'] })
-      closeModal()
+      addToast('Inventory usage saved successfully', 'success')
+      handleCloseModal()
     },
-  })
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, payload }: { id: string; payload: RuleFormState }) =>
-      serviceInventoryUsageApi.update(id, {
-        service_id: payload.serviceId,
-        inventory_name: payload.inventoryName,
-        quantity_per_booking: Number(payload.quantityPerBooking),
-        unit: payload.unit,
-        notes: payload.notes,
-        is_active: payload.isActive,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['service-inventory-usages'] })
-      closeModal()
-    },
-  })
-
-  const deleteMutation = useMutation({
-    mutationFn: (id: string) => serviceInventoryUsageApi.delete(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['service-inventory-usages'] }),
-  })
-
-  useEffect(() => {
-    if (!isModalOpen) {
-      setEditingRule(null)
-      setForm(EMPTY_FORM)
+    onError: () => {
+      addToast('Failed to save inventory usage', 'error')
     }
-  }, [isModalOpen])
+  })
 
-  function closeModal() {
-    setIsModalOpen(false)
-    setEditingRule(null)
-    setForm(EMPTY_FORM)
-  }
+  const handleViewRules = (service: ServiceWithInventory) => {
+    setSelectedService(service)
 
-  function openCreateModal() {
-    setEditingRule(null)
-    setForm(EMPTY_FORM)
-    setIsModalOpen(true)
-  }
+    // Load existing rules into form
+    if (service.rules.length > 0) {
+      setInventoryRows(service.rules.map(rule => {
+        const quantity = Math.round(rule.quantity_per_booking)
+        const usageAmount = quantity === 1 ? '1 pump' : `${quantity} pumps`
 
-  function openEditModal(rule: ServiceInventoryUsage) {
-    setEditingRule(rule)
-    setForm({
-      serviceId: rule.service_id,
-      inventoryName: rule.inventory_name,
-      quantityPerBooking: String(rule.quantity_per_booking),
-      unit: rule.unit,
-      notes: rule.notes || '',
-      isActive: rule.is_active,
-    })
-    setIsModalOpen(true)
-  }
-
-  function saveRule() {
-    if (editingRule) {
-      updateMutation.mutate({ id: editingRule.id, payload: form })
-      return
+        return {
+          id: rule.id,
+          inventoryName: rule.inventory_name,
+          usageAmount: usageAmount,
+          unit: 'pumps',
+          isActive: rule.is_active
+        }
+      }))
+    } else {
+      setInventoryRows([{ inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
     }
 
-    createMutation.mutate(form)
+    setIsEditModalOpen(true)
   }
 
-  const summaryCards = [
-    { label: 'Rules', value: rules.length },
-    { label: 'Active Rules', value: rules.filter((rule) => rule.is_active).length },
-    { label: 'Services', value: new Set(rules.map((rule) => rule.service_id)).size },
-    { label: 'Forecast Rows', value: forecast.length },
-  ]
+  const handleCloseModal = () => {
+    setIsEditModalOpen(false)
+    setSelectedService(null)
+    setInventoryRows([{ inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
+  }
 
-  const serviceOptions = services as Service[]
+  const handleAddRow = () => {
+    setInventoryRows([...inventoryRows, { inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
+  }
+
+  const handleRemoveRow = (index: number) => {
+    if (inventoryRows.length > 1) {
+      setInventoryRows(inventoryRows.filter((_, i) => i !== index))
+    }
+  }
+
+  const handleRowChange = (index: number, field: keyof InventoryRow, value: string) => {
+    const newRows = [...inventoryRows]
+    newRows[index] = { ...newRows[index], [field]: value }
+    setInventoryRows(newRows)
+  }
+
+  const handleSave = () => {
+    if (!selectedService) return
+    saveMutation.mutate({ serviceId: selectedService.id, rows: inventoryRows })
+  }
 
   return (
-    <div className="space-y-6 px-1 py-1">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Inventory Usage</h1>
-          <p className="mt-1 text-sm text-gray-500">Define how much inventory each service consumes and forecast deductions from bookings.</p>
-        </div>
-        <div className="flex gap-2">
-          <Button variant="secondary" size="sm">
-            <Filter className="w-4 h-4 mr-2" />
-            View Rules
-          </Button>
-          <Button size="sm" onClick={openCreateModal}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Rule
-          </Button>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Service Inventory Usage"
+        description="View inventory items consumed by each service"
+        icon={<Package className="w-5 h-5" />}
+      />
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        {summaryCards.map((card) => (
-          <Card key={card.label} className="p-4">
-            <p className="text-sm text-gray-500">{card.label}</p>
-            <p className="mt-1 text-2xl font-bold text-gray-900">{card.value}</p>
-          </Card>
-        ))}
-      </div>
-
-      {forecast.length === 0 && rules.length === 0 && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="mt-0.5 h-5 w-5 text-amber-600" />
+      <Card className="border border-gray-200 shadow-sm">
+        <div className="border-b border-gray-200 bg-gray-50 px-6 py-4">
+          <div className="flex items-center justify-between">
             <div>
-              <h3 className="font-medium text-amber-900">No usage rules yet</h3>
-              <p className="mt-1 text-sm text-amber-800">Add a service rule to begin calculating inventory usage from bookings.</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Card className="border border-gray-200 shadow-sm">
-        <div className="border-b border-gray-200 p-4">
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-              <Input
-                className="pl-10"
-                placeholder="Search rules or services"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+              <h2 className="text-lg font-semibold text-gray-900">Services</h2>
+              <p className="text-sm text-gray-600 mt-1">
+                {servicesWithInventory.length} {servicesWithInventory.length === 1 ? 'service' : 'services'} found
+              </p>
             </div>
           </div>
         </div>
 
-        <Table
-          columns={[
-            { key: 'service', title: 'Service', render: (row: ServiceInventoryUsage) => row.service?.name || 'Unknown service' },
-            { key: 'inventory_name', title: 'Inventory Item' },
-            { key: 'quantity_per_booking', title: 'Qty / Booking', render: (row: ServiceInventoryUsage) => `${Number(row.quantity_per_booking).toFixed(2)} ${row.unit}` },
-            {
-              key: 'status',
-              title: 'Status',
-              render: (row: ServiceInventoryUsage) => (
-                <span className={`rounded-full px-2 py-1 text-xs font-semibold ${row.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {row.is_active ? 'Active' : 'Inactive'}
-                </span>
-              ),
-            },
-            { key: 'notes', title: 'Notes', render: (row: ServiceInventoryUsage) => row.notes || '-' },
-            {
-              key: 'actions',
-              title: 'Actions',
-              render: (row: ServiceInventoryUsage) => (
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="sm" onClick={() => openEditModal(row)}>Edit</Button>
-                  <Button variant="ghost" size="sm" onClick={() => deleteMutation.mutate(row.id)}>
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ),
-            },
-          ]}
-          data={filteredRules}
-          keyExtractor={(row) => row.id}
-          emptyMessage="No service inventory rules found"
-        />
-      </Card>
-
-      <Card className="border border-gray-200 shadow-sm">
-        <div className="border-b border-gray-200 p-4 flex items-center justify-between gap-4">
-          <div>
-            <h2 className="text-lg font-bold text-gray-900">Usage Forecast</h2>
-            <p className="text-sm text-gray-500">Calculated from active rules and active/completed bookings.</p>
+        <div className="p-6">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200 bg-gray-50">
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                    Service ID
+                  </th>
+                  <th className="px-6 py-4 text-left text-sm font-semibold text-gray-900">
+                    Service Name
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    Inventory Items
+                  </th>
+                  <th className="px-6 py-4 text-center text-sm font-semibold text-gray-900">
+                    Action
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100 bg-white">
+                {servicesWithInventory.length === 0 ? (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
+                      No services found
+                    </td>
+                  </tr>
+                ) : (
+                  servicesWithInventory.map((service, index) => (
+                    <tr key={service.id} className="hover:bg-gray-50 transition-colors">
+                      <td className="px-6 py-4 text-sm font-mono text-gray-700">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">
+                        {service.name}
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-semibold ${
+                          service.inventoryCount > 0
+                            ? 'bg-blue-100 text-blue-700 ring-1 ring-blue-600/20'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}>
+                          {service.inventoryCount}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            if (openMenuId === service.id) {
+                              setOpenMenuId(null)
+                              setMenuPos(null)
+                            } else {
+                              const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect()
+                              setMenuPos({ top: rect.bottom + 4, left: rect.right - 176 })
+                              setOpenMenuId(service.id)
+                            }
+                          }}
+                          className="text-gray-400 hover:text-gray-600 p-1.5 focus:outline-none rounded-full hover:bg-gray-100 transition-colors"
+                        >
+                          <MoreVertical className="w-5 h-5" />
+                        </button>
+                        <PortalMenu
+                          isOpen={openMenuId === service.id}
+                          onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
+                          position={menuPos}
+                          width={176}
+                        >
+                          <button
+                            onClick={() => {
+                              handleViewRules(service)
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <Eye className="w-4 h-4 text-gray-400" />
+                            View Usages
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedService(service)
+                              setIsHistoryModalOpen(true)
+                              setOpenMenuId(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <History className="w-4 h-4 text-gray-400" />
+                            Usages History
+                          </button>
+                        </PortalMenu>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => queryClient.invalidateQueries({ queryKey: ['usage-bookings'] })}
-          >
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Recalculate
-          </Button>
         </div>
-
-        <Table
-          columns={[
-            { key: 'serviceName', title: 'Service' },
-            { key: 'inventoryName', title: 'Inventory Item' },
-            { key: 'bookingCount', title: 'Bookings' },
-            { key: 'quantityPerBooking', title: 'Qty / Booking', render: (row: UsageForecastRow) => `${row.quantityPerBooking} ${row.unit}` },
-            { key: 'totalDeduction', title: 'Total Deduction', render: (row: UsageForecastRow) => `${row.totalDeduction.toFixed(2)} ${row.unit}` },
-            { key: 'bookingStatuses', title: 'Status Breakdown' },
-          ]}
-          data={forecast}
-          keyExtractor={(row) => row.id}
-          emptyMessage="Add usage rules to generate forecast rows"
-        />
       </Card>
 
-      <Card className="border border-gray-200 shadow-sm">
-        <div className="border-b border-gray-200 p-4">
-          <h2 className="text-lg font-bold text-gray-900">Bookings Used for Forecasting</h2>
-          <p className="text-sm text-gray-500">This list shows the bookings that currently feed inventory deduction estimates.</p>
-        </div>
-        <Table
-          columns={[
-            { key: 'id', title: 'Booking', render: (row: Booking) => `#${row.id}` },
-            { key: 'customer', title: 'Customer', render: (row: Booking) => `${row.customer?.first_name || ''} ${row.customer?.last_name || ''}`.trim() || 'Unknown' },
-            { key: 'date', title: 'Date', render: (row: Booking) => format(new Date(row.startDate), 'EEE, dd MMM yyyy') },
-            { key: 'status', title: 'Status' },
-            { key: 'services', title: 'Services', render: (row: Booking) => row.details?.map((detail) => detail.service?.name).filter(Boolean).join(', ') || '-' },
-          ]}
-          data={activeBookings}
-          keyExtractor={(row) => row.id}
-          emptyMessage="No bookings available"
-        />
-      </Card>
-
+      {/* Edit Inventory Usage Modal */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={closeModal}
-        title={editingRule ? 'Edit Inventory Usage Rule' : 'Add Inventory Usage Rule'}
-        footer={
-          <>
-            <Button variant="secondary" onClick={closeModal}>Cancel</Button>
-            <Button onClick={saveRule}>{editingRule ? 'Update Rule' : 'Create Rule'}</Button>
-          </>
-        }
+        isOpen={isEditModalOpen}
+        onClose={handleCloseModal}
+        title="Service Inventory Usage"
+        size="lg"
       >
-        <div className="space-y-4">
+        <div className="space-y-6">
+          {/* Service Name */}
           <div>
-            <label className="text-sm font-medium text-secondary-700">Service</label>
-            <select
-              className="input mt-1"
-              value={form.serviceId}
-              onChange={(e) => setForm((current) => ({ ...current, serviceId: e.target.value }))}
-            >
-              <option value="">Select a service</option>
-              {serviceOptions.map((service) => (
-                <option key={service.id} value={service.id}>{service.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <Input
-            label="Inventory Item"
-            value={form.inventoryName}
-            onChange={(e) => setForm((current) => ({ ...current, inventoryName: e.target.value }))}
-            placeholder="Shampoo, towels, wipes..."
-          />
-
-          <div className="grid grid-cols-2 gap-4">
-            <Input
-              label="Quantity per Booking"
-              type="number"
-              step="0.01"
-              value={form.quantityPerBooking}
-              onChange={(e) => setForm((current) => ({ ...current, quantityPerBooking: e.target.value }))}
-            />
-            <Input
-              label="Unit"
-              value={form.unit}
-              onChange={(e) => setForm((current) => ({ ...current, unit: e.target.value }))}
-              placeholder="bottles, packs, sheets"
-            />
-          </div>
-
-          <Input
-            label="Notes"
-            value={form.notes}
-            onChange={(e) => setForm((current) => ({ ...current, notes: e.target.value }))}
-            placeholder="Optional notes"
-          />
-
-          <label className="flex items-center gap-2 text-sm text-secondary-700">
+            <label className="block text-sm font-medium text-blue-600 mb-2">Service</label>
             <input
-              type="checkbox"
-              checked={form.isActive}
-              onChange={(e) => setForm((current) => ({ ...current, isActive: e.target.checked }))}
+              type="text"
+              value={selectedService?.name || ''}
+              disabled
+              className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
             />
-            Active rule
-          </label>
+          </div>
+
+          {/* Inventory Usage Section */}
+          <div>
+            <h3 className="text-sm font-medium text-gray-900 mb-4">Inventory Usage</h3>
+            <div className="space-y-4">
+              {inventoryRows.map((row, index) => (
+                <div key={index} className="flex items-end gap-3">
+                  <div className="flex-1">
+                    <label className="block text-sm text-gray-700 mb-1">
+                      Inventory Item Name
+                    </label>
+                    <select
+                      value={row.inventoryName}
+                      onChange={(e) => handleRowChange(index, 'inventoryName', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Select inventory item</option>
+                      {INVENTORY_ITEMS.map((item) => (
+                        <option key={item} value={item}>
+                          {item}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="w-48">
+                    <label className="block text-sm text-gray-700 mb-1">
+                      Inventory Usage (in pumps)
+                    </label>
+                    <select
+                      value={row.usageAmount}
+                      onChange={(e) => handleRowChange(index, 'usageAmount', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">Select usage</option>
+                      {USAGE_OPTIONS.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <button
+                    onClick={() => handleRemoveRow(index)}
+                    className="p-2 text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded-lg transition-colors"
+                    disabled={inventoryRows.length === 1}
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleAddRow}
+              className="mt-4 text-sm text-pink-600 hover:text-pink-700 font-medium flex items-center gap-1"
+            >
+              <Plus className="w-4 h-4" />
+              ADD MORE +
+            </button>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex items-center justify-between pt-4 border-t">
+            <Button
+              variant="secondary"
+              onClick={handleCloseModal}
+            >
+              BACK
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saveMutation.isPending}
+              className="bg-blue-600 hover:bg-blue-700 text-white"
+            >
+              {saveMutation.isPending ? 'SAVING...' : 'SAVE'}
+            </Button>
+          </div>
         </div>
       </Modal>
+
+      {/* Usages History Modal */}
+      <Modal
+        isOpen={isHistoryModalOpen}
+        onClose={() => {
+          setIsHistoryModalOpen(false)
+          setSelectedService(null)
+        }}
+        title="Inventory Usage History"
+        size="xl"
+      >
+        <HistoryModalContent selectedService={selectedService} />
+        <div className="flex items-center justify-end pt-4 border-t mt-4">
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setIsHistoryModalOpen(false)
+              setSelectedService(null)
+            }}
+          >
+            CLOSE
+          </Button>
+        </div>
+      </Modal>
+    </div>
+  )
+}
+
+// History Modal Content Component
+function HistoryModalContent({ selectedService }: { selectedService: ServiceWithInventory | null }) {
+  const { data: history = [], isLoading } = useQuery({
+    queryKey: ['service-inventory-history', selectedService?.id],
+    queryFn: () => selectedService ? serviceInventoryUsageApi.getHistory(selectedService.id) : Promise.resolve([]),
+    enabled: !!selectedService,
+  })
+
+  const formatDateTime = (dateStr: string) => {
+    try {
+      return format(new Date(dateStr), 'dd MMM yyyy, HH:mm')
+    } catch {
+      return dateStr
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
+        <span className="ml-2 text-gray-600">Loading history...</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <label className="block text-sm font-medium text-blue-600 mb-2">Service</label>
+        <input
+          type="text"
+          value={selectedService?.name || ''}
+          disabled
+          className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-700"
+        />
+      </div>
+
+      {history.length === 0 ? (
+        <div className="text-center py-8 text-gray-500">
+          No inventory usage history found for this service.
+        </div>
+      ) : (
+        <div className="overflow-x-auto border border-gray-200 rounded-lg">
+          <table className="w-full text-sm text-left border-collapse">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-4 py-3 font-bold text-gray-900">Booking ID</th>
+                <th className="px-4 py-3 font-bold text-gray-900">Customer Name</th>
+                <th className="px-4 py-3 font-bold text-gray-900">Inventory Name</th>
+                <th className="px-4 py-3 font-bold text-gray-900 text-right">Usage (ml)</th>
+                <th className="px-4 py-3 font-bold text-gray-900 text-center">Action</th>
+                <th className="px-4 py-3 font-bold text-gray-900">Date & Time</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {history.map((item) => (
+                <tr key={item.id} className="hover:bg-gray-50">
+                  <td className="px-4 py-3 text-gray-700 font-mono">#{item.booking_id}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.customer_name}</td>
+                  <td className="px-4 py-3 text-gray-700">{item.inventory_name}</td>
+                  <td className="px-4 py-3 text-right text-gray-900 font-semibold">
+                    {item.quantity_in_ml ? item.quantity_in_ml.toFixed(2) : 'N/A'}
+                  </td>
+                  <td className="px-4 py-3 text-center">
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                        item.change_type === 'deducted'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-green-100 text-green-700'
+                      }`}
+                    >
+                      {item.change_type}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600 whitespace-nowrap">
+                    {formatDateTime(item.date_time)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }

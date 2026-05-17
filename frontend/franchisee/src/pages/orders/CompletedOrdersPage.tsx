@@ -1,5 +1,6 @@
 import { Card } from '../../components/ui/Card'
-import { Check, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Check, X, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function CompletedOrdersPage() {
   // Mocks based on screenshot analysis
@@ -35,9 +36,11 @@ export function CompletedOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="px-4 py-3 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Completed Orders</h1>
-      </Card>
+      <PageHeader
+        title="Completed Orders"
+        description="View your completed order history"
+        icon={<ShoppingBag className="w-5 h-5" />}
+      />
 
       <div className="bg-white p-4 shadow-sm rounded-md border border-gray-200">
         <p className="text-gray-800 text-sm font-medium">All prices are GST included.</p>

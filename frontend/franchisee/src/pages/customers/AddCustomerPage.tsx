@@ -8,7 +8,8 @@ import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { Modal } from '../../components/ui/Modal'
-import { ChevronDown, Loader2, X, Check, Plus, MoreVertical, Trash2, PenLine, History } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { ChevronDown, Loader2, X, Check, Plus, MoreVertical, Trash2, PenLine, History, UserPlus } from 'lucide-react'
 import { customersApi, petsApi, bookingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { format, differenceInMonths, differenceInDays } from 'date-fns'
@@ -308,11 +309,10 @@ export function AddCustomerPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 border-b">
-        <h1 className="text-xl font-bold text-gray-800">
-          {savedCustomer ? `Customer: ${savedCustomer.first_name} ${savedCustomer.last_name}` : 'Add Customers/Pet'}
-        </h1>
-      </div>
+      <PageHeader
+        title={savedCustomer ? `Customer: ${savedCustomer.first_name} ${savedCustomer.last_name}` : 'Add Customers/Pet'}
+        icon={<UserPlus className="w-5 h-5" />}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Left Side: Customer Form */}

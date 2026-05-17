@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search } from 'lucide-react'
+import { Search, BarChart3 } from 'lucide-react'
 import { reportsApi } from '../../api/services'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 type BenchmarkRow = {
   heading: string
@@ -37,9 +38,11 @@ export function BenchmarkingPage() {
 
   return (
     <div className="space-y-6 px-1 py-1 w-full">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Benchmarking</h1>
-      </div>
+      <PageHeader
+        title="Benchmarking"
+        description="Compare your performance against state and national averages"
+        icon={<BarChart3 size={20} />}
+      />
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">

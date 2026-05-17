@@ -4,7 +4,6 @@ import { Modal } from '../ui/Modal'
 import { X } from 'lucide-react'
 import { format, parseISO } from 'date-fns'
 import { stockTakeApi } from '../../api/services'
-import type { StockTakeLog } from '../../types'
 
 interface StockTakeHistoryModalProps {
   isOpen: boolean

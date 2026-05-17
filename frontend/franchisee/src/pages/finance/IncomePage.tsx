@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { financeApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Income } from '../../types'
@@ -58,15 +59,16 @@ export function IncomePage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Income</h1>
-        </Card>
-        <Button onClick={() => setIsModalOpen(true)} size="sm" className="ml-4">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Income
-        </Button>
-      </div>
+      <PageHeader
+        title="Income"
+        icon={<TrendingUp className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Income
+          </Button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

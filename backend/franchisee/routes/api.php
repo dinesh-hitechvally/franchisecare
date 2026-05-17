@@ -69,6 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Services
     Route::apiResource('services', \App\Http\Controllers\Api\ServiceController::class);
     Route::apiResource('service-inventory-usages', \App\Http\Controllers\Api\ServiceInventoryUsageController::class)->except(['show', 'create', 'edit']);
+    Route::get('service-inventory-usages/{serviceId}/history', [\App\Http\Controllers\Api\ServiceInventoryUsageController::class, 'history']);
 
     // Inventory
     Route::get('inventory/items', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
@@ -167,4 +168,32 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('sms-credits', [\App\Http\Controllers\Api\SmsCreditController::class, 'index']);
     Route::post('sms-credits/purchase', [\App\Http\Controllers\Api\SmsCreditController::class, 'purchase']);
     Route::get('sms-credits/history', [\App\Http\Controllers\Api\SmsCreditController::class, 'history']);
+
+    // Settings
+    Route::get('settings/preferences', [\App\Http\Controllers\Api\SettingsController::class, 'getPreferences']);
+    Route::post('settings/preferences', [\App\Http\Controllers\Api\SettingsController::class, 'savePreferences']);
+    Route::get('settings/income-templates', [\App\Http\Controllers\Api\SettingsController::class, 'getIncomeTemplates']);
+    Route::post('settings/income-templates', [\App\Http\Controllers\Api\SettingsController::class, 'saveIncomeTemplates']);
+    Route::get('settings/calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getCalendarSettings']);
+    Route::post('settings/calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveCalendarSettings']);
+    Route::get('settings/cancellation-policy', [\App\Http\Controllers\Api\SettingsController::class, 'getCancellationPolicy']);
+    Route::post('settings/cancellation-policy', [\App\Http\Controllers\Api\SettingsController::class, 'saveCancellationPolicy']);
+    Route::get('settings/reminder', [\App\Http\Controllers\Api\SettingsController::class, 'getReminderSettings']);
+    Route::post('settings/reminder', [\App\Http\Controllers\Api\SettingsController::class, 'saveReminderSettings']);
+    Route::get('settings/app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getAppCalendarSettings']);
+    Route::post('settings/app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveAppCalendarSettings']);
+
+    // Version Updates
+    Route::get('version-updates', [\App\Http\Controllers\Api\VersionUpdateController::class, 'index']);
+    Route::post('version-updates', [\App\Http\Controllers\Api\VersionUpdateController::class, 'store']);
+    Route::put('version-updates/{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'update']);
+    Route::delete('version-updates/{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'destroy']);
+
+    // Service Prices
+    Route::get('service-prices', [\App\Http\Controllers\Api\ServicePriceController::class, 'index']);
+    Route::post('service-prices', [\App\Http\Controllers\Api\ServicePriceController::class, 'updateAll']);
+
+    // Company Services (replaces user_services)
+    Route::get('company-services', [\App\Http\Controllers\Api\CompanyServiceController::class, 'index']);
+    Route::post('company-services', [\App\Http\Controllers\Api\CompanyServiceController::class, 'updateAll']);
 });

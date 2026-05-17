@@ -481,7 +481,7 @@ class BookingController extends Controller
         }
 
         $record = SmsHistory::create([
-            'user_id' => $request->user()?->id,
+            'company_id' => $request->user()?->company_id,
             'to_number' => $customer->phone,
             'customer_name' => trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')),
             'message' => EmailTemplateHelper::generateSmsConfirmation($booking),

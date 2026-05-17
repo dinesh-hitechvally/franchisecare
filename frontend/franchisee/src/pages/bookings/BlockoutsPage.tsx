@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
@@ -52,15 +53,17 @@ export function BlockoutsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Blockouts</h1>
-        </Card>
-        <Button onClick={() => setIsModalOpen(true)} size="sm" className="flex-shrink-0">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Blockout
-        </Button>
-      </div>
+      <PageHeader
+        title="Blockouts"
+        description="Manage blockout periods to prevent bookings during specific times"
+        icon={<Ban className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Blockout
+          </Button>
+        }
+      />
 
       <Card>
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">

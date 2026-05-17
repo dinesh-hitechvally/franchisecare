@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { recurringBookingsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { format } from 'date-fns'
-import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, RefreshCcw } from 'lucide-react'
+import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, RefreshCcw, RotateCw } from 'lucide-react'
 import type { Booking } from '../../types'
 import { RecurringBookingDetailModal } from '../../components/modals/RecurringBookingDetailModal'
 
@@ -96,11 +97,12 @@ export function RecurringBookingsPage() {
   }
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      {/* Top Header Card */}
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Recurring Bookings</h1>
-      </Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Recurring Bookings"
+        description="Manage and view all active recurring bookings"
+        icon={<RotateCw className="w-5 h-5" />}
+      />
 
       {/* Search and Action Bar */}
       <Card className="shadow-sm border-gray-200">

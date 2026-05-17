@@ -1,9 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Search, MoreVertical } from 'lucide-react'
+import { Search, MoreVertical, FileText } from 'lucide-react'
 import { bookingsApi } from '../../api/services'
 import type { Booking } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 interface DiaryEntry {
   id: string
@@ -124,9 +125,11 @@ export function DailyDiaryPage() {
 
   return (
     <div className="space-y-6 px-1 py-1 w-full">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Daily Diary</h1>
-      </div>
+      <PageHeader
+        title="Daily Diary"
+        description="Print daily diary sheet for upcoming bookings"
+        icon={<FileText size={20} />}
+      />
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <p className="text-sm text-gray-600 mb-6">

@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('category', 50)->default('other')->index();
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
+            $table->index('user_id');
         });
     }
 

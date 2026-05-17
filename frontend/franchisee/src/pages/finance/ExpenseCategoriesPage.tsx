@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Card } from '../../components/ui/Card'
-import { Check, X, MoreVertical } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Check, X, MoreVertical, Wallet } from 'lucide-react'
 
 export function ExpenseCategoriesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
@@ -35,10 +36,10 @@ export function ExpenseCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Expense Categories</h1>
-      </div>
+      <PageHeader
+        title="Expense Categories"
+        icon={<Wallet className="w-5 h-5" />}
+      />
 
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">

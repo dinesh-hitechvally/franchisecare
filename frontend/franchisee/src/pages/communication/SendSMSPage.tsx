@@ -3,9 +3,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { Search, Send, ChevronUp, ChevronDown, Download, Loader2 } from 'lucide-react'
+import { Search, Send, ChevronUp, ChevronDown, Download, Loader2, MessageSquare } from 'lucide-react'
 import { customersApi, communicationHistoryApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function SendSMSPage() {
   const queryClient = useQueryClient()
@@ -143,9 +144,10 @@ export function SendSMSPage() {
   
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 text-center sm:text-left">
-        Send SMS
-      </h1>
+      <PageHeader
+        title="Send SMS"
+        icon={<MessageSquare className="w-5 h-5" />}
+      />
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Column (Generic SMS) */}

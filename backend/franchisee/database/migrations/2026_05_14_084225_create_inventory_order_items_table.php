@@ -13,14 +13,17 @@ return new class extends Migration
     {
         Schema::create('inventory_order_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('inventory_order_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('inventory_item_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('inventory_order_id');
+            $table->unsignedBigInteger('inventory_item_id')->nullable();
             $table->string('product_name');
             $table->string('product_sku')->nullable();
             $table->integer('quantity')->default(1);
             $table->decimal('unit_price', 10, 2)->default(0);
             $table->decimal('total_price', 10, 2)->default(0);
             $table->timestamps();
+
+            $table->index('inventory_order_id');
+            $table->index('inventory_item_id');
         });
     }
 

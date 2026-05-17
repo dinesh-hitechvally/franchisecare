@@ -6,7 +6,8 @@ import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
 import type { Pet, Customer } from '../../types'
-import { Plus, Search, Eye, PenLine } from 'lucide-react'
+import { Plus, Search, Eye, PenLine, PawPrint } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function PetsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -75,15 +76,17 @@ export function PetsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Pets</h1>
-        </Card>
-        <Button onClick={() => setIsModalOpen(true)} size="sm" className="flex-shrink-0">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Pet
-        </Button>
-      </div>
+      <PageHeader
+        title="Pets"
+        description="Manage pet profiles and information"
+        icon={<PawPrint className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm" className="flex-shrink-0">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Pet
+          </Button>
+        }
+      />
 
       <Card>
         <div className="flex items-center gap-4 mb-6">

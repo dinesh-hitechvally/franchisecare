@@ -3,7 +3,8 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { Settings, User, Mail, Bell, Lock } from 'lucide-react'
+import { Settings, User, Mail, Bell } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function SettingsPage() {
   const [formData, setFormData] = useState({
@@ -17,9 +18,11 @@ export function SettingsPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="px-4 py-3 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Settings</h1>
-      </Card>
+      <PageHeader
+        title="General Settings"
+        description="Configure general application settings"
+        icon={<Settings className="w-5 h-5" />}
+      />
 
       <Card>
         <form className="p-6 space-y-6">

@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { Search, Plus, Loader2, Archive, MoreVertical, History, Star, Menu, Edit3, UserMinus } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { customersApi } from '../../api/services'
@@ -60,24 +61,25 @@ export function InactiveCustomersPage() {
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-8 min-h-screen">
+    <div className="space-y-6">
+      <PageHeader
+        title={`${inactiveCustomers?.length ?? 0} Inactive`}
+        description="Inactive customer accounts"
+        icon={<UserMinus className="w-5 h-5" />}
+        actions={
+          <Link to="/customers/add">
+            <Button className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm rounded-md">
+              <Plus className="w-5 h-5" />
+              Add Customer
+            </Button>
+          </Link>
+        }
+      />
+
+      <div className="flex flex-col lg:flex-row gap-8 min-h-screen">
       {/* Sidebar */}
       <div className="w-full lg:w-64 shrink-0 space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            {inactiveCustomers?.length ?? 0} Inactive
-          </h1>
-          <p className="text-sm text-gray-500 mt-1">Inactive customer accounts</p>
-        </div>
-        
-        <Link to="/customers/add" className="block">
-          <Button className="w-full justify-center bg-indigo-600 hover:bg-indigo-700 text-white gap-2 shadow-sm rounded-md py-2.5">
-            <Plus className="w-5 h-5" />
-            Add Customer
-          </Button>
-        </Link>
-        
-        <nav className="space-y-1 mt-4">
+        <nav className="space-y-1">
           <Link 
             to="/customers/list"
             className="flex items-center gap-3 px-3 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50 rounded-md"
@@ -199,6 +201,7 @@ export function InactiveCustomersPage() {
             </div>
           )}
         </Card>
+      </div>
       </div>
 
       <CustomerAuditModal 

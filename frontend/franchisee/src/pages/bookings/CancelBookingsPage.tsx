@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { format } from 'date-fns'
-import { Search, Plus, MoreVertical, Eye, RotateCcw, RotateCw } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, RotateCcw, RotateCw, XCircle } from 'lucide-react'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
@@ -55,10 +56,12 @@ export function CancelBookingsPage() {
   const meta = listResult?.meta
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Cancelled Bookings</h1>
-      </Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Cancelled Bookings"
+        description="View and manage cancelled bookings"
+        icon={<XCircle className="w-5 h-5" />}
+      />
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex items-center justify-between px-2 py-1">

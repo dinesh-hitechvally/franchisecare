@@ -11,8 +11,9 @@ import type { Document } from '../../types'
 import { Plus, FileText, Download, Upload, MoreVertical, Eye, Trash2 } from 'lucide-react'
 import { format } from 'date-fns'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { PageHeader } from '../../components/layout/PageHeader'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
+const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api'
 
 export function DocumentsPage() {
   const queryClient = useQueryClient()
@@ -140,13 +141,17 @@ export function DocumentsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Documents</h1>
-        <Button onClick={() => setIsModalOpen(true)} size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Upload Document
-        </Button>
-      </div>
+      <PageHeader
+        title="Documents"
+        description="Manage your franchise documents and files"
+        icon={<FileText size={20} />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Upload Document
+          </Button>
+        }
+      />
 
       <Card>
         <div className="flex items-center gap-4 mb-6">
@@ -166,7 +171,7 @@ export function DocumentsPage() {
             {
               key: 'icon',
               title: '',
-              render: (row: Document) => (
+              render: () => (
                 <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5 text-red-600" />
                 </div>

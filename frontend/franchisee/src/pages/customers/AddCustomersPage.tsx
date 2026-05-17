@@ -3,7 +3,8 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { User, Mail, Phone, MapPin, Plus } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { User, Mail, Phone, MapPin, UserPlus } from 'lucide-react'
 
 export function AddCustomersPage() {
   const [formData, setFormData] = useState({
@@ -21,7 +22,16 @@ export function AddCustomersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900">Add Customer</h1>
+      <PageHeader
+        title="Add Customer"
+        icon={<UserPlus className="w-5 h-5" />}
+        actions={
+          <>
+            <Button variant="secondary">Cancel</Button>
+            <Button>Save Customer</Button>
+          </>
+        }
+      />
 
       <Card>
         <form className="p-6 space-y-6">
@@ -141,11 +151,6 @@ export function AddCustomersPage() {
                 placeholder="Additional notes..."
               />
             </div>
-          </div>
-
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary">Cancel</Button>
-            <Button>Save Customer</Button>
           </div>
         </form>
       </Card>

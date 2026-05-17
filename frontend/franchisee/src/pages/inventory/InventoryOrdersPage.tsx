@@ -6,9 +6,10 @@ import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { inventoryApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import type { InventoryOrder, InventoryItem } from '../../types'
-import { Plus, Package, CheckCircle, Truck, Clock, XCircle, Send } from 'lucide-react'
+import type { InventoryOrder } from '../../types'
+import { Plus, Package, CheckCircle, Truck, Clock, XCircle, ShoppingCart } from 'lucide-react'
 import { format } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 interface OrderItemForm {
   product_name: string
@@ -131,13 +132,16 @@ export function InventoryOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-secondary-900">Inventory Orders</h1>
-        <Button onClick={() => setIsModalOpen(true)} size="sm">
-          <Plus className="w-4 h-4 mr-2" />
-          Create Order
-        </Button>
-      </div>
+      <PageHeader
+        title="Inventory Orders"
+        icon={<ShoppingCart className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Create Order
+          </Button>
+        }
+      />
 
       <Card>
         <div className="flex items-center gap-4 mb-6">

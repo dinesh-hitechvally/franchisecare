@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ServiceInventoryUsage extends Model
 {
@@ -11,7 +12,7 @@ class ServiceInventoryUsage extends Model
         'service_id',
         'inventory_name',
         'quantity_per_booking',
-        'unit',
+        'unit_id',
         'notes',
         'is_active',
     ];
@@ -21,8 +22,13 @@ class ServiceInventoryUsage extends Model
         'is_active' => 'boolean',
     ];
 
-    public function service()
+    public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
     }
 }

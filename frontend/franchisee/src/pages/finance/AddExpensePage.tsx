@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Receipt } from 'lucide-react'
 
 export function AddExpensePage() {
   const [formData, setFormData] = useState({
@@ -17,10 +19,10 @@ export function AddExpensePage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Add Expense</h1>
-      </div>
+      <PageHeader
+        title="Add Expense"
+        icon={<Receipt className="w-5 h-5" />}
+      />
 
       <div className="flex flex-col xl:flex-row gap-6 w-full">
         {/* Left Column - Form */}

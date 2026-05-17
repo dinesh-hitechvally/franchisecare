@@ -10,18 +10,20 @@ return new class extends Migration
     {
         Schema::create('inventory_items', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->nullable()->constrained('companies')->nullOnDelete();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->string('name');
             $table->string('category');
             $table->string('sku');
             $table->decimal('quantity', 10, 2)->default(0);
             $table->decimal('min_stock', 10, 2)->default(0);
             $table->decimal('unit_price', 10, 2)->default(0);
-            $table->string('unit')->default('units');
+            $table->unsignedBigInteger('unit_id');
             $table->text('notes')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
+            $table->index('company_id');
+            $table->index('unit_id');
             $table->index(['company_id', 'category']);
             $table->index(['company_id', 'sku']);
         });

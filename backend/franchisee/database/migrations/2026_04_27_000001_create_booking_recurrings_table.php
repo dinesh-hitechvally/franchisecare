@@ -12,12 +12,14 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('booking_recurrings', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('customer_id')->nullable();
-            
+
             $table->date('start_date');
             $table->string('repeat_time');
+            $table->integer('repeat_day')->nullable(); // Day of week (0-6)
             $table->integer('frequency'); // Number of weeks (1-20)
             $table->enum('status', ['active', 'cancelled', 'completed'])->default('active');
             $table->boolean('auto_extend')->default(false);
@@ -29,6 +31,7 @@ return new class extends Migration
             $table->text('cancellation_reason')->nullable();
             $table->date('repeat_until')->nullable();
             $table->timestamps();
+            $table->softDeletes();
 
             $table->index('customer_id');
             $table->index('company_id');

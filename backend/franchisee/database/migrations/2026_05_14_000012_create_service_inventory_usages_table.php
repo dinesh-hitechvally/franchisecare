@@ -10,15 +10,18 @@ return new class extends Migration
     {
         Schema::create('service_inventory_usages', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->nullable()->constrained('companies')->nullOnDelete();
-            $table->foreignId('service_id')->constrained('services')->cascadeOnDelete();
+            $table->unsignedBigInteger('company_id')->nullable();
+            $table->unsignedBigInteger('service_id');
             $table->string('inventory_name');
             $table->decimal('quantity_per_booking', 10, 2)->default(0);
-            $table->string('unit');
+            $table->unsignedBigInteger('unit_id');
             $table->text('notes')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
+            $table->index('company_id');
+            $table->index('service_id');
+            $table->index('unit_id');
             $table->index(['company_id', 'service_id']);
         });
     }

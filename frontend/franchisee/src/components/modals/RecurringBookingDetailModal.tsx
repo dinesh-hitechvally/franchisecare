@@ -1,7 +1,7 @@
 import { format } from 'date-fns'
-import { 
-  X, Edit2, User, MapPin, Repeat, Check, DollarSign,
-  ImageIcon, ChevronDown, ChevronUp, Trash2, Eye, FileText, Mail
+import {
+  X, Edit2,
+  ImageIcon
 } from 'lucide-react'
 import type { Booking, Pet } from '../../types'
 import { cn } from '../../lib/utils'

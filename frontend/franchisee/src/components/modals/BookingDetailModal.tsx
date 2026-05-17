@@ -178,7 +178,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
 
   const statusActions = {
     active: [
-      { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const },
+      { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
       {
         label: 'Mark Complete',
         icon: CheckCircle2,
@@ -186,7 +186,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
-      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const },
+      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const, loading: undefined },
       {
         label: 'Cancel',
         icon: XCircle,
@@ -194,7 +194,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
-      { label: 'Preview Invoice', icon: Eye, onClick: () => bookingsApi.generateInvoice(booking.id), variant: 'ghost' as const },
+      { label: 'Preview Invoice', icon: Eye, onClick: () => bookingsApi.generateInvoice(booking.id), variant: 'ghost' as const, loading: undefined },
       {
         label: 'Send Invoice',
         icon: Send,
@@ -232,8 +232,8 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
-      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const },
-      { label: 'Preview Receipt', icon: Receipt, onClick: () => bookingsApi.generateReceipt(booking.id), variant: 'ghost' as const },
+      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const, loading: undefined },
+      { label: 'Preview Receipt', icon: Receipt, onClick: () => bookingsApi.generateReceipt(booking.id), variant: 'ghost' as const, loading: undefined },
       {
         label: 'Send Receipt',
         icon: Send,
@@ -250,10 +250,61 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
-      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const },
+      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const, loading: undefined },
     ],
     archived: [
-      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const },
+      { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const, loading: undefined },
+    ],
+    requested: [
+      { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
+      {
+        label: 'Confirm',
+        icon: CheckCircle2,
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'confirmed' }),
+        variant: 'secondary' as const,
+        loading: statusMutation.isPending,
+      },
+      {
+        label: 'Cancel',
+        icon: XCircle,
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        variant: 'danger' as const,
+        loading: statusMutation.isPending,
+      },
+    ],
+    confirmed: [
+      { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
+      {
+        label: 'Start',
+        icon: CheckCircle2,
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'in_progress' }),
+        variant: 'secondary' as const,
+        loading: statusMutation.isPending,
+      },
+      {
+        label: 'Cancel',
+        icon: XCircle,
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        variant: 'danger' as const,
+        loading: statusMutation.isPending,
+      },
+    ],
+    in_progress: [
+      { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
+      {
+        label: 'Mark Complete',
+        icon: CheckCircle2,
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'completed' }),
+        variant: 'secondary' as const,
+        loading: statusMutation.isPending,
+      },
+      {
+        label: 'Cancel',
+        icon: XCircle,
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        variant: 'danger' as const,
+        loading: statusMutation.isPending,
+      },
     ],
   }[booking.status]
 
@@ -388,7 +439,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                     <div>
                       <p className="mb-3 text-[11px] font-bold uppercase tracking-wider text-gray-400">{booking.status} booking actions</p>
                       <div className="grid gap-3 md:grid-cols-2">
-                        {statusActions.map((action) => (
+                        {statusActions?.map((action) => (
                           <ActionButton
                             key={action.label}
                             label={action.label}

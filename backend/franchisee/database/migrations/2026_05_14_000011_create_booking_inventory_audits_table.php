@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::create('booking_inventory_audits', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
-            $table->foreignId('company_id')->nullable()->constrained('companies')->nullOnDelete();
+            $table->unsignedBigInteger('booking_id');
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('inventory_id')->nullable();
             $table->string('inventory_item_name')->nullable();
             $table->string('change_type', 100);
@@ -22,6 +22,8 @@ return new class extends Migration
             $table->json('meta')->nullable();
             $table->timestamps();
 
+            $table->index('booking_id');
+            $table->index('company_id');
             $table->index(['booking_id', 'created_at']);
         });
     }

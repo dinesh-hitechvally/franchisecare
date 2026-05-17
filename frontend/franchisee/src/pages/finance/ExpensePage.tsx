@@ -5,6 +5,7 @@ import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { financeApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Expense } from '../../types'
@@ -60,13 +61,16 @@ export function ExpensePage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Expenses</h1>
-        <Button onClick={() => setIsModalOpen(true)} size="sm" className="flex-shrink-0">
-          <Plus className="w-4 h-4 mr-2" />
-          Add Expense
-        </Button>
-      </div>
+      <PageHeader
+        title="Expenses"
+        icon={<TrendingDown className="w-5 h-5" />}
+        actions={
+          <Button onClick={() => setIsModalOpen(true)} size="sm">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Expense
+          </Button>
+        }
+      />
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -10,9 +10,9 @@ return new class extends Migration
     {
         Schema::create('booking_audits', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('booking_id')->constrained('bookings')->cascadeOnDelete();
-            $table->foreignId('customer_id')->nullable()->constrained('customers')->nullOnDelete();
-            $table->foreignId('company_id')->nullable()->constrained('companies')->nullOnDelete();
+            $table->unsignedBigInteger('booking_id');
+            $table->unsignedBigInteger('customer_id')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->string('action_type', 100);
             $table->string('previous_status', 50)->nullable();
             $table->string('status', 50)->nullable();
@@ -29,6 +29,9 @@ return new class extends Migration
             $table->json('meta')->nullable();
             $table->timestamps();
 
+            $table->index('booking_id');
+            $table->index('customer_id');
+            $table->index('company_id');
             $table->index(['booking_id', 'created_at']);
         });
     }

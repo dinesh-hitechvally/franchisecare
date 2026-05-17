@@ -3,6 +3,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ChevronLeft, ChevronRight, CalendarDays } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function CalendarMonthViewPage() {
   const [currentMonth, setCurrentMonth] = useState(new Date())
@@ -22,22 +23,24 @@ export function CalendarMonthViewPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">Calendar - Month View</h1>
-        </Card>
-        <div className="flex items-center gap-2 bg-white px-4 py-3 rounded-md border border-gray-200 shadow-sm">
-          <Button variant="secondary" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
-          <span className="text-sm font-medium min-w-[120px] text-center">
-            {format(currentMonth, 'MMMM yyyy')}
-          </span>
-          <Button variant="secondary" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Calendar - Month View"
+        description="View monthly schedule overview"
+        icon={<CalendarDays className="w-5 h-5" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}>
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
+            <span className="text-sm font-medium min-w-[120px] text-center">
+              {format(currentMonth, 'MMMM yyyy')}
+            </span>
+            <Button variant="secondary" size="sm" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+          </div>
+        }
+      />
 
       <Card>
         <div className="grid grid-cols-7 gap-px bg-gray-200">

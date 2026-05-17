@@ -95,6 +95,25 @@ import { SettingsPage } from './pages/settings/SettingsPage'
 import { AccountSettingsPage } from './pages/settings/AccountSettingsPage'
 import { ChangePasswordPage } from './pages/settings/ChangePasswordPage'
 import { CompletedOrdersPage } from './pages/orders/CompletedOrdersPage'
+import { SmsPurchaseLogPage } from './pages/orders/SmsPurchaseLogPage'
+
+// Training Pages
+import { ELearningPage } from './pages/training/ELearningPage'
+import { MateTrainingVideosPage } from './pages/training/MateTrainingVideosPage'
+import { PhysicalMarketingIdeasPage } from './pages/training/PhysicalMarketingIdeasPage'
+
+// Support Pages
+import { SupportTicketPage } from './pages/support/SupportTicketPage'
+
+// App Pages
+import { DownloadAppPage } from './pages/app/DownloadAppPage'
+
+// System Pages
+import { VersionUpdatePage } from './pages/system/VersionUpdatePage'
+import { ServicePricesPage } from './pages/settings/ServicePricesPage'
+
+// Integration Pages
+import { IntegrationsPage } from './pages/integration/IntegrationsPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token)
@@ -221,7 +240,28 @@ export function AppRoutes() {
         <Route path="settings" element={<SettingsPage />} />
         <Route path="settings/manage-bookings" element={<ManageBookingsPage />} />
         <Route path="settings/change-password" element={<ChangePasswordPage />} />
+        <Route path="settings/service-prices" element={<ServicePricesPage />} />
+
+        {/* Integration Routes */}
+        <Route path="integration/api" element={<IntegrationsPage />} />
+
+        {/* Orders Routes */}
         <Route path="orders/completed" element={<CompletedOrdersPage />} />
+        <Route path="orders/sms-purchase-log" element={<SmsPurchaseLogPage />} />
+
+        {/* Training Routes */}
+        <Route path="training/e-learning" element={<ELearningPage />} />
+        <Route path="training/videos" element={<MateTrainingVideosPage />} />
+        <Route path="training/marketing" element={<PhysicalMarketingIdeasPage />} />
+
+        {/* Support Routes */}
+        <Route path="support-tickets" element={<SupportTicketPage />} />
+
+        {/* App Routes */}
+        <Route path="download-app" element={<DownloadAppPage />} />
+
+        {/* System Routes */}
+        <Route path="version-update" element={<VersionUpdatePage />} />
       </Route>
     </Routes>
   )

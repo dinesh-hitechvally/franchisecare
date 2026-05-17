@@ -1,0 +1,37 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('cancellation_policies', function (Blueprint $table) {
+            $table->id();
+            $table->unsignedBigInteger('company_id');
+            $table->boolean('attach_policy')->default(true);
+            $table->enum('cancel_before_unit', ['hours', 'days'])->default('hours');
+            $table->integer('cancel_before_value')->default(24);
+            $table->decimal('cancellation_fee_value', 10, 2)->default(0);
+            $table->enum('penalty_type', ['percent', 'fixed'])->default('percent');
+            $table->integer('selected_policy_id')->nullable();
+            $table->text('policy_text')->nullable();
+            $table->timestamps();
+
+            $table->unique('company_id');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('cancellation_policies');
+    }
+};

@@ -21,7 +21,7 @@ return new class extends Migration
             $table->timestamp('published_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('author_id')->references('id')->on('users')->onDelete('set null');
+            $table->index('author_id');
         });
     }
 

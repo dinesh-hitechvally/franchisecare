@@ -23,12 +23,11 @@ return new class extends Migration
             $table->boolean('is_read')->default(false);
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('actor_id')->references('id')->on('users')->onDelete('set null');
-            $table->foreign('group_id')->references('id')->on('forum_groups')->onDelete('set null');
-            $table->foreign('thread_id')->references('id')->on('forum_threads')->onDelete('cascade');
-            $table->foreign('comment_id')->references('id')->on('forum_comments')->onDelete('cascade');
-
+            $table->index('user_id');
+            $table->index('actor_id');
+            $table->index('group_id');
+            $table->index('thread_id');
+            $table->index('comment_id');
             $table->index(['user_id', 'is_read']);
             $table->index(['group_id', 'created_at']);
             $table->index(['thread_id', 'comment_id']);

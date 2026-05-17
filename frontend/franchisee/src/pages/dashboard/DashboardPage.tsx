@@ -6,8 +6,9 @@ import { format } from 'date-fns'
 import {
   Users, CalendarDays, XCircle, MessageSquare,
   Ban, Bell, Download, CreditCard,
-  ChevronRight, Printer, X, Cake
+  ChevronRight, Printer, X, Cake, LayoutDashboard
 } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function DashboardPage() {
   const [showForecastTable, setShowForecastTable] = useState(false)
@@ -65,7 +66,14 @@ export function DashboardPage() {
     }).format(value || 0)
 
   return (
-    <div className="flex flex-col xl:flex-row gap-5">
+    <div className="space-y-6">
+      <PageHeader
+        title="Dashboard"
+        description="Overview of your business performance"
+        icon={<LayoutDashboard className="w-5 h-5" />}
+      />
+
+      <div className="flex flex-col xl:flex-row gap-5">
       {/* ========== LEFT COLUMN ========== */}
       <div className="w-full xl:w-[370px] flex-shrink-0 space-y-5">
         {/* News Card */}
@@ -367,11 +375,10 @@ export function DashboardPage() {
           </button>
         </div>
       </div>
+      </div>
     </div>
   )
 }
-
-// Stat Card Component
 function StatCard({
   number,
   label,

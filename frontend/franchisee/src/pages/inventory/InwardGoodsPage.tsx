@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo, useRef } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
-import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2 } from 'lucide-react'
+import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2, Inbox } from 'lucide-react'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 interface Order {
   id: string
@@ -257,9 +258,11 @@ export function InwardGoodsPage() {
   return (
     <div className="space-y-4">
       {/* Header */}
-      <Card className="px-4 py-3 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Inward Goods</h1>
-      </Card>
+      <PageHeader
+        title="Inward Goods"
+        icon={<Inbox className="w-5 h-5" />}
+        variant="compact"
+      />
 
       {/* Search and Filters */}
       <Card className="border border-gray-200 shadow-sm p-3 bg-white">

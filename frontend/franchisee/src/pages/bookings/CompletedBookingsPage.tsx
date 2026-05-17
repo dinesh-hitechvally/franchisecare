@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { format } from 'date-fns'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
-import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Check, X } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Check, X, CheckCircle } from 'lucide-react'
 import type { Booking } from '../../types'
 import { createPortal } from 'react-dom'
 import { useToastStore } from '../../store/toastStore'
@@ -177,10 +178,12 @@ export function CompletedBookingsPage() {
   const meta = listResult?.meta
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Completed Bookings</h1>
-      </Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Completed Bookings"
+        description="View and manage completed bookings"
+        icon={<CheckCircle className="w-5 h-5" />}
+      />
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex items-center justify-between gap-4 px-2 py-1">

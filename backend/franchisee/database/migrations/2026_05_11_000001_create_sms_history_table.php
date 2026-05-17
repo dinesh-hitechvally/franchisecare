@@ -10,7 +10,7 @@ return new class extends Migration
     {
         Schema::create('sms_history', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->string('to_number');
             $table->string('customer_name')->nullable();
             $table->text('message');
@@ -19,7 +19,7 @@ return new class extends Migration
             $table->timestamp('sent_at')->nullable();
             $table->timestamps();
 
-            $table->foreign('user_id')->references('id')->on('users')->onDelete('set null');
+            $table->index('company_id');
         });
     }
 

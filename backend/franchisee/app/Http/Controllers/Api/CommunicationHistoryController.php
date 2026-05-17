@@ -47,8 +47,8 @@ class CommunicationHistoryController extends Controller
             'sent_at'          => 'nullable|date',
         ]);
 
-        $validated['user_id'] = $request->user()?->id;
-        $validated['status']  = $validated['status'] ?? 'queued';
+        $validated['company_id'] = $request->user()?->company_id;
+        $validated['status']     = $validated['status'] ?? 'queued';
 
         $record = SmsHistory::create($validated);
 
@@ -105,8 +105,8 @@ class CommunicationHistoryController extends Controller
             'sent_at'         => 'nullable|date',
         ]);
 
-        $validated['user_id'] = $request->user()?->id;
-        $validated['status']  = $validated['status'] ?? 'queued';
+        $validated['company_id'] = $request->user()?->company_id;
+        $validated['status']     = $validated['status'] ?? 'queued';
 
         $record = EmailHistory::create($validated);
 

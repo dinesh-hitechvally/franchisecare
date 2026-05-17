@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { Search, ChevronLeft, ChevronRight, FileDown, Plus } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Search, ChevronLeft, ChevronRight, FileDown, Plus, Receipt } from 'lucide-react'
 
 export function ListExpensePage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -10,9 +11,10 @@ export function ListExpensePage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">List Expenses</h1>
-      </div>
+      <PageHeader
+        title="List Expenses"
+        icon={<Receipt className="w-5 h-5" />}
+      />
 
       {/* Action Row */}
       <div className="flex flex-col md:flex-row justify-between gap-4">

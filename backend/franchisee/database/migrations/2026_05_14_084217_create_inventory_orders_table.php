@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('inventory_orders', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
+            $table->unsignedBigInteger('company_id');
+            $table->unsignedBigInteger('user_id')->nullable();
             $table->string('order_number')->unique();
             $table->string('type')->default('inventory'); // inventory, treats, marketing
             $table->string('status')->default('pending'); // pending, confirmed, shipped, delivered, cancelled
@@ -24,6 +24,9 @@ return new class extends Migration
             $table->timestamp('shipped_at')->nullable();
             $table->timestamp('delivered_at')->nullable();
             $table->timestamps();
+
+            $table->index('company_id');
+            $table->index('user_id');
         });
     }
 

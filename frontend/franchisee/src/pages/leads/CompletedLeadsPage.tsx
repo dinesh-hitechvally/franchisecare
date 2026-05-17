@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Phone, Globe, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Phone, Globe, ChevronLeft, ChevronRight, MoreVertical, ListChecks } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
 import { leadsApi } from '../../api/services'
 import { LeadDetailModal } from './LeadDetailModal'
@@ -138,10 +139,11 @@ export function CompletedLeadsPage() {
   }
 
   return (
-    <div className="space-y-5 px-1 py-1 w-full">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Completed Leads</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Completed Leads"
+        icon={<ListChecks className="w-5 h-5" />}
+      />
 
       {/* Data Table Card */}
       <Card className="shadow-sm border-gray-200 overflow-hidden">

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
-import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2 } from 'lucide-react'
+import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, Ban } from 'lucide-react'
 import { blockoutsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
@@ -67,10 +68,12 @@ export function ListBlockoutsPage() {
   }
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">List Blockouts</h1>
-      </Card>
+    <div className="space-y-6 px-1 py-1">
+      <PageHeader
+        icon={<Ban className="w-6 h-6" />}
+        title="Blockouts"
+        description="Manage blocked out dates and time slots"
+      />
 
       <Card className="shadow-sm border-gray-200">
         <div className="flex items-center justify-between px-2 py-1">

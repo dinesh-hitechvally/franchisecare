@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { ShoppingCart } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function OfficeOrderPage() {
   const [quantity, setQuantity] = useState(1)
@@ -10,9 +12,10 @@ export function OfficeOrderPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 text-center sm:text-left">
-        Office Order
-      </h1>
+      <PageHeader
+        title="Office Order"
+        icon={<ShoppingCart className="w-5 h-5" />}
+      />
 
       <div className="bg-white p-4 shadow-sm rounded-md border border-gray-200">
         <p className="text-gray-800 text-sm font-medium">All prices are GST included.</p>

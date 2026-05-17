@@ -3,10 +3,11 @@ import { useForm } from 'react-hook-form'
 import { yupResolver } from '@hookform/resolvers/yup'
 import * as yup from 'yup'
 import { useNavigate } from 'react-router-dom'
-import { Eye, EyeOff } from 'lucide-react'
+import { Eye, EyeOff, Lock } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
 import { authApi } from '../../api/services'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 const changePasswordSchema = yup.object({
   current_password: yup.string().required('Current password is required'),
@@ -68,13 +69,13 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
-      {/* Page Title Card */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-        <h1 className="text-xl font-bold text-gray-800">Change Password</h1>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Change Password"
+        description="Update your account password"
+        icon={<Lock className="w-5 h-5" />}
+      />
 
-      {/* Form Card Container - Align Left */}
       <div className="flex justify-start">
         <div className="bg-white w-full max-w-lg rounded-lg shadow-sm border border-gray-100 overflow-hidden">
           <form onSubmit={handleSubmit(onSubmit)} className="p-8 space-y-10">

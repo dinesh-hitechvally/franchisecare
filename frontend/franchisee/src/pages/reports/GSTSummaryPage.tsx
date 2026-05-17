@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Printer, Download, Search, Landmark, Quote } from 'lucide-react'
 import { reportsApi } from '../../api/services'
 import { format, startOfMonth, endOfMonth, startOfQuarter, endOfQuarter } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function GSTSummaryPage() {
   const [dateFrom, setDateFrom] = useState(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
@@ -29,21 +30,21 @@ export function GSTSummaryPage() {
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
-      {/* Page Title Card */}
-      <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-100 flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-800 flex items-center gap-2">
-          <Landmark size={24} className="text-purple-600" />
-          GST Summary Report
-        </h1>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
-            <Download size={14} /> Export CSV
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
-            <Printer size={14} /> Print
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="GST Summary Report"
+        description="BAS calculation and GST position"
+        icon={<Landmark size={20} />}
+        actions={
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
+              <Download size={14} /> Export CSV
+            </button>
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
+              <Printer size={14} /> Print
+            </button>
+          </div>
+        }
+      />
 
       {/* Filter Card */}
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-100">

@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button'
 import { ShoppingCart, CreditCard, History, CheckCircle } from 'lucide-react'
 import { smsCreditsApi } from '../../api/services'
 import { useState } from 'react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function BuyCreditsPage() {
   const queryClient = useQueryClient()
@@ -16,7 +17,7 @@ export function BuyCreditsPage() {
 
   const purchaseMutation = useMutation({
     mutationFn: (packageId: string) => smsCreditsApi.purchase(packageId),
-    onSuccess: (result, packageId) => {
+    onSuccess: (_, packageId) => {
       queryClient.invalidateQueries({ queryKey: ['sms-credits'] })
       setPurchasedPackage(packageId)
       setTimeout(() => setPurchasedPackage(null), 3000)
@@ -28,9 +29,10 @@ export function BuyCreditsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 text-center sm:text-left">
-        Buy Credits
-      </h1>
+      <PageHeader
+        title="Buy Credits"
+        icon={<CreditCard className="w-5 h-5" />}
+      />
 
       {/* Current Balance */}
       <Card className="p-6 border border-gray-200 shadow-sm bg-gradient-to-r from-blue-50 to-indigo-50">

@@ -2,10 +2,11 @@ import { useState, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { format } from 'date-fns'
-import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X, RotateCcw } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X, RotateCcw, Calendar } from 'lucide-react'
 import type { Booking } from '../../types'
 import { Link } from 'react-router-dom'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
@@ -95,29 +96,33 @@ export function ActiveBookingsPage() {
   }, [])
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Active Bookings</h1>
-      </Card>
-
-      <Card className="shadow-sm border-gray-200">
-        <div className="flex items-center justify-between px-2 py-1">
-          <div className="relative w-full max-w-sm">
-            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-            <input
-              type="text"
-              placeholder="Search active bookings"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded text-sm focus:outline-none focus:ring-1 focus:ring-blue-500"
-            />
-          </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Active Bookings"
+        description="Manage and view all active bookings"
+        icon={<Calendar className="w-5 h-5" />}
+        actions={
           <Link to="/bookings/new">
-            <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 rounded text-sm text-gray-700 hover:bg-gray-50 transition-colors">
-              <Plus className="w-4 h-4 text-gray-400" />
+            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+              <Plus className="w-4 h-4" />
               <span>New Booking</span>
             </button>
           </Link>
+        }
+      />
+
+      <Card className="p-6 shadow-sm border-gray-200">
+        <div className="flex items-center justify-between">
+          <div className="relative w-full max-w-md">
+            <Search className="w-5 h-5 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search active bookings..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+          </div>
         </div>
       </Card>
 

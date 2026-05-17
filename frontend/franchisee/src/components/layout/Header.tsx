@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { CalendarDays, BookOpen, List, UserPlus, Bell, User } from 'lucide-react'
+import { CalendarDays, BookOpen, List, UserPlus, Bell } from 'lucide-react'
 import { useAuthStore } from '../../store/authStore'
 
 export function Header() {

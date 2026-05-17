@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class InventoryItem extends Model
 {
@@ -14,7 +15,7 @@ class InventoryItem extends Model
         'quantity',
         'min_stock',
         'unit_price',
-        'unit',
+        'unit_id',
         'notes',
         'is_active',
     ];
@@ -25,4 +26,9 @@ class InventoryItem extends Model
         'unit_price' => 'decimal:2',
         'is_active' => 'boolean',
     ];
+
+    public function unit(): BelongsTo
+    {
+        return $this->belongsTo(Unit::class);
+    }
 }

@@ -1,13 +1,14 @@
 import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { recurringBookingsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { format } from 'date-fns'
-import { Search, Plus, Check, X, MoreVertical, Eye, Trash2 } from 'lucide-react'
+import { Search, Plus, Check, X, MoreVertical, Eye, Trash2, XCircle } from 'lucide-react'
 import type { Booking } from '../../types'
 import { RecurringBookingDetailModal } from '../../components/modals/RecurringBookingDetailModal'
 
@@ -69,11 +70,12 @@ export function CancelledRecurringPage() {
   const listMeta = listResult?.meta
 
   return (
-    <div className="space-y-5 px-1 py-1">
-      {/* Top Header Card */}
-      <Card className="px-6 py-4 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Cancelled Recurring</h1>
-      </Card>
+    <div className="space-y-6">
+      <PageHeader
+        title="Cancelled Recurring"
+        description="View and manage cancelled recurring bookings"
+        icon={<XCircle className="w-5 h-5" />}
+      />
 
       {/* Search and Action Bar */}
       <Card className="shadow-sm border-gray-200">

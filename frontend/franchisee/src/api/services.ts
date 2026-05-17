@@ -33,7 +33,7 @@ export const unbookedCustomerReportsApi = {
 };
 
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -592,6 +592,9 @@ export const serviceInventoryUsageApi = {
     apiClient.put<ServiceInventoryUsage>(`/service-inventory-usages/${id}`, data),
 
   delete: (id: string) => apiClient.delete(`/service-inventory-usages/${id}`),
+
+  getHistory: (serviceId: string) =>
+    apiClient.get<InventoryUsageHistory[]>(`/service-inventory-usages/${serviceId}/history`),
 }
 
 export const financeApi = {
@@ -1109,4 +1112,161 @@ export const smsCreditsApi = {
       { package_id: packageId }
     ),
   history: () => apiClient.get<{ data: SmsCreditPurchase[] }>('/sms-credits/history'),
+}
+
+// Settings Types
+export interface Preferences {
+  id?: number
+  company_id?: number
+  display_customer_notes: boolean
+  hide_expired_bookings: boolean
+  hide_booking_cash_notifications: boolean
+  hide_past_bookings: boolean
+  filter_services_by_pet_size: boolean
+  display_booking_end_time: boolean
+  show_address_in_invoice: boolean
+  show_personal_phone: boolean
+  time_format_24hr: boolean
+}
+
+export interface IncomeTemplates {
+  id?: number
+  company_id?: number
+  income_title_template: string
+  invoice_statement_template: string
+}
+
+export interface CalendarSettings {
+  id?: number
+  company_id?: number
+  show_booking_total: boolean
+  show_customer_name: boolean
+  show_customer_address: boolean
+  show_pet_name: boolean
+  show_pet_breed: boolean
+  show_services_name: boolean
+}
+
+export interface CancellationPolicy {
+  id?: number
+  company_id?: number
+  attach_policy: boolean
+  cancel_before_unit: 'hours' | 'days'
+  cancel_before_value: number
+  cancellation_fee_value: number
+  penalty_type: 'percent' | 'fixed'
+  selected_policy_id?: number
+  policy_text?: string
+}
+
+export interface ReminderSettings {
+  id?: number
+  company_id?: number
+  reminder_method: 'no-send' | 'email-sms' | 'email-only' | 'sms-only' | 'email-if-found' | 'sms-if-no-mobile'
+  send_before_hours: number
+}
+
+export interface AppCalendarSettings {
+  id?: number
+  company_id?: number
+  show_customer_name: boolean
+  show_customer_address: boolean
+  show_booking_total: boolean
+  show_time: boolean
+  show_pet_name: boolean
+  show_services_name: boolean
+  show_pet_breed: boolean
+  display_order?: string[]
+}
+
+// Settings API
+export const settingsApi = {
+  // Preferences
+  getPreferences: () => apiClient.get<Preferences>('/settings/preferences'),
+  savePreferences: (data: Partial<Preferences>) =>
+    apiClient.post<Preferences>('/settings/preferences', data),
+
+  // Income Templates
+  getIncomeTemplates: () => apiClient.get<IncomeTemplates>('/settings/income-templates'),
+  saveIncomeTemplates: (data: Partial<IncomeTemplates>) =>
+    apiClient.post<IncomeTemplates>('/settings/income-templates', data),
+
+  // Calendar Settings
+  getCalendarSettings: () => apiClient.get<CalendarSettings>('/settings/calendar'),
+  saveCalendarSettings: (data: Partial<CalendarSettings>) =>
+    apiClient.post<CalendarSettings>('/settings/calendar', data),
+
+  // Cancellation Policy
+  getCancellationPolicy: () => apiClient.get<CancellationPolicy>('/settings/cancellation-policy'),
+  saveCancellationPolicy: (data: Partial<CancellationPolicy>) =>
+    apiClient.post<CancellationPolicy>('/settings/cancellation-policy', data),
+
+  // Reminder Settings
+  getReminderSettings: () => apiClient.get<ReminderSettings>('/settings/reminder'),
+  saveReminderSettings: (data: Partial<ReminderSettings>) =>
+    apiClient.post<ReminderSettings>('/settings/reminder', data),
+
+  // App Calendar Settings
+  getAppCalendarSettings: () => apiClient.get<AppCalendarSettings>('/settings/app-calendar'),
+  saveAppCalendarSettings: (data: Partial<AppCalendarSettings>) =>
+    apiClient.post<AppCalendarSettings>('/settings/app-calendar', data),
+}
+
+// Version Updates
+export interface VersionUpdateEntry {
+  version: string
+  changes: string[]
+  release_date?: string
+}
+
+export interface VersionUpdateGroup {
+  month: string
+  year: number
+  versions: VersionUpdateEntry[]
+}
+
+export const versionUpdatesApi = {
+  getAll: () => apiClient.get<VersionUpdateGroup[]>('/version-updates'),
+  create: (data: any) => apiClient.post('/version-updates', data),
+  update: (id: number, data: any) => apiClient.put(`/version-updates/${id}`, data),
+  delete: (id: number) => apiClient.delete(`/version-updates/${id}`),
+}
+
+export interface ServicePrice {
+  id: number
+  company_id: number
+  name: string
+  my_price: number
+  default_price: number
+  color: string
+  my_time: number
+  default_time: number
+  created_at?: string
+  updated_at?: string
+}
+
+export const servicePricesApi = {
+  getAll: () => apiClient.get<ServicePrice[]>('/service-prices'),
+  updateAll: (services: Partial<ServicePrice>[]) =>
+    apiClient.post<ServicePrice[]>('/service-prices', { services }),
+}
+
+export interface CompanyService {
+  id?: number
+  company_id: number
+  service_id: number
+  name: string
+  my_price: number
+  default_price: number
+  color: string
+  my_time: number
+  default_time: number
+  created_at?: string
+  updated_at?: string
+}
+
+export const companyServicesApi = {
+  getAll: () => apiClient.get<CompanyService[]>('/company-services'),
+  updateAll: (services: Partial<CompanyService>[]) =>
+    apiClient.post<CompanyService[]>('/company-services', { services }),
 }

@@ -5,6 +5,8 @@ import { TablePagination } from '../../components/ui/TablePagination'
 import { newsApi } from '../../api/services'
 import { format } from 'date-fns'
 import { cn } from '../../lib/utils'
+import { Newspaper } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 const categories = [
   { name: 'All News', description: 'All News', color: 'bg-[#4a5ebc]' },
@@ -38,6 +40,12 @@ export function LatestNewsPage() {
 
   return (
     <div className="space-y-6">
+      <PageHeader
+        title="Latest News"
+        description="Stay updated with the latest news and announcements"
+        icon={<Newspaper className="w-5 h-5" />}
+      />
+
       {/* Category Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {categories.map((cat) => (

@@ -1,10 +1,11 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Button } from '../../components/ui/Button'
-import { Check, X, MoreVertical, Edit3, Trash2, Plus, Loader2 } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Check, X, MoreVertical, Edit3, Trash2, Plus, Loader2, Wallet } from 'lucide-react'
 import { incomeCategoriesApi } from '../../api/services'
 import type { IncomeCategory } from '../../types'
 
@@ -13,7 +14,7 @@ export function IncomeCategoriesPage() {
   const queryClient = useQueryClient()
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
-  const menuRef = useRef<HTMLDivElement>(null)
+  // const menuRef = useRef<HTMLDivElement>(null)
 
   const { data: categories = [], isLoading, isError, error } = useQuery({
     queryKey: ['income-categories'],
@@ -30,21 +31,19 @@ export function IncomeCategoriesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Income Categories</h1>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-3">
-        <Button
-          onClick={() => navigate('/finance/income/add-category')}
-          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Category
-        </Button>
-      </div>
+      <PageHeader
+        title="Income Categories"
+        icon={<Wallet className="w-5 h-5" />}
+        actions={
+          <Button
+            onClick={() => navigate('/finance/income/add-category')}
+            className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add Category
+          </Button>
+        }
+      />
 
       {/* Error State */}
       {isError && (

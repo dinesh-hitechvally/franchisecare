@@ -3,8 +3,9 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { incomeCategoriesApi, incomesApi } from '../../api/services'
-import { Loader2 } from 'lucide-react'
+import { Loader2, DollarSign } from 'lucide-react'
 
 export function AddIncomePage() {
   const navigate = useNavigate()
@@ -108,12 +109,10 @@ export function AddIncomePage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">
-          {isViewMode ? 'View Income' : isEditMode ? 'Edit Income' : 'Add Income'}
-        </h1>
-      </div>
+      <PageHeader
+        title={isViewMode ? 'View Income' : isEditMode ? 'Edit Income' : 'Add Income'}
+        icon={<DollarSign className="w-5 h-5" />}
+      />
 
       <div className="w-full grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
         <Card className="p-8 shadow-md border border-gray-100 bg-white xl:col-span-2">

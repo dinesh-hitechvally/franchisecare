@@ -1,9 +1,10 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Button } from '../../components/ui/Button'
-import { Search, ChevronLeft, ChevronRight, Check, X, MoreVertical, Edit3, Trash2, Eye } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Search, ChevronLeft, ChevronRight, Check, X, MoreVertical, Edit3, Trash2, Eye, DollarSign } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { incomesApi } from '../../api/services'
 import { format } from 'date-fns'
@@ -79,10 +80,10 @@ export function ListIncomesPage() {
 
   return (
     <div className="space-y-6">
-      {/* Top Header Banner */}
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Income</h1>
-      </div>
+      <PageHeader
+        title="Income"
+        icon={<DollarSign className="w-5 h-5" />}
+      />
 
       {/* Filter Card */}
       <Card className="p-5 bg-white border border-gray-200 shadow-sm">

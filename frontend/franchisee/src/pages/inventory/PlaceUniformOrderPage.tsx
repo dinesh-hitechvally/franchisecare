@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { ShoppingCart } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function PlaceUniformOrderPage() {
   const [orders, setOrders] = useState<Record<string, { quantity: number, size: string }>>({})
@@ -37,9 +39,11 @@ export function PlaceUniformOrderPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="px-4 py-3 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Uniform Order</h1>
-      </Card>
+      <PageHeader
+        title="Uniform Order"
+        icon={<ShoppingCart className="w-5 h-5" />}
+        variant="compact"
+      />
 
       <div className="bg-white p-4 shadow-sm rounded-md border border-gray-200">
         <p className="text-gray-800 text-sm font-medium">All prices are GST included.</p>

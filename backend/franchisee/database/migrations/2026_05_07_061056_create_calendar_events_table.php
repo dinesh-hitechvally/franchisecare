@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('calendar_events', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('company_id')->constrained('companies')->onDelete('cascade');
+            $table->unsignedBigInteger('company_id');
             $table->string('event_type'); // 'booking' or 'blockout'
             $table->string('title');
             $table->text('description')->nullable();
@@ -23,12 +23,17 @@ return new class extends Migration
             $table->time('end_time');
             $table->string('color')->nullable(); // calendar color
             $table->string('location')->nullable();
-            $table->foreignId('customer_id')->nullable()->constrained('customers')->onDelete('set null');
-            $table->foreignId('booking_id')->nullable()->constrained('bookings')->onDelete('cascade');
-            $table->foreignId('blockout_id')->nullable()->constrained('blockouts')->onDelete('cascade');
+            $table->unsignedBigInteger('customer_id')->nullable();
+            $table->unsignedBigInteger('booking_id')->nullable();
+            $table->unsignedBigInteger('blockout_id')->nullable();
             $table->boolean('is_recurring')->default(false);
             $table->boolean('is_active')->default(true);
             $table->timestamps();
+
+            $table->index('company_id');
+            $table->index('customer_id');
+            $table->index('booking_id');
+            $table->index('blockout_id');
             $table->index(['company_id', 'start_date']);
             $table->index(['event_type', 'company_id']);
         });

@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Search, Download, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react'
+import { Search, Download, ChevronLeft, ChevronRight, MoreVertical, FileText } from 'lucide-react'
 import { format } from 'date-fns'
 import { documentsApi } from '../../api/services'
 import type { Document } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function SystemManualsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -28,9 +29,11 @@ export function SystemManualsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">System Manuals</h1>
-      </div>
+      <PageHeader
+        title="System Manuals"
+        description="View system guides and operational manuals"
+        icon={<FileText size={20} />}
+      />
 
       {/* Search Card */}
       <div className="w-full">

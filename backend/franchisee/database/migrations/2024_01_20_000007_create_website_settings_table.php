@@ -9,8 +9,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('website_settings', function (Blueprint $table) {
+            $table->engine = 'InnoDB';
             $table->id();
-            $table->foreignId('company_id')->constrained()->onDelete('cascade');
+            $table->unsignedBigInteger('company_id');
             $table->string('site_title')->nullable();
             $table->string('tagline')->nullable();
             $table->string('contact_email')->nullable();
@@ -21,7 +22,8 @@ return new class extends Migration
             $table->string('meta_keywords', 500)->nullable();
             $table->text('meta_description')->nullable();
             $table->timestamps();
-            
+
+            $table->index('company_id');
             $table->unique('company_id');
         });
     }

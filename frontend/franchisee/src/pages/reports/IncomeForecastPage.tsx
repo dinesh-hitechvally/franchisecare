@@ -15,8 +15,9 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
-import { Filter } from 'lucide-react'
+import { Filter, TrendingUp } from 'lucide-react'
 import { incomeCategoriesApi, reportsApi } from '../../api/services'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 type CategoryDatum = {
   name: string
@@ -285,9 +286,11 @@ export function IncomeForecastPage() {
 
   return (
     <div className="space-y-6 px-1 py-1 w-full">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Income Forecast</h1>
-      </div>
+      <PageHeader
+        title="Income Forecast"
+        description="Project future income based on historical trends"
+        icon={<TrendingUp size={20} />}
+      />
 
       <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
         <form

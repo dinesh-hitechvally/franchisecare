@@ -5,10 +5,11 @@ import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Modal } from '../../components/ui/Modal'
 import { Input } from '../../components/ui/Input'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { leadsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Lead } from '../../types'
-import { Plus, Search, Upload, ArrowRightLeft, MoreVertical } from 'lucide-react'
+import { Plus, Search, Upload, ArrowRightLeft, MoreVertical, Megaphone } from 'lucide-react'
 import { LeadDetailModal } from './LeadDetailModal'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 
@@ -128,14 +129,19 @@ export function LeadsPage() {
     qualified: 'bg-green-100 text-green-700',
     converted: 'bg-purple-100 text-purple-700',
     lost: 'bg-red-100 text-red-700',
+    snoozed: 'bg-gray-100 text-gray-700',
+    completed: 'bg-green-100 text-green-700',
+    cancellation_request: 'bg-orange-100 text-orange-700',
+    message_for_operator: 'bg-indigo-100 text-indigo-700',
   }
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-gray-800">Leads</h1>
-          <div className="flex gap-3">
+      <PageHeader
+        title="Leads"
+        icon={<Megaphone className="w-5 h-5" />}
+        actions={
+          <>
             <Button variant="secondary" size="sm">
               <Upload className="w-4 h-4 mr-2" />
               Import
@@ -144,9 +150,9 @@ export function LeadsPage() {
               <Plus className="w-4 h-4 mr-2" />
               Add Lead
             </Button>
-          </div>
-        </div>
-      </div>
+          </>
+        }
+      />
 
       <Card>
         <div className="flex items-center gap-4 mb-6">

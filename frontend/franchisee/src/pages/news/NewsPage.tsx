@@ -10,6 +10,7 @@ import { useToastStore } from '../../store/toastStore'
 import type { NewsItem } from '../../types'
 import { Plus, Newspaper, Eye, Edit2, Trash2, CheckCircle } from 'lucide-react'
 import { format } from 'date-fns'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function NewsPage() {
   const queryClient = useQueryClient()
@@ -91,16 +92,17 @@ export function NewsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-4">
-        <Card className="px-4 py-3 shadow-sm border-gray-200 flex-1">
-          <h1 className="text-xl font-bold text-gray-800">News</h1>
-          <p className="text-sm text-gray-600 mt-1">Manage and publish news updates</p>
-        </Card>
-        <Button onClick={handleCreate} size="sm" className="flex-shrink-0">
-          <Plus className="w-4 h-4 mr-2" />
-          New Article
-        </Button>
-      </div>
+      <PageHeader
+        title="News Management"
+        description="Manage and publish news updates"
+        icon={<Newspaper className="w-5 h-5" />}
+        actions={
+          <Button onClick={handleCreate} size="sm" className="flex-shrink-0">
+            <Plus className="w-4 h-4 mr-2" />
+            New Article
+          </Button>
+        }
+      />
 
       <Card>
         <Table

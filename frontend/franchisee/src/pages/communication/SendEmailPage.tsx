@@ -7,6 +7,7 @@ import { Mail, ChevronUp, ChevronDown, Loader2 } from 'lucide-react'
 import { customersApi, communicationHistoryApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function SendEmailPage() {
   const queryClient = useQueryClient()
@@ -173,9 +174,10 @@ export function SendEmailPage() {
   
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold text-gray-900 bg-white py-4 shadow-sm -mt-6 -mx-8 mb-6 px-8 text-center sm:text-left">
-        Send Email
-      </h1>
+      <PageHeader
+        title="Send Email"
+        icon={<Mail className="w-5 h-5" />}
+      />
 
       <div className="flex flex-col lg:flex-row gap-6 items-start">
         {/* Left Column (Send Generic Email) */}

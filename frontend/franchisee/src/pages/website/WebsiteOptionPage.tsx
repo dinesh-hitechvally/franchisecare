@@ -4,6 +4,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Globe, ExternalLink, Save, CheckCircle } from 'lucide-react'
 import { websiteSettingsApi, WebsiteSettings } from '../../api/services'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function WebsiteOptionPage() {
   const queryClient = useQueryClient()
@@ -64,9 +65,11 @@ export function WebsiteOptionPage() {
 
   return (
     <div className="space-y-6">
-      <Card className="px-4 py-3 shadow-sm border-gray-200">
-        <h1 className="text-xl font-bold text-gray-800">Website Options</h1>
-      </Card>
+      <PageHeader
+        title="Website Options"
+        description="Configure website settings and SEO"
+        icon={<Globe className="w-5 h-5" />}
+      />
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <Card title="Website Settings" className="p-6">

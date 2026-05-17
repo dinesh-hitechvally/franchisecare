@@ -4,11 +4,12 @@ import {
   PieChart, Pie, Cell,
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
 } from 'recharts'
-import { Filter, Download, FileText } from 'lucide-react'
+import { Filter, Download, FileText, TrendingUp } from 'lucide-react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
+import { PageHeader } from '../../components/layout/PageHeader'
 import { customerReportsApi, customersApi, unbookedCustomerReportsApi } from '../../api/services'
 
 export function CustomerReportsPage() {
@@ -334,17 +335,21 @@ export function CustomerReportsPage() {
 
   return (
     <div className="space-y-6 px-1 py-1 w-full">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-800">Customer Reports</h1>
-        <div className="flex gap-2">
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
-            <Download size={14} /> Export CSV
-          </button>
-          <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
-            <FileText size={14} /> PDF Report
-          </button>
-        </div>
-      </div>
+      <PageHeader
+        title="Customer Reports"
+        description="Track customer booking patterns and revenue"
+        icon={<TrendingUp size={20} />}
+        actions={
+          <div className="flex gap-2">
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
+              <Download size={14} /> Export CSV
+            </button>
+            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-md transition-colors text-xs font-medium">
+              <FileText size={14} /> PDF Report
+            </button>
+          </div>
+        }
+      />
 
       <Card className="p-2">
         <div className="flex flex-wrap gap-2">

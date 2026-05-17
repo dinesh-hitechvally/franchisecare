@@ -1,5 +1,6 @@
 import { Card } from '../../components/ui/Card'
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
+import { Check, ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
 
 export function RecurringExpensesPage() {
   const recurringExpenses = [
@@ -29,9 +30,10 @@ export function RecurringExpensesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Recurring Expenses</h1>
-      </div>
+      <PageHeader
+        title="Recurring Expenses"
+        icon={<Repeat className="w-5 h-5" />}
+      />
 
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">

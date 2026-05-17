@@ -4,9 +4,10 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Input } from '../../components/ui/Input'
-import { Search, Filter } from 'lucide-react'
+import { Search, Filter, PieChart } from 'lucide-react'
 import { expensesApi } from '../../api/services'
 import type { Expense } from '../../types'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 type ExpenseReportRow = {
   id: string
@@ -89,13 +90,17 @@ export function ExpenseReportsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Expense Reports</h1>
-        <Button variant="secondary" size="sm">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
-      </div>
+      <PageHeader
+        title="Expense Reports"
+        description="Track and analyze your business expenses"
+        icon={<PieChart size={20} />}
+        actions={
+          <Button variant="secondary" size="sm">
+            <Filter className="w-4 h-4 mr-2" />
+            Filter
+          </Button>
+        }
+      />
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-4">

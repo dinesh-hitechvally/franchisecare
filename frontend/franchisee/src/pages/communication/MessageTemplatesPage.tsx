@@ -8,6 +8,8 @@ import { Input } from '../../components/ui/Input'
 import { communicationApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { CommunicationTemplate } from '../../types'
+import { MessageSquare } from 'lucide-react'
+import { PageHeader } from '../../components/layout/PageHeader'
 
 export function MessageTemplatesPage() {
   const queryClient = useQueryClient()
@@ -96,10 +98,13 @@ export function MessageTemplatesPage() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white py-4 shadow-sm rounded-md border border-gray-200 px-8 -mt-6 -mx-8 mb-6 flex items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-900">Message Template</h1>
-        <Button size="sm" onClick={openCreateModal}>New Template</Button>
-      </div>
+      <PageHeader
+        title="Message Template"
+        icon={<MessageSquare className="w-5 h-5" />}
+        actions={
+          <Button size="sm" onClick={openCreateModal}>New Template</Button>
+        }
+      />
 
       <Card className="border border-gray-200 shadow-sm overflow-hidden">
         <Table
