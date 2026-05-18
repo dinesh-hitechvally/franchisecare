@@ -1,4 +1,4 @@
-import { format } from 'date-fns'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 import {
   X, Edit2,
   ImageIcon
@@ -114,7 +114,7 @@ export function RecurringBookingDetailModal({
                     <div>
                       <label className="block text-[13px] font-bold text-gray-800 mb-1">Start Date/Time</label>
                       <p className="text-sm text-gray-600">
-                        {recurringBooking.date ? format(new Date(recurringBooking.date), 'EEEE, do MMM yyyy') : 'No date'} {recurringBooking.startTime}
+                        {recurringBooking.date ? formatDisplayDate(recurringBooking.date) : 'No date'} {formatDisplayTime(recurringBooking.startTime)}
                       </p>
                     </div>
                     <div>
@@ -208,9 +208,9 @@ export function RecurringBookingDetailModal({
                     seriesBookings.map((booking) => (
                       <tr key={booking.id} className="hover:bg-gray-50">
                         <td className="px-4 py-3 text-sm text-gray-700">
-                          {booking.date ? format(new Date(booking.date), 'EEEE, do MMM yyyy') : '-'}
+                          {booking.date ? formatDisplayDate(booking.date) : '-'}
                         </td>
-                        <td className="px-4 py-3 text-sm text-gray-700">{booking.startTime || '-'}</td>
+                        <td className="px-4 py-3 text-sm text-gray-700">{formatDisplayTime(booking.startTime)}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             booking.status === 'completed' ? 'bg-green-100 text-green-700' :

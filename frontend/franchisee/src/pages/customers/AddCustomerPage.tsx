@@ -12,8 +12,9 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { ChevronDown, Loader2, X, Check, Plus, MoreVertical, Trash2, PenLine, History, UserPlus } from 'lucide-react'
 import { customersApi, petsApi, bookingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import { format, differenceInMonths, differenceInDays } from 'date-fns'
+import { differenceInMonths, differenceInDays } from 'date-fns'
 import type { Customer, Booking, Pet } from '../../types'
+import { formatDisplayDate, formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 type AccordionSection = 'pets' | 'add-pet' | 'completed' | 'future'
 
@@ -497,7 +498,7 @@ export function AddCustomerPage() {
 
               {savedCustomer && (
                 <div className="pt-6 border-t border-gray-100 italic text-xs text-gray-400">
-                  Created on {format(new Date(savedCustomer.created_at), 'iiii, do MMM yyyy p')}
+                  Created on {formatDisplayDateTime(savedCustomer.created_at)}
                 </div>
               )}
             </form>
@@ -824,7 +825,7 @@ export function AddCustomerPage() {
                         {completedBookings.map((b: Booking) => (
                           <tr key={b.id}>
                             <td className="py-3 px-1 text-center text-gray-600">{(b as any).details?.length || 0}</td>
-                            <td className="py-3 px-1 text-center text-gray-600">{format(new Date(b.date), 'dd/MM/yyyy')}</td>
+                            <td className="py-3 px-1 text-center text-gray-600">{b.date ? formatDisplayDate(b.date) : 'N/A'}</td>
                             <td className="py-3 px-1 text-center text-gray-600">{b.startTime}</td>
                             <td className="py-3 px-1 text-center text-gray-600">${b.total}</td>
                             <td className="py-3 px-1 text-right">
@@ -876,7 +877,7 @@ export function AddCustomerPage() {
                         {futureBookings.map((b: Booking) => (
                           <tr key={b.id}>
                             <td className="py-3 px-1 text-center text-gray-600">{(b as any).details?.length || 0}</td>
-                            <td className="py-3 px-1 text-center text-gray-600">{format(new Date(b.date), 'dd/MM/yyyy')}</td>
+                            <td className="py-3 px-1 text-center text-gray-600">{b.date ? formatDisplayDate(b.date) : 'N/A'}</td>
                             <td className="py-3 px-1 text-center text-gray-600">{b.startTime}</td>
                             <td className="py-3 px-1 text-center text-gray-600">${b.total}</td>
                             <td className="py-3 px-1 text-right">
@@ -909,7 +910,7 @@ export function AddCustomerPage() {
 
           {savedCustomer && (
             <div className="flex justify-between items-center text-xs text-gray-500 font-medium px-1 mt-6">
-              <span>Registered Date: {format(new Date(savedCustomer.created_at), 'iiii, do MMM yyyy p')}</span>
+              <span>Registered Date: {formatDisplayDateTime(savedCustomer.created_at)}</span>
               <span className="font-bold">Active For: {activeTime}</span>
             </div>
           )}

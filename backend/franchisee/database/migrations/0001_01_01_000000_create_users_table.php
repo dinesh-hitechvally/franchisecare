@@ -15,14 +15,21 @@ return new class extends Migration
             $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
             $table->string('name');
+            $table->string('phone')->nullable();
             $table->string('email')->unique();
+            $table->string('address1')->nullable();
+            $table->string('address2')->nullable();
+            $table->string('suburb')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->string('role')->default('franchise_admin');
             $table->string('avatar')->nullable();
             $table->rememberToken();
             $table->timestamps();
+
         });
     }
 

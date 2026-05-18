@@ -29,6 +29,7 @@ import type { Booking, Pet } from '../../types'
 import { Plus, CalendarDays, CheckCircle, Clock, XCircle, Play, GripVertical, Calendar } from 'lucide-react'
 import { format, addDays, startOfWeek, addWeeks, subWeeks } from 'date-fns'
 import { TablePagination } from '../../components/ui/TablePagination'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 export function BookingsPage() {
   const queryClient = useQueryClient()
@@ -49,6 +50,7 @@ export function BookingsPage() {
     petIds: [] as string[],
     serviceIds: [] as string[],
     date: format(new Date(), 'yyyy-MM-dd'),
+    startDate: format(new Date(), 'yyyy-MM-dd'),
     startTime: '09:00',
     isRecurring: false,
     recurringFrequency: 'weekly' as const,
@@ -282,7 +284,7 @@ export function BookingsPage() {
               { key: 'customer', title: 'Customer', render: (row: Booking) => `${row.customer?.first_name} ${row.customer?.last_name}` },
               { key: 'pets', title: 'Pets', render: (row: Booking) => Array.from(new Set(row.details?.map(p => p.pet?.name).filter(Boolean))).join(', ') },
               { key: 'services', title: 'Services', render: (row: Booking) => row.details?.map(d => d.service?.name).filter(Boolean).join(', ') },
-              { key: 'date', title: 'Date', render: (row: Booking) => format(new Date(row.startDate), 'MMM d, yyyy') },
+              { key: 'date', title: 'Date', render: (row: Booking) => formatDisplayDate(row.startDate) },
               { key: 'startTime', title: 'Time' },
               { key: 'total', title: 'Total', render: (row: Booking) => `$${row.total}` },
               {
@@ -430,7 +432,7 @@ export function BookingsPage() {
                               >
                                 <div className="flex items-center gap-1">
                                   <GripVertical className="w-3 h-3 opacity-50" />
-                                  <span className="font-medium">{booking.startTime}</span>
+                                  <span className="font-medium">{formatDisplayTime(booking.startTime)}</span>
                                 </div>
                                 <p className="truncate">{booking.customer?.first_name} {booking.customer?.last_name}</p>
                                 <p className="text-xs opacity-75 truncate">{Array.from(new Set(booking.details?.map(p => p.pet?.name).filter(Boolean))).join(', ')}</p>
@@ -472,11 +474,12 @@ export function BookingsPage() {
             <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
               Cancel
             </Button>
-            <Button 
+            <Button
               onClick={() => {
                 const total = services?.filter(s => newBooking.serviceIds.includes(s.id)).reduce((acc, curr) => acc + curr.price, 0) || 0
                 createBookingMutation.mutate({
                   ...newBooking,
+                  companyId: user?.companyId || user?.company_id || '1',
                   franchise_id: user?.franchise_id || '1',
                   total,
                 })

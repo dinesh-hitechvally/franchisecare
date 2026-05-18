@@ -28,6 +28,7 @@ import { PetWaiverModal } from './PetWaiverModal'
 import { BookingAuditModal } from './BookingAuditModal'
 import { BookingInventoryAuditModal } from './BookingInventoryAuditModal'
 import { useToastStore } from '../../store/toastStore'
+import { formatDisplayDate, formatDisplayDateTime, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 interface BookingDetailModalProps {
   isOpen: boolean
@@ -394,8 +395,8 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                         <label className="mb-2 block text-[13px] font-bold text-gray-800">Date/Time</label>
                         <p className="text-sm text-gray-600">
                           {booking.startDate && !isNaN(new Date(booking.startDate).getTime())
-                            ? format(new Date(booking.startDate), 'EEEE, do MMM yyyy')
-                            : 'No date'} {booking.startTime || 'No time'}
+                            ? formatDisplayDate(booking.startDate)
+                            : 'No date'} {formatDisplayTime(booking.startTime)}
                         </p>
                       </div>
 
@@ -521,10 +522,11 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-[13px] font-bold text-gray-800">
-                                  {isValidDate ? format(bookingDate, 'MMM do, yyyy') : 'No date'}
+                                  {isValidDate ? formatDisplayDate(bookingDate) : 'No date'}
                                 </p>
                                 <p className="flex items-center gap-1.5 text-[11px] font-medium text-gray-500">
-                                  <Clock className="h-3 w-3" /> {upcomingBooking.startTime || 'No time'}
+                                  <Clock className="h-3 w-3" /> {formatDisplayTime(upcomingBooking.startTime)}
+                                  <span>{formatDisplayTime(upcomingBooking.endTime)}</span>
                                 </p>
                               </div>
                             </div>
@@ -541,7 +543,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
               <span className="text-[10px] font-medium uppercase tracking-tight">ID: {String(booking.id).slice(-8)}</span>
               <span className="text-[10px] font-medium italic">
                 Last Updated: {booking.updatedAt && !isNaN(new Date(booking.updatedAt).getTime())
-                  ? format(new Date(booking.updatedAt), 'MMMM do yyyy, p')
+                  ? formatDisplayDateTime(booking.updatedAt)
                   : 'Unknown'}
               </span>
             </div>

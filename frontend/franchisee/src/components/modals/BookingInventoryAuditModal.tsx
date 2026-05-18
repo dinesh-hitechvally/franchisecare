@@ -1,10 +1,10 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { format } from 'date-fns'
 import { Boxes, Info, Loader2 } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { bookingsApi } from '../../api/services'
 import type { Booking, BookingInventoryAuditEntry } from '../../types'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 interface BookingInventoryAuditModalProps {
   isOpen: boolean
@@ -65,7 +65,7 @@ export const BookingInventoryAuditModal: React.FC<BookingInventoryAuditModalProp
                   <span className="rounded-full bg-amber-100 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-700">
                     {prettifyChangeType(audit.change_type)}
                   </span>
-                  <span className="text-xs text-gray-400">{format(new Date(audit.created_at), 'MMM do, yyyy p')}</span>
+                  <span className="text-xs text-gray-400">{formatDisplayDateTime(audit.created_at)}</span>
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <div>

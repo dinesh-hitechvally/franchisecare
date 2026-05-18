@@ -246,21 +246,42 @@ class BookingController extends Controller
     {
         $previousStatus = $booking->status;
 
+        // Normalise camelCase keys sent by the frontend to snake_case
+        $input = $request->all();
+        $keyMap = [
+            'startDate'     => 'start_date',
+            'startTime'     => 'start_time',
+            'endTime'       => 'end_time',
+            'endDate'       => 'end_date',
+            'calendarColor' => 'calendar_color',
+            'customerId'    => 'customer_id',
+            'sendSms'       => 'send_sms',
+            'sendEmail'     => 'send_email',
+        ];
+        foreach ($keyMap as $camel => $snake) {
+            if (array_key_exists($camel, $input) && !array_key_exists($snake, $input)) {
+                $input[$snake] = $input[$camel];
+                unset($input[$camel]);
+            }
+        }
+        $request->replace($input);
+
         $validated = $request->validate([
-            'customer_id' => 'sometimes|exists:customers,id',
-            'start_date' => 'sometimes|date',
-            'start_time' => 'sometimes',
-            'end_time' => 'nullable',
-            'calendar_color' => 'nullable|string',
-            'send_sms' => 'boolean',
-            'send_email' => 'boolean',
-            'status' => 'sometimes|in:active,cancelled,completed,archived',
-            'total' => 'sometimes|numeric',
-            'duration' => 'sometimes|integer',
-            'notes' => 'nullable|string',
-            'services' => 'sometimes|array',
-            'services.*.item_id' => 'required_with:services|exists:customer_items,id',
-            'services.*.service_id' => 'required_with:services|exists:services,id',
+            'customer_id'            => 'sometimes|exists:customers,id',
+            'start_date'             => 'sometimes|date',
+            'start_time'             => 'sometimes|string',
+            'end_time'               => 'nullable|string',
+            'end_date'               => 'nullable|date',
+            'calendar_color'         => 'nullable|string',
+            'send_sms'               => 'boolean',
+            'send_email'             => 'boolean',
+            'status'                 => 'sometimes|in:active,cancelled,completed,archived',
+            'total'                  => 'sometimes|numeric',
+            'duration'               => 'sometimes|integer',
+            'notes'                  => 'nullable|string',
+            'services'               => 'sometimes|array',
+            'services.*.item_id'     => 'required_with:services|exists:customer_items,id',
+            'services.*.service_id'  => 'required_with:services|exists:services,id',
             'services.*.service_price' => 'required_with:services|numeric',
         ]);
 

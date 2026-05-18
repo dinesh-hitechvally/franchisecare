@@ -6,14 +6,17 @@ use Illuminate\Database\Eloquent\Model;
 
 class CancellationPolicy extends Model
 {
+    protected $table = 'policy_attach_options';
+
     protected $fillable = [
         'company_id',
         'attach_policy',
         'cancel_before_unit',
         'cancel_before_value',
+        'cancel_cutoff_time',
         'cancellation_fee_value',
         'penalty_type',
-        'selected_policy_id',
+        'policy_id',
         'policy_text',
     ];
 

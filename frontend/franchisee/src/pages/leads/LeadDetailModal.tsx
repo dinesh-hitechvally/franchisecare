@@ -3,7 +3,7 @@ import { X } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { Modal } from '../../components/ui/Modal'
 import type { Lead } from '../../types'
-import { format } from 'date-fns'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 interface LeadDetailModalProps {
   lead: Lead
@@ -149,7 +149,7 @@ export function LeadDetailModal({
                   Lead Updated
                 </label>
                 <p className="text-xs text-gray-600">
-                  {format(new Date(lead.updatedAt), 'EEEE, dd MMM yyyy h:mm a')}
+                  {formatDisplayDateTime(lead.updatedAt)}
                 </p>
               </div>
             </div>

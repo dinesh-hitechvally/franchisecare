@@ -10,7 +10,7 @@ import { Search, Plus, Check, MoreVertical, Eye, Edit3, Trash2, RefreshCw } from
 import { blockoutsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
-import { format } from 'date-fns'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 import type { Blockout } from '../../types'
 
 export function RecurringBlockoutsPage() {
@@ -131,13 +131,13 @@ export function RecurringBlockoutsPage() {
                     <td className="px-5 py-4 text-sm text-gray-600 align-top">{row.location || '-'}</td>
 
                     <td className="px-5 py-4 text-sm text-gray-700 w-40 align-top">
-                      {format(new Date(row.startDate), 'EEE, do MMM yyyy')}
+                      {formatDisplayDate(row.startDate)}
                     </td>
 
                     <td className="px-5 py-4 text-sm text-gray-700 text-center align-top">{row.startTime}</td>
 
                     <td className="px-5 py-4 text-sm text-gray-700 w-40 align-top">
-                      {format(new Date(row.endDate), 'EEE, do MMM yyyy')}
+                      {formatDisplayDate(row.endDate)}
                     </td>
 
                     <td className="px-5 py-4 text-sm text-gray-700 text-center align-top">{row.endTime}</td>

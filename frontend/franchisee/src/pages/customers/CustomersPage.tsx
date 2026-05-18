@@ -18,9 +18,9 @@ export function CustomersPage() {
     queryFn: async () => {
       // Mock data
       return [
-        { id: '1', first_name: 'Alice', last_name: 'Johnson', email: 'alice@example.com', phone: '555-0201', address: '123 Main St', franchise_id: '1', notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '2', first_name: 'Bob', last_name: 'Smith', email: 'bob@example.com', phone: '555-0202', address: '456 Oak Ave', franchise_id: '1', notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '3', first_name: 'Carol', last_name: 'White', email: 'carol@example.com', phone: '555-0203', address: '789 Pine Rd', franchise_id: '1', notes: '', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '1', first_name: 'Alice', last_name: 'Johnson', email: 'alice@example.com', phone: '555-0201', address: '123 Main St', company_id: '1', franchise_id: '1', notes: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '2', first_name: 'Bob', last_name: 'Smith', email: 'bob@example.com', phone: '555-0202', address: '456 Oak Ave', company_id: '1', franchise_id: '1', notes: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '3', first_name: 'Carol', last_name: 'White', email: 'carol@example.com', phone: '555-0203', address: '789 Pine Rd', company_id: '1', franchise_id: '1', notes: '', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
       ] as Customer[]
     },
   })

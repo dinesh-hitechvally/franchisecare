@@ -10,7 +10,7 @@ import { blockoutsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Blockout } from '../../types'
 import { Plus, Ban, Trash2 } from 'lucide-react'
-import { format } from 'date-fns'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function BlockoutsPage() {
   const queryClient = useQueryClient()
@@ -80,8 +80,8 @@ export function BlockoutsPage() {
 
         <Table
           columns={[
-            { key: 'startDate', title: 'Start Date', render: (row: Blockout) => format(new Date(row.startDate), 'PPP') },
-            { key: 'endDate', title: 'End Date', render: (row: Blockout) => format(new Date(row.endDate), 'PPP') },
+            { key: 'startDate', title: 'Start Date', render: (row: Blockout) => formatDisplayDate(row.startDate) },
+            { key: 'endDate', title: 'End Date', render: (row: Blockout) => formatDisplayDate(row.endDate) },
             { key: 'reason', title: 'Reason' },
             {
               key: 'actions',

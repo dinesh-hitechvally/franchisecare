@@ -1,10 +1,10 @@
 import React from 'react'
 import { Modal } from '../ui/Modal'
-import { format } from 'date-fns'
 import { History, Clock, Check, X, Info, User, Mail, Phone, MapPin } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { customersApi } from '../../api/services'
 import { Loader2 } from 'lucide-react'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 interface CustomerAuditModalProps {
   isOpen: boolean
@@ -89,7 +89,7 @@ export const CustomerAuditModal: React.FC<CustomerAuditModalProps> = ({ isOpen, 
                         {audit.action_type}
                       </span>
                       <span className="text-xs text-gray-400 font-medium">
-                        {format(new Date(audit.created_at), 'MMM do, yyyy p')}
+                        {formatDisplayDateTime(audit.created_at)}
                       </span>
                     </div>
                     

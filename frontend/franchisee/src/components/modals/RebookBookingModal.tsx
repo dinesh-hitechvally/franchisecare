@@ -1,5 +1,4 @@
 import { useEffect, useMemo, useState } from 'react'
-import { format } from 'date-fns'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
@@ -7,6 +6,7 @@ import { Input } from '../ui/Input'
 import { bookingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Booking } from '../../types'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 interface RebookBookingModalProps {
   isOpen: boolean
@@ -91,7 +91,7 @@ export function RebookBookingModal({ isOpen, onClose, booking }: RebookBookingMo
           </div>
           <div className="mt-1">{booking.customer?.address || 'No address'}</div>
           <div className="mt-2 text-xs text-secondary-500">
-            Original booking: {booking.startDate ? format(new Date(booking.startDate), 'EEEE, do MMM yyyy') : 'No date'} {booking.startTime || 'No time'}
+            Original booking: {booking.startDate ? formatDisplayDate(booking.startDate) : 'No date'} {booking.startTime ? formatDisplayTime(booking.startTime) : 'No time'}
           </div>
         </div>
 

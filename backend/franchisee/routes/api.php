@@ -14,6 +14,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/users/{user}/posts', [\App\Http\Controllers\Api\UserProfileController::class, 'userPosts']);
     Route::post('/profile/posts', [\App\Http\Controllers\Api\UserProfileController::class, 'createPost']);
     Route::patch('/profile/posts/{thread}', [\App\Http\Controllers\Api\UserProfileController::class, 'updatePost']);
+    Route::post('/user/profile', [\App\Http\Controllers\Api\UserProfileController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 
@@ -182,6 +183,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('settings/reminder', [\App\Http\Controllers\Api\SettingsController::class, 'saveReminderSettings']);
     Route::get('settings/app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getAppCalendarSettings']);
     Route::post('settings/app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveAppCalendarSettings']);
+
+    // Cancellation Policies
+    Route::get('cancellation-policies', [\App\Http\Controllers\Api\CancellationPoliciesController::class, 'index']);
 
     // Version Updates
     Route::get('version-updates', [\App\Http\Controllers\Api\VersionUpdateController::class, 'index']);

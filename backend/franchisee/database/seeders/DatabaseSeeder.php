@@ -36,6 +36,7 @@ class DatabaseSeeder extends Seeder
         // Seed booking data including customers, items, and bookings
         $this->call([
             BookingSeeder::class,
+            CancellationPoliciesTableSeeder::class,
         ]);
 
         // Seed News

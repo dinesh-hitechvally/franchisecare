@@ -15,8 +15,6 @@ import {
   Italic,
   Underline,
   Strikethrough,
-  Heading1,
-  Heading2,
   List,
   ListOrdered,
   Link2,
@@ -29,8 +27,8 @@ import { forumApi, usersApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import type { ForumThread } from '../../types'
-import { format } from 'date-fns'
 import { cn } from '../../lib/utils'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 // Sample photos for the sidebar
 const samplePhotos = [
@@ -497,7 +495,7 @@ export function UserProfilePage() {
                           {thread.author?.name}
                         </h4>
                         <div className="text-gray-400 text-xs">
-                          {thread.created_at ? format(new Date(thread.created_at), 'MMMM do yyyy, h:mm a') : ''}
+                          {thread.created_at ? formatDisplayDateTime(thread.created_at) : ''}
                         </div>
                       </div>
                       {isOwnProfileRoute && thread.author?.id?.toString() === authUser?.id?.toString() && (
@@ -562,7 +560,7 @@ export function UserProfilePage() {
                                         {comment.author?.name}
                                       </span>
                                       <span className="text-[10px] text-gray-400">
-                                        {format(new Date(comment.created_at), 'MMM d, h:mm a')}
+                                        {formatDisplayDateTime(comment.created_at)}
                                       </span>
                                     </div>
                                     <p className="text-sm text-gray-600 whitespace-pre-wrap">{comment.content}</p>
@@ -648,7 +646,7 @@ export function UserProfilePage() {
                                                   {reply.author?.name}
                                                 </span>
                                                 <span className="text-[10px] text-gray-400">
-                                                  {format(new Date(reply.created_at), 'MMM d, h:mm a')}
+                                                  {formatDisplayDateTime(reply.created_at)}
                                                 </span>
                                               </div>
                                               <p className="text-xs text-gray-600 whitespace-pre-wrap">{reply.content}</p>

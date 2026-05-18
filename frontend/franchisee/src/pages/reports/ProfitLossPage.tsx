@@ -4,6 +4,7 @@ import { Printer, Download, Search, TrendingUp } from 'lucide-react'
 import { reportsApi } from '../../api/services'
 import { format, startOfYear, endOfYear } from 'date-fns'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function ProfitLossPage() {
   const [dateFrom, setDateFrom] = useState(format(startOfYear(new Date()), 'yyyy-MM-dd'))
@@ -76,7 +77,7 @@ export function ProfitLossPage() {
           <h2 className="text-2xl font-bold text-gray-900">Profit & Loss Statement</h2>
           <div className="mt-4">
             <p className="text-xs font-medium text-gray-400 italic">
-              Period: {format(new Date(dateFrom), 'PPP')} - {format(new Date(dateTo), 'PPP')}
+              Period: {formatDisplayDate(dateFrom)} - {formatDisplayDate(dateTo)}
             </p>
           </div>
         </div>

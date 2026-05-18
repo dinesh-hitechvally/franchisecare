@@ -8,6 +8,7 @@ import { customersApi, communicationHistoryApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function SendEmailPage() {
   const queryClient = useQueryClient()
@@ -92,12 +93,7 @@ export function SendEmailPage() {
     fromEmail: string 
   }) => {
     const formattedBody = body.replace(/\n/g, '<br>')
-    const currentDate = new Date().toLocaleDateString('en-AU', { 
-      weekday: 'long', 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    })
+    const currentDate = formatDisplayDate(new Date())
 
     return `
 <!DOCTYPE html>

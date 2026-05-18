@@ -8,6 +8,7 @@ import { leadsApi } from '../../api/services'
 import { LeadDetailModal } from './LeadDetailModal'
 import type { Lead } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 type SnoozeRow = {
   id: string
@@ -56,7 +57,7 @@ export function SnoozeLeadsPage() {
       fetchedLeads.map((lead) => ({
         id: lead.id,
         customer: lead.customerName,
-        date: new Date(lead.createdAt).toLocaleString(),
+        date: formatDisplayDateTime(lead.createdAt),
         service: lead.interestedServices || '-',
         phone: lead.phone,
         address: lead.address || '-',
@@ -121,7 +122,7 @@ export function SnoozeLeadsPage() {
     })
   }
 
-  const handleSnoozeFromModal = (leadId: string, snoozeUntil: string) => {
+  const handleSnoozeFromModal = (leadId: string, snoozedUntil: string) => {
     updateLeadMutation.mutate(
       { id: leadId, data: { status: 'snoozed', snoozedUntil } },
       {

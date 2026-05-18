@@ -72,6 +72,7 @@ export interface Customer {
   other_email?: string
   other_phone?: string
   referred_by?: string
+  reference_id?: string
   is_ndis?: boolean
   is_subscribed?: boolean
   is_active?: boolean
@@ -131,6 +132,7 @@ export interface Booking {
   details?: BookingDetail[]
   bookings?: Booking[]
   companyId: string
+  franchise_id?: string
   date?: string
   startDate: string
   startTime: string

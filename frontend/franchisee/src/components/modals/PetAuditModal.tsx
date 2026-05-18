@@ -1,10 +1,10 @@
 import React from 'react'
 import { Modal } from '../ui/Modal'
-import { format } from 'date-fns'
 import { History, Clock, Check, X, Info } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { petsApi } from '../../api/services'
 import { Loader2 } from 'lucide-react'
+import { formatDisplayDate, formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 interface PetAuditModalProps {
   isOpen: boolean
@@ -85,7 +85,7 @@ export const PetAuditModal: React.FC<PetAuditModalProps> = ({ isOpen, onClose, p
                         {audit.action_type}
                       </span>
                       <span className="text-xs text-gray-400 font-medium">
-                        {format(new Date(audit.created_at), 'MMM do, yyyy p')}
+                        {formatDisplayDateTime(audit.created_at)}
                       </span>
                     </div>
                     
@@ -118,7 +118,7 @@ export const PetAuditModal: React.FC<PetAuditModalProps> = ({ isOpen, onClose, p
                       </div>
                       <div>
                         <label className="text-[10px] font-bold text-gray-400 uppercase">Birthday</label>
-                        <p className="text-gray-600">{audit.birth_date ? format(new Date(audit.birth_date), 'dd/MM/yyyy') : '-'}</p>
+                        <p className="text-gray-600">{audit.birth_date ? formatDisplayDate(audit.birth_date) : '-'}</p>
                       </div>
                     </div>
 

@@ -143,7 +143,7 @@ function buildForecastDateRanges(dateRangeData: DateRangeDatum[]): DateRangeDatu
     ? new Date(`${dateRangeData[dateRangeData.length - 1].end_date}T00:00:00`)
     : new Date()
 
-  return dateRangeData.map((_, index) => {
+  return dateRangeData.map(() => {
     const startDate = addDays(previousEnd, 1)
     const endDate = addDays(startDate, 6)
     const projectedAmount = Math.max(0, previousAmount * (1 + growthRate))
@@ -533,8 +533,8 @@ export function IncomeForecastPage() {
                     <td colSpan={3} className="px-4 py-8 text-center text-gray-500">No forecast customer data found.</td>
                   </tr>
                 ) : (
-                  topCustomerData.map((row, index) => (
-                    <tr key={row.customer_id || `${row.name}-${index}`} className="hover:bg-gray-50">
+                  topCustomerData.map((row) => (
+                    <tr key={row.customer_id || row.name} className="hover:bg-gray-50">
                       <td className="px-4 py-3 font-medium text-gray-800">{row.name}</td>
                       <td className="px-4 py-3 text-right text-gray-700">{row.income_count}</td>
                       <td className="px-4 py-3 text-right font-semibold text-gray-900">{formatCurrency(row.amount)}</td>

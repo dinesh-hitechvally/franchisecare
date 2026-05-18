@@ -101,7 +101,7 @@ export function ServiceReportsPage() {
               <Select
                 options={serviceOptions}
                 value={serviceId}
-                onChange={setServiceId}
+                onChange={(val) => setServiceId(String(val))}
                 placeholder="All Services"
               />
             </div>

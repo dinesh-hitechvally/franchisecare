@@ -21,9 +21,9 @@ export function PetsPage() {
     queryFn: async () => {
       // Mock data
       return [
-        { id: '1', name: 'Max', breed: 'Golden Retriever', size: 'large', allergies: 'None', notes: 'Friendly dog', ownerId: '1', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '2', name: 'Bella', breed: 'Labrador', size: 'large', allergies: 'Chicken', notes: '', ownerId: '2', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
-        { id: '3', name: 'Charlie', breed: 'Poodle', size: 'small', allergies: 'None', notes: 'Nervous around strangers', ownerId: '3', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '1', name: 'Max', breed: 'Golden Retriever', size: 'Large' as const, notes: 'Friendly dog', ownerId: '1', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '2', name: 'Bella', breed: 'Labrador', size: 'Large' as const, notes: '', ownerId: '2', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+        { id: '3', name: 'Charlie', breed: 'Poodle', size: 'Small' as const, notes: 'Nervous around strangers', ownerId: '3', isActive: true, createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
       ] as Pet[]
     },
   })
@@ -61,17 +61,10 @@ export function PetsPage() {
   const saveSignature = () => {
     const canvas = canvasRef.current
     if (canvas) {
-      const signature = canvas.toDataURL('image/png')
+      canvas.toDataURL('image/png')
       setIsSignatureModalOpen(false)
       clearSignature()
     }
-  }
-
-  const sizeLabels = {
-    small: 'Small',
-    medium: 'Medium',
-    large: 'Large',
-    extra_large: 'Extra Large',
   }
 
   return (
@@ -106,8 +99,7 @@ export function PetsPage() {
           columns={[
             { key: 'name', title: 'Name' },
             { key: 'breed', title: 'Breed' },
-            { key: 'size', title: 'Size', render: (row: Pet) => sizeLabels[row.size] },
-            { key: 'allergies', title: 'Allergies' },
+            { key: 'size', title: 'Size', render: (row: Pet) => row.size },
             { key: 'owner', title: 'Owner', render: (row: Pet) => {
               const owner = customers?.find(c => c.id === row.ownerId)
               return owner ? `${owner.first_name} ${owner.last_name}` : 'Unknown'

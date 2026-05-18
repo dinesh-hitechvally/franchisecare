@@ -5,6 +5,7 @@ import { bookingsApi } from '../../api/services'
 import type { Booking } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 interface DiaryEntry {
   id: string
@@ -108,12 +109,7 @@ export function DailyDiaryPage() {
     })
   }, [eligibleBookings])
 
-  const formattedHeadingDate = new Date(appliedFromDate).toLocaleDateString('en-AU', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  })
+  const formattedHeadingDate = formatDisplayDate(appliedFromDate)
 
   const totalAmount = diaryEntries.reduce((sum, entry) => {
     const numeric = Number(entry.total.replace(/[^0-9.-]+/g, ''))

@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Search, Download, ChevronLeft, ChevronRight, MoreVertical, FolderOpen } from 'lucide-react'
-import { format } from 'date-fns'
 import { documentsApi } from '../../api/services'
 import type { Document } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 export function OtherFilesPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -87,7 +87,7 @@ export function OtherFilesPage() {
                         <span className="text-[10px] font-bold uppercase">{file.fileType}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{format(new Date(file.createdAt), 'yyyy-MM-dd HH:mm:ss')}</td>
+                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{formatDisplayDateTime(file.createdAt)}</td>
                     <td className="px-6 py-4 text-center relative">
                       <button
                         type="button"

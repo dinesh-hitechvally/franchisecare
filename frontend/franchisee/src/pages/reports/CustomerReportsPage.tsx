@@ -11,6 +11,7 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { customerReportsApi, customersApi, unbookedCustomerReportsApi } from '../../api/services'
+import { formatDisplayDate, formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 export function CustomerReportsPage() {
   type CustomerReportTab = 'booked' | 'unbooked' | 'created' | 'referral'
@@ -278,8 +279,7 @@ export function CustomerReportsPage() {
     const rows: Array<Record<string, any>> = []
     let weekStart = new Date(start)
 
-    const formatDate = (date: Date) =>
-      date.toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' })
+    const formatDate = (date: Date) => formatDisplayDate(date)
 
     while (weekStart <= end) {
       const weekEnd = new Date(weekStart)
@@ -408,7 +408,7 @@ export function CustomerReportsPage() {
               <Select
                 options={customerOptions}
                 value={customerId}
-                onChange={setCustomerId}
+                onChange={(val) => setCustomerId(String(val))}
                 placeholder="All Customers"
               />
             </div>
@@ -689,7 +689,7 @@ export function CustomerReportsPage() {
                   <Select
                     options={customerOptions}
                     value={unbookedCustomerId}
-                    onChange={setUnbookedCustomerId}
+                    onChange={(val) => setUnbookedCustomerId(String(val))}
                     placeholder="All Customers"
                   />
                 </div>
@@ -748,7 +748,7 @@ export function CustomerReportsPage() {
                       { label: 'NT', value: 'NT' },
                     ]}
                     value={unbookedState}
-                    onChange={setUnbookedState}
+                    onChange={(val) => setUnbookedState(String(val))}
                     placeholder="All States"
                   />
                 </div>
@@ -802,12 +802,12 @@ export function CustomerReportsPage() {
                         <td className="px-3 py-3 text-right text-gray-700">{row.future_bookings ?? 0}</td>
                         <td className="px-3 py-3 text-gray-700">
                           {row.registered_date && !Number.isNaN(new Date(row.registered_date).getTime())
-                            ? new Date(row.registered_date).toLocaleString()
+                            ? formatDisplayDateTime(row.registered_date)
                             : '-'}
                         </td>
                         <td className="px-3 py-3 text-gray-700">
                           {row.last_booked_date && !Number.isNaN(new Date(row.last_booked_date).getTime())
-                            ? new Date(row.last_booked_date).toLocaleDateString()
+                            ? formatDisplayDate(row.last_booked_date)
                             : '-'}
                         </td>
                         <td className="px-3 py-3 text-right text-primary-600">Archive</td>
@@ -868,7 +868,7 @@ export function CustomerReportsPage() {
                       { label: 'Archived', value: 'archived' },
                     ]}
                     value={createdStatus}
-                    onChange={setCreatedStatus}
+                    onChange={(val) => setCreatedStatus(String(val))}
                     placeholder="All Status"
                   />
                 </div>
@@ -936,7 +936,7 @@ export function CustomerReportsPage() {
                         <td className="px-4 py-3 text-gray-700">{row.status}</td>
                         <td className="px-4 py-3 text-gray-700">
                           {row.registeredDate !== '-' && !Number.isNaN(new Date(row.registeredDate).getTime())
-                            ? new Date(row.registeredDate).toLocaleString()
+                            ? formatDisplayDateTime(row.registeredDate)
                             : '-'}
                         </td>
                       </tr>
@@ -987,7 +987,7 @@ export function CustomerReportsPage() {
                   <Select
                     options={customerOptions}
                     value={referrerCustomerId}
-                    onChange={setReferrerCustomerId}
+                    onChange={(val) => setReferrerCustomerId(String(val))}
                     placeholder="All Referrers"
                   />
                 </div>

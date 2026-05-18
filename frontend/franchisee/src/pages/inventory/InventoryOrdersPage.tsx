@@ -8,8 +8,8 @@ import { inventoryApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { InventoryOrder } from '../../types'
 import { Plus, Package, CheckCircle, Truck, Clock, XCircle, ShoppingCart } from 'lucide-react'
-import { format } from 'date-fns'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 interface OrderItemForm {
   product_name: string
@@ -165,7 +165,7 @@ export function InventoryOrdersPage() {
             { key: 'type', title: 'Type', render: (row: InventoryOrder) => typeLabels[row.type] || row.type },
             { key: 'items', title: 'Items', render: (row: InventoryOrder) => `${row.items?.length || 0} item(s)` },
             { key: 'total', title: 'Total', render: (row: InventoryOrder) => `$${Number(row.total).toFixed(2)}` },
-            { key: 'created_at', title: 'Created', render: (row: InventoryOrder) => format(new Date(row.created_at), 'MMM d, yyyy') },
+            { key: 'created_at', title: 'Created', render: (row: InventoryOrder) => formatDisplayDate(row.created_at) },
             {
               key: 'status',
               title: 'Status',

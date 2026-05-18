@@ -9,9 +9,9 @@ import { documentsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Document } from '../../types'
 import { Plus, FileText, Download, Upload, MoreVertical, Eye, Trash2 } from 'lucide-react'
-import { format } from 'date-fns'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate, formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 const API_BASE_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8000/api'
 
@@ -189,7 +189,7 @@ export function DocumentsPage() {
                 {row.visibility}
               </span>
             )},
-            { key: 'createdAt', title: 'Uploaded', render: (row: Document) => format(new Date(row.createdAt), 'MMM d, yyyy') },
+            { key: 'createdAt', title: 'Uploaded', render: (row: Document) => formatDisplayDate(row.createdAt) },
             {
               key: 'actions',
               title: 'Mgmt',
@@ -342,7 +342,7 @@ export function DocumentsPage() {
               </div>
               <div>
                 <span className="text-sm text-gray-500">Uploaded</span>
-                <p className="font-medium">{format(new Date(viewDocument.createdAt), 'PPP')}</p>
+                <p className="font-medium">{formatDisplayDateTime(viewDocument.createdAt)}</p>
               </div>
             </div>
             {viewDocument.description && (

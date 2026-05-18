@@ -307,7 +307,7 @@ export const leadsApi = {
 }
 
 export const customersApi = {
-  getAll: (params?: { search?: string; status?: string }) =>
+  getAll: (params?: { search?: string; status?: string; franchise_id?: string }) =>
     apiClient.get<Customer[]>('/customers', { params }),
   
   getById: (id: string) => apiClient.get<Customer>(`/customers/${id}`),
@@ -1126,7 +1126,9 @@ export interface Preferences {
   display_booking_end_time: boolean
   show_address_in_invoice: boolean
   show_personal_phone: boolean
-  time_format_24hr: boolean
+  time_format?: string
+  date_format?: string
+  time_format_24hr?: boolean
 }
 
 export interface IncomeTemplates {
@@ -1150,12 +1152,13 @@ export interface CalendarSettings {
 export interface CancellationPolicy {
   id?: number
   company_id?: number
-  attach_policy: boolean
-  cancel_before_unit: 'hours' | 'days'
+  attach_policy?: boolean
+  cancel_before_unit: 'hours' | 'cutoff'
   cancel_before_value: number
+  cancel_cutoff_time?: string
   cancellation_fee_value: number
   penalty_type: 'percent' | 'fixed'
-  selected_policy_id?: number
+  policy_id?: number
   policy_text?: string
 }
 

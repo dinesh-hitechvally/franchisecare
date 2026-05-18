@@ -9,7 +9,7 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { leadsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Lead } from '../../types'
-import { Plus, Search, Upload, ArrowRightLeft, MoreVertical, Megaphone } from 'lucide-react'
+import { Plus, Search, Upload, MoreVertical, Megaphone } from 'lucide-react'
 import { LeadDetailModal } from './LeadDetailModal'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 
@@ -120,7 +120,7 @@ export function LeadsPage() {
     searchTerm === '' ||
     lead.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
     lead.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    lead.email.toLowerCase().includes(searchTerm.toLowerCase())
+    (lead.email && lead.email.toLowerCase().includes(searchTerm.toLowerCase()))
   )
 
   const statusColors = {

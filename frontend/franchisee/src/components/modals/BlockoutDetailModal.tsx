@@ -1,7 +1,7 @@
 import React from 'react'
 import { Modal } from '../ui/Modal'
-import { format } from 'date-fns'
 import { X, MapPin, Calendar, Clock, RotateCcw, FileText } from 'lucide-react'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 import type { Blockout } from '../../types'
 
 interface BlockoutDetailModalProps {
@@ -49,11 +49,11 @@ export const BlockoutDetailModal: React.FC<BlockoutDetailModalProps> = ({ isOpen
                   <span className="font-semibold">Start Date & Time</span>
                 </div>
                 <p className="text-lg font-medium text-gray-900">
-                  {format(new Date(blockout.startDate), 'EEE, MMM d, yyyy')}
+                  {formatDisplayDate(blockout.startDate)}
                 </p>
                 <p className="text-gray-600 flex items-center gap-1 mt-1">
                   <Clock className="w-4 h-4" />
-                  {blockout.startTime}
+                  {formatDisplayTime(blockout.startTime)}
                 </p>
               </div>
 
@@ -63,11 +63,11 @@ export const BlockoutDetailModal: React.FC<BlockoutDetailModalProps> = ({ isOpen
                   <span className="font-semibold">End Date & Time</span>
                 </div>
                 <p className="text-lg font-medium text-gray-900">
-                  {format(new Date(blockout.endDate), 'EEE, MMM d, yyyy')}
+                  {formatDisplayDate(blockout.endDate)}
                 </p>
                 <p className="text-gray-600 flex items-center gap-1 mt-1">
                   <Clock className="w-4 h-4" />
-                  {blockout.endTime}
+                  {formatDisplayTime(blockout.endTime)}
                 </p>
               </div>
             </div>
@@ -95,7 +95,7 @@ export const BlockoutDetailModal: React.FC<BlockoutDetailModalProps> = ({ isOpen
                   {blockout.repeatUntil && (
                     <div>
                       <p className="text-gray-500">Repeat Until</p>
-                      <p className="font-medium text-gray-900">{format(new Date(blockout.repeatUntil), 'MMM d, yyyy')}</p>
+                      <p className="font-medium text-gray-900">{formatDisplayDate(blockout.repeatUntil)}</p>
                     </div>
                   )}
                 </div>

@@ -9,6 +9,7 @@ import { format, formatDistanceToNow } from 'date-fns'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { cn } from '../../lib/utils'
 import type { ForumThread, ForumNotification } from '../../types'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 // Mock Data for sidebar (could be dynamic later)
 const teamMembers = [
@@ -590,7 +591,7 @@ export function ForumPage() {
                       >
                         {thread.author?.name}
                       </h4>
-                      <div className="text-gray-400 text-xs">{format(new Date(thread.created_at), 'MMMM do yyyy, h:mm a')}</div>
+                      <div className="text-gray-400 text-xs">{formatDisplayDateTime(thread.created_at)}</div>
                     </div>
                   </div>
 
@@ -641,7 +642,7 @@ export function ForumPage() {
                                   >
                                     {comment.author?.name}
                                   </span>
-                                  <span className="text-[10px] text-gray-400">{format(new Date(comment.created_at), 'MMM d, h:mm a')}</span>
+                                  <span className="text-[10px] text-gray-400">{formatDisplayDateTime(comment.created_at)}</span>
                                 </div>
                                 <p className="text-sm text-gray-600 whitespace-pre-wrap">{comment.content}</p>
                               </div>
@@ -726,7 +727,7 @@ export function ForumPage() {
                                             >
                                               {reply.author?.name}
                                             </span>
-                                            <span className="text-[10px] text-gray-400">{format(new Date(reply.created_at), 'MMM d, h:mm a')}</span>
+                                            <span className="text-[10px] text-gray-400">{formatDisplayDateTime(reply.created_at)}</span>
                                           </div>
                                           <p className="text-xs text-gray-600 whitespace-pre-wrap">{reply.content}</p>
                                         </div>

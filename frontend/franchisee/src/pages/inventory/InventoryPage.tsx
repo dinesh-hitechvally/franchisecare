@@ -190,17 +190,19 @@ export function InventoryPage() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
         {summaryCards.map((card) => (
-          <Card key={card.category} className="cursor-pointer p-4" onClick={() => setFilterCategory(filterCategory === card.category ? '' : card.category)}>
-            <div className="flex items-center gap-3">
-              <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${CATEGORY_COLORS[card.category]}`}>
-                <Package className="h-5 w-5" />
+          <div key={card.category} className="cursor-pointer" onClick={() => setFilterCategory(filterCategory === card.category ? '' : card.category)}>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${CATEGORY_COLORS[card.category]}`}>
+                  <Package className="h-5 w-5" />
+                </div>
+                <div>
+                  <p className="text-sm text-secondary-500">{card.label}</p>
+                  <p className="text-xl font-bold text-secondary-900">{card.count}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-secondary-500">{card.label}</p>
-                <p className="text-xl font-bold text-secondary-900">{card.count}</p>
-              </div>
-            </div>
-          </Card>
+            </Card>
+          </div>
         ))}
       </div>
 

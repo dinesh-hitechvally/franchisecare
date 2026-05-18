@@ -11,16 +11,17 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('cancellation_policies', function (Blueprint $table) {
+        Schema::create('policy_attach_options', function (Blueprint $table) {
             $table->engine = 'InnoDB';
             $table->id();
             $table->unsignedBigInteger('company_id');
-            $table->boolean('attach_policy')->default(true);
+            $table->boolean('attach_policy')->default(false);
             $table->enum('cancel_before_unit', ['hours', 'days'])->default('hours');
             $table->integer('cancel_before_value')->default(24);
             $table->decimal('cancellation_fee_value', 10, 2)->default(0);
             $table->enum('penalty_type', ['percent', 'fixed'])->default('percent');
-            $table->integer('selected_policy_id')->nullable();
+            $table->unsignedBigInteger('policy_id')->nullable();
+            $table->foreign('policy_id')->references('id')->on('cancellation_policies')->onDelete('cascade');
             $table->text('policy_text')->nullable();
             $table->timestamps();
 
@@ -33,6 +34,6 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::dropIfExists('cancellation_policies');
+        Schema::dropIfExists('policy_attach_options');
     }
 };

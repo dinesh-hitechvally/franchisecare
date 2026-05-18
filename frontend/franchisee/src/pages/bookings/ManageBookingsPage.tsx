@@ -11,6 +11,7 @@ import type { Booking } from '../../types'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle, Settings } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 function getCustomerName(booking: Booking) {
   return `${booking.customer?.first_name || ''} ${booking.customer?.last_name || ''}`.trim() || 'Unknown'
@@ -222,9 +223,9 @@ export function ManageBookingsPage() {
                     <td className="px-5 py-4 text-sm text-gray-700 text-center align-top">{getPetCount(row)}</td>
                     <td className="px-5 py-4 text-sm text-gray-700 text-center align-top">{getServiceCount(row)}</td>
                     <td className="px-5 py-4 text-sm text-gray-700 align-top">
-                      {row.startDate ? format(new Date(row.startDate), 'EEEE, do MMM yyyy') : '-'}
+                      {row.startDate ? formatDisplayDate(row.startDate) : '-'}
                     </td>
-                    <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">{row.startTime || '-'}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">{formatDisplayTime(row.startTime)}</td>
                     <td className="px-5 py-4 text-sm font-bold text-gray-800 align-top text-right">${Number(row.total || 0).toFixed(2)}</td>
                     <td className="px-5 py-4 text-sm text-gray-700 align-top">{row.notes || '-'}</td>
                     <td className="px-5 py-4 align-top text-center">

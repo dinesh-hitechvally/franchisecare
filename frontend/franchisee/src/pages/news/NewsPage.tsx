@@ -9,8 +9,8 @@ import { newsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { NewsItem } from '../../types'
 import { Plus, Newspaper, Eye, Edit2, Trash2, CheckCircle } from 'lucide-react'
-import { format } from 'date-fns'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function NewsPage() {
   const queryClient = useQueryClient()
@@ -134,9 +134,9 @@ export function NewsPage() {
               ),
             },
             { key: 'publishedAt', title: 'Published', render: (row: NewsItem) =>
-              row.publishedAt ? format(new Date(row.publishedAt), 'MMM d, yyyy') : '-'
+              row.publishedAt ? formatDisplayDate(row.publishedAt) : '-'
             },
-            { key: 'createdAt', title: 'Created', render: (row: NewsItem) => format(new Date(row.created_at), 'MMM d, yyyy') },
+            { key: 'createdAt', title: 'Created', render: (row: NewsItem) => formatDisplayDate(row.created_at) },
             {
               key: 'actions',
               title: 'Actions',

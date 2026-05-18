@@ -8,6 +8,7 @@ import { leadsApi } from '../../api/services'
 import { LeadDetailModal } from './LeadDetailModal'
 import type { Lead } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 type CompletedRow = {
   id: string
@@ -54,7 +55,7 @@ export function CompletedLeadsPage() {
       fetchedLeads.map((lead) => ({
         id: lead.id,
         customer: lead.customerName,
-        date: new Date(lead.createdAt).toLocaleString(),
+        date: formatDisplayDateTime(lead.createdAt),
         service: lead.interestedServices || '-',
         phone: [lead.phone, lead.alternatePhone].filter(Boolean).join(' / '),
         address: lead.address || '-',

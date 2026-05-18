@@ -1,10 +1,10 @@
 import React from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { format } from 'date-fns'
 import { Clock3, History, Info, Loader2 } from 'lucide-react'
 import { Modal } from '../ui/Modal'
 import { bookingsApi } from '../../api/services'
 import type { Booking, BookingAuditEntry } from '../../types'
+import { formatDisplayDate, formatDisplayDateTime, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 interface BookingAuditModalProps {
   isOpen: boolean
@@ -73,7 +73,7 @@ export const BookingAuditModal: React.FC<BookingAuditModalProps> = ({ isOpen, on
                     ) : null}
                   </div>
                   <span className="text-xs text-gray-400">
-                    {format(new Date(audit.created_at), 'MMM do, yyyy p')}
+                    {formatDisplayDateTime(audit.created_at)}
                   </span>
                 </div>
 
@@ -81,12 +81,12 @@ export const BookingAuditModal: React.FC<BookingAuditModalProps> = ({ isOpen, on
                   <div>
                     <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-gray-400">Schedule</p>
                     <p className="text-sm font-medium text-gray-700">
-                      {audit.start_date ? format(new Date(audit.start_date), 'EEEE, do MMM yyyy') : 'No date'}
+                      {audit.start_date ? formatDisplayDate(audit.start_date) : 'No date'}
                     </p>
                     <p className="mt-1 flex items-center gap-1 text-sm text-gray-500">
                       <Clock3 className="h-3.5 w-3.5" />
-                      {audit.start_time || 'No start time'}
-                      {audit.end_time ? ` - ${audit.end_time}` : ''}
+                      {audit.start_time ? formatDisplayTime(audit.start_time) : 'No start time'}
+                      {audit.end_time ? ` - ${formatDisplayTime(audit.end_time)}` : ''}
                     </p>
                   </div>
 

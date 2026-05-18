@@ -9,7 +9,7 @@ import { serviceInventoryUsageApi, servicesApi } from '../../api/services'
 import type { Service, ServiceInventoryUsage } from '../../types'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { useToastStore } from '../../store/toastStore'
-import { format } from 'date-fns'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 type ServiceWithInventory = {
   id: string
@@ -166,7 +166,7 @@ export function InventoryUsagePage() {
     // Load existing rules into form
     if (service.rules.length > 0) {
       setInventoryRows(service.rules.map(rule => {
-        const quantity = Math.round(rule.quantity_per_booking)
+        const quantity = Math.round(Number(rule.quantity_per_booking))
         const usageAmount = quantity === 1 ? '1 pump' : `${quantity} pumps`
 
         return {
@@ -465,7 +465,7 @@ function HistoryModalContent({ selectedService }: { selectedService: ServiceWith
 
   const formatDateTime = (dateStr: string) => {
     try {
-      return format(new Date(dateStr), 'dd MMM yyyy, HH:mm')
+      return formatDisplayDateTime(dateStr)
     } catch {
       return dateStr
     }

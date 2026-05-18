@@ -111,39 +111,39 @@ export function SupportTicketPage() {
   const columns = [
     {
       key: 'id',
-      label: 'S/N',
+      title: 'S/N',
       render: (ticket: SupportTicket) => <span className="text-gray-800">{ticket.id}</span>,
     },
     {
       key: 'ticketId',
-      label: 'Ticket ID',
+      title: 'Ticket ID',
       render: (ticket: SupportTicket) => <span className="text-gray-600 font-mono text-sm">{ticket.ticketId}</span>,
     },
     {
       key: 'subject',
-      label: 'Subject',
+      title: 'Subject',
       render: (ticket: SupportTicket) => <span className="text-gray-800">{ticket.subject}</span>,
     },
     {
       key: 'department',
-      label: 'Department',
+      title: 'Department',
       render: (ticket: SupportTicket) => (
         <span className="capitalize">{ticket.department === 'bugs' ? 'Bugs' : ticket.department}</span>
       ),
     },
     {
       key: 'createdBy',
-      label: 'Created By',
+      title: 'Created By',
       render: (ticket: SupportTicket) => <span className="text-gray-700">{ticket.createdBy}</span>,
     },
     {
       key: 'lastUpdatedBy',
-      label: 'Last Updated By',
+      title: 'Last Updated By',
       render: (ticket: SupportTicket) => <span className="text-gray-700">{ticket.lastUpdatedBy}</span>,
     },
     {
       key: 'created',
-      label: 'Created',
+      title: 'Created',
       render: (ticket: SupportTicket) => {
         const daysAgo = Math.floor((Date.now() - new Date(ticket.created).getTime()) / (1000 * 60 * 60 * 24))
         if (daysAgo < 7) return `${daysAgo} days ago`
@@ -153,7 +153,7 @@ export function SupportTicketPage() {
     },
     {
       key: 'status',
-      label: 'Status',
+      title: 'Status',
       render: (ticket: SupportTicket) => (
         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
           ticket.status === 'open' ? 'bg-green-100 text-green-700' :
@@ -166,8 +166,8 @@ export function SupportTicketPage() {
     },
     {
       key: 'actions',
-      label: '',
-      render: (ticket: SupportTicket) => (
+      title: '',
+      render: () => (
         <div className="flex gap-2">
           <Button size="sm" variant="secondary" className="bg-green-500 hover:bg-green-600 text-white text-xs">
             View Ticket
@@ -254,6 +254,7 @@ export function SupportTicketPage() {
           <Table
             data={filteredTickets}
             columns={columns}
+            keyExtractor={(ticket) => ticket.id}
             emptyMessage="No tickets found"
           />
 

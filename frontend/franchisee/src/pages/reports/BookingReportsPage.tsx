@@ -6,7 +6,7 @@ import { Button } from '../../components/ui/Button';
 import { Table } from '../../components/ui/Table';
 import { Input } from '../../components/ui/Input';
 import { Select } from '../../components/ui/Select';
-import { Search, Filter, PieChart } from 'lucide-react';
+import { Filter, PieChart } from 'lucide-react';
 import { bookingReportsApi } from '../../api/services';
 import { useEffect } from 'react';
 import { PageHeader } from '../../components/layout/PageHeader';
@@ -23,8 +23,7 @@ export function BookingReportsPage() {
   const [toDate, setToDate] = useState(defaultTo);
   const [appliedFromDate, setAppliedFromDate] = useState(defaultFrom);
   const [appliedToDate, setAppliedToDate] = useState(defaultTo);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [status, setStatus] = useState('');
+  const [searchTerm] = useState('');
   const [customer, setCustomer] = useState('');
   const [customerOptions, setCustomerOptions] = useState<{ label: string; value: string }[]>([]);
   const [min, setMin] = useState('');
@@ -163,7 +162,7 @@ export function BookingReportsPage() {
               <Select
                 options={customerOptions}
                 value={customer}
-                onChange={setCustomer}
+                onChange={(val) => setCustomer(String(val))}
                 placeholder="All Customers"
               />
             </div>
@@ -296,7 +295,7 @@ export function BookingReportsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {rows.map((row: any, idx) => (
+                  {rows.map((row: any, idx: number) => (
                     <tr key={idx} className="hover:bg-gray-50">
                       <td className="px-4 py-3 text-gray-800 font-medium text-xs">{row.weekRange}</td>
                       <td className="px-4 py-3 text-gray-700">{row.myBookings}</td>

@@ -10,8 +10,8 @@ import { financeApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Income } from '../../types'
 import { Plus, DollarSign, TrendingUp, Calendar, Repeat } from 'lucide-react'
-import { format } from 'date-fns'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function IncomePage() {
   const queryClient = useQueryClient()
@@ -25,10 +25,10 @@ export function IncomePage() {
     queryFn: async () => {
       // Mock data
       return [
-        { id: '1', amount: 150, description: 'Booking #1234 - Full Groom', category: 'services', date: new Date().toISOString(), isRecurring: false, franchise_id: '1', createdAt: new Date().toISOString() },
-        { id: '2', amount: 75, description: 'Booking #1235 - Bath & Dry', category: 'services', date: new Date(Date.now() - 86400000).toISOString(), isRecurring: false, franchise_id: '1', createdAt: new Date(Date.now() - 86400000).toISOString() },
-        { id: '3', amount: 200, description: 'Monthly Membership', category: 'membership', date: new Date(Date.now() - 172800000).toISOString(), isRecurring: true, franchise_id: '1', createdAt: new Date(Date.now() - 172800000).toISOString() },
-        { id: '4', amount: 45, description: 'Retail - Dog Shampoo', category: 'retail', date: new Date(Date.now() - 259200000).toISOString(), isRecurring: false, franchise_id: '1', createdAt: new Date(Date.now() - 259200000).toISOString() },
+        { id: '1', company_id: '1', amount: 150, title: 'Booking #1234 - Full Groom', description: 'Booking #1234 - Full Groom', income_category_id: '1', category: { id: '1', name: 'services', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, income_date: new Date().toISOString(), date: new Date().toISOString(), is_active: true, isRecurring: false, franchise_id: '1', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '2', company_id: '1', amount: 75, title: 'Booking #1235 - Bath & Dry', description: 'Booking #1235 - Bath & Dry', income_category_id: '1', category: { id: '1', name: 'services', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, income_date: new Date(Date.now() - 86400000).toISOString(), date: new Date(Date.now() - 86400000).toISOString(), is_active: true, isRecurring: false, franchise_id: '1', created_at: new Date(Date.now() - 86400000).toISOString(), updated_at: new Date(Date.now() - 86400000).toISOString() },
+        { id: '3', company_id: '1', amount: 200, title: 'Monthly Membership', description: 'Monthly Membership', income_category_id: '2', category: { id: '2', name: 'membership', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, income_date: new Date(Date.now() - 172800000).toISOString(), date: new Date(Date.now() - 172800000).toISOString(), is_active: true, isRecurring: true, franchise_id: '1', created_at: new Date(Date.now() - 172800000).toISOString(), updated_at: new Date(Date.now() - 172800000).toISOString() },
+        { id: '4', company_id: '1', amount: 45, title: 'Retail - Dog Shampoo', description: 'Retail - Dog Shampoo', income_category_id: '3', category: { id: '3', name: 'retail', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, income_date: new Date(Date.now() - 259200000).toISOString(), date: new Date(Date.now() - 259200000).toISOString(), is_active: true, isRecurring: false, franchise_id: '1', created_at: new Date(Date.now() - 259200000).toISOString(), updated_at: new Date(Date.now() - 259200000).toISOString() },
       ] as Income[]
     },
   })
@@ -42,10 +42,10 @@ export function IncomePage() {
   })
 
   const chartData = [
-    { name: 'Services', value: income?.filter(i => i.category === 'services').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
-    { name: 'Retail', value: income?.filter(i => i.category === 'retail').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
-    { name: 'Membership', value: income?.filter(i => i.category === 'membership').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
-    { name: 'Other', value: income?.filter(i => i.category === 'other').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
+    { name: 'Services', value: income?.filter(i => i.category?.name === 'services').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
+    { name: 'Retail', value: income?.filter(i => i.category?.name === 'retail').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
+    { name: 'Membership', value: income?.filter(i => i.category?.name === 'membership').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
+    { name: 'Other', value: income?.filter(i => i.category?.name === 'other').reduce((sum, i) => sum + i.amount, 0) ?? 0 },
   ]
 
   const createMutation = useMutation({
@@ -146,10 +146,10 @@ export function IncomePage() {
 
           <Table
             columns={[
-              { key: 'date', title: 'Date', render: (row: Income) => format(new Date(row.date), 'MMM d, yyyy') },
+              { key: 'date', title: 'Date', render: (row: Income) => row.date ? formatDisplayDate(row.date) : 'N/A' },
               { key: 'description', title: 'Description' },
               { key: 'category', title: 'Category', render: (row: Income) => (
-                <span className="capitalize">{row.category}</span>
+                <span className="capitalize">{row.category?.name || 'N/A'}</span>
               )},
               { key: 'amount', title: 'Amount', render: (row: Income) => (
                 <span className="font-medium text-green-600">+${row.amount.toFixed(2)}</span>
@@ -191,13 +191,19 @@ export function IncomePage() {
             </Button>
             <Button
               onClick={() => createMutation.mutate({
+                company_id: '1',
                 amount: 100,
+                title: 'New income',
                 description: 'New income',
-                category: 'services',
+                income_category_id: '1',
+                income_date: new Date().toISOString(),
                 date: new Date().toISOString(),
+                is_active: true,
                 franchise_id: '1',
                 isRecurring: false,
-              } as Omit<Income, 'id' | 'createdAt'>)}
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              } as Omit<Income, 'id'>)}
               isLoading={createMutation.isPending}
             >
               Add Income

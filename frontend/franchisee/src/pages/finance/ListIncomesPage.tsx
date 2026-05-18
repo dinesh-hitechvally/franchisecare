@@ -7,9 +7,9 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { Search, ChevronLeft, ChevronRight, Check, X, MoreVertical, Edit3, Trash2, Eye, DollarSign } from 'lucide-react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { incomesApi } from '../../api/services'
-import { format } from 'date-fns'
 import { Loader2 } from 'lucide-react'
 import type { Income } from '../../types'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function ListIncomesPage() {
   const navigate = useNavigate()
@@ -75,7 +75,7 @@ export function ListIncomesPage() {
   }
 
   const formatDate = (dateStr: string) => {
-    try { return format(new Date(dateStr), 'd MMM, yyyy') } catch { return dateStr }
+    try { return formatDisplayDate(dateStr) } catch { return dateStr }
   }
 
   return (

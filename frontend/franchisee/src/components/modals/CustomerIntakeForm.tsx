@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react'
 import SignatureCanvas from 'react-signature-canvas'
 import { Modal } from '../ui/Modal'
 import { Button } from '../ui/Button'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 import { Input } from '../ui/Input'
 import { Check, X, Calendar } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
@@ -838,7 +839,7 @@ export function CustomerIntakeForm({
             </div>
             <div className="flex items-center gap-2 text-gray-400 text-xs mt-1">
               <Check className="w-3 h-3" />
-              <span>Signature Date: {new Date().toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+              <span>Signature Date: {formatDisplayDate(new Date())}</span>
             </div>
           </section>
 

@@ -5,8 +5,8 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
-import { format } from 'date-fns'
 import { Search, Plus, MoreVertical, Eye, Check, X, RotateCcw, Archive } from 'lucide-react'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
@@ -104,8 +104,8 @@ export function ArchivedBookingsPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-center text-gray-600">{row.details?.length || 0}</td>
                     <td className="px-5 py-4 text-sm text-center text-gray-600">{row.details?.length || 0}</td>
-                    <td className="px-5 py-4 text-sm text-gray-700">{format(new Date(row.startDate), 'do MMM yyyy')}</td>
-                    <td className="px-5 py-4 text-sm text-center text-gray-700">{row.startTime}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700">{formatDisplayDate(row.startDate)}</td>
+                    <td className="px-5 py-4 text-sm text-center text-gray-700">{formatDisplayTime(row.startTime)}</td>
                     <td className="px-5 py-4 text-sm text-right font-bold text-gray-900">${row.total}</td>
                     <td className="px-5 py-4 text-sm text-gray-600 truncate max-w-xs">{row.notes}</td>
                     <td className="px-5 py-4 align-top text-center flex justify-center">

@@ -16,7 +16,8 @@ class Preference extends Model
         'display_booking_end_time',
         'show_address_in_invoice',
         'show_personal_phone',
-        'time_format_24hr',
+        'time_format',
+        'date_format',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class Preference extends Model
         'display_booking_end_time' => 'boolean',
         'show_address_in_invoice' => 'boolean',
         'show_personal_phone' => 'boolean',
-        'time_format_24hr' => 'boolean',
+        'time_format' => 'string',
+        'date_format' => 'string',
     ];
 }

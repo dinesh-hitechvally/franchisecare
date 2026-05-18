@@ -8,6 +8,7 @@ use App\Models\ForumThread;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class UserProfileController extends Controller
 {
@@ -100,6 +101,70 @@ class UserProfileController extends Controller
         $thread->update($validated);
 
         return response()->json($thread->load(['author', 'group']), 200);
+    }
+
+    public function updateProfile(Request $request)
+    {
+        /** @var User $user */
+        $user = Auth::user();
+
+        $validated = $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name'  => 'nullable|string|max:255',
+            'email'      => 'nullable|email|unique:users,email,' . $user->id,
+            'phone'      => 'nullable|string|max:50',
+            'address1'   => 'nullable|string|max:255',
+            'address2'   => 'nullable|string|max:255',
+            'suburb'     => 'nullable|string|max:255',
+            'avatar'     => 'nullable|image|max:2048',
+        ]);
+
+        // Build the name from first/last name if provided
+        $firstName = $validated['first_name'] ?? null;
+        $lastName  = $validated['last_name'] ?? null;
+        if ($firstName !== null || $lastName !== null) {
+            $user->name = trim(($firstName ?? '') . ' ' . ($lastName ?? ''));
+        }
+
+        if (isset($validated['email'])) {
+            $user->email = $validated['email'];
+        }
+
+        // Store extra fields in JSON column or individual columns if they exist
+        foreach (['phone', 'address1', 'address2', 'suburb', 'first_name', 'last_name'] as $field) {
+            if (array_key_exists($field, $validated) && $user->isFillable($field)) {
+                $user->$field = $validated[$field];
+            }
+        }
+
+        // Handle avatar upload
+        if ($request->hasFile('avatar')) {
+            // Remove old avatar
+            if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
+                Storage::disk('public')->delete($user->avatar);
+            }
+            $path = $request->file('avatar')->store('avatars', 'public');
+            $user->avatar = $path;
+        }
+
+        $user->save();
+
+        return response()->json([
+            'message' => 'Profile updated successfully',
+            'user' => [
+                'id'         => (string) $user->id,
+                'name'       => $user->name,
+                'email'      => $user->email,
+                'avatar'     => $user->avatar ? asset('storage/' . $user->avatar) : null,
+                'role'       => $user->role,
+                'phone'      => $user->phone ?? null,
+                'address1'   => $user->address1 ?? null,
+                'address2'   => $user->address2 ?? null,
+                'suburb'     => $user->suburb ?? null,
+                'first_name' => $user->first_name ?? explode(' ', $user->name)[0] ?? null,
+                'last_name'  => $user->last_name ?? (explode(' ', $user->name)[1] ?? null),
+            ],
+        ]);
     }
 
     private function attachLikedStateToThreads($threads, $userId)

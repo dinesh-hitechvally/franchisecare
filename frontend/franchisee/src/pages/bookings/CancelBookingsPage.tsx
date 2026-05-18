@@ -5,11 +5,11 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
-import { format } from 'date-fns'
 import { Search, Plus, MoreVertical, Eye, RotateCcw, RotateCw, XCircle } from 'lucide-react'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 export function CancelBookingsPage() {
   const queryClient = useQueryClient()
@@ -121,10 +121,10 @@ export function CancelBookingsPage() {
                     <td className="px-5 py-4 align-top text-center text-sm text-gray-600">{row.details?.length || 0}</td>
 
                     <td className="px-5 py-4 text-sm text-gray-700 align-top">
-                      {format(new Date(row.startDate), 'EEEE, do MMM yyyy')}
+                      {formatDisplayDate(row.startDate)}
                     </td>
 
-                    <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">{row.startTime}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">{formatDisplayTime(row.startTime)}</td>
 
                     <td className="px-5 py-4 text-sm font-bold text-gray-900 align-top text-right">${row.total}</td>
 

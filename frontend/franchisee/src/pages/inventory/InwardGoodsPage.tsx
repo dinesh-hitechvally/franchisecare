@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
 import { TablePagination } from '../../components/ui/TablePagination'
@@ -26,6 +26,7 @@ export function InwardGoodsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   // Mock data
   const allOrders: Order[] = [

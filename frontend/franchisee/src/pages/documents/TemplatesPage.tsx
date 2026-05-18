@@ -2,11 +2,11 @@ import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Search, Download, ChevronLeft, ChevronRight, MoreVertical, FileText } from 'lucide-react'
-import { format } from 'date-fns'
 import { documentsApi } from '../../api/services'
 import type { Document } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 export function TemplatesPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -83,7 +83,7 @@ export function TemplatesPage() {
                         <span className="text-[10px] font-bold uppercase">{template.fileType}</span>
                       </div>
                     </td>
-                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{format(new Date(template.createdAt), 'yyyy-MM-dd HH:mm:ss')}</td>
+                    <td className="px-6 py-4 text-gray-500 whitespace-nowrap">{formatDisplayDateTime(template.createdAt)}</td>
                     <td className="px-6 py-4 text-center relative">
                       <button
                         type="button"

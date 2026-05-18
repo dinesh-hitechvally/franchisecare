@@ -21,6 +21,7 @@ export function NewBookingsPage() {
   const isRecurringEdit = isEditMode && location.pathname.includes('/recurring/')
   const { addToast } = useToastStore()
   const hasInitializedEditForm = useRef(false)
+  const prefillFromCalendarApplied = useRef(false)
 
   const [recurringSettingsOpen, setRecurringSettingsOpen] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -102,6 +103,28 @@ export function NewBookingsPage() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  useEffect(() => {
+    if (isEditMode || prefillFromCalendarApplied.current) {
+      return
+    }
+
+    const params = new URLSearchParams(location.search)
+    const prefillDate = params.get('date')
+    const prefillTime = params.get('time')
+
+    if (prefillDate) {
+      setBookingDate(prefillDate)
+    }
+
+    if (prefillTime) {
+      setBookingStartTime(prefillTime)
+    }
+
+    if (prefillDate || prefillTime) {
+      prefillFromCalendarApplied.current = true
+    }
+  }, [isEditMode, location.search])
 
   const createBookingMutation = useMutation({
     mutationFn: (data: any) => bookingsApi.create(data),

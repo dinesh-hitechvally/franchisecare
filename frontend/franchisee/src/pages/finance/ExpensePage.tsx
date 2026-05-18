@@ -10,8 +10,8 @@ import { financeApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Expense } from '../../types'
 import { Plus, DollarSign, TrendingDown, Calendar, Repeat, Package } from 'lucide-react'
-import { format } from 'date-fns'
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 export function ExpensePage() {
   const queryClient = useQueryClient()
@@ -25,10 +25,10 @@ export function ExpensePage() {
     queryFn: async () => {
       // Mock data
       return [
-        { id: '1', amount: 120, description: 'Inventory Order - Shampoo', category: 'inventory', date: new Date().toISOString(), isRecurring: false, orderId: '1', franchise_id: '1', createdAt: new Date().toISOString() },
-        { id: '2', amount: 500, description: 'Monthly Rent', category: 'rent', date: new Date(Date.now() - 86400000).toISOString(), isRecurring: true, franchise_id: '1', createdAt: new Date(Date.now() - 86400000).toISOString() },
-        { id: '3', amount: 150, description: 'Utilities', category: 'utilities', date: new Date(Date.now() - 172800000).toISOString(), isRecurring: true, franchise_id: '1', createdAt: new Date(Date.now() - 172800000).toISOString() },
-        { id: '4', amount: 80, description: 'Staff Supplies', category: 'supplies', date: new Date(Date.now() - 259200000).toISOString(), isRecurring: false, franchise_id: '1', createdAt: new Date(Date.now() - 259200000).toISOString() },
+        { id: '1', company_id: '1', amount: 120, title: 'Inventory Order - Shampoo', description: 'Inventory Order - Shampoo', expense_category_id: '1', category: { id: '1', name: 'inventory', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, expense_date: new Date().toISOString(), date: new Date().toISOString(), is_active: true, isRecurring: false, orderId: '1', franchise_id: '1', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+        { id: '2', company_id: '1', amount: 500, title: 'Monthly Rent', description: 'Monthly Rent', expense_category_id: '2', category: { id: '2', name: 'rent', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, expense_date: new Date(Date.now() - 86400000).toISOString(), date: new Date(Date.now() - 86400000).toISOString(), is_active: true, isRecurring: true, franchise_id: '1', created_at: new Date(Date.now() - 86400000).toISOString(), updated_at: new Date(Date.now() - 86400000).toISOString() },
+        { id: '3', company_id: '1', amount: 150, title: 'Utilities', description: 'Utilities', expense_category_id: '3', category: { id: '3', name: 'utilities', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, expense_date: new Date(Date.now() - 172800000).toISOString(), date: new Date(Date.now() - 172800000).toISOString(), is_active: true, isRecurring: true, franchise_id: '1', created_at: new Date(Date.now() - 172800000).toISOString(), updated_at: new Date(Date.now() - 172800000).toISOString() },
+        { id: '4', company_id: '1', amount: 80, title: 'Staff Supplies', description: 'Staff Supplies', expense_category_id: '4', category: { id: '4', name: 'supplies', gst_inclusive: true, is_active: true, is_system: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, expense_date: new Date(Date.now() - 259200000).toISOString(), date: new Date(Date.now() - 259200000).toISOString(), is_active: true, isRecurring: false, franchise_id: '1', created_at: new Date(Date.now() - 259200000).toISOString(), updated_at: new Date(Date.now() - 259200000).toISOString() },
       ] as Expense[]
     },
   })
@@ -42,10 +42,10 @@ export function ExpensePage() {
   })
 
   const pieData = [
-    { name: 'Inventory', value: expenses?.filter(e => e.category === 'inventory').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
-    { name: 'Rent', value: expenses?.filter(e => e.category === 'rent').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
-    { name: 'Utilities', value: expenses?.filter(e => e.category === 'utilities').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
-    { name: 'Supplies', value: expenses?.filter(e => e.category === 'supplies').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
+    { name: 'Inventory', value: expenses?.filter(e => e.category?.name === 'inventory').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
+    { name: 'Rent', value: expenses?.filter(e => e.category?.name === 'rent').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
+    { name: 'Utilities', value: expenses?.filter(e => e.category?.name === 'utilities').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
+    { name: 'Supplies', value: expenses?.filter(e => e.category?.name === 'supplies').reduce((sum, e) => sum + e.amount, 0) ?? 0 },
   ].filter(d => d.value > 0)
 
   const COLORS = ['#3b82f6', '#ef4444', '#f59e0b', '#10b981']
@@ -156,12 +156,12 @@ export function ExpensePage() {
 
           <Table
             columns={[
-              { key: 'date', title: 'Date', render: (row: Expense) => format(new Date(row.date), 'MMM d, yyyy') },
+              { key: 'date', title: 'Date', render: (row: Expense) => row.date ? formatDisplayDate(row.date) : 'N/A' },
               { key: 'description', title: 'Description' },
               { key: 'category', title: 'Category', render: (row: Expense) => (
                 <div className="flex items-center gap-2">
                   {row.orderId && <Package className="w-4 h-4 text-blue-500" />}
-                  <span className="capitalize">{row.category}</span>
+                  <span className="capitalize">{row.category?.name || 'N/A'}</span>
                 </div>
               )},
               { key: 'amount', title: 'Amount', render: (row: Expense) => (
@@ -204,13 +204,19 @@ export function ExpensePage() {
             </Button>
             <Button
               onClick={() => createMutation.mutate({
+                company_id: '1',
                 amount: 50,
+                title: 'New expense',
                 description: 'New expense',
-                category: 'supplies',
+                expense_category_id: '1',
+                expense_date: new Date().toISOString(),
                 date: new Date().toISOString(),
+                is_active: true,
                 franchise_id: '1',
                 isRecurring: false,
-              } as Omit<Expense, 'id' | 'createdAt'>)}
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              } as Omit<Expense, 'id'>)}
               isLoading={createMutation.isPending}
             >
               Add Expense

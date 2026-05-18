@@ -83,6 +83,26 @@ class BlockoutController extends Controller
      */
     public function update(Request $request, Blockout $blockout)
     {
+        // Normalise camelCase keys sent by the frontend to snake_case
+        $input = $request->all();
+        $keyMap = [
+            'startDate' => 'start_date',
+            'startTime' => 'start_time',
+            'endDate'   => 'end_date',
+            'endTime'   => 'end_time',
+            'isRecurring'  => 'is_recurring',
+            'repeatEvery'  => 'repeat_every',
+            'repeatOn'     => 'repeat_on',
+            'repeatUntil'  => 'repeat_until',
+        ];
+        foreach ($keyMap as $camel => $snake) {
+            if (array_key_exists($camel, $input) && !array_key_exists($snake, $input)) {
+                $input[$snake] = $input[$camel];
+                unset($input[$camel]);
+            }
+        }
+        $request->replace($input);
+
         $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
             'location' => 'nullable|string|max:255',

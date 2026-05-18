@@ -5,13 +5,13 @@ import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
-import { format } from 'date-fns'
 import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X, RotateCcw, Calendar } from 'lucide-react'
 import type { Booking } from '../../types'
 import { Link } from 'react-router-dom'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 import { useToastStore } from '../../store/toastStore'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 export function ActiveBookingsPage() {
   const queryClient = useQueryClient()
@@ -168,10 +168,10 @@ export function ActiveBookingsPage() {
                     </td>
 
                     <td className="px-5 py-4 text-sm text-gray-700 whitespace-normal min-w-[120px] align-top leading-snug">
-                      {format(new Date(row.startDate), 'EEEE, do MMM yyyy')}
+                      {formatDisplayDate(row.startDate)}
                     </td>
 
-                    <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">{row.startTime}</td>
+                    <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">{formatDisplayTime(row.startTime)}</td>
 
                     <td className="px-5 py-4 text-sm font-bold text-gray-900 align-top text-right">${row.total}</td>
 

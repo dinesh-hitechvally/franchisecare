@@ -1,10 +1,10 @@
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Input } from '../../components/ui/Input'
 import { Search, Filter, ChevronLeft, ChevronRight, CalendarDays, Clock, List, GripVertical, Calendar } from 'lucide-react'
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, parseISO, isWithinInterval } from 'date-fns'
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, parseISO, isWithinInterval, differenceInCalendarDays } from 'date-fns'
 import {
   DndContext,
   DragOverlay,
@@ -25,8 +25,133 @@ import { bookingsApi, blockoutsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Booking as BookingType, Blockout } from '../../types'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { useNavigate } from 'react-router-dom'
 
 type ViewMode = 'month' | 'week' | 'day' | 'agenda'
+
+const CALENDAR_START_MINUTES = 0
+const CALENDAR_END_MINUTES = (24 * 60) - 1
+const TIME_STEP_MINUTES = 15
+const SLOT_HEIGHT_PX = 28
+
+// Get time format preference (default: 24-hour format)
+const getTimeFormatPreference = (): 'H:i:s' | '12h' => {
+  const pref = localStorage.getItem('timeFormat')
+  return (pref === '12h' ? '12h' : 'H:i:s')
+}
+
+// Convert minutes to H:i:s format (for API)
+const minutesToHiS = (totalMinutes: number): string => {
+  const safe = Math.max(0, Math.min(23 * 60 + 59, totalMinutes))
+  const hour = Math.floor(safe / 60)
+  const minute = safe % 60
+  const second = 0
+  return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:${String(second).padStart(2, '0')}`
+}
+
+// Convert time to display format based on preference
+const toDisplayTime = (totalMinutes: number | string | undefined): string => {
+  let minutes: number | null = null
+  
+  if (typeof totalMinutes === 'number') {
+    minutes = totalMinutes
+  } else if (typeof totalMinutes === 'string') {
+    minutes = toMinutesSinceMidnight(totalMinutes)
+  }
+  
+  if (minutes === null) return ''
+  
+  const format = getTimeFormatPreference()
+  if (format === 'H:i:s') {
+    return minutesToHiS(minutes)
+  } else {
+    // 12-hour format
+    const safe = Math.max(0, Math.min(23 * 60 + 59, minutes))
+    const hour24 = Math.floor(safe / 60)
+    const minute = safe % 60
+    const period = hour24 >= 12 ? 'PM' : 'AM'
+    const hour12 = hour24 % 12 === 0 ? 12 : hour24 % 12
+    return `${hour12}:${String(minute).padStart(2, '0')} ${period}`
+  }
+}
+
+const toMinutesSinceMidnight = (time: string): number | null => {
+  // Accept both 12-hour format (e.g. 9:05 AM) and 24-hour format (e.g. 09:05 or 09:05:00)
+  const twelveHourMatch = time.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i)
+  if (twelveHourMatch) {
+    const rawHour = parseInt(twelveHourMatch[1], 10)
+    const minute = parseInt(twelveHourMatch[2], 10)
+    const period = twelveHourMatch[3].toUpperCase()
+
+    if (Number.isNaN(rawHour) || Number.isNaN(minute) || rawHour < 1 || rawHour > 12 || minute < 0 || minute > 59) {
+      return null
+    }
+
+    const hour24 = period === 'PM'
+      ? (rawHour % 12) + 12
+      : rawHour % 12
+
+    return (hour24 * 60) + minute
+  }
+
+  const twentyFourHourMatch = time.match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/)
+  if (twentyFourHourMatch) {
+    const hour24 = parseInt(twentyFourHourMatch[1], 10)
+    const minute = parseInt(twentyFourHourMatch[2], 10)
+    if (Number.isNaN(hour24) || Number.isNaN(minute) || hour24 < 0 || hour24 > 23 || minute < 0 || minute > 59) {
+      return null
+    }
+    return (hour24 * 60) + minute
+  }
+
+  return null
+}
+
+const fromMinutesSinceMidnight = (totalMinutes: number): string => {
+  return toDisplayTime(totalMinutes)
+}
+
+const buildTimeSlots = (): string[] => {
+  const slots: string[] = []
+
+  for (let m = CALENDAR_START_MINUTES; m < 24 * 60; m += TIME_STEP_MINUTES) {
+    slots.push(fromMinutesSinceMidnight(m))
+  }
+
+  return slots
+}
+
+const getEndTimeFromDuration = (startTime: string, duration: number): string => {
+  const startMinutes = toMinutesSinceMidnight(startTime)
+
+  if (startMinutes === null) {
+    return startTime
+  }
+
+  return fromMinutesSinceMidnight(startMinutes + Math.max(TIME_STEP_MINUTES, duration))
+}
+
+const getDurationFromStartEnd = (startTime: string, endTime?: string): number | null => {
+  if (!endTime) return null
+
+  const startMinutes = toMinutesSinceMidnight(startTime)
+  const endMinutes = toMinutesSinceMidnight(endTime)
+
+  if (startMinutes === null || endMinutes === null) return null
+
+  // If end time is earlier than start time, treat it as crossing midnight.
+  const delta = endMinutes >= startMinutes
+    ? endMinutes - startMinutes
+    : (24 * 60 - startMinutes) + endMinutes
+
+  return Math.max(TIME_STEP_MINUTES, delta)
+}
+
+const normalizeDisplayTime = (time?: string): string | undefined => {
+  if (!time) return undefined
+  const minutes = toMinutesSinceMidnight(time)
+  return minutes === null ? time : fromMinutesSinceMidnight(minutes)
+}
 
 interface Booking {
   id: string
@@ -36,6 +161,7 @@ interface Booking {
   startDate: string // start date
   endDate?: string // end date for multi-day bookings
   startTime: string
+  endTime?: string
   status: string
   duration: number // in minutes (for single day) or days (if multi-day)
   isMultiDay?: boolean
@@ -44,18 +170,20 @@ interface Booking {
   blockoutId?: string
   title?: string
   location?: string
+  calendarColor?: string
 }
 
 interface DayBooking {
   id: string
   startTime: string
+  endTime?: string
   time?: string
   customer: string
-  customerName?: string
+  customerName: string
   pet: string
-  petName?: string
+  petName: string
   service: string
-  status?: string
+  status: string
   duration: number
   startDate: string
   endDate?: string
@@ -79,7 +207,7 @@ function ResizableDraggableBooking({
   booking: Booking | DayBooking;
   isDayView?: boolean;
   style?: React.CSSProperties;
-  onResize?: (id: string, newDuration: number) => void;
+  onResize?: (id: string, nextStartTime: string, newDuration: number) => void;
   slotHeight?: number;
   isMultiDay?: boolean;
   isFirstDay?: boolean;
@@ -91,10 +219,36 @@ function ResizableDraggableBooking({
     data: booking,
   })
 
+  const resolveInitialDuration = useCallback((source: Booking | DayBooking) => {
+    const derived = getDurationFromStartEnd(source.startTime, source.endTime)
+    if (derived !== null) return derived
+    if (source.isMultiDay) return 60
+    return Math.max(TIME_STEP_MINUTES, (source as DayBooking).duration || 60)
+  }, [])
+
   const [isResizing, setIsResizing] = useState(false)
-  const [currentDuration, setCurrentDuration] = useState((booking as DayBooking).duration || 60)
+  const [currentStartTime, setCurrentStartTime] = useState(booking.startTime)
+  const [currentDuration, setCurrentDuration] = useState(resolveInitialDuration(booking))
   const resizeStartY = useRef(0)
+  const resizeEdge = useRef<'start' | 'end'>('end')
+  const resizeStartTimeMinutes = useRef(0)
   const resizeStartDuration = useRef(0)
+  const bookingIdRef = useRef(booking.id)
+
+  useEffect(() => {
+    if (bookingIdRef.current !== booking.id) {
+      setCurrentStartTime(booking.startTime)
+      setCurrentDuration(resolveInitialDuration(booking))
+      bookingIdRef.current = booking.id
+    }
+  }, [booking, resolveInitialDuration])
+
+  const bookingStartMinutes = toMinutesSinceMidnight(booking.startTime)
+  const currentStartMinutes = toMinutesSinceMidnight(currentStartTime)
+  const liveDurationHeightPx = Math.max(slotHeight, Math.ceil(currentDuration / TIME_STEP_MINUTES) * slotHeight)
+  const liveTopOffsetPx = bookingStartMinutes !== null && currentStartMinutes !== null
+    ? Math.round((currentStartMinutes - bookingStartMinutes) / TIME_STEP_MINUTES) * slotHeight
+    : 0
 
   const style: React.CSSProperties = {
     ...(transform ? {
@@ -105,23 +259,50 @@ function ResizableDraggableBooking({
       cursor: isResizing ? 'ns-resize' : 'grab',
     }),
     ...customStyle,
+    ...(typeof customStyle?.height !== 'undefined' ? {
+      height: `${liveDurationHeightPx - (isDayView ? 10 : 4)}px`,
+    } : {}),
+    ...(typeof customStyle?.top !== 'undefined' ? {
+      top: `${liveTopOffsetPx + 2}px`,
+    } : {}),
   }
 
-  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+  const handleResizeStart = useCallback((edge: 'start' | 'end') => (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setIsResizing(true)
+    resizeEdge.current = edge
     resizeStartY.current = e.clientY
+    resizeStartTimeMinutes.current = toMinutesSinceMidnight(currentStartTime) ?? CALENDAR_START_MINUTES
     resizeStartDuration.current = currentDuration
-  }, [currentDuration])
+  }, [currentDuration, currentStartTime])
 
   const handleResizeMove = useCallback((e: MouseEvent) => {
     if (!isResizing) return
     
     const deltaY = e.clientY - resizeStartY.current
     const slotsChanged = Math.round(deltaY / slotHeight)
-    const newDuration = Math.max(15, resizeStartDuration.current + (slotsChanged * 15))
-    
+    const deltaMinutes = slotsChanged * TIME_STEP_MINUTES
+
+    if (resizeEdge.current === 'start') {
+      const maxStartMinutes = resizeStartTimeMinutes.current + resizeStartDuration.current - TIME_STEP_MINUTES
+      const nextStartMinutes = Math.max(
+        CALENDAR_START_MINUTES,
+        Math.min(maxStartMinutes, resizeStartTimeMinutes.current + deltaMinutes)
+      )
+      const nextDuration = Math.max(TIME_STEP_MINUTES, resizeStartDuration.current - (nextStartMinutes - resizeStartTimeMinutes.current))
+
+      setCurrentStartTime(fromMinutesSinceMidnight(nextStartMinutes))
+      setCurrentDuration(nextDuration)
+      return
+    }
+
+    const maxEndMinutes = CALENDAR_END_MINUTES - resizeStartTimeMinutes.current
+    const newDuration = Math.max(
+      TIME_STEP_MINUTES,
+      Math.min(maxEndMinutes, resizeStartDuration.current + deltaMinutes)
+    )
+
     setCurrentDuration(newDuration)
   }, [isResizing, slotHeight])
 
@@ -129,52 +310,51 @@ function ResizableDraggableBooking({
     if (isResizing) {
       setIsResizing(false)
       if (onResize) {
-        onResize(booking.id, currentDuration)
+        onResize(booking.id, currentStartTime, currentDuration)
       }
     }
-  }, [isResizing, currentDuration, booking.id, onResize])
+  }, [isResizing, currentDuration, currentStartTime, booking.id, onResize])
 
-  useState(() => {
+  useEffect(() => {
     if (isResizing) {
+      document.body.style.cursor = 'ns-resize'
+      document.body.style.userSelect = 'none'
       window.addEventListener('mousemove', handleResizeMove)
       window.addEventListener('mouseup', handleResizeEnd)
       return () => {
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
         window.removeEventListener('mousemove', handleResizeMove)
         window.removeEventListener('mouseup', handleResizeEnd)
       }
     }
-  })
+  }, [isResizing, handleResizeMove, handleResizeEnd])
 
   if (isDayView) {
     const dayBooking = booking as DayBooking
-    const durationText = currentDuration >= 60
+    const isDayBookingMultiDay = Boolean(dayBooking.isMultiDay)
+    const endTime = dayBooking.endTime || (isDayBookingMultiDay
+      ? currentStartTime
+      : getEndTimeFromDuration(currentStartTime, currentDuration))
+    const durationText = isDayBookingMultiDay
+      ? `${dayBooking.duration}d`
+      : currentDuration >= 60
       ? `${Math.floor(currentDuration / 60)}h ${currentDuration % 60}m`
       : `${currentDuration}m`
 
     const isBlockout = (booking as any).eventType === 'blockout'
     const bookingColor = (booking as any).calendarColor || (isBlockout ? '#9333ea' : '#3b82f6')
 
-    // Convert hex color to RGB for opacity
-    const hexToRgb = (hex: string) => {
-      const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-      return result ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16)
-      } : { r: 59, g: 130, b: 246 }
-    }
-
-    const rgb = hexToRgb(bookingColor)
-    const bgStyle = { backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.1)` }
-    const borderStyle = { borderLeftColor: bookingColor }
-    const badgeStyle = { backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`, color: bookingColor }
+    const bgStyle = { backgroundColor: bookingColor, color: '#ffffff' }
+    const borderStyle = { borderLeftColor: '#ffffff' }
+    const badgeStyle = { backgroundColor: '#ffffff', color: bookingColor }
 
     return (
       <div
         ref={setNodeRef}
         {...attributes}
         style={{ ...style, ...bgStyle, ...borderStyle }}
-        className="relative flex-1 border-l-4 rounded hover:opacity-90 transition-colors overflow-hidden group"
+        className="relative flex-1 border-l-4 rounded hover:opacity-90 transition-colors overflow-visible group"
         onClick={(e) => {
           if (!isDragging && !isResizing && onClick) {
             e.stopPropagation()
@@ -182,17 +362,26 @@ function ResizableDraggableBooking({
           }
         }}
       >
+        {/* Resize handles - positioned absolutely and independent */}
+        <div
+          onMouseDown={handleResizeStart('start')}
+          className={`absolute top-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center transition-opacity z-20 pointer-events-auto ${isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+          style={{ backgroundColor: bookingColor }}
+        >
+          <div className="w-8 h-1 rounded-full bg-white" />
+        </div>
+
         {/* Main content - draggable area */}
         <div
           {...listeners}
-          className="p-3 h-full"
+          className="p-3 h-full cursor-grab active:cursor-grabbing"
         >
           <div className="flex items-center justify-between h-full">
             <div className="flex items-center gap-2">
-              <GripVertical className="w-4 h-4 text-gray-400 flex-shrink-0" />
+              <GripVertical className="w-4 h-4 text-white/80 flex-shrink-0" />
               <div>
-                <p className="font-medium text-gray-900 text-sm">{dayBooking.customer || (booking as any).title || 'Blockout'} {dayBooking.pet ? `- ${dayBooking.pet}` : ''}</p>
-                <p className="text-xs text-gray-500">{dayBooking.service || (booking as any).location || ''}</p>
+                <p className="font-medium text-white text-sm">{dayBooking.customer || (booking as any).title || 'Blockout'} {dayBooking.pet ? `- ${dayBooking.pet}` : ''}</p>
+                <p className="text-xs text-white/90">{`${currentStartTime} - ${endTime}${dayBooking.service ? ` | ${dayBooking.service}` : ''}`}</p>
               </div>
             </div>
             <span className="text-xs px-2 py-1 rounded flex-shrink-0 font-medium" style={badgeStyle}>{durationText}</span>
@@ -201,11 +390,11 @@ function ResizableDraggableBooking({
 
         {/* Resize handle */}
         <div
-          onMouseDown={handleResizeStart}
-          className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-          style={{ backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.3)` }}
+          onMouseDown={handleResizeStart('end')}
+          className={`absolute bottom-0 left-0 right-0 h-4 cursor-ns-resize flex items-center justify-center transition-opacity z-20 pointer-events-auto ${isResizing ? 'opacity-100' : 'opacity-70 group-hover:opacity-100'}`}
+          style={{ backgroundColor: bookingColor }}
         >
-          <div className="w-8 h-1 rounded-full" style={{ backgroundColor: bookingColor }} />
+          <div className="w-8 h-1 rounded-full bg-white" />
         </div>
       </div>
     )
@@ -218,21 +407,10 @@ function ResizableDraggableBooking({
   // Get booking color
   const bookingColor = regularBooking.calendarColor || (isBlockout ? '#9333ea' : '#3b82f6')
 
-  // Convert hex color to RGB for opacity
-  const hexToRgb = (hex: string) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex)
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : { r: 59, g: 130, b: 246 }
-  }
-
-  const rgb = hexToRgb(bookingColor)
   const bgStyle = {
-    backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.15)`,
+    backgroundColor: bookingColor,
     borderColor: bookingColor,
-    color: bookingColor
+    color: '#ffffff'
   }
 
   // Determine border radius based on multi-day position
@@ -248,22 +426,24 @@ function ResizableDraggableBooking({
 
   // Determine multi-day indicator
   const multiDayIndicator = isBookingMultiDay && (
-    <span className="text-[10px] px-1 rounded ml-1" style={{ backgroundColor: `rgba(${rgb.r}, ${rgb.g}, ${rgb.b}, 0.2)` }}>
+    <span className="text-[10px] px-1 rounded ml-1 bg-white/20 text-white">
       {isFirstDay && isLastDay ? '' : isFirstDay ? '→' : isLastDay ? '←' : '↔'}
     </span>
   )
 
   // Display name - for blockouts show title, for bookings show customer name
   const displayName = isBlockout ? (regularBooking.title || 'Blockout') : regularBooking.customerName
-  const displayDetails = isBlockout ? (regularBooking.location || '') : `${regularBooking.startTime} - ${regularBooking.service}`
+  const displayEndTime = getEndTimeFromDuration(currentStartTime, currentDuration)
+  const displayDetails = isBlockout
+    ? (regularBooking.location || '')
+    : `${currentStartTime} - ${displayEndTime} | ${regularBooking.service}`
 
   return (
     <div
       ref={setNodeRef}
-      {...listeners}
       {...attributes}
       style={{ ...style, ...bgStyle }}
-      className={`text-xs p-2 ${borderRadiusClass} hover:opacity-80 transition-colors ${isBookingMultiDay || isBlockout ? 'border' : ''}`}
+      className={`relative group text-xs ${borderRadiusClass} hover:opacity-80 transition-colors ${isBookingMultiDay || isBlockout ? 'border' : ''}`}
       onClick={(e) => {
         if (!isDragging && onClick) {
           e.stopPropagation()
@@ -271,28 +451,41 @@ function ResizableDraggableBooking({
         }
       }}
     >
-      <div className="flex items-center gap-1">
-        <GripVertical className="w-3 h-3 flex-shrink-0 opacity-60" />
+      {!isBookingMultiDay && (
+        <div
+          onMouseDown={handleResizeStart('start')}
+          className={`absolute top-0 left-0 right-0 h-3 cursor-ns-resize transition-opacity bg-white/20 z-20 pointer-events-auto ${isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        />
+      )}
+      <div {...listeners} className="flex items-center gap-1 p-2 cursor-grab active:cursor-grabbing">
+        <GripVertical className="w-3 h-3 flex-shrink-0 text-white/80" />
         <div className="truncate">
           <p className="font-medium truncate">{displayName} {multiDayIndicator}</p>
-          <p className="truncate opacity-80 text-[11px]">{displayDetails}</p>
+          <p className="truncate text-white/90 text-[11px]">{displayDetails}</p>
           {isBookingMultiDay && regularBooking.endDate && (
-            <p className="text-[10px] opacity-75">
+            <p className="text-[10px] text-white/80">
               {format(parseISO(regularBooking.startDate), 'MMM d')} - {format(parseISO(regularBooking.endDate), 'MMM d')}
             </p>
           )}
         </div>
       </div>
+      {!isBookingMultiDay && (
+        <div
+          onMouseDown={handleResizeStart('end')}
+          className={`absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize transition-opacity bg-white/20 z-20 pointer-events-auto ${isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+        />
+      )}
     </div>
   )
 }
 
 // Droppable Day Cell Component
-function DroppableDayCell({ date, children, isCurrentMonth, isToday }: { 
+function DroppableDayCell({ date, children, isCurrentMonth, isToday, onClick }: { 
   date: Date
   children: React.ReactNode
   isCurrentMonth: boolean
   isToday: boolean
+  onClick?: (date: Date) => void
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: `day-${date.toISOString()}`,
@@ -305,6 +498,7 @@ function DroppableDayCell({ date, children, isCurrentMonth, isToday }: {
       className={`bg-white min-h-[100px] p-2 transition-colors ${
         !isCurrentMonth ? 'text-gray-400' : ''
       } ${isOver ? 'bg-green-50 ring-2 ring-green-400 ring-inset' : ''}`}
+      onClick={() => onClick?.(date)}
     >
       <div className={`text-sm font-medium mb-1 ${isToday ? 'bg-blue-500 text-white w-7 h-7 rounded-full flex items-center justify-center' : ''}`}>
         {format(date, 'd')}
@@ -315,22 +509,28 @@ function DroppableDayCell({ date, children, isCurrentMonth, isToday }: {
 }
 
 // Droppable Time Slot Component
-function DroppableTimeSlot({ time, date, children }: { 
+function DroppableTimeSlot({ time, date, children, onClick, showQuarterHourLine = true }: {
   time: string
   date: Date
   children: React.ReactNode
+  onClick?: (date: Date, time: string) => void
+  showQuarterHourLine?: boolean
 }) {
   const { isOver, setNodeRef } = useDroppable({
     id: `slot-${time}-${date.toISOString()}`,
     data: { time, date },
   })
+  const isQuarterHourLine = ((toMinutesSinceMidnight(time) ?? 0) % 15) === 0
 
   return (
     <div
       ref={setNodeRef}
-      className={`bg-white p-2 min-h-[60px] border-t border-gray-100 transition-colors ${
+      className={`relative overflow-visible bg-white p-2 min-h-[40px] transition-colors ${
+        showQuarterHourLine && isQuarterHourLine ? 'border-t border-gray-200' : ''
+      } ${
         isOver ? 'bg-green-50 ring-2 ring-green-400 ring-inset' : ''
       }`}
+      onClick={() => onClick?.(date, time)}
     >
       {children}
     </div>
@@ -338,6 +538,8 @@ function DroppableTimeSlot({ time, date, children }: {
 }
 
 export function CalendarPage() {
+  const navigate = useNavigate()
+  const { addToast } = useToastStore()
   const [viewMode, setViewMode] = useState<ViewMode>('week')
   const [currentDate, setCurrentDate] = useState(new Date())
   const [searchTerm, setSearchTerm] = useState('')
@@ -347,31 +549,121 @@ export function CalendarPage() {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false)
   const [isBlockoutModalOpen, setIsBlockoutModalOpen] = useState(false)
   const [isLoadingDetails, setIsLoadingDetails] = useState(false)
-  const [bookings, setBookings] = useState<Booking[]>([
-    { id: '1', customerName: 'John Doe', petName: 'Max', service: 'Full Groom', startDate: '2026-04-02', startTime: '9:00 AM', status: 'Confirmed', duration: 90, eventType: 'booking', bookingId: '1', calendarColor: '#10b981' },
-    { id: '2', customerName: 'Jane Smith', petName: 'Bella', service: 'Bath & Dry', startDate: '2026-04-02', startTime: '10:30 AM', status: 'Confirmed', duration: 60, eventType: 'booking', bookingId: '2', calendarColor: '#3b82f6' },
-    { id: '3', customerName: 'Mike Johnson', petName: 'Charlie', service: 'Full Groom', startDate: '2026-04-02', startTime: '2:00 PM', status: 'Pending', duration: 90, eventType: 'booking', bookingId: '3', calendarColor: '#f59e0b' },
-    { id: '4', customerName: 'Alice Cooper', petName: 'Fluffy', service: 'Nail Trim', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: '11:00 AM', status: 'Confirmed', duration: 30, eventType: 'booking', bookingId: '4', calendarColor: '#ec4899' },
-    { id: '5', customerName: 'Bob Dylan', petName: 'Buddy', service: 'Spa Package', startDate: format(new Date(), 'yyyy-MM-dd'), startTime: '1:00 PM', status: 'Confirmed', duration: 180, eventType: 'booking', bookingId: '5', calendarColor: '#8b5cf6' },
-    // Multi-day bookings
-    { id: '6', customerName: 'Carol King', petName: 'Coco', service: '3-Day Training Camp', startDate: format(new Date(), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), startTime: '9:00 AM', status: 'Confirmed', duration: 3, isMultiDay: true, eventType: 'booking', bookingId: '6', calendarColor: '#ef4444' },
-    { id: '7', customerName: 'David Bowie', petName: 'Stardust', service: 'Overnight Boarding', startDate: format(addDays(new Date(), 3), 'yyyy-MM-dd'), endDate: format(addDays(new Date(), 4), 'yyyy-MM-dd'), startTime: '5:00 PM', status: 'Confirmed', duration: 2, isMultiDay: true, eventType: 'booking', bookingId: '7', calendarColor: '#06b6d4' },
-    // Sample blockouts
-    { id: '8', customerName: 'Staff Meeting', petName: '', service: '', title: 'Staff Meeting', startDate: format(addDays(new Date(), 1), 'yyyy-MM-dd'), startTime: '9:00 AM', status: 'Confirmed', duration: 60, eventType: 'blockout', blockoutId: '1', location: 'Conference Room', calendarColor: '#9333ea' },
-    { id: '9', customerName: 'Maintenance', petName: '', service: '', title: 'Equipment Maintenance', startDate: format(addDays(new Date(), 2), 'yyyy-MM-dd'), startTime: '3:00 PM', status: 'Confirmed', duration: 120, eventType: 'blockout', blockoutId: '2', location: 'Grooming Area', calendarColor: '#a855f7' },
-  ])
+  const [bookings, setBookings] = useState<Booking[]>([])
 
-  const timeSlots = [
-    '9:00 AM', '9:15 AM', '9:30 AM', '9:45 AM',
-    '10:00 AM', '10:15 AM', '10:30 AM', '10:45 AM',
-    '11:00 AM', '11:15 AM', '11:30 AM', '11:45 AM',
-    '12:00 PM', '12:15 PM', '12:30 PM', '12:45 PM',
-    '1:00 PM', '1:15 PM', '1:30 PM', '1:45 PM',
-    '2:00 PM', '2:15 PM', '2:30 PM', '2:45 PM',
-    '3:00 PM', '3:15 PM', '3:30 PM', '3:45 PM',
-    '4:00 PM', '4:15 PM', '4:30 PM', '4:45 PM',
-    '5:00 PM'
-  ]
+  useEffect(() => {
+    let cancelled = false
+
+    const loadCalendarData = async () => {
+      try {
+        // Calculate date range based on view mode
+        let dateFrom: string
+        let dateTo: string
+
+        if (viewMode === 'month') {
+          const monthStart = startOfMonth(currentDate)
+          const monthEnd = endOfMonth(currentDate)
+          dateFrom = format(monthStart, 'yyyy-MM-dd')
+          dateTo = format(monthEnd, 'yyyy-MM-dd')
+        } else if (viewMode === 'week') {
+          const weekStart = startOfWeek(currentDate)
+          const weekEnd = endOfWeek(currentDate)
+          dateFrom = format(weekStart, 'yyyy-MM-dd')
+          dateTo = format(weekEnd, 'yyyy-MM-dd')
+        } else {
+          // day or agenda view
+          dateFrom = format(currentDate, 'yyyy-MM-dd')
+          dateTo = format(currentDate, 'yyyy-MM-dd')
+        }
+
+        const [bookingPage, blockoutPage] = await Promise.all([
+          bookingsApi.getPaginated({ page: 1, per_page: 100, dateFrom, dateTo }),
+          blockoutsApi.getPaginated({ page: 1, per_page: 100 }),
+        ])
+
+        const bookingEvents: Booking[] = (bookingPage?.data || [])
+          .filter((b) => b.status === 'active' || b.status === 'completed')
+          .map((b) => {
+          const customerName = b.customerName
+            || `${b.customer?.first_name || ''} ${b.customer?.last_name || ''}`.trim()
+            || 'Booking'
+          const petName = b.petName
+            || (b.details || []).map((d) => d.pet?.name).filter(Boolean).join(', ')
+          const serviceName = (b.details || []).map((d) => d.service?.name).filter(Boolean).join(', ')
+          const startTime = normalizeDisplayTime(b.startTime) || b.startTime
+          const endTime = normalizeDisplayTime(b.endTime)
+          const duration = getDurationFromStartEnd(startTime, endTime)
+            ?? Math.max(TIME_STEP_MINUTES, (b as any).duration || TIME_STEP_MINUTES)
+
+          return {
+            id: `booking-${b.id}`,
+            customerName,
+            petName: petName || '',
+            service: serviceName || '',
+            startDate: b.startDate,
+            endDate: b.endDate,
+            startTime,
+            endTime,
+            status: b.status || 'active',
+            duration,
+            isMultiDay: b.isMultiDay,
+            eventType: 'booking',
+            bookingId: b.id,
+            calendarColor: b.calendarColor,
+          }
+        })
+
+        const blockoutEvents: Booking[] = (blockoutPage?.data || [])
+          .filter((b) => {
+            const bDate = new Date(b.startDate)
+            const fromDate = new Date(dateFrom)
+            const toDate = new Date(dateTo)
+            return bDate >= fromDate && bDate <= toDate
+          })
+          .map((b) => {
+          const startTime = normalizeDisplayTime(b.startTime) || b.startTime
+          const endTime = normalizeDisplayTime(b.endTime)
+          const duration = getDurationFromStartEnd(startTime, endTime)
+            ?? Math.max(TIME_STEP_MINUTES, TIME_STEP_MINUTES)
+
+          return {
+            id: `blockout-${b.id}`,
+            customerName: b.title || 'Blockout',
+            petName: '',
+            service: '',
+            title: b.title,
+            location: b.location,
+            startDate: b.startDate,
+            endDate: b.endDate,
+            startTime,
+            endTime,
+            status: b.active ? 'active' : 'cancelled',
+            duration,
+            eventType: 'blockout',
+            blockoutId: b.id,
+            calendarColor: '#9333ea',
+          }
+        })
+
+        if (!cancelled) {
+          setBookings([...bookingEvents, ...blockoutEvents])
+        }
+      } catch (error) {
+        console.error('Error loading calendar data:', error)
+        if (!cancelled) {
+          addToast('Failed to load calendar data', 'error')
+        }
+      }
+    }
+
+    loadCalendarData()
+
+    return () => {
+      cancelled = true
+    }
+  }, [currentDate, viewMode, addToast])
+
+  const timeSlots = buildTimeSlots()
 
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
@@ -388,7 +680,7 @@ export function CalendarPage() {
     setActiveDragId(event.active.id as string)
   }
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event
     setActiveDragId(null)
 
@@ -396,28 +688,156 @@ export function CalendarPage() {
 
     const bookingId = active.id as string
     const overId = over.id as string
+    const movedBooking = bookings.find((b) => b.id === bookingId)
+
+    if (!movedBooking) return
+
+    let newDateStr = movedBooking.startDate
+    let newTime = movedBooking.startTime
+    let newEndDate = movedBooking.endDate
 
     if (overId.startsWith('day-')) {
       const newDate = over.data.current?.date as Date
       if (newDate) {
-        const newDateStr = format(newDate, 'yyyy-MM-dd')
-        setBookings(prev => prev.map(b =>
-          b.id === bookingId ? { ...b, date: newDateStr } : b
-        ))
+        newDateStr = format(newDate, 'yyyy-MM-dd')
+        newEndDate =
+          movedBooking.isMultiDay && movedBooking.endDate
+            ? format(addDays(newDate, differenceInCalendarDays(parseISO(movedBooking.endDate), parseISO(movedBooking.startDate))), 'yyyy-MM-dd')
+            : movedBooking.endDate
       }
     } else if (overId.startsWith('slot-')) {
-      const newTime = over.data.current?.startTime as string
+      const slotTime = over.data.current?.time as string
       const newDate = over.data.current?.date as Date
-      if (newTime && newDate) {
-        const newDateStr = format(newDate, 'yyyy-MM-dd')
-        setBookings(prev => prev.map(b =>
-          b.id === bookingId ? { ...b, date: newDateStr, time: newTime } : b
-        ))
+      if (slotTime && newDate) {
+        newDateStr = format(newDate, 'yyyy-MM-dd')
+        const baseMinutes = toMinutesSinceMidnight(movedBooking.startTime) ?? toMinutesSinceMidnight(slotTime)
+        const minuteDelta = Math.round(event.delta.y / SLOT_HEIGHT_PX) * TIME_STEP_MINUTES
+        const snappedMinutes = baseMinutes !== null
+          ? Math.max(CALENDAR_START_MINUTES, Math.min(CALENDAR_END_MINUTES, baseMinutes + minuteDelta))
+          : null
+        newTime = snappedMinutes !== null ? fromMinutesSinceMidnight(snappedMinutes) : slotTime
+        newEndDate =
+          movedBooking.isMultiDay && movedBooking.endDate
+            ? format(addDays(newDate, differenceInCalendarDays(parseISO(movedBooking.endDate), parseISO(movedBooking.startDate))), 'yyyy-MM-dd')
+            : movedBooking.endDate
       }
+    }
+
+    // Update local state optimistically
+    setBookings(prev => prev.map(b =>
+      b.id === bookingId
+        ? {
+            ...b,
+            startDate: newDateStr,
+            startTime: newTime,
+            endTime: b.isMultiDay
+              ? b.endTime
+              : getEndTimeFromDuration(newTime, b.duration),
+            endDate: newEndDate,
+          }
+        : b
+    ))
+
+    // Save to API
+    try {
+      // Convert time to H:i:s format for API
+      const apiTime = toMinutesSinceMidnight(newTime)
+      const apiStartTime = apiTime !== null ? minutesToHiS(apiTime) : newTime
+      
+      if (movedBooking.eventType === 'blockout' && movedBooking.blockoutId) {
+        await blockoutsApi.update(movedBooking.blockoutId, {
+          start_date: newDateStr,
+          start_time: apiStartTime,
+          end_date: newEndDate,
+        } as any)
+      } else if (movedBooking.bookingId) {
+        await bookingsApi.update(movedBooking.bookingId, {
+          startDate: newDateStr,
+          startTime: apiStartTime,
+          endDate: newEndDate,
+        } as any)
+      }
+      addToast('Changes saved successfully', 'success')
+    } catch (error) {
+      console.error('Error saving booking/blockout:', error)
+      addToast('Failed to save changes', 'error')
+      // Revert local state on error
+      setBookings(prev => prev.map(b =>
+        b.id === bookingId
+          ? {
+              ...b,
+              startDate: movedBooking.startDate,
+              startTime: movedBooking.startTime,
+              endTime: movedBooking.endTime,
+              endDate: movedBooking.endDate,
+            }
+          : b
+      ))
     }
   }
 
-  const { addToast } = useToastStore()
+  const handleBookingResize = async (id: string, nextStartTime: string, newDuration: number) => {
+    const booking = bookings.find(b => b.id === id)
+    if (!booking) return
+
+    // Update local state optimistically
+    setBookings(prev => prev.map(b =>
+      b.id === id
+        ? {
+            ...b,
+            startTime: nextStartTime,
+            duration: newDuration,
+            endTime: getEndTimeFromDuration(nextStartTime, newDuration),
+          }
+        : b
+    ))
+
+    // Save to API
+    try {
+      // Convert time to H:i:s format for API
+      const apiTime = toMinutesSinceMidnight(nextStartTime)
+      const apiStartTime = apiTime !== null ? minutesToHiS(apiTime) : nextStartTime
+      
+      if (booking.eventType === 'blockout' && booking.blockoutId) {
+        await blockoutsApi.update(booking.blockoutId, {
+          start_time: apiStartTime,
+          duration: newDuration,
+        } as any)
+      } else if (booking.bookingId) {
+        await bookingsApi.update(booking.bookingId, {
+          startTime: apiStartTime,
+          duration: newDuration,
+        } as any)
+      }
+      addToast('Changes saved successfully', 'success')
+    } catch (error) {
+      console.error('Error saving booking/blockout:', error)
+      addToast('Failed to save changes', 'error')
+      // Revert local state on error
+      setBookings(prev => prev.map(b =>
+        b.id === id
+          ? {
+              ...b,
+              startTime: booking.startTime,
+              duration: booking.duration,
+              endTime: booking.endTime,
+            }
+          : b
+      ))
+    }
+  }
+
+  const navigateToNewBooking = (date: Date, time?: string) => {
+    const params = new URLSearchParams({
+      date: format(date, 'yyyy-MM-dd'),
+    })
+
+    if (time) {
+      params.set('time', time)
+    }
+
+    navigate(`/bookings/new?${params.toString()}`)
+  }
 
   const handleCalendarItemClick = async (item: Booking) => {
     if (isLoadingDetails) return // Prevent multiple clicks
@@ -485,6 +905,7 @@ export function CalendarPage() {
               date={day}
               isCurrentMonth={isCurrentMonth}
               isToday={isToday}
+              onClick={(clickedDate) => navigateToNewBooking(clickedDate)}
             >
               {dayBookingsList.length > 0 && (
                 <div className="space-y-1">
@@ -499,6 +920,7 @@ export function CalendarPage() {
                         isMultiDay={booking.isMultiDay}
                         isFirstDay={isFirstDay}
                         isLastDay={isLastDay}
+                        onResize={handleBookingResize}
                         onClick={handleCalendarItemClick}
                       />
                     )
@@ -516,10 +938,11 @@ export function CalendarPage() {
     const weekStart = startOfWeek(currentDate)
     const weekEnd = endOfWeek(currentDate)
     const days = eachDayOfInterval({ start: weekStart, end: weekEnd })
+    const slotHeight = SLOT_HEIGHT_PX
 
     return (
       <div className="min-w-[800px]">
-        <div className="grid grid-cols-8 gap-px bg-gray-200">
+        <div className="grid grid-cols-8 gap-x-px gap-y-0 bg-gray-200">
           <div className="bg-gray-50 p-3"></div>
           {days.map((day) => (
             <div key={day.toISOString()} className={`bg-gray-50 p-3 text-center ${isSameDay(day, new Date()) ? 'bg-blue-50' : ''}`}>
@@ -531,9 +954,14 @@ export function CalendarPage() {
           ))}
 
           {timeSlots.map((time) => (
-            <>
-              <div key={time} className="bg-white p-3 text-sm text-gray-500 font-medium">
-                {time}
+            <div key={`week-row-${time}`} className="contents">
+              <div
+                className={`bg-white px-3 text-sm text-gray-500 font-medium flex items-start ${
+                  ((toMinutesSinceMidnight(time) ?? 0) % 15) === 0 ? 'border-t border-gray-200' : ''
+                }`}
+                style={{ minHeight: `${slotHeight}px` }}
+              >
+                {(toMinutesSinceMidnight(time) ?? 0) % 15 === 0 ? time : ''}
               </div>
               {days.map((day, dayIndex) => {
                 const booking = bookings.find((b: Booking) => {
@@ -557,26 +985,49 @@ export function CalendarPage() {
                 })
                 
                 const displayBooking = booking || multiDayBooking
+                const shouldSpanDuration = Boolean(displayBooking && !displayBooking.isMultiDay)
+                const displayDurationMinutes = displayBooking
+                  ? (displayBooking.isMultiDay
+                    ? TIME_STEP_MINUTES
+                    : (getDurationFromStartEnd(displayBooking.startTime, displayBooking.endTime)
+                      ?? Math.max(TIME_STEP_MINUTES, displayBooking.duration)))
+                  : TIME_STEP_MINUTES
+                const bookingHeightPx = displayBooking && shouldSpanDuration
+                  ? Math.max(slotHeight, Math.ceil(displayDurationMinutes / TIME_STEP_MINUTES) * slotHeight)
+                  : slotHeight
                 
                 return (
                   <DroppableTimeSlot
                     key={`${time}-${dayIndex}`}
                     time={time}
                     date={day}
+                    onClick={(clickedDate, clickedTime) => navigateToNewBooking(clickedDate, clickedTime)}
                   >
                     {displayBooking && (
                       <ResizableDraggableBooking
                         booking={displayBooking}
+                        style={shouldSpanDuration ? {
+                          position: 'absolute',
+                          top: '2px',
+                          left: '2px',
+                          right: '2px',
+                          height: `${bookingHeightPx - 4}px`,
+                          zIndex: 20,
+                        } : {
+                          position: 'relative',
+                          zIndex: 20,
+                        }}
                         isMultiDay={displayBooking.isMultiDay}
                         isFirstDay={isSameDay(parseISO(displayBooking.startDate), day)}
                         isLastDay={displayBooking.endDate ? isSameDay(parseISO(displayBooking.endDate), day) : true}
+                        onResize={handleBookingResize}
                         onClick={handleCalendarItemClick}
                       />
                     )}
                   </DroppableTimeSlot>
                 )
               })}
-            </>
+            </div>
           ))}
         </div>
       </div>
@@ -585,40 +1036,61 @@ export function CalendarPage() {
 
   const renderDayView = () => {
     const dayBookingsList = bookings.filter((b: Booking) => isSameDay(parseISO(b.startDate), currentDate))
-    const slotHeight = 60 // pixels per 15-min slot
+    const slotHeight = SLOT_HEIGHT_PX // pixels per 5-min slot
     
     return (
-      <div className="divide-y divide-gray-200">
+      <div>
         {timeSlots.map((time) => {
           const booking = dayBookingsList.find((b: Booking) => b.startTime === time)
-          const slotSpan = booking ? Math.ceil(booking.duration / 15) : 1
-          const heightPx = slotSpan * slotHeight
+          const bookingDurationMinutes = booking
+            ? (booking.isMultiDay
+              ? TIME_STEP_MINUTES
+              : (getDurationFromStartEnd(booking.startTime, booking.endTime) ?? Math.max(TIME_STEP_MINUTES, booking.duration)))
+            : TIME_STEP_MINUTES
+          const bookingHeightPx = Math.max(slotHeight, Math.ceil(bookingDurationMinutes / TIME_STEP_MINUTES) * slotHeight)
           
           return (
-            <div key={time} className="flex items-start gap-4 p-3 hover:bg-gray-50" style={{ minHeight: `${slotHeight}px` }}>
-              <div className="w-20 text-sm text-gray-500 font-medium pt-1">{time}</div>
+            <div
+              key={time}
+              className={`flex items-start gap-4 p-3 hover:bg-gray-50 ${
+                ((toMinutesSinceMidnight(time) ?? 0) % 15) === 0 ? 'border-t border-gray-200' : ''
+              }`}
+              style={{ minHeight: `${slotHeight}px` }}
+            >
+              <div className="w-20 text-sm text-gray-500 font-medium pt-1">{(toMinutesSinceMidnight(time) ?? 0) % 15 === 0 ? time : ''}</div>
               <DroppableTimeSlot
                 time={time}
                 date={currentDate}
+                showQuarterHourLine={false}
+                onClick={(clickedDate, clickedTime) => navigateToNewBooking(clickedDate, clickedTime)}
               >
                 {booking ? (
                   <ResizableDraggableBooking
                     booking={{
                       id: booking.id,
+                      startTime: booking.startTime,
+                      endTime: booking.endTime,
                       time: booking.startTime,
                       customer: booking.customerName,
+                      customerName: booking.customerName,
                       pet: booking.petName,
+                      petName: booking.petName,
                       service: booking.service,
+                      status: booking.status,
                       duration: booking.duration,
-                      date: booking.startDate,
+                      startDate: booking.startDate,
+                      isMultiDay: booking.isMultiDay,
                     }}
                     isDayView={true}
-                    style={{ height: `${heightPx - 10}px` }}
-                    onResize={(id, newDuration) => {
-                      setBookings(prev => prev.map(b =>
-                        b.id === id ? { ...b, duration: newDuration } : b
-                      ))
+                    style={{
+                      position: 'absolute',
+                      top: '2px',
+                      left: '2px',
+                      right: '2px',
+                      height: `${bookingHeightPx - 4}px`,
+                      zIndex: 20,
                     }}
+                    onResize={booking.isMultiDay ? undefined : handleBookingResize}
                     slotHeight={slotHeight}
                     onClick={() => handleCalendarItemClick(booking)}
                   />
@@ -717,9 +1189,26 @@ export function CalendarPage() {
           }
         />
 
-        {/* View Mode Tabs */}
+        {/* View Mode Tabs & Navigation */}
         <div className="flex items-center justify-between bg-white rounded-lg shadow-sm border border-gray-200 p-2">
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setCurrentDate(new Date())}>
+              Today
+            </Button>
+            <Button variant="secondary" size="sm" onClick={navigatePrev} className="gap-1">
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </Button>
+            <Button variant="secondary" size="sm" onClick={navigateNext} className="gap-1">
+              Next
+              <ChevronRight className="w-4 h-4" />
+            </Button>
+            <span className="text-lg font-medium min-w-[200px] text-left pl-2">
+              {getTitle()}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-end gap-1">
             <Button
               variant={viewMode === 'month' ? 'primary' : 'ghost'}
               size="sm"
@@ -755,18 +1244,6 @@ export function CalendarPage() {
             >
               <List className="w-4 h-4" />
               Agenda
-            </Button>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={navigatePrev}>
-              <ChevronLeft className="w-4 h-4" />
-            </Button>
-            <span className="text-lg font-medium min-w-[200px] text-center">
-              {getTitle()}
-            </span>
-            <Button variant="secondary" size="sm" onClick={navigateNext}>
-              <ChevronRight className="w-4 h-4" />
             </Button>
           </div>
         </div>

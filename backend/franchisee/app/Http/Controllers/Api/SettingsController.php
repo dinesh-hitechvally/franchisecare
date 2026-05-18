@@ -38,7 +38,8 @@ class SettingsController extends Controller
                 'display_booking_end_time' => true,
                 'show_address_in_invoice' => true,
                 'show_personal_phone' => true,
-                'time_format_24hr' => false,
+                'time_format' => 'H:i', // default
+                'date_format' => 'd/m/Y', // default
             ]);
         }
 
@@ -58,7 +59,8 @@ class SettingsController extends Controller
             'display_booking_end_time' => 'boolean',
             'show_address_in_invoice' => 'boolean',
             'show_personal_phone' => 'boolean',
-            'time_format_24hr' => 'boolean',
+            'time_format' => 'string',
+            'date_format' => 'string',
         ]);
 
         $preferences = Preference::updateOrCreate(
@@ -154,7 +156,7 @@ class SettingsController extends Controller
         if (!$policy) {
             $policy = new CancellationPolicy([
                 'company_id' => $companyId,
-                'attach_policy' => true,
+                'attach_policy' => false,
                 'cancel_before_unit' => 'hours',
                 'cancel_before_value' => 24,
                 'cancellation_fee_value' => 0,
@@ -171,11 +173,12 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'attach_policy' => 'boolean',
-            'cancel_before_unit' => 'in:hours,days',
+            'cancel_before_unit' => 'in:hours,cutoff',
             'cancel_before_value' => 'integer',
+            'cancel_cutoff_time' => 'nullable|date_format:H:i',
             'cancellation_fee_value' => 'numeric',
             'penalty_type' => 'in:percent,fixed',
-            'selected_policy_id' => 'nullable|integer',
+            'policy_id' => 'nullable|integer',
             'policy_text' => 'nullable|string',
         ]);
 

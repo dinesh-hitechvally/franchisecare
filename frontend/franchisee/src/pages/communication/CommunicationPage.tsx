@@ -9,8 +9,8 @@ import { communicationApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { CommunicationTemplate, CommunicationLog, Customer } from '../../types'
 import { Plus, Send, Mail, MessageSquare, Clock, Eye } from 'lucide-react'
-import { format } from 'date-fns'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 export function CommunicationPage() {
   const queryClient = useQueryClient()
@@ -172,7 +172,7 @@ export function CommunicationPage() {
               {
                 key: 'sentAt',
                 title: 'Sent',
-                render: (row: CommunicationLog) => row.sentAt ? format(new Date(row.sentAt), 'MMM d, h:mm a') : '-',
+                render: (row: CommunicationLog) => row.sentAt ? formatDisplayDateTime(row.sentAt) : '-',
               },
               {
                 key: 'actions',

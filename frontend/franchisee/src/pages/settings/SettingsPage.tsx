@@ -3,8 +3,10 @@ import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
+import { TimePicker } from '../../components/ui/TimePicker'
 import { Settings } from 'lucide-react'
 import { settingsApi } from '../../api/services'
+import { policiesApi, CancellationPolicyRecord } from '../../api/policies'
 import { toast } from 'react-hot-toast'
 
 export function SettingsPage() {
@@ -20,20 +22,41 @@ export function SettingsPage() {
     showPersonalPhone: true,
   })
 
+  // Time and date format state
+  const TIME_FORMAT_OPTIONS = [
+    { value: 'h:i A', label: '01:30 PM (12-hour)' },
+    { value: 'H:i', label: '13:30 (24-hour)' },
+    { value: 'g:i A', label: '1:30 PM (12-hour, no leading zero)' },
+  ]
+  const DATE_FORMAT_OPTIONS = [
+    { value: 'd/m/Y', label: '18/05/2026 (Australian)' },
+    { value: 'm/d/Y', label: '05/18/2026 (US)' },
+    { value: 'Y-m-d', label: '2026-05-18 (ISO)' },
+    { value: 'd.m.Y', label: '18.05.2026 (European)' },
+    { value: 'M d, Y', label: 'May 18, 2026 (Long Month)' },
+    { value: 'd M Y', label: '18 May 2026 (Day Month Year)' },
+    { value: 'D, M d, Y', label: 'Mon, May 18, 2026 (Short Weekday)' },
+  ]
+  const [timeFormat, setTimeFormat] = useState('H:i')
+  const [dateFormat, setDateFormat] = useState('d/m/Y')
+
   // SMS Settings state
   const [smsSettings, setSmsSettings] = useState({
     sender: 'D4951496-75',
-    attachCancellationPolicy: true,
   })
 
   // Cancellation Policy state
   const [cancellationPolicy, setCancellationPolicy] = useState({
+    attachPolicy: false,
     cancelBefore: 'Hours',
     hours: '267',
+    cutoffTime: '09:00 AM',
     cancellationFeeType: '%',
     cancellationFeeValue: '180',
     penalty: '% (Percent)',
+    policyId: undefined as number | undefined,
   })
+  const [policies, setPolicies] = useState<CancellationPolicyRecord[]>([])
 
   // Booking to income settings
   const [incomeTemplate, setIncomeTemplate] = useState({
@@ -95,6 +118,9 @@ export function SettingsPage() {
           showPersonalPhone: prefs.show_personal_phone,
         })
 
+        setTimeFormat(prefs.time_format || 'H:i')
+        setDateFormat(prefs.date_format || 'd/m/Y')
+
         setIncomeTemplate({
           incomeFrom: income.income_title_template,
           invoiceTemplate: income.invoice_statement_template,
@@ -109,18 +135,26 @@ export function SettingsPage() {
           showServicesName: calendar.show_services_name,
         })
 
+        // Convert 24-hour format (HH:mm) to 12-hour format (HH:mm AM/PM)
+        const convertTo12Hour = (time: string) => {
+          if (!time) return '09:00 AM'
+          const [hours, minutes] = time.split(':')
+          const hour = parseInt(hours)
+          const period = hour >= 12 ? 'PM' : 'AM'
+          const displayHour = hour % 12 || 12
+          return `${displayHour.toString().padStart(2, '0')}:${minutes} ${period}`
+        }
+
         setCancellationPolicy({
-          cancelBefore: cancellation.cancel_before_unit === 'hours' ? 'Hours' : 'Days',
+          attachPolicy: cancellation.attach_policy ?? false,
+          cancelBefore: cancellation.cancel_before_unit === 'hours' ? 'Hours' : 'Cutoff Time',
           hours: String(cancellation.cancel_before_value),
+          cutoffTime: convertTo12Hour(cancellation.cancel_cutoff_time),
           cancellationFeeType: '%',
           cancellationFeeValue: String(cancellation.cancellation_fee_value),
           penalty: cancellation.penalty_type === 'percent' ? '% (Percent)' : '$ (Fixed)',
+          policyId: cancellation.policy_id,
         })
-
-        setSmsSettings(prev => ({
-          ...prev,
-          attachCancellationPolicy: cancellation.attach_policy,
-        }))
 
         setReminderOption(reminder.reminder_method)
         setConfirmationHours(String(reminder.send_before_hours))
@@ -143,8 +177,32 @@ export function SettingsPage() {
     }
 
     fetchSettings()
+    // Fetch all cancellation policies
+    policiesApi.getAll().then(setPolicies).catch(() => setPolicies([]))
   }, [])
 
+  // Helper function to replace policy templates with actual values
+  const getPolicyDescriptionWithValues = (description: string) => {
+    // Generate time template based on cancel before unit
+    let timeTemplate = ''
+    if (cancellationPolicy.cancelBefore === 'Hours') {
+      timeTemplate = `we kindly require ${cancellationPolicy.hours} hours' notice for any cancellations or reschedules.`
+    } else {
+      // cutoffTime is already in 12-hour format (HH:mm AM/PM)
+      timeTemplate = `notice of cancellation or reschedules must be received by ${cancellationPolicy.cutoffTime} the business day prior.`
+    }
+
+    // Generate fee template based on penalty type
+    let feeTemplate = ''
+    if (cancellationPolicy.penalty === '% (Percent)') {
+      feeTemplate = `${cancellationPolicy.cancellationFeeValue}% of the service cost`
+    } else {
+      feeTemplate = `$${cancellationPolicy.cancellationFeeValue}`
+    }
+
+    // Replace placeholders in policy description
+    return description.replace('{{timeTemplate}}', timeTemplate).replace('{{feeTemplate}}', feeTemplate)
+  }
   // Save handlers
   const handleSavePreferences = async () => {
     setSaving('preferences')
@@ -158,8 +216,12 @@ export function SettingsPage() {
         display_booking_end_time: preferences.displayBookingEndTime,
         show_address_in_invoice: preferences.showAddressInInvoice,
         show_personal_phone: preferences.showPersonalPhone,
-        time_format_24hr: false,
+        time_format: timeFormat,
+        date_format: dateFormat,
       })
+      // Update localStorage with time format preference
+      localStorage.setItem('timeFormat', timeFormat)
+      localStorage.setItem('dateFormat', dateFormat)
       toast.success('Preferences saved successfully')
     } catch (error) {
       console.error('Error saving preferences:', error)
@@ -208,12 +270,26 @@ export function SettingsPage() {
   const handleSaveCancellationPolicy = async () => {
     setSaving('cancellation')
     try {
+      // Convert 12-hour format (HH:mm AM/PM) to 24-hour format (HH:mm)
+      const convertTo24Hour = (time: string) => {
+        if (!time) return '09:00'
+        const match = time.match(/(\d{1,2}):(\d{2})\s?(AM|PM)/i)
+        if (!match) return '09:00'
+        let [, hours, minutes, period] = match
+        let hour = parseInt(hours)
+        if (period.toUpperCase() === 'PM' && hour !== 12) hour += 12
+        if (period.toUpperCase() === 'AM' && hour === 12) hour = 0
+        return `${hour.toString().padStart(2, '0')}:${minutes}`
+      }
+
       await settingsApi.saveCancellationPolicy({
-        attach_policy: smsSettings.attachCancellationPolicy,
-        cancel_before_unit: cancellationPolicy.cancelBefore === 'Hours' ? 'hours' : 'days',
+        attach_policy: cancellationPolicy.attachPolicy,
+        cancel_before_unit: cancellationPolicy.cancelBefore === 'Hours' ? 'hours' : 'cutoff',
         cancel_before_value: parseInt(cancellationPolicy.hours),
+        cancel_cutoff_time: cancellationPolicy.cancelBefore === 'Cutoff Time' ? convertTo24Hour(cancellationPolicy.cutoffTime) : undefined,
         cancellation_fee_value: parseFloat(cancellationPolicy.cancellationFeeValue),
         penalty_type: cancellationPolicy.penalty === '% (Percent)' ? 'percent' : 'fixed',
+        policy_id: cancellationPolicy.policyId,
       })
       toast.success('Cancellation policy saved successfully')
     } catch (error) {
@@ -325,15 +401,32 @@ export function SettingsPage() {
                 <div className="flex items-center justify-between py-2">
                   <div className="flex items-center gap-3">
                     <span className="text-xl">⏰</span>
-                    <span className="text-sm text-gray-700">Toggle 24hr Time Format</span>
+                    <span className="text-sm text-gray-700">Time Format</span>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-500">
-                    <span>12 hr</span>
-                    <button className="relative inline-flex h-6 w-11 items-center rounded-full bg-gray-300">
-                      <span className="inline-block h-4 w-4 transform rounded-full bg-white translate-x-1" />
-                    </button>
-                    <span>24hr</span>
+                  <select
+                    value={timeFormat}
+                    onChange={e => setTimeFormat(e.target.value)}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    {TIME_FORMAT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">📅</span>
+                    <span className="text-sm text-gray-700">Date Format</span>
                   </div>
+                  <select
+                    value={dateFormat}
+                    onChange={e => setDateFormat(e.target.value)}
+                    className="border rounded px-2 py-1 text-sm"
+                  >
+                    {DATE_FORMAT_OPTIONS.map(opt => (
+                      <option key={opt.value} value={opt.value}>{opt.label}</option>
+                    ))}
+                  </select>
                 </div>
               </div>
               <div className="flex justify-end">
@@ -471,25 +564,27 @@ export function SettingsPage() {
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Cancellation Policy</h3>
               <div className="space-y-4">
+                {/* Attach Policy Toggle */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-xl">📄</span>
+                    <span className="text-xl">⚙️</span>
                     <span className="text-sm text-gray-700">Attach Cancellation Policy</span>
                   </div>
                   <button
-                    onClick={() => setSmsSettings({ ...smsSettings, attachCancellationPolicy: !smsSettings.attachCancellationPolicy })}
+                    onClick={() => setCancellationPolicy({ ...cancellationPolicy, attachPolicy: !cancellationPolicy.attachPolicy })}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      smsSettings.attachCancellationPolicy ? 'bg-indigo-600' : 'bg-gray-300'
+                      cancellationPolicy.attachPolicy ? 'bg-indigo-600' : 'bg-gray-300'
                     }`}
                   >
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        smsSettings.attachCancellationPolicy ? 'translate-x-6' : 'translate-x-1'
+                        cancellationPolicy.attachPolicy ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>
                 </div>
 
+                {/* Cancellation Policy Settings */}
                 <div>
                   <label className="text-sm font-semibold text-gray-900 mb-3 block">Cancellation Policy Settings</label>
                   <div className="grid grid-cols-2 gap-4">
@@ -501,17 +596,26 @@ export function SettingsPage() {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                       >
                         <option>Hours</option>
-                        <option>Days</option>
+                        <option>Cutoff Time</option>
                       </select>
                     </div>
-                    <div>
-                      <label className="text-xs text-gray-600 mb-1 block">Hours</label>
-                      <Input
-                        value={cancellationPolicy.hours}
-                        onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, hours: e.target.value })}
-                        className="border-gray-300"
+                    {cancellationPolicy.cancelBefore === 'Hours' ? (
+                      <div>
+                        <label className="text-xs text-gray-600 mb-1 block">Hours</label>
+                        <Input
+                          value={cancellationPolicy.hours}
+                          onChange={(e) => setCancellationPolicy({ ...cancellationPolicy, hours: e.target.value })}
+                          className="border-gray-300"
+                        />
+                      </div>
+                    ) : (
+                      <TimePicker
+                        label="Cutoff Time"
+                        value={cancellationPolicy.cutoffTime}
+                        onChange={(val) => setCancellationPolicy({ ...cancellationPolicy, cutoffTime: val })}
+                        placeholder="--:-- --"
                       />
-                    </div>
+                    )}
                     <div>
                       <label className="text-xs text-gray-600 mb-1 block">Cancellation Fee Value</label>
                       <Input
@@ -534,27 +638,31 @@ export function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
-                  <div className="flex gap-2 mb-2">
-                    <input type="radio" id="policy1" name="policy" defaultChecked className="mt-1 text-indigo-600" />
-                    <label htmlFor="policy1" className="text-sm text-gray-700">
-                      <strong>Select Policy</strong>
-                      <p className="text-xs mt-1">
-                        We're so looking forward to seeing you! To help keep our schedule running smoothly for everyone we kindly require 24+ hours notice for any cancellations or reschedules.
-                      </p>
-                      <p className="text-xs mt-2">
-                        All your appointment time is reserved exclusively for you, so:
-                      </p>
-                      <ul className="text-xs ml-4 mt-1 list-disc">
-                        <li>cancellations or reschedules are made when we arrive</li>
-                        <li>no-one is home when we arrive</li>
-                        <li>we're unable to access the property when we arrive</li>
-                      </ul>
-                      <p className="text-xs mt-2">
-                        a cancellation fee of 100% of the service cost will apply.
-                      </p>
-                    </label>
-                  </div>
+                {/* Select Policy Section */}
+                <div>
+                  {policies.length === 0 ? (
+                    <div className="text-gray-500 text-sm">No policies found.</div>
+                  ) : (
+                    <div className="space-y-2">
+                      {policies.map((policy) => (
+                        <button
+                          key={policy.id}
+                          onClick={() => setCancellationPolicy({ ...cancellationPolicy, policyId: policy.id })}
+                          className={`w-full text-left p-3 rounded-lg border-2 transition-colors ${
+                            cancellationPolicy.policyId === policy.id
+                              ? 'bg-indigo-100 border-indigo-600'
+                              : 'bg-gray-50 border-gray-200 hover:border-gray-300'
+                          }`}
+                        >
+                          <strong className="text-sm text-gray-900 block">{policy.name}</strong>
+                          <div 
+                            className="text-xs text-gray-700 mt-2 leading-relaxed prose prose-sm max-w-none [&_p]:mb-2 [&_p]:text-xs [&_ul]:list-disc [&_ul]:ml-4 [&_ul]:my-1 [&_li]:text-xs [&_li]:mb-1 [&_li]:text-gray-700"
+                            dangerouslySetInnerHTML={{ __html: getPolicyDescriptionWithValues(policy.description) }} 
+                          />
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex justify-end">

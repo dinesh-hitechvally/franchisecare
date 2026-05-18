@@ -30,7 +30,7 @@ export function AccountSettingsPage() {
   const { isLoading } = useQuery({
     queryKey: ['user-profile'],
     queryFn: async () => {
-      const response = await apiClient.get('/user')
+      const response = await apiClient.get('/user') as { data: any }
       const userData = response.data
       setFormData({
         first_name: userData.first_name || userData.name?.split(' ')[0] || '',
@@ -60,18 +60,18 @@ export function AccountSettingsPage() {
       }
       const response = await apiClient.post('/user/profile', formDataToSend, {
         headers: { 'Content-Type': 'multipart/form-data' },
-      })
+      }) as { data: any }
       return response.data
     },
     onSuccess: (data) => {
-      addToast({ type: 'success', message: 'Profile updated successfully!' })
+      addToast('Profile updated successfully!', 'success')
       queryClient.invalidateQueries({ queryKey: ['user-profile'] })
       if (data.user) {
         setUser(data.user)
       }
     },
     onError: () => {
-      addToast({ type: 'error', message: 'Failed to update profile' })
+      addToast('Failed to update profile', 'error')
     },
   })
 

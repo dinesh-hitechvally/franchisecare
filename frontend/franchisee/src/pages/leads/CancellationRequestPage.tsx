@@ -8,6 +8,7 @@ import { useToastStore } from '../../store/toastStore'
 import { leadsApi } from '../../api/services'
 import type { Lead } from '../../types'
 import { PortalMenu } from '../../components/ui/PortalMenu'
+import { formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 type CancellationRow = {
   id: string
@@ -53,7 +54,7 @@ export function CancellationRequestPage() {
       fetchedLeads.map((lead) => ({
         id: lead.id,
         customer: lead.customerName,
-        date: new Date(lead.createdAt).toLocaleString(),
+        date: formatDisplayDateTime(lead.createdAt),
         ref: lead.id,
         phone: [lead.phone, lead.alternatePhone].filter(Boolean).join(' / '),
         address: lead.address || '-',
@@ -115,7 +116,7 @@ export function CancellationRequestPage() {
     })
   }
 
-  const handleSnooze = (leadId: string, snoozeUntil: string) => {
+  const handleSnooze = (leadId: string, snoozedUntil: string) => {
     updateLeadMutation.mutate(
       { id: leadId, data: { status: 'snoozed', snoozedUntil } },
       {

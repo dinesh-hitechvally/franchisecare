@@ -170,8 +170,8 @@ return new class extends Migration
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
         });
 
-        // 2026_05_17_040526_create_cancellation_policies_table.php
-        Schema::table('cancellation_policies', function (Blueprint $table) {
+        // 2026_05_17_040526_create_policy_attach_options_table.php
+        Schema::table('policy_attach_options', function (Blueprint $table) {
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
         });
 

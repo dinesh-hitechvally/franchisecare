@@ -117,7 +117,7 @@ export function SuburbReportsPage() {
               <Select
                 options={suburbOptions}
                 value={suburb}
-                onChange={setSuburb}
+                onChange={(val) => setSuburb(String(val))}
                 placeholder="All Suburbs"
               />
             </div>

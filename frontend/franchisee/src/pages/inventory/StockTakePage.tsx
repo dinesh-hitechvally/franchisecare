@@ -5,7 +5,6 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { stockTakeApi, inventoryApi } from '../../api/services'
 import { StockTakeHistoryModal } from '../../components/modals/StockTakeHistoryModal'
-import type { StockTake } from '../../types'
 import { Package } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 

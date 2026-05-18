@@ -8,10 +8,10 @@ import { TablePagination } from '../../components/ui/TablePagination'
 import { recurringBookingsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
-import { format } from 'date-fns'
 import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, RefreshCcw, RotateCw } from 'lucide-react'
 import type { Booking } from '../../types'
 import { RecurringBookingDetailModal } from '../../components/modals/RecurringBookingDetailModal'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 export function RecurringBookingsPage() {
   const navigate = useNavigate()
@@ -184,17 +184,15 @@ export function RecurringBookingsPage() {
                     </td>
                     
                     <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
-                      {row.startDate ? format(new Date(row.startDate), 'EEEE') : '-'}
+                      {row.startDate ? formatDisplayDate(row.startDate) : '-'}
                     </td>
                     
                     <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
-                      {(row as any).repeatTime || '-'}
+                      {formatDisplayTime(row.startTime)}
                     </td>
                     
                     <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
-                      {(row as any).repeatUntil
-                        ? format(new Date((row as any).repeatUntil), 'dd MMM yyyy')
-                        : '-'}
+                      {formatDisplayTime(row.endTime)}
                     </td>
                     
                     <td className="px-5 py-4 text-sm font-bold text-gray-900 align-top text-right">${row.total || '0.00'}</td>

@@ -4,10 +4,10 @@ import { Button } from '../ui/Button'
 import { CustomerIntakeForm } from './CustomerIntakeForm'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { petsApi } from '../../api/services'
-import { format } from 'date-fns'
 import { MoreVertical, PenLine, Plus, History, Loader2, FileText } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
 import type { Pet, Customer } from '../../types'
+import { formatDisplayDate, formatDisplayDateTime } from '../../lib/timeFormatUtils'
 
 interface PetWaiverModalProps {
   isOpen: boolean
@@ -80,7 +80,7 @@ export const PetWaiverModal: React.FC<PetWaiverModalProps> = ({ isOpen, onClose,
 
                   try {
                     if (savedWaiver && savedWaiver.created_at) {
-                      lastSubmitted = format(new Date(savedWaiver.created_at), 'dd/MM/yyyy')
+                      lastSubmitted = formatDisplayDate(savedWaiver.created_at)
                     }
                   } catch (e) {
                     console.error('Error formatting date:', e)
@@ -227,7 +227,7 @@ export const PetWaiverModal: React.FC<PetWaiverModalProps> = ({ isOpen, onClose,
                         </span>
                       </td>
                       <td className="py-3 px-4 text-gray-600 font-medium whitespace-nowrap">
-                        {format(new Date(item.created_at), 'dd/MM/yyyy HH:mm')}
+                        {formatDisplayDateTime(item.created_at)}
                       </td>
                       <td className="py-3 px-4 text-gray-600 font-medium capitalize whitespace-nowrap">
                         {customer ? `${customer.first_name} ${customer.last_name}` : 'System Record'}

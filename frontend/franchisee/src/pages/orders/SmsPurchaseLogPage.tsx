@@ -2,8 +2,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
 import { CreditCard, Calendar, DollarSign, MessageSquare } from 'lucide-react'
-import { format } from 'date-fns'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 interface SmsPurchase {
   id: string
@@ -75,24 +75,24 @@ export function SmsPurchaseLogPage() {
   const columns = [
     {
       key: 'date',
-      label: 'Purchase Date',
+      title: 'Purchase Date',
       render: (purchase: SmsPurchase) => (
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <span>{format(new Date(purchase.date), 'dd MMM yyyy')}</span>
+          <span>{formatDisplayDate(purchase.date)}</span>
         </div>
       ),
     },
     {
       key: 'credits',
-      label: 'Credits Purchased',
+      title: 'Credits Purchased',
       render: (purchase: SmsPurchase) => (
         <span className="font-semibold text-blue-600">{purchase.credits.toLocaleString()}</span>
       ),
     },
     {
       key: 'amount',
-      label: 'Amount',
+      title: 'Amount',
       render: (purchase: SmsPurchase) => (
         <div className="flex items-center gap-1">
           <DollarSign className="w-4 h-4 text-gray-400" />
@@ -102,7 +102,7 @@ export function SmsPurchaseLogPage() {
     },
     {
       key: 'paymentMethod',
-      label: 'Payment Method',
+      title: 'Payment Method',
       render: (purchase: SmsPurchase) => (
         <div className="flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-gray-400" />
@@ -112,7 +112,7 @@ export function SmsPurchaseLogPage() {
     },
     {
       key: 'status',
-      label: 'Status',
+      title: 'Status',
       render: (purchase: SmsPurchase) => (
         <span
           className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -129,7 +129,7 @@ export function SmsPurchaseLogPage() {
     },
     {
       key: 'transactionId',
-      label: 'Transaction ID',
+      title: 'Transaction ID',
       render: (purchase: SmsPurchase) => (
         <span className="text-sm text-gray-600 font-mono">{purchase.transactionId}</span>
       ),
@@ -186,6 +186,7 @@ export function SmsPurchaseLogPage() {
         <Table
           data={purchases || []}
           columns={columns}
+          keyExtractor={(purchase) => purchase.id}
           emptyMessage="No SMS purchases found"
         />
       </Card>

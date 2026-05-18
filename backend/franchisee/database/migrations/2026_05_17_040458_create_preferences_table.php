@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
+    
     /**
      * Run the migrations.
      */
@@ -23,7 +24,8 @@ return new class extends Migration
             $table->boolean('display_booking_end_time')->default(true);
             $table->boolean('show_address_in_invoice')->default(true);
             $table->boolean('show_personal_phone')->default(true);
-            $table->boolean('time_format_24hr')->default(false);
+            $table->string('date_format')->default('d/m/y');
+            $table->string('time_format')->default('H:i');
             $table->timestamps();
 
             $table->unique('company_id');
@@ -37,4 +39,5 @@ return new class extends Migration
     {
         Schema::dropIfExists('preferences');
     }
+
 };

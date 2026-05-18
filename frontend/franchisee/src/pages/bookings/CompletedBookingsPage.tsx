@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { format } from 'date-fns'
 import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { TablePagination } from '../../components/ui/TablePagination'
@@ -12,6 +11,7 @@ import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Ch
 import type { Booking } from '../../types'
 import { createPortal } from 'react-dom'
 import { useToastStore } from '../../store/toastStore'
+import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
 const PAGE_SIZE_OPTIONS = [10, 25, 50, 100]
 
@@ -265,11 +265,11 @@ export function CompletedBookingsPage() {
                       </td>
 
                       <td className="px-5 py-4 text-sm text-gray-700 align-top">
-                        {row.startDate ? format(new Date(row.startDate), 'EEEE, do MMM yyyy') : 'No date'}
+                        {row.startDate ? formatDisplayDate(row.startDate) : 'No date'}
                       </td>
 
                       <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
-                        {row.startTime || '-'}
+                        {formatDisplayTime(row.startTime)}
                       </td>
 
                       <td className="px-5 py-4 text-sm font-bold text-gray-900 align-top text-right">

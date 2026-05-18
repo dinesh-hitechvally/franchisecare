@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { newsApi } from '../../api/services'
-import { format } from 'date-fns'
 import { cn } from '../../lib/utils'
 import { Newspaper } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { formatDisplayDate } from '../../lib/timeFormatUtils'
 
 const categories = [
   { name: 'All News', description: 'All News', color: 'bg-[#4a5ebc]' },
@@ -128,7 +128,7 @@ export function LatestNewsPage() {
                       {article.category}
                     </span>
                     <span className="text-[10px] text-gray-400 font-medium">
-                      {article.published_at ? format(new Date(article.published_at), 'EEEE, do MMM yyyy') : format(new Date(article.created_at), 'EEEE, do MMM yyyy')}
+                      {article.published_at ? formatDisplayDate(article.published_at) : formatDisplayDate(article.created_at)}
                     </span>
                   </div>
                   <h3 className="text-sm font-bold text-gray-800 group-hover:text-blue-600 transition-colors">
