@@ -511,13 +511,17 @@ export function SettingsPage() {
                   </div>
                 ))}
               </div>
-              <div className="mt-6 bg-indigo-600 p-4 rounded-lg text-white space-y-1 text-sm">
-                <p className="font-semibold">Preview</p>
-                <p>Email Cost</p>
-                <p>Firstname Lastname, Passowrd</p>
-                <p>Per Name</p>
-                <p>Per Name</p>
-                <p>Services</p>
+              <p className="mt-6 font-semibold text-gray-900">Calendar Event Preview</p>
+              <div className="mt-2 bg-indigo-600 p-4 rounded-lg text-white space-y-1 text-sm">
+                <div className="space-y-1 text-xs">
+                  {calendarSettings.showBookingTotal && <p>$150.00</p>}
+                  {calendarSettings.showCustomerName && <p>John Doe</p>}
+                  {calendarSettings.showCustomerAddress && <p>123 Main St, Sydney</p>}
+                  {calendarSettings.showPetName && <p>Fluffy</p>}
+                  {calendarSettings.showPetBreed && <p>Golden Retriever</p>}
+                  {calendarSettings.showServicesName && <p>Full Grooming Service</p>}
+                  {!calendarSettings.showBookingTotal && !calendarSettings.showCustomerName && !calendarSettings.showCustomerAddress && !calendarSettings.showPetName && !calendarSettings.showPetBreed && !calendarSettings.showServicesName && <p className="italic opacity-75">No details selected</p>}
+                </div>
               </div>
               <div className="flex justify-end mt-4">
                 <Button

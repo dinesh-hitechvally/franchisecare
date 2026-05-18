@@ -14,6 +14,7 @@ class CalendarSetting extends Model
         'show_pet_name',
         'show_pet_breed',
         'show_services_name',
+        'show_cancellation_policy',
     ];
 
     protected $casts = [
@@ -23,5 +24,6 @@ class CalendarSetting extends Model
         'show_pet_name' => 'boolean',
         'show_pet_breed' => 'boolean',
         'show_services_name' => 'boolean',
+        'show_cancellation_policy' => 'boolean',
     ];
 }

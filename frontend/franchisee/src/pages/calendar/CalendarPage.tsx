@@ -21,7 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { BlockoutDetailModal } from '../../components/modals/BlockoutDetailModal'
-import { bookingsApi, blockoutsApi } from '../../api/services'
+import { bookingsApi, blockoutsApi, settingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Booking as BookingType, Blockout } from '../../types'
 import { PageHeader } from '../../components/layout/PageHeader'
@@ -171,6 +171,10 @@ interface Booking {
   title?: string
   location?: string
   calendarColor?: string
+  bookingCost?: string | number
+  address?: string
+  breed?: string
+  pet?: string
 }
 
 interface DayBooking {
@@ -202,7 +206,15 @@ function ResizableDraggableBooking({
   isMultiDay = false,
   isFirstDay = true,
   isLastDay = true,
-  onClick
+  onClick,
+  calendarSettings = {
+    showBookingTotal: true,
+    showCustomerName: true,
+    showCustomerAddress: true,
+    showPetName: true,
+    showPetBreed: true,
+    showServicesName: true,
+  }
 }: {
   booking: Booking | DayBooking;
   isDayView?: boolean;
@@ -213,6 +225,14 @@ function ResizableDraggableBooking({
   isFirstDay?: boolean;
   isLastDay?: boolean;
   onClick?: (booking: Booking | DayBooking) => void;
+  calendarSettings?: {
+    showBookingTotal: boolean;
+    showCustomerName: boolean;
+    showCustomerAddress: boolean;
+    showPetName: boolean;
+    showPetBreed: boolean;
+    showServicesName: boolean;
+  };
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: booking.id,
@@ -431,12 +451,36 @@ function ResizableDraggableBooking({
     </span>
   )
 
-  // Display name - for blockouts show title, for bookings show customer name
-  const displayName = isBlockout ? (regularBooking.title || 'Blockout') : regularBooking.customerName
+  // Display name - for blockouts show title, for bookings show customer name if available
+  let displayName = isBlockout ? (regularBooking.title || 'Blockout') : (calendarSettings.showCustomerName ? regularBooking.customerName : 'Booking')
+
   const displayEndTime = getEndTimeFromDuration(currentStartTime, currentDuration)
-  const displayDetails = isBlockout
-    ? (regularBooking.location || '')
-    : `${currentStartTime} - ${displayEndTime} | ${regularBooking.service}`
+  
+  // Construct details array similar to preview card
+  const detailsArray: string[] = []
+  if (isBlockout) {
+    // Blockout: show location
+    if (regularBooking.location) {
+      detailsArray.push(regularBooking.location)
+    }
+  } else {
+    // Booking: show details based on settings (excluding customer name as it's in the title)
+    if (calendarSettings.showBookingTotal && (regularBooking as any).bookingCost) {
+      detailsArray.push(`$${(regularBooking as any).bookingCost}`)
+    }
+    if (calendarSettings.showCustomerAddress && (regularBooking as any).address) {
+      detailsArray.push((regularBooking as any).address)
+    }
+    if (calendarSettings.showPetName && (regularBooking as any).pet) {
+      detailsArray.push((regularBooking as any).pet)
+    }
+    if (calendarSettings.showPetBreed && (regularBooking as any).breed) {
+      detailsArray.push((regularBooking as any).breed)
+    }
+    if (calendarSettings.showServicesName && regularBooking.service) {
+      detailsArray.push(regularBooking.service)
+    }
+  }
 
   return (
     <div
@@ -457,11 +501,14 @@ function ResizableDraggableBooking({
           className={`absolute top-0 left-0 right-0 h-3 cursor-ns-resize transition-opacity bg-white/20 z-20 pointer-events-auto ${isResizing ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
         />
       )}
-      <div {...listeners} className="flex items-center gap-1 p-2 cursor-grab active:cursor-grabbing">
-        <GripVertical className="w-3 h-3 flex-shrink-0 text-white/80" />
-        <div className="truncate">
-          <p className="font-medium truncate">{displayName} {multiDayIndicator}</p>
-          <p className="truncate text-white/90 text-[11px]">{displayDetails}</p>
+      <div {...listeners} className="flex items-stretch gap-2 p-2 cursor-grab active:cursor-grabbing h-full">
+        <GripVertical className="w-3 h-3 flex-shrink-0 text-white/80 mt-1" />
+        <div className="flex-1 min-w-0 space-y-0.5 text-[11px]">
+          <p className="font-medium">{displayName} {multiDayIndicator}</p>
+          <p className="text-white/80">{currentStartTime} - {displayEndTime}</p>
+          {detailsArray.map((detail, idx) => (
+            <p key={idx} className="text-white/80 truncate">{detail}</p>
+          ))}
           {isBookingMultiDay && regularBooking.endDate && (
             <p className="text-[10px] text-white/80">
               {format(parseISO(regularBooking.startDate), 'MMM d')} - {format(parseISO(regularBooking.endDate), 'MMM d')}
@@ -550,6 +597,34 @@ export function CalendarPage() {
   const [isBlockoutModalOpen, setIsBlockoutModalOpen] = useState(false)
   const [isLoadingDetails, setIsLoadingDetails] = useState(false)
   const [bookings, setBookings] = useState<Booking[]>([])
+  const [calendarSettings, setCalendarSettings] = useState({
+    showBookingTotal: true,
+    showCustomerName: true,
+    showCustomerAddress: true,
+    showPetName: true,
+    showPetBreed: true,
+    showServicesName: true,
+  })
+
+  // Fetch calendar settings on component mount
+  useEffect(() => {
+    const fetchCalendarSettings = async () => {
+      try {
+        const settings = await settingsApi.getCalendarSettings()
+        setCalendarSettings({
+          showBookingTotal: settings.show_booking_total,
+          showCustomerName: settings.show_customer_name,
+          showCustomerAddress: settings.show_customer_address,
+          showPetName: settings.show_pet_name,
+          showPetBreed: settings.show_pet_breed,
+          showServicesName: settings.show_services_name,
+        })
+      } catch (error) {
+        console.error('Error fetching calendar settings:', error)
+      }
+    }
+    fetchCalendarSettings()
+  }, [])
 
   useEffect(() => {
     let cancelled = false
@@ -590,6 +665,9 @@ export function CalendarPage() {
           const petName = b.petName
             || (b.details || []).map((d) => d.pet?.name).filter(Boolean).join(', ')
           const serviceName = (b.details || []).map((d) => d.service?.name).filter(Boolean).join(', ')
+          const petBreed = (b.details || []).map((d) => d.pet?.breed).filter(Boolean).join(', ')
+          const address = (b.customer as any)?.street_address || (b.customer as any)?.address || ''
+          const bookingCost = (b as any)?.total || (b as any)?.cost || ''
           const startTime = normalizeDisplayTime(b.startTime) || b.startTime
           const endTime = normalizeDisplayTime(b.endTime)
           const duration = getDurationFromStartEnd(startTime, endTime)
@@ -610,6 +688,10 @@ export function CalendarPage() {
             eventType: 'booking',
             bookingId: b.id,
             calendarColor: b.calendarColor,
+            bookingCost,
+            address,
+            breed: petBreed,
+            pet: petName || '',
           }
         })
 
@@ -922,6 +1004,7 @@ export function CalendarPage() {
                         isLastDay={isLastDay}
                         onResize={handleBookingResize}
                         onClick={handleCalendarItemClick}
+                        calendarSettings={calendarSettings}
                       />
                     )
                   })}
@@ -1022,6 +1105,7 @@ export function CalendarPage() {
                         isLastDay={displayBooking.endDate ? isSameDay(parseISO(displayBooking.endDate), day) : true}
                         onResize={handleBookingResize}
                         onClick={handleCalendarItemClick}
+                        calendarSettings={calendarSettings}
                       />
                     )}
                   </DroppableTimeSlot>
@@ -1093,6 +1177,7 @@ export function CalendarPage() {
                     onResize={booking.isMultiDay ? undefined : handleBookingResize}
                     slotHeight={slotHeight}
                     onClick={() => handleCalendarItemClick(booking)}
+                    calendarSettings={calendarSettings}
                   />
                 ) : (
                   <div className="flex-1" style={{ minHeight: `${slotHeight - 10}px` }} />
