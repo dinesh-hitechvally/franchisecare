@@ -7,18 +7,23 @@ import { Search, ChevronDown, ChevronUp, XCircle, Edit2, Check, Plus } from 'luc
 import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { TimePicker } from '../../components/ui/TimePicker'
-import { customersApi, servicesApi, bookingsApi, recurringBookingsApi } from '../../api/services'
+import { customersApi, servicesApi, bookingsApi, recurringBookingsApi, waitlistApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { useNavigate, Link, useParams, useLocation } from 'react-router-dom'
 import type { Customer } from '../../types'
 
-export function NewBookingsPage() {
+interface NewBookingsPageProps {
+  mode?: 'booking' | 'waitlist'
+}
+
+export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const location = useLocation()
   const { id: editBookingId } = useParams<{ id: string }>()
   const isEditMode = Boolean(editBookingId)
   const isRecurringEdit = isEditMode && location.pathname.includes('/recurring/')
+  const isWaitlistMode = mode === 'waitlist'
   const { addToast } = useToastStore()
   const hasInitializedEditForm = useRef(false)
   const prefillFromCalendarApplied = useRef(false)
@@ -33,6 +38,7 @@ export function NewBookingsPage() {
   const [expandedPetIds, setExpandedPetIds] = useState<string[]>([])
   
   const [bookingDate, setBookingDate] = useState('')
+  const [bookingEndDate, setBookingEndDate] = useState('')
   const [bookingStartTime, setBookingStartTime] = useState('')
   const [bookingEndTime, setBookingEndTime] = useState('')
   const [bookingNotes, setBookingNotes] = useState('')
@@ -80,10 +86,13 @@ export function NewBookingsPage() {
   })
 
   const { data: bookingToEdit } = useQuery({
-    queryKey: ['bookings', 'edit', editBookingId, isRecurringEdit],
-    queryFn: () => isRecurringEdit 
-      ? recurringBookingsApi.getById(String(editBookingId))
-      : bookingsApi.getById(String(editBookingId)),
+    queryKey: [isWaitlistMode ? 'waitlists' : 'bookings', 'edit', editBookingId, isRecurringEdit],
+    queryFn: () => {
+      if (isWaitlistMode) return waitlistApi.getById(String(editBookingId))
+      return isRecurringEdit
+        ? recurringBookingsApi.getById(String(editBookingId))
+        : bookingsApi.getById(String(editBookingId))
+    },
     enabled: !!editBookingId,
   })
 
@@ -127,13 +136,13 @@ export function NewBookingsPage() {
   }, [isEditMode, location.search])
 
   const createBookingMutation = useMutation({
-    mutationFn: (data: any) => bookingsApi.create(data),
+    mutationFn: (data: any) => isWaitlistMode ? waitlistApi.create(data) : bookingsApi.create(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
-      addToast('Booking created successfully', 'success')
-      navigate('/bookings')
+      queryClient.invalidateQueries({ queryKey: isWaitlistMode ? ['waitlists'] : ['bookings'] })
+      addToast(isWaitlistMode ? 'Waitlist created successfully' : 'Booking created successfully', 'success')
+      navigate(isWaitlistMode ? '/bookings/waitlist' : '/bookings')
     },
-    onError: () => addToast('Failed to create booking', 'error')
+    onError: () => addToast(isWaitlistMode ? 'Failed to create waitlist' : 'Failed to create booking', 'error')
   })
 
   const createRecurringBookingMutation = useMutation({
@@ -148,13 +157,13 @@ export function NewBookingsPage() {
 
   const updateBookingMutation = useMutation({
     mutationFn: ({ bookingId, data }: { bookingId: string; data: any }) =>
-      bookingsApi.update(bookingId, data),
+      isWaitlistMode ? waitlistApi.update(bookingId, data) : bookingsApi.update(bookingId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings'] })
-      addToast('Booking updated successfully', 'success')
-      navigate('/bookings/manage')
+      queryClient.invalidateQueries({ queryKey: isWaitlistMode ? ['waitlists'] : ['bookings'] })
+      addToast(isWaitlistMode ? 'Waitlist updated successfully' : 'Booking updated successfully', 'success')
+      navigate(isWaitlistMode ? '/bookings/waitlist' : '/bookings/manage')
     },
-    onError: () => addToast('Failed to update booking', 'error'),
+    onError: () => addToast(isWaitlistMode ? 'Failed to update waitlist' : 'Failed to update booking', 'error'),
   })
 
   const updateRecurringBookingMutation = useMutation({
@@ -181,6 +190,7 @@ export function NewBookingsPage() {
     }
 
     setBookingDate(bookingToEdit.startDate || bookingToEdit.start_date || '')
+    setBookingEndDate(bookingToEdit.endDate || bookingToEdit.end_date || '')
     setBookingStartTime(bookingToEdit.startTime || bookingToEdit.start_time || '')
     setBookingEndTime(bookingToEdit.endTime || bookingToEdit.end_time || '')
     setBookingNotes(bookingToEdit.notes || '')
@@ -295,6 +305,7 @@ export function NewBookingsPage() {
             customer_id: selectedCustomer.id,
             services: services,
             start_date: bookingDate,
+            end_date: isWaitlistMode ? bookingEndDate || null : undefined,
             start_time: bookingStartTime,
             end_time: bookingEndTime,
             calendar_color: calendarColor,
@@ -310,7 +321,7 @@ export function NewBookingsPage() {
       return
     }
 
-    if (isRecurring) {
+    if (!isWaitlistMode && isRecurring) {
       // Create recurring booking via BookingRecurringController
       createRecurringBookingMutation.mutate({
         customer_id: selectedCustomer.id,
@@ -333,6 +344,7 @@ export function NewBookingsPage() {
         customer_id: selectedCustomer.id,
         services: services,
         start_date: bookingDate,
+        end_date: isWaitlistMode ? bookingEndDate || null : undefined,
         start_time: bookingStartTime,
         end_time: bookingEndTime,
         calendar_color: calendarColor,
@@ -387,8 +399,8 @@ export function NewBookingsPage() {
   return (
     <div className="space-y-6 px-4 py-6 w-full max-w-[1600px] mx-auto bg-gray-50/30 min-h-screen">
       <PageHeader
-        title={isEditMode ? 'Edit Booking' : 'New Bookings'}
-        description={isEditMode ? 'Update booking details and services' : 'Create a new booking for your customers'}
+        title={isEditMode ? (isWaitlistMode ? 'Edit Waitlist' : 'Edit Booking') : (isWaitlistMode ? 'New Waitlist' : 'New Bookings')}
+        description={isEditMode ? (isWaitlistMode ? 'Update waitlist details and services' : 'Update booking details and services') : (isWaitlistMode ? 'Create a new waitlist for your customers' : 'Create a new booking for your customers')}
         icon={<Plus className="w-5 h-5" />}
       />
 
@@ -398,8 +410,12 @@ export function NewBookingsPage() {
           <Card className="p-5 border-none shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white overflow-visible">
             <p className="text-[13px] text-gray-500 mb-8 leading-relaxed">
               {isEditMode
-                ? 'Update booking details below. Adjust pet services, date/time, notes, and confirmation settings before saving.'
-                : 'Start your booking by simply searching customer by name or pet name. Once Pet/Services are assigned, you can choose to create recurring booking'}
+                ? (isWaitlistMode
+                  ? 'Update waitlist details below. Adjust pet services, date/time, notes, and confirmation settings before saving.'
+                  : 'Update booking details below. Adjust pet services, date/time, notes, and confirmation settings before saving.')
+                : (isWaitlistMode
+                  ? 'Start your waitlist by searching customer by name or pet name. Once Pet/Services are assigned, save as waitlist.'
+                  : 'Start your booking by simply searching customer by name or pet name. Once Pet/Services are assigned, you can choose to create recurring booking')}
             </p>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-x-12 gap-y-8 mb-10">
@@ -488,7 +504,7 @@ export function NewBookingsPage() {
 
               <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-8">
                 <div>
-                  <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Booking Date *</label>
+                  <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">{isWaitlistMode ? 'From Date *' : 'Booking Date *'}</label>
                   <Input 
                     type="date"
                     value={bookingDate}
@@ -496,6 +512,17 @@ export function NewBookingsPage() {
                     className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] focus:ring-0 focus:border-blue-500"
                   />
                 </div>
+                {isWaitlistMode && (
+                  <div>
+                    <label className="block text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">To Date</label>
+                    <Input
+                      type="date"
+                      value={bookingEndDate}
+                      onChange={(e) => setBookingEndDate(e.target.value)}
+                      className="border-0 border-b border-gray-200 rounded-none px-0 py-2 bg-transparent w-full text-[14px] focus:ring-0 focus:border-blue-500"
+                    />
+                  </div>
+                )}
                 <div>
                   <TimePicker
                     label="Booking Start Time"
@@ -597,26 +624,28 @@ export function NewBookingsPage() {
           </Card>
 
           {/* Recurring Toggle Area */}
-          <div className="space-y-4">
-             <p className="text-[12px] text-gray-500 italic max-w-2xl leading-relaxed">
-              This is a part of recurring booking. Tick here to edit all active/future bookings. Leave it untick to edit this occurance/booking only
-            </p>
-            <label className="flex items-center gap-4 cursor-pointer w-fit group py-2">
-              <span className="relative flex items-center">
-                <input 
-                  type="checkbox" 
-                  checked={isRecurring}
-                  onChange={(e) => setIsRecurring(e.target.checked)}
-                  className="peer w-5 h-5 text-blue-600 rounded border-2 border-blue-600 focus:ring-blue-500 transition-all appearance-none checked:bg-blue-600" 
-                />
-                <Check className="w-3 h-3 text-white absolute left-1 top-1/2 -translate-y-1/2 opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
-              </span>
-              <span className={`text-[14px] font-bold transition-colors tracking-tight ${isRecurring ? 'text-blue-600' : 'text-gray-700'}`}>Tick to Add Recurring Settings</span>
-            </label>
-          </div>
+          {!isWaitlistMode && (
+            <div className="space-y-4">
+              <p className="text-[12px] text-gray-500 italic max-w-2xl leading-relaxed">
+                This is a part of recurring booking. Tick here to edit all active/future bookings. Leave it untick to edit this occurance/booking only
+              </p>
+              <label className="flex items-center gap-4 cursor-pointer w-fit group py-2">
+                <span className="relative flex items-center">
+                  <input 
+                    type="checkbox" 
+                    checked={isRecurring}
+                    onChange={(e) => setIsRecurring(e.target.checked)}
+                    className="peer w-5 h-5 text-blue-600 rounded border-2 border-blue-600 focus:ring-blue-500 transition-all appearance-none checked:bg-blue-600" 
+                  />
+                  <Check className="w-3 h-3 text-white absolute left-1 top-1/2 -translate-y-1/2 opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
+                </span>
+                <span className={`text-[14px] font-bold transition-colors tracking-tight ${isRecurring ? 'text-blue-600' : 'text-gray-700'}`}>Tick to Add Recurring Settings</span>
+              </label>
+            </div>
+          )}
 
           {/* Recurring Settings Card */}
-          {isRecurring && (
+          {!isWaitlistMode && isRecurring && (
             <Card className="border-none shadow-[0_4px_20px_rgba(0,0,0,0.08)] bg-white overflow-visible">
               <div 
                 className="flex items-center justify-between p-5 border-b border-gray-50 bg-white cursor-pointer hover:bg-gray-50/50 transition-colors"
@@ -820,7 +849,7 @@ export function NewBookingsPage() {
            <Button
              type="button"
              variant="secondary"
-             onClick={() => navigate('/bookings')}
+             onClick={() => navigate(isWaitlistMode ? '/bookings/waitlist' : '/bookings')}
              className="px-8 py-3 rounded-lg font-bold text-[14px]"
            >
              Cancel
@@ -835,7 +864,7 @@ export function NewBookingsPage() {
                  : 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg active:scale-95'
              }`}
            >
-             {isEditMode ? 'Save Booking Changes' : 'Create New Booking'}
+             {isEditMode ? (isWaitlistMode ? 'Save Waitlist Changes' : 'Save Booking Changes') : (isWaitlistMode ? 'Create New Waitlist' : 'Create New Booking')}
            </Button>
          </div>
          {/* Spacer to align with the sidebar in desktop view */}

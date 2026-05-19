@@ -12,8 +12,10 @@ import { CancelBookingsPage } from './pages/bookings/CancelBookingsPage'
 import { CompletedBookingsPage } from './pages/bookings/CompletedBookingsPage'
 import { ManageBookingsPage } from './pages/bookings/ManageBookingsPage'
 import { NewBookingsPage } from './pages/bookings/NewBookingsPage'
+import { NewWaitlistPage } from './pages/bookings/NewWaitlistPage'
 import { RecurringBookingsPage } from './pages/bookings/RecurringBookingsPage'
 import { CancelledRecurringPage } from './pages/bookings/CancelledRecurringPage'
+import { WaitlistBookingsPage } from './pages/bookings/WaitlistBookingsPage'
 
 // Calendar Pages
 import { CalendarPage } from './pages/calendar/CalendarPage'
@@ -144,6 +146,9 @@ export function AppRoutes() {
         <Route path="bookings/manage" element={<ManageBookingsPage />} />
         <Route path="bookings/new" element={<NewBookingsPage />} />
         <Route path="bookings/edit/:id" element={<NewBookingsPage />} />
+        <Route path="bookings/waitlist" element={<WaitlistBookingsPage />} />
+        <Route path="bookings/waitlist/new" element={<NewWaitlistPage />} />
+        <Route path="bookings/waitlist/edit/:id" element={<NewWaitlistPage />} />
         <Route path="bookings/recurring" element={<RecurringBookingsPage />} />
         <Route path="bookings/recurring/edit/:id" element={<NewBookingsPage />} />
         <Route path="bookings/cancelled-recurring" element={<CancelledRecurringPage />} />

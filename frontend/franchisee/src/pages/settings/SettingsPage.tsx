@@ -136,7 +136,7 @@ export function SettingsPage() {
         })
 
         // Convert 24-hour format (HH:mm) to 12-hour format (HH:mm AM/PM)
-        const convertTo12Hour = (time: string) => {
+        const convertTo12Hour = (time?: string) => {
           if (!time) return '09:00 AM'
           const [hours, minutes] = time.split(':')
           const hour = parseInt(hours)

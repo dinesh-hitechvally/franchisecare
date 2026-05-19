@@ -18,6 +18,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/change-password', [AuthController::class, 'changePassword']);
 
+    // Waitlists
+    Route::apiResource('waitlists', \App\Http\Controllers\Api\WaitlistController::class);
+    Route::patch('waitlists/{waitlist}/status', [\App\Http\Controllers\Api\WaitlistController::class, 'updateStatus']);
+    Route::post('waitlists/{waitlist}/convert-to-booking', [\App\Http\Controllers\Api\WaitlistController::class, 'convertToBooking']);
+    Route::post('waitlists/{waitlist}/send-email-confirmation', [\App\Http\Controllers\Api\WaitlistController::class, 'sendEmailConfirmation']);
+
     // Bookings
     Route::apiResource('bookings', \App\Http\Controllers\Api\BookingController::class);
     Route::post('bookings/{booking}/rebook', [\App\Http\Controllers\Api\BookingController::class, 'rebook']);

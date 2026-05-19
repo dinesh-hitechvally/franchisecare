@@ -50,6 +50,7 @@ export type PaginatedBookings = {
 function mapBookingFromApi(b: any): Booking {
   const raw = b as any
   b.startDate = raw.start_date || raw.date || b.startDate
+  b.endDate = raw.end_date || b.endDate
   b.startTime = raw.start_time || raw.time || b.startTime
   b.endTime = raw.end_time || b.endTime
   b.calendarColor = raw.calendar_color || raw.color || b.calendarColor
@@ -451,6 +452,56 @@ export const bookingsApi = {
     const token = localStorage.getItem('token');
     window.open(`${API_BASE_URL}/bookings/${id}/receipt?token=${token}`, '_blank');
   },
+}
+
+// Waitlist API
+export type PaginatedWaitlists = {
+  data: Booking[]
+  meta: PaginationMeta
+}
+
+export const waitlistApi = {
+  getPaginated: (params: {
+    page: number
+    per_page?: number
+    status?: string
+    customer_id?: string
+    dateFrom?: string
+    dateTo?: string
+    search?: string
+  }) =>
+    apiClient
+      .get<{ data: unknown[]; meta: PaginationMeta }>('/waitlists', {
+        params: {
+          ...params,
+          page: params.page,
+          per_page: params.per_page ?? 25,
+        },
+      })
+      .then((res) => ({
+        data: mapBookingsFromApi(res.data),
+        meta: res.meta,
+      })),
+
+  getById: (id: string) =>
+    apiClient.get<Booking>(`/waitlists/${id}`).then((data) => mapBookingFromApi(data)),
+
+  create: (data: any) =>
+    apiClient.post<Booking>('/waitlists', data).then((r) => mapBookingFromApi(r)),
+
+  update: (id: string, data: any) =>
+    apiClient.put<Booking>(`/waitlists/${id}`, data).then((r) => mapBookingFromApi(r)),
+
+  updateStatus: (id: string, status: string) =>
+    apiClient.patch<Booking>(`/waitlists/${id}/status`, { status }).then((r) => mapBookingFromApi(r)),
+
+  convertToBooking: (id: string) =>
+    apiClient.post<{ message: string; booking: Booking; waitlist: Booking }>(`/waitlists/${id}/convert-to-booking`),
+
+  sendEmailConfirmation: (id: string) =>
+    apiClient.post<{ message: string }>(`/waitlists/${id}/send-email-confirmation`),
+
+  delete: (id: string) => apiClient.delete(`/waitlists/${id}`),
 }
 
 // Recurring Bookings API
