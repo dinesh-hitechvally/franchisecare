@@ -15,6 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id')->nullable();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->string('action_type', 100);
+            $table->timestamp('action_at')->nullable()->useCurrent();
             $table->string('previous_status', 50)->nullable();
             $table->string('status', 50)->nullable();
             $table->date('start_date')->nullable();

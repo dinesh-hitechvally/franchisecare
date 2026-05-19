@@ -8,7 +8,7 @@ import { Input } from '../../components/ui/Input'
 import { Select } from '../../components/ui/Select'
 import { TimePicker } from '../../components/ui/TimePicker'
 import { ChevronUp, ChevronDown, Check, CalendarOff } from 'lucide-react'
-import { blockoutsApi } from '../../api/services'
+import { blockoutRecurringsApi, blockoutsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 
@@ -35,9 +35,10 @@ export function NewBlockoutsPage() {
   const [showConflicts, setShowConflicts] = useState(true)
 
   const createMutation = useMutation({
-    mutationFn: (data: any) => blockoutsApi.create(data),
-    onSuccess: () => {
-      addToast('Blockout created successfully', 'success')
+    mutationFn: ({ data, recurring }: { data: any; recurring: boolean }) =>
+      recurring ? blockoutRecurringsApi.create(data) : blockoutsApi.create(data),
+    onSuccess: (_response, variables) => {
+      addToast(variables.recurring ? 'Recurring blockout created successfully' : 'Blockout created successfully', 'success')
       navigate('/blockouts')
     },
     onError: () => {
@@ -61,23 +62,36 @@ export function NewBlockoutsPage() {
       return
     }
 
-    const payload = {
+    const basePayload = {
       title: formData.title,
       location: formData.location,
       start_date: formData.startDate,
       start_time: formData.startTime,
       end_date: formData.endDate,
       end_time: formData.endTime,
-      is_recurring: formData.isRecurring,
-      repeat_every: formData.repeatEvery || null,
-      repeat_on: formData.repeatOn || null,
-      repeat_until: formData.repeatUntil || null,
       notes: formData.notes,
       company_id: companyId,
       active: true,
     }
 
-    createMutation.mutate(payload)
+    if (formData.isRecurring) {
+      if (!formData.repeatEvery || !formData.repeatOn || !formData.repeatUntil) {
+        addToast('Please complete recurring settings', 'error')
+        return
+      }
+
+      const recurringPayload = {
+        ...basePayload,
+        repeat_every: formData.repeatEvery,
+        repeat_on: formData.repeatOn,
+        repeat_until: formData.repeatUntil,
+      }
+
+      createMutation.mutate({ data: recurringPayload, recurring: true })
+      return
+    }
+
+    createMutation.mutate({ data: basePayload, recurring: false })
   }
 
   return (

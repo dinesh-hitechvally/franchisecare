@@ -190,7 +190,7 @@ class CalendarEventController extends Controller
                 'location' => $blockout->location,
                 'color' => '#9333ea',
                 'blockout_id' => $blockout->id,
-                'is_recurring' => $blockout->is_recurring,
+                'is_recurring' => !!$blockout->recurring_id,
                 'is_active' => $blockout->active,
             ]);
         }

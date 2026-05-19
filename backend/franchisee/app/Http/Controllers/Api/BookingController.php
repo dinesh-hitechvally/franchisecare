@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Helpers\EmailTemplateHelper;
 use App\Models\Booking;
 use App\Models\BookingAudit;
+use App\Models\BookingDetailAudit;
 use App\Models\BookingInventoryAudit;
 use App\Models\BookingRecurring;
 use App\Models\EmailHistory;
@@ -385,7 +386,8 @@ class BookingController extends Controller
     public function getHistory(Booking $booking)
     {
         $history = BookingAudit::where('booking_id', $booking->id)
-            ->latest()
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
             ->paginate(10);
 
         return response()->json($history);
@@ -394,7 +396,18 @@ class BookingController extends Controller
     public function getInventoryHistory(Booking $booking)
     {
         $history = BookingInventoryAudit::where('booking_id', $booking->id)
-            ->latest()
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        return response()->json($history);
+    }
+
+    public function getDetailHistory(Booking $booking)
+    {
+        $history = BookingDetailAudit::where('booking_id', $booking->id)
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
             ->paginate(10);
 
         return response()->json($history);
@@ -585,6 +598,7 @@ class BookingController extends Controller
             'customer_id' => $booking->customer_id,
             'company_id' => $booking->company_id,
             'action_type' => $actionType,
+            'action_at' => now(),
             'previous_status' => $previousStatus,
             'status' => $booking->status,
             'start_date' => $booking->start_date,
@@ -628,6 +642,7 @@ class BookingController extends Controller
                 'inventory_id' => null,
                 'inventory_item_name' => null,
                 'change_type' => $changeType,
+                'action_at' => now(),
                 'quantity_before' => null,
                 'quantity_after' => null,
                 'quantity_change' => null,
@@ -657,6 +672,7 @@ class BookingController extends Controller
                     'inventory_id' => null,
                     'inventory_item_name' => $rule->inventory_name,
                     'change_type' => $changeType,
+                    'action_at' => now(),
                     'quantity_before' => null,
                     'quantity_after' => null,
                     'quantity_change' => -1 * $usageQuantity,
@@ -724,6 +740,7 @@ class BookingController extends Controller
                     'inventory_id' => $inventoryItem->id,
                     'inventory_item_name' => $inventoryItem->name,
                     'change_type' => $shouldDeduct ? 'inventory_deducted' : 'inventory_restored',
+                    'action_at' => now(),
                     'quantity_before' => $before,
                     'quantity_after' => $after,
                     'quantity_change' => $signedChange,

@@ -6,38 +6,34 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('blockouts', function (Blueprint $table) {
+        Schema::create('blockout_recurrings', function (Blueprint $table) {
+
             $table->engine = 'InnoDB';
             $table->id();
+            $table->unsignedBigInteger('company_id')->nullable();
             $table->string('title');
             $table->string('location')->nullable();
             $table->date('start_date');
             $table->string('start_time');
             $table->date('end_date');
             $table->string('end_time');
-            $table->unsignedBigInteger('recurring_id')->nullable();
             $table->string('repeat_every')->nullable();
             $table->string('repeat_on')->nullable();
             $table->date('repeat_until')->nullable();
             $table->text('notes')->nullable();
             $table->boolean('active')->default(true);
-            $table->unsignedBigInteger('company_id');
             $table->timestamps();
 
             $table->index('company_id');
+            $table->index(['company_id', 'repeat_until']);
+
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('blockouts');
+        Schema::dropIfExists('blockout_recurrings');
     }
 };

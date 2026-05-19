@@ -230,6 +230,7 @@ export interface Blockout {
   id: string
   companyId: string
   franchise_id?: string
+  recurringId?: string
   title: string
   location?: string
   startDate: string
@@ -242,6 +243,24 @@ export interface Blockout {
   repeatUntil?: string
   notes?: string
   reason?: string
+  active: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface BlockoutRecurring {
+  id: string
+  companyId: string
+  title: string
+  location?: string
+  startDate: string
+  startTime: string
+  endDate: string
+  endTime: string
+  repeatEvery?: string
+  repeatOn?: string
+  repeatUntil?: string
+  notes?: string
   active: boolean
   createdAt: string
   updatedAt: string

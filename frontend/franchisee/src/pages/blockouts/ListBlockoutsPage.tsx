@@ -1,3 +1,4 @@
+import { formatDisplayDateTime } from "../../lib/timeFormatUtils";
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
@@ -6,12 +7,13 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
-import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, Ban } from 'lucide-react'
+import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, Ban, History } from 'lucide-react'
 import { blockoutsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { formatDisplayDate } from '../../lib/timeFormatUtils'
 import type { Blockout } from '../../types'
+import { SimpleAuditTrailModal } from '../../components/modals/SimpleAuditTrailModal'
 
 export function ListBlockoutsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -20,6 +22,7 @@ export function ListBlockoutsPage() {
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const [auditBlockout, setAuditBlockout] = useState<Blockout | null>(null)
 
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
@@ -192,6 +195,17 @@ export function ListBlockoutsPage() {
                             </button>
                             <button
                               onClick={() => {
+                                setAuditBlockout(row)
+                                setOpenMenuId(null)
+                                setMenuPos(null)
+                              }}
+                              className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                            >
+                              <History className="w-4 h-4 text-gray-400" />
+                              Audit History
+                            </button>
+                            <button
+                              onClick={() => {
                                 setOpenMenuId(null)
                               }}
                               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
@@ -223,6 +237,78 @@ export function ListBlockoutsPage() {
           />
         )}
       </Card>
+
+      <SimpleAuditTrailModal
+        isOpen={!!auditBlockout}
+        onClose={() => setAuditBlockout(null)}
+        entityId={auditBlockout?.id}
+        title="Blockout Audit Trail"
+        subtitle="Create, update and delete actions for this blockout"
+        queryKeyPrefix="blockout-audits"
+        fetchAudits={(id, pageNo) => blockoutsApi.getAudits(id, pageNo)}
+        tableColumns={[
+          {
+            key: 'id',
+            header: 'ID',
+            render: (audit: any) => String(audit.id),
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'title',
+            header: 'Title',
+            render: (audit: any) => audit.title || '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'description',
+            header: 'Description',
+            render: (audit: any) => audit.description || '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'location',
+            header: 'Location',
+            render: (audit: any) => audit.location || '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'start_date',
+            header: 'Start Date',
+            render: (audit: any) => audit.start_date ? formatDisplayDate(audit.start_date) : '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'start_time',
+            header: 'Start Time',
+            render: (audit: any) => audit.start_time || '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'end_date',
+            header: 'End Date',
+            render: (audit: any) => audit.end_date ? formatDisplayDate(audit.end_date) : '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'end_time',
+            header: 'End Time',
+            render: (audit: any) => audit.end_time || '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'action_type',
+            header: 'Action',
+            render: (audit: any) => (audit.action_type ? audit.action_type.replace(/_/g, ' ') : '-'),
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+          {
+            key: 'action_at',
+            header: 'Action At',
+            render: (audit: any) => audit.action_at ? formatDisplayDateTime(audit.action_at) : '-',
+            className: 'px-5 py-4 text-sm text-gray-700 align-top',
+          },
+        ]}
+      />
     </div>
   )
 }

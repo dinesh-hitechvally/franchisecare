@@ -12,6 +12,7 @@ class BookingInventoryAudit extends Model
         'inventory_id',
         'inventory_item_name',
         'change_type',
+        'action_at',
         'quantity_before',
         'quantity_after',
         'quantity_change',

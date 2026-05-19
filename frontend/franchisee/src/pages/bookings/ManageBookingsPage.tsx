@@ -7,9 +7,11 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { BookingAuditModal } from '../../components/modals/BookingAuditModal'
+import { BookingInventoryAuditModal } from '../../components/modals/BookingInventoryAuditModal'
 import type { Booking } from '../../types'
 import { TablePagination } from '../../components/ui/TablePagination'
-import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle, Settings } from 'lucide-react'
+import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle, Settings, History, Package } from 'lucide-react'
 import { useToastStore } from '../../store/toastStore'
 import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
@@ -42,6 +44,8 @@ function getServiceCount(booking: Booking) {
 }
 
 export function ManageBookingsPage() {
+  const [auditBooking, setAuditBooking] = useState<Booking | null>(null)
+  const [inventoryAuditBooking, setInventoryAuditBooking] = useState<Booking | null>(null)
   const queryClient = useQueryClient()
   const { addToast } = useToastStore()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -257,54 +261,74 @@ export function ManageBookingsPage() {
                         onClose={() => { setOpenMenuId(null); setMenuPos(null) }}
                         position={menuPos}
                       >
-                          <button
-                            onClick={() => {
-                              setViewBooking(row)
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <Eye className="w-4 h-4 text-gray-400" />
-                            View
-                          </button>
-                          <Link
-                            to={`/bookings/edit/${row.id}`}
-                            className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <Edit3 className="w-4 h-4 text-gray-400" />
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => sendInvoiceMutation.mutate(row.id)}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <Mail className="w-4 h-4 text-gray-400" />
-                            Email Invoice
-                          </button>
-                          <button
-                            onClick={() => bookingsApi.generateInvoice(row.id)}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                          >
-                            <FileText className="w-4 h-4 text-gray-400" />
-                            View Invoice
-                          </button>
-                          <button
-                            onClick={() => {
-                              markCompletedMutation.mutate([row.id])
-                              setOpenMenuId(null)
-                            }}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors border-t border-gray-100 mt-1"
-                          >
-                            <CheckCircle className="w-4 h-4 text-emerald-500" />
-                            Mark Complete
-                          </button>
-                          <button
-                            onClick={() => cancelBookingMutation.mutate(row.id)}
-                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1"
-                          >
-                            <Trash2 className="w-4 h-4 text-red-400" />
-                            Cancel
-                          </button>
+                        <button
+                          onClick={() => {
+                            setViewBooking(row)
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <Eye className="w-4 h-4 text-gray-400" />
+                          View
+                        </button>
+                        <Link
+                          to={`/bookings/edit/${row.id}`}
+                          className="flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <Edit3 className="w-4 h-4 text-gray-400" />
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => sendInvoiceMutation.mutate(row.id)}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <Mail className="w-4 h-4 text-gray-400" />
+                          Email Invoice
+                        </button>
+                        <button
+                          onClick={() => bookingsApi.generateInvoice(row.id)}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                        >
+                          <FileText className="w-4 h-4 text-gray-400" />
+                          View Invoice
+                        </button>
+                        <button
+                          onClick={() => {
+                            setAuditBooking(row)
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 mt-1"
+                        >
+                          <History className="w-4 h-4 text-blue-400" />
+                          Audit Trail
+                        </button>
+                        <button
+                          onClick={() => {
+                            setInventoryAuditBooking(row)
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors border-t border-gray-100 mt-1"
+                        >
+                          <Package className="w-4 h-4 text-amber-400" />
+                          Inventory Audit Trail
+                        </button>
+                        <button
+                          onClick={() => {
+                            markCompletedMutation.mutate([row.id])
+                            setOpenMenuId(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors border-t border-gray-100 mt-1"
+                        >
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          Mark Complete
+                        </button>
+                        <button
+                          onClick={() => cancelBookingMutation.mutate(row.id)}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1"
+                        >
+                          <Trash2 className="w-4 h-4 text-red-400" />
+                          Cancel
+                        </button>
                       </PortalMenu>
                     </td>
                   </tr>
@@ -326,6 +350,16 @@ export function ManageBookingsPage() {
         isOpen={!!viewBooking}
         onClose={() => setViewBooking(null)}
         booking={viewBooking}
+      />
+      <BookingAuditModal
+        isOpen={!!auditBooking}
+        onClose={() => setAuditBooking(null)}
+        booking={auditBooking}
+      />
+      <BookingInventoryAuditModal
+        isOpen={!!inventoryAuditBooking}
+        onClose={() => setInventoryAuditBooking(null)}
+        booking={inventoryAuditBooking}
       />
     </div>
   )

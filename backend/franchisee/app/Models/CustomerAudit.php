@@ -10,6 +10,7 @@ class CustomerAudit extends Model
     protected $fillable = [
         'customer_id',
         'action_type',
+        'action_at',
         'first_name',
         'last_name',
         'email',

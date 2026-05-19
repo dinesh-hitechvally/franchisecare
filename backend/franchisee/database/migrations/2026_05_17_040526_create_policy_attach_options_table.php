@@ -18,6 +18,7 @@ return new class extends Migration
             $table->boolean('attach_policy')->default(false);
             $table->enum('cancel_before_unit', ['hours', 'days'])->default('hours');
             $table->integer('cancel_before_value')->default(24);
+            $table->time('cancel_cutoff_time')->nullable();
             $table->decimal('cancellation_fee_value', 10, 2)->default(0);
             $table->enum('penalty_type', ['percent', 'fixed'])->default('percent');
             $table->unsignedBigInteger('policy_id')->nullable();

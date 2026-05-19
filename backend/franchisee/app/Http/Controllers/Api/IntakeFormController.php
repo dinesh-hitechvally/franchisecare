@@ -36,7 +36,8 @@ class IntakeFormController extends Controller
     {
         $history = CustomerItemWaiverAudit::where('item_id', $pet->id)
             ->where('waiver_type', $type)
-            ->latest()
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
             ->get();
 
         return response()->json($history);
@@ -181,7 +182,10 @@ class IntakeFormController extends Controller
             );
 
             // 6. Create Audit History
-            $auditData = array_merge($data, ['waiver_id' => $waiver->id]);
+            $auditData = array_merge($data, [
+                'waiver_id' => $waiver->id,
+                'action_at' => now(),
+            ]);
             CustomerItemWaiverAudit::create($auditData);
 
             return response()->json([

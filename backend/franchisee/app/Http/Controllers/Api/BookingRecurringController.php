@@ -5,6 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\BookingRecurring;
+use App\Models\BookingRecurringAudit;
+use App\Models\BookingRecurringDetailAudit;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class BookingRecurringController extends Controller
@@ -254,6 +257,56 @@ class BookingRecurringController extends Controller
         $bookingRecurring->delete();
 
         return response()->json(null, 204);
+    }
+
+    public function getHistory(BookingRecurring $bookingRecurring)
+    {
+        $history = BookingRecurringAudit::where('booking_recurring_id', $bookingRecurring->id)
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        $userIds = $history->getCollection()->pluck('performed_by')->filter()->unique()->values();
+        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'first_name', 'last_name'])->keyBy('id');
+
+        $history->setCollection($history->getCollection()->map(function ($audit) use ($users) {
+            $user = $users->get($audit->performed_by);
+            if (! $user) {
+                return $audit;
+            }
+
+            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            $audit->performed_by_name = $fullName !== '' ? $fullName : ($user->name ?? null);
+
+            return $audit;
+        }));
+
+        return response()->json($history);
+    }
+
+    public function getDetailHistory(BookingRecurring $bookingRecurring)
+    {
+        $history = BookingRecurringDetailAudit::where('recurring_id', $bookingRecurring->id)
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        $userIds = $history->getCollection()->pluck('performed_by')->filter()->unique()->values();
+        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'first_name', 'last_name'])->keyBy('id');
+
+        $history->setCollection($history->getCollection()->map(function ($audit) use ($users) {
+            $user = $users->get($audit->performed_by);
+            if (! $user) {
+                return $audit;
+            }
+
+            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            $audit->performed_by_name = $fullName !== '' ? $fullName : ($user->name ?? null);
+
+            return $audit;
+        }));
+
+        return response()->json($history);
     }
 
     /**

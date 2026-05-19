@@ -7,11 +7,11 @@ import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
 import { Search, Plus, Check, MoreVertical, Eye, Edit3, Trash2, RefreshCw } from 'lucide-react'
-import { blockoutsApi } from '../../api/services'
+import { blockoutRecurringsApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
 import { formatDisplayDate } from '../../lib/timeFormatUtils'
-import type { Blockout } from '../../types'
+import type { BlockoutRecurring } from '../../types'
 
 export function RecurringBlockoutsPage() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -35,14 +35,13 @@ export function RecurringBlockoutsPage() {
   }, [debouncedSearch])
 
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['blockouts', 'recurring', user?.companyId, debouncedSearch, page, perPage],
+    queryKey: ['blockout-recurrings', user?.companyId, debouncedSearch, page, perPage],
     queryFn: () =>
-      blockoutsApi.getPaginated({
+      blockoutRecurringsApi.getPaginated({
         page,
         per_page: perPage,
         company_id: user?.companyId,
         search: debouncedSearch.trim() || undefined,
-        is_recurring: true
       }),
   })
 
@@ -50,9 +49,9 @@ export function RecurringBlockoutsPage() {
   const meta = listResult?.meta
 
   const deleteMutation = useMutation({
-    mutationFn: (id: string) => blockoutsApi.delete(id),
+    mutationFn: (id: string) => blockoutRecurringsApi.delete(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['blockouts'] })
+      queryClient.invalidateQueries({ queryKey: ['blockout-recurrings'] })
       addToast('Recurring blockout deleted successfully', 'success')
       setOpenMenuId(null)
     },
@@ -121,7 +120,7 @@ export function RecurringBlockoutsPage() {
                   <td colSpan={8} className="px-5 py-8 text-center text-gray-500 italic">No recurring blockouts found.</td>
                 </tr>
               ) : (
-                recurringBlockouts.map((row: Blockout) => (
+                recurringBlockouts.map((row: BlockoutRecurring) => (
                   <tr key={row.id} className="hover:bg-gray-50 relative group">
                     <td className="relative px-5 py-4 text-sm font-bold text-gray-700 align-top">
                       <div className="absolute left-0 top-0 bottom-0 w-1 bg-purple-400"></div>

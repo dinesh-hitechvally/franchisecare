@@ -2,10 +2,13 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSimpleAudit;
 use Illuminate\Database\Eloquent\Model;
 
 class BookingRecurringDetail extends Model
 {
+    use HasSimpleAudit;
+
     protected $fillable = [
         'company_id',
         'customer_id',
@@ -34,5 +37,33 @@ class BookingRecurringDetail extends Model
     public function service()
     {
         return $this->belongsTo(Service::class);
+    }
+
+    protected function getAuditModelClass(): string
+    {
+        return BookingRecurringDetailAudit::class;
+    }
+
+    protected function getAuditForeignKey(): string
+    {
+        return 'booking_recurring_detail_id';
+    }
+
+    protected function getAuditExtraColumns(): array
+    {
+        return [
+            'recurring_id' => $this->recurring_id,
+            'customer_id' => $this->customer_id,
+        ];
+    }
+
+    protected function getAuditSnapshotColumns(string $actionType): array
+    {
+        return [
+            'item_id' => $this->item_id,
+            'service_id' => $this->service_id,
+            'price' => $this->price,
+            'duration' => $this->duration,
+        ];
     }
 }

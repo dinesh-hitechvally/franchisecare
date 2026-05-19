@@ -1,4 +1,5 @@
 import { X } from 'lucide-react'
+import { createPortal } from 'react-dom'
 import { cn } from '../../lib/utils'
 
 interface ModalProps {
@@ -13,6 +14,8 @@ interface ModalProps {
 export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }: ModalProps) {
   if (!isOpen) return null
 
+  const isFull = size === 'full'
+
   const sizes = {
     sm: 'max-w-md',
     md: 'max-w-lg',
@@ -21,13 +24,19 @@ export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }:
     full: 'max-w-6xl',
   }
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+  const modalContent = (
+    <div className={cn('fixed inset-0 z-50 flex', isFull ? 'items-stretch justify-stretch' : 'items-center justify-center')}>
       <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      <div className={cn('relative w-full mx-4 bg-white rounded-xl shadow-xl overflow-hidden', sizes[size])}>
+      <div
+        className={cn(
+          'relative bg-white shadow-xl overflow-hidden flex flex-col',
+          isFull ? 'absolute top-5 left-5 right-5 bottom-5 rounded-xl' : 'w-full mx-4 rounded-xl max-h-[90vh]',
+          !isFull && sizes[size]
+        )}
+      >
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-secondary-200">
             <h2 className="text-lg font-semibold text-secondary-900">{title}</h2>
@@ -39,7 +48,7 @@ export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }:
             </button>
           </div>
         )}
-        <div className="px-6 py-4 max-h-[90vh] overflow-y-auto">{children}</div>
+        <div className="px-6 py-4 overflow-y-auto min-h-0 flex-1">{children}</div>
         {footer && (
           <div className="flex justify-end gap-3 px-6 py-4 border-t border-secondary-200 bg-secondary-50">
             {footer}
@@ -48,4 +57,10 @@ export function Modal({ isOpen, onClose, title, children, footer, size = 'md' }:
       </div>
     </div>
   )
+
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(modalContent, document.body)
 }

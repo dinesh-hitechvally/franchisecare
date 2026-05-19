@@ -18,6 +18,7 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id')->nullable();
             $table->unsignedBigInteger('item_id')->nullable();
             $table->unsignedBigInteger('waiver_id')->nullable();
+            $table->timestamp('action_at')->nullable()->useCurrent();
             
             $table->string('waiver_type');
             $table->text('cologne_decline_reason')->nullable();

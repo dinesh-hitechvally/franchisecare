@@ -33,7 +33,7 @@ export const unbookedCustomerReportsApi = {
 };
 
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, BlockoutRecurring, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -154,7 +154,8 @@ function mapBlockoutFromApi(b: any): any {
   b.startTime = raw.start_time || b.startTime
   b.endDate = raw.end_date || b.endDate
   b.endTime = raw.end_time || b.endTime
-  b.isRecurring = raw.is_recurring !== undefined ? !!raw.is_recurring : b.isRecurring
+  b.recurringId = raw.recurring_id || b.recurringId
+  b.isRecurring = raw.is_recurring !== undefined ? !!raw.is_recurring : !!b.recurringId
   b.repeatEvery = raw.repeat_every || b.repeatEvery
   b.repeatOn = raw.repeat_on || b.repeatOn
   b.repeatUntil = raw.repeat_until || b.repeatUntil
@@ -167,6 +168,32 @@ function mapBlockoutFromApi(b: any): any {
 function mapBlockoutsFromApi(rows: unknown): any[] {
   if (!Array.isArray(rows)) return []
   return rows.map((row) => mapBlockoutFromApi(row))
+}
+
+function mapBlockoutRecurringFromApi(r: any): BlockoutRecurring {
+  const raw = r as any
+  return {
+    id: String(raw.id),
+    companyId: String(raw.company_id || raw.companyId || ''),
+    title: raw.title || '',
+    location: raw.location || undefined,
+    startDate: raw.start_date || raw.startDate || '',
+    startTime: raw.start_time || raw.startTime || '',
+    endDate: raw.end_date || raw.endDate || '',
+    endTime: raw.end_time || raw.endTime || '',
+    repeatEvery: raw.repeat_every || raw.repeatEvery || undefined,
+    repeatOn: raw.repeat_on || raw.repeatOn || undefined,
+    repeatUntil: raw.repeat_until || raw.repeatUntil || undefined,
+    notes: raw.notes || undefined,
+    active: raw.active !== undefined ? !!raw.active : true,
+    createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
+    updatedAt: raw.updated_at || raw.updatedAt || new Date().toISOString(),
+  }
+}
+
+function mapBlockoutRecurringsFromApi(rows: unknown): BlockoutRecurring[] {
+  if (!Array.isArray(rows)) return []
+  return rows.map((row) => mapBlockoutRecurringFromApi(row))
 }
 
 function mapInventoryItemFromApi(row: any): InventoryItem {
@@ -426,6 +453,9 @@ export const bookingsApi = {
   getAudits: (id: string, page: number = 1) =>
     apiClient.get<{ data: BookingAuditEntry[]; current_page: number; last_page: number }>(`/bookings/${id}/audits?page=${page}`),
 
+  getDetailAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/bookings/${id}/detail-audits?page=${page}`),
+
   getInventoryAudits: (id: string, page: number = 1) =>
     apiClient.get<{ data: BookingInventoryAuditEntry[]; current_page: number; last_page: number }>(`/bookings/${id}/inventory-audits?page=${page}`),
 
@@ -552,6 +582,12 @@ export const recurringBookingsApi = {
   
   cancel: (id: string, reason?: string) =>
     apiClient.patch<any>(`/booking-recurrings/${id}/cancel`, { cancellation_reason: reason }),
+
+  getAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/booking-recurrings/${id}/audits?page=${page}`),
+
+  getDetailAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/booking-recurrings/${id}/detail-audits?page=${page}`),
   
   delete: (id: string) => apiClient.delete(`/booking-recurrings/${id}`),
 }
@@ -584,7 +620,48 @@ export const blockoutsApi = {
 
   update: (id: string, data: Partial<Blockout>) => apiClient.put<Blockout>(`/blockouts/${id}`, data).then((data) => mapBlockoutFromApi(data)),
 
+  getAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/blockouts/${id}/audits?page=${page}`),
+
   delete: (id: string) => apiClient.delete(`/blockouts/${id}`),
+}
+
+export const blockoutRecurringsApi = {
+  getAll: async (params?: { company_id?: string; search?: string }) => {
+    const rows = await apiClient.get<any[]>('/blockout-recurrings', { params })
+    return mapBlockoutRecurringsFromApi(rows)
+  },
+
+  getPaginated: (params: {
+    page: number
+    per_page?: number
+    company_id?: string
+    search?: string
+  }) =>
+    apiClient.get<{ data: any[]; meta: PaginationMeta }>('/blockout-recurrings', {
+      params: {
+        ...params,
+        page: params.page,
+        per_page: params.per_page ?? 25,
+      },
+    }).then((res) => ({
+      data: mapBlockoutRecurringsFromApi(res.data),
+      meta: res.meta,
+    })),
+
+  getById: (id: string) =>
+    apiClient.get<any>(`/blockout-recurrings/${id}`).then((row) => mapBlockoutRecurringFromApi(row)),
+
+  create: (data: Partial<BlockoutRecurring>) =>
+    apiClient.post<any>('/blockout-recurrings', data).then((row) => mapBlockoutRecurringFromApi(row)),
+
+  update: (id: string, data: Partial<BlockoutRecurring>) =>
+    apiClient.put<any>(`/blockout-recurrings/${id}`, data).then((row) => mapBlockoutRecurringFromApi(row)),
+
+  getAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/blockout-recurrings/${id}/audits?page=${page}`),
+
+  delete: (id: string) => apiClient.delete(`/blockout-recurrings/${id}`),
 }
 
 export const inventoryApi = {
@@ -990,6 +1067,9 @@ export const incomesApi = {
   update: (id: string, data: Partial<Income>) =>
     apiClient.put<Income>(`/incomes/${id}`, data),
 
+  getAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/incomes/${id}/audits?page=${page}`),
+
   delete: (id: string) => apiClient.delete(`/incomes/${id}`),
 }
 
@@ -1011,6 +1091,9 @@ export const expensesApi = {
 
   update: (id: string, data: Partial<Expense>) =>
     apiClient.put<Expense>(`/expenses/${id}`, data),
+
+  getAudits: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/expenses/${id}/audits?page=${page}`),
 
   delete: (id: string) => apiClient.delete(`/expenses/${id}`),
 }

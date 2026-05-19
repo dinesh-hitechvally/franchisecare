@@ -29,6 +29,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('bookings/{booking}/rebook', [\App\Http\Controllers\Api\BookingController::class, 'rebook']);
     Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\BookingController::class, 'updateStatus']);
     Route::get('bookings/{booking}/audits', [\App\Http\Controllers\Api\BookingController::class, 'getHistory']);
+    Route::get('bookings/{booking}/detail-audits', [\App\Http\Controllers\Api\BookingController::class, 'getDetailHistory']);
     Route::get('bookings/{booking}/inventory-audits', [\App\Http\Controllers\Api\BookingController::class, 'getInventoryHistory']);
     Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
     Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);
@@ -46,6 +47,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Recurring Bookings
     Route::apiResource('booking-recurrings', \App\Http\Controllers\Api\BookingRecurringController::class);
     Route::patch('booking-recurrings/{bookingRecurring}/cancel', [\App\Http\Controllers\Api\BookingRecurringController::class, 'cancel']);
+    Route::get('booking-recurrings/{bookingRecurring}/audits', [\App\Http\Controllers\Api\BookingRecurringController::class, 'getHistory']);
+    Route::get('booking-recurrings/{bookingRecurring}/detail-audits', [\App\Http\Controllers\Api\BookingRecurringController::class, 'getDetailHistory']);
 
     // Customers
     Route::get('customers/{customer}/pets', [\App\Http\Controllers\Api\PetController::class, 'getByCustomer']);
@@ -67,6 +70,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Blockouts
     Route::apiResource('blockouts', \App\Http\Controllers\Api\BlockoutController::class);
+    Route::get('blockouts/{blockout}/audits', [\App\Http\Controllers\Api\BlockoutController::class, 'getHistory']);
+    Route::apiResource('blockout-recurrings', \App\Http\Controllers\Api\BlockoutRecurringController::class);
+    Route::get('blockout-recurrings/{blockoutRecurring}/audits', [\App\Http\Controllers\Api\BlockoutRecurringController::class, 'getHistory']);
 
     // Calendar Events
     Route::apiResource('calendar-events', \App\Http\Controllers\Api\CalendarEventController::class);
@@ -147,12 +153,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // Incomes
     Route::apiResource('incomes', \App\Http\Controllers\Api\IncomeController::class);
+    Route::get('incomes/{income}/audits', [\App\Http\Controllers\Api\IncomeController::class, 'getHistory']);
 
     // Recurring Incomes
     Route::apiResource('recurring-incomes', \App\Http\Controllers\Api\RecurringIncomeController::class);
 
     // Expenses
     Route::apiResource('expenses', \App\Http\Controllers\Api\ExpenseController::class);
+    Route::get('expenses/{expense}/audits', [\App\Http\Controllers\Api\ExpenseController::class, 'getHistory']);
 
     // Recurring Expenses
     Route::apiResource('recurring-expenses', \App\Http\Controllers\Api\RecurringExpenseController::class);

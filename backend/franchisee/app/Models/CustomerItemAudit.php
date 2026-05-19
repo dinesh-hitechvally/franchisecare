@@ -11,6 +11,7 @@ class CustomerItemAudit extends Model
         'customer_id',
         'item_id',
         'action_type',
+        'action_at',
         'name',
         'gender',
         'birth_date',

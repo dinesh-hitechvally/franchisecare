@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\HasSimpleAudit;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Expense extends Model
 {
     use SoftDeletes;
+    use HasSimpleAudit;
 
     protected $fillable = [
         'company_id',
@@ -34,5 +36,28 @@ class Expense extends Model
     public function recurringExpense()
     {
         return $this->belongsTo(RecurringExpense::class, 'recurring_expense_id');
+    }
+
+    protected function getAuditModelClass(): string
+    {
+        return ExpenseAudit::class;
+    }
+
+    protected function getAuditForeignKey(): string
+    {
+        return 'expense_id';
+    }
+
+    protected function getAuditSnapshotColumns(string $actionType): array
+    {
+        return [
+            'expense_category_id' => $this->expense_category_id,
+            'title' => $this->title,
+            'description' => $this->description,
+            'amount' => $this->amount,
+            'expense_date' => $this->expense_date,
+            'is_active' => (bool) $this->is_active,
+            'recurring_expense_id' => $this->recurring_expense_id,
+        ];
     }
 }

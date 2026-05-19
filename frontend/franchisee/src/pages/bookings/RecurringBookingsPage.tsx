@@ -12,6 +12,7 @@ import { Search, Plus, Check, X, MoreVertical, Eye, Edit3, Trash2, RefreshCcw, R
 import type { Booking } from '../../types'
 import { RecurringBookingDetailModal } from '../../components/modals/RecurringBookingDetailModal'
 import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
+import { SimpleAuditTrailModal } from '../../components/modals/SimpleAuditTrailModal'
 
 export function RecurringBookingsPage() {
   const navigate = useNavigate()
@@ -24,6 +25,7 @@ export function RecurringBookingsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [recurringModalOpen, setRecurringModalOpen] = useState(false)
   const [selectedRecurringBooking, setSelectedRecurringBooking] = useState<Booking | null>(null)
+  const [auditRecurringBooking, setAuditRecurringBooking] = useState<Booking | null>(null)
   const { user } = useAuthStore()
   const { addToast } = useToastStore()
   const queryClient = useQueryClient()
@@ -263,6 +265,17 @@ export function RecurringBookingsPage() {
                             <Edit3 className="w-4 h-4 text-gray-400" />
                             Edit
                           </button>
+                          <button
+                            onClick={() => {
+                              setAuditRecurringBooking(row)
+                              setOpenMenuId(null)
+                              setMenuPos(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <RefreshCcw className="w-4 h-4 text-gray-400" />
+                            Audit History
+                          </button>
                           
                           <button
                             onClick={() => handleToggleAutoExtend(row.id, (row as any).autoExtend)}
@@ -307,6 +320,16 @@ export function RecurringBookingsPage() {
         onClose={() => setRecurringModalOpen(false)}
         recurringBooking={selectedRecurringBooking}
         allBookings={recurringBookings || []}
+      />
+
+      <SimpleAuditTrailModal
+        isOpen={!!auditRecurringBooking}
+        onClose={() => setAuditRecurringBooking(null)}
+        entityId={auditRecurringBooking?.id}
+        title="Recurring Booking Audit Trail"
+        subtitle="Changes to recurring booking and its settings"
+        queryKeyPrefix="recurring-booking-audits"
+        fetchAudits={(id, pageNo) => recurringBookingsApi.getAudits(id, pageNo)}
       />
     </div>
   )

@@ -19,6 +19,7 @@ return new class extends Migration
             $table->unsignedBigInteger('customer_id')->nullable();
             $table->unsignedBigInteger('item_id')->nullable();
             $table->string('action_type')->comment('created, updated');
+            $table->timestamp('action_at')->nullable()->useCurrent();
 
             $table->string('name')->nullable();
             $table->string('gender')->nullable();

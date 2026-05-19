@@ -21,6 +21,7 @@ return new class extends Migration
             $table->boolean('show_pet_name')->default(true);
             $table->boolean('show_pet_breed')->default(true);
             $table->boolean('show_services_name')->default(true);
+            $table->boolean('show_cancellation_policy')->default(true);
             $table->timestamps();
 
             $table->unique('company_id');

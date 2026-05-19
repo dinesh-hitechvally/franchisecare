@@ -3,55 +3,47 @@
 namespace App\Models;
 
 use App\Models\Concerns\HasSimpleAudit;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
-class Blockout extends Model
+class BlockoutRecurring extends Model
 {
-    use HasFactory;
     use HasSimpleAudit;
 
     protected $fillable = [
+        'company_id',
         'title',
         'location',
         'start_date',
         'start_time',
         'end_date',
         'end_time',
-        'recurring_id',
         'repeat_every',
         'repeat_on',
         'repeat_until',
         'notes',
         'active',
-        'company_id',
     ];
 
     protected $casts = [
-        'active' => 'boolean',
         'start_date' => 'date',
         'end_date' => 'date',
         'repeat_until' => 'date',
+        'active' => 'boolean',
     ];
 
-    public function company()
+    public function blockouts()
     {
-        return $this->belongsTo(Company::class);
-    }
-
-    public function recurringBlockout()
-    {
-        return $this->belongsTo(BlockoutRecurring::class, 'recurring_id');
+        return $this->hasMany(Blockout::class, 'recurring_id');
     }
 
     protected function getAuditModelClass(): string
     {
-        return BlockoutAudit::class;
+        return BlockoutRecurringAudit::class;
     }
 
     protected function getAuditForeignKey(): string
     {
-        return 'blockout_id';
+        return 'blockout_recurring_id';
     }
 
     protected function getAuditSnapshotColumns(string $actionType): array
@@ -63,7 +55,6 @@ class Blockout extends Model
             'start_time' => $this->start_time,
             'end_date' => $this->end_date,
             'end_time' => $this->end_time,
-            'recurring_id' => $this->recurring_id,
             'repeat_every' => $this->repeat_every,
             'repeat_on' => $this->repeat_on,
             'repeat_until' => $this->repeat_until,

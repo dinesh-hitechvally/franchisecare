@@ -12,6 +12,7 @@ class BookingAudit extends Model
         'customer_id',
         'company_id',
         'action_type',
+        'action_at',
         'previous_status',
         'status',
         'start_date',

@@ -10,6 +10,7 @@ import { incomesApi } from '../../api/services'
 import { Loader2 } from 'lucide-react'
 import type { Income } from '../../types'
 import { formatDisplayDate } from '../../lib/timeFormatUtils'
+import { SimpleAuditTrailModal } from '../../components/modals/SimpleAuditTrailModal'
 
 export function ListIncomesPage() {
   const navigate = useNavigate()
@@ -26,6 +27,7 @@ export function ListIncomesPage() {
   const [perPage, setPerPage] = useState(25)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
+  const [auditIncome, setAuditIncome] = useState<Income | null>(null)
 
   // Applied filter state — only updated on button click
   const [appliedSearch, setAppliedSearch] = useState('')
@@ -245,6 +247,17 @@ export function ListIncomesPage() {
                             </button>
                           )}
                           <button
+                            onClick={() => {
+                              setAuditIncome(income)
+                              setOpenMenuId(null)
+                              setMenuPos(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+                          >
+                            <Eye className="w-4 h-4 text-gray-400" />
+                            Audit History
+                          </button>
+                          <button
                             onClick={() => deleteMutation.mutate(income.id)}
                             disabled={deleteMutation.isPending}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1 disabled:opacity-50"
@@ -298,6 +311,16 @@ export function ListIncomesPage() {
           </div>
         )}
       </Card>
+
+      <SimpleAuditTrailModal
+        isOpen={!!auditIncome}
+        onClose={() => setAuditIncome(null)}
+        entityId={auditIncome?.id}
+        title="Income Audit Trail"
+        subtitle="Create, update and delete changes for this income"
+        queryKeyPrefix="income-audits"
+        fetchAudits={(id, pageNo) => incomesApi.getAudits(id, pageNo)}
+      />
     </div>
   )
 }

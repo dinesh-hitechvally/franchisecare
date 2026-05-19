@@ -47,6 +47,7 @@ class PetController extends Controller
         // Record Audit
         CustomerItemAudit::create(array_merge($pet->toArray(), [
             'item_id' => $pet->id,
+            'action_at' => now(),
             'action_type' => 'created'
         ]));
 
@@ -97,6 +98,7 @@ class PetController extends Controller
         // Record Audit
         CustomerItemAudit::create(array_merge($pet->fresh()->toArray(), [
             'item_id' => $pet->id,
+            'action_at' => now(),
             'action_type' => 'updated'
         ]));
 
@@ -126,7 +128,8 @@ class PetController extends Controller
     public function getHistory(CustomerItem $pet)
     {
         $history = CustomerItemAudit::where('item_id', $pet->id)
-            ->latest()
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
             ->paginate(5);
 
         return response()->json($history);

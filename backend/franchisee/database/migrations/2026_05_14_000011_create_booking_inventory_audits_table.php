@@ -16,6 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('inventory_id')->nullable();
             $table->string('inventory_item_name')->nullable();
             $table->string('change_type', 100);
+            $table->timestamp('action_at')->nullable()->useCurrent();
             $table->integer('quantity_before')->nullable();
             $table->integer('quantity_after')->nullable();
             $table->integer('quantity_change')->nullable();

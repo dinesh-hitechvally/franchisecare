@@ -76,6 +76,7 @@ class CustomerController extends Controller
         // Record Audit
         CustomerAudit::create(array_merge($customer->toArray(), [
             'customer_id' => $customer->id,
+            'action_at' => now(),
             'action_type' => 'created'
         ]));
 
@@ -122,6 +123,7 @@ class CustomerController extends Controller
         // Record Audit
         CustomerAudit::create(array_merge($customer->fresh()->toArray(), [
             'customer_id' => $customer->id,
+            'action_at' => now(),
             'action_type' => 'updated'
         ]));
 
@@ -136,6 +138,7 @@ class CustomerController extends Controller
         // Record Audit
         CustomerAudit::create(array_merge($customer->fresh()->toArray(), [
             'customer_id' => $customer->id,
+            'action_at' => now(),
             'action_type' => 'archived'
         ]));
 
@@ -153,6 +156,7 @@ class CustomerController extends Controller
         // Record Audit
         CustomerAudit::create(array_merge($customer->fresh()->toArray(), [
             'customer_id' => $customer->id,
+            'action_at' => now(),
             'action_type' => 'restored'
         ]));
 
@@ -166,7 +170,8 @@ class CustomerController extends Controller
     {
         $customer = Customer::findOrFail($id);
         $history = CustomerAudit::where('customer_id', $customer->id)
-            ->latest()
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
             ->paginate(5);
 
         return response()->json($history);
