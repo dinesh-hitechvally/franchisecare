@@ -4,27 +4,94 @@ use App\Http\Controllers\Api\AuthController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
+/*
+|--------------------------------------------------------------------------
+| Public Routes (No Authentication)
+|--------------------------------------------------------------------------
+*/
+
 Route::post('/login', [AuthController::class, 'login']);
 
+/*
+|--------------------------------------------------------------------------
+| Authenticated Routes
+|--------------------------------------------------------------------------
+*/
+
 Route::middleware('auth:sanctum')->group(function () {
-    Route::get('/user', function (Request $request) {
-        return $request->user();
-    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication & User Profile
+    |--------------------------------------------------------------------------
+    */
+    Route::get('/user', fn (Request $request) => $request->user());
+    Route::post('/logout', [AuthController::class, 'logout']);
+    Route::post('/change-password', [AuthController::class, 'changePassword']);
     Route::get('/users/{user}', [\App\Http\Controllers\Api\UserProfileController::class, 'show']);
     Route::get('/users/{user}/posts', [\App\Http\Controllers\Api\UserProfileController::class, 'userPosts']);
     Route::post('/profile/posts', [\App\Http\Controllers\Api\UserProfileController::class, 'createPost']);
     Route::patch('/profile/posts/{thread}', [\App\Http\Controllers\Api\UserProfileController::class, 'updatePost']);
     Route::post('/user/profile', [\App\Http\Controllers\Api\UserProfileController::class, 'updateProfile']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/change-password', [AuthController::class, 'changePassword']);
 
-    // Waitlists
+    /*
+    |--------------------------------------------------------------------------
+    | Dashboard
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('dashboard')->group(function () {
+        Route::get('metrics', [\App\Http\Controllers\Api\DashboardController::class, 'metrics']);
+        Route::get('activities', [\App\Http\Controllers\Api\DashboardController::class, 'activities']);
+        Route::get('news', [\App\Http\Controllers\Api\DashboardController::class, 'news']);
+        Route::get('booking-schedule', [\App\Http\Controllers\Api\DashboardController::class, 'bookingSchedule']);
+        Route::get('forecast', [\App\Http\Controllers\Api\DashboardController::class, 'forecast']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Leads
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('leads', \App\Http\Controllers\Api\LeadController::class);
+    Route::post('leads/{lead}/convert', [\App\Http\Controllers\Api\LeadController::class, 'convert']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Customers
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class);
+    Route::get('customers/{customer}/pets', [\App\Http\Controllers\Api\PetController::class, 'getByCustomer']);
+    Route::get('customers/{customer}/audits', [\App\Http\Controllers\Api\CustomerController::class, 'getHistory']);
+    Route::post('customers/{customer}/restore', [\App\Http\Controllers\Api\CustomerController::class, 'restore']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Pets & Waivers
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('pets', \App\Http\Controllers\Api\PetController::class);
+    Route::get('pets/{pet}/audits', [\App\Http\Controllers\Api\PetController::class, 'getHistory']);
+    Route::get('pets/{pet}/waivers', [\App\Http\Controllers\Api\IntakeFormController::class, 'getByPet']);
+    Route::get('pets/{pet}/waivers/{type}/history', [\App\Http\Controllers\Api\IntakeFormController::class, 'getHistory']);
+    Route::get('waivers/{waiver}', [\App\Http\Controllers\Api\IntakeFormController::class, 'show']);
+    Route::post('intake-forms', [\App\Http\Controllers\Api\IntakeFormController::class, 'store']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Waitlists
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('waitlists', \App\Http\Controllers\Api\WaitlistController::class);
     Route::patch('waitlists/{waitlist}/status', [\App\Http\Controllers\Api\WaitlistController::class, 'updateStatus']);
     Route::post('waitlists/{waitlist}/convert-to-booking', [\App\Http\Controllers\Api\WaitlistController::class, 'convertToBooking']);
     Route::post('waitlists/{waitlist}/send-email-confirmation', [\App\Http\Controllers\Api\WaitlistController::class, 'sendEmailConfirmation']);
 
-    // Bookings
+    /*
+    |--------------------------------------------------------------------------
+    | Bookings
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('bookings', \App\Http\Controllers\Api\BookingController::class);
     Route::post('bookings/{booking}/rebook', [\App\Http\Controllers\Api\BookingController::class, 'rebook']);
     Route::patch('bookings/{booking}/status', [\App\Http\Controllers\Api\BookingController::class, 'updateStatus']);
@@ -37,181 +104,256 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('bookings/{booking}/send-receipt', [\App\Http\Controllers\Api\BookingController::class, 'sendReceipt']);
     Route::post('bookings/{booking}/send-sms-confirmation', [\App\Http\Controllers\Api\BookingController::class, 'sendSmsConfirmation']);
     Route::post('bookings/{booking}/send-email-confirmation', [\App\Http\Controllers\Api\BookingController::class, 'sendEmailConfirmation']);
-    // Booking Reports
-    Route::get('reports/booking', [\App\Http\Controllers\Api\BookingReportController::class, 'index']);
-    Route::get('reports/service', [\App\Http\Controllers\Api\ServiceReportController::class, 'index']);
-    Route::get('reports/suburb', [\App\Http\Controllers\Api\SuburbReportController::class, 'index']);
-    Route::get('reports/customer', [\App\Http\Controllers\Api\CustomerReportController::class, 'index']);
-    Route::get('reports/customer/unbooked', [\App\Http\Controllers\Api\UnbookedCustomerReportController::class, 'index']);
 
-    // Recurring Bookings
+    /*
+    |--------------------------------------------------------------------------
+    | Recurring Bookings
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('booking-recurrings', \App\Http\Controllers\Api\BookingRecurringController::class);
     Route::patch('booking-recurrings/{bookingRecurring}/cancel', [\App\Http\Controllers\Api\BookingRecurringController::class, 'cancel']);
     Route::get('booking-recurrings/{bookingRecurring}/audits', [\App\Http\Controllers\Api\BookingRecurringController::class, 'getHistory']);
     Route::get('booking-recurrings/{bookingRecurring}/detail-audits', [\App\Http\Controllers\Api\BookingRecurringController::class, 'getDetailHistory']);
 
-    // Customers
-    Route::get('customers/{customer}/pets', [\App\Http\Controllers\Api\PetController::class, 'getByCustomer']);
-    Route::get('customers/{customer}/audits', [\App\Http\Controllers\Api\CustomerController::class, 'getHistory']);
-    Route::post('customers/{customer}/restore', [\App\Http\Controllers\Api\CustomerController::class, 'restore']);
-    Route::apiResource('customers', \App\Http\Controllers\Api\CustomerController::class);
-
-    // Leads
-    Route::apiResource('leads', \App\Http\Controllers\Api\LeadController::class);
-    Route::post('leads/{lead}/convert', [\App\Http\Controllers\Api\LeadController::class, 'convert']);
-
-    // Pets
-    Route::apiResource('pets', \App\Http\Controllers\Api\PetController::class);
-    Route::get('pets/{pet}/audits', [\App\Http\Controllers\Api\PetController::class, 'getHistory']);
-    Route::get('pets/{pet}/waivers', [\App\Http\Controllers\Api\IntakeFormController::class, 'getByPet']);
-    Route::get('pets/{pet}/waivers/{type}/history', [\App\Http\Controllers\Api\IntakeFormController::class, 'getHistory']);
-    Route::get('waivers/{waiver}', [\App\Http\Controllers\Api\IntakeFormController::class, 'show']);
-    Route::post('intake-forms', [\App\Http\Controllers\Api\IntakeFormController::class, 'store']);
-
-    // Blockouts
+    /*
+    |--------------------------------------------------------------------------
+    | Blockouts
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('blockouts', \App\Http\Controllers\Api\BlockoutController::class);
     Route::get('blockouts/{blockout}/audits', [\App\Http\Controllers\Api\BlockoutController::class, 'getHistory']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Recurring Blockouts
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('blockout-recurrings', \App\Http\Controllers\Api\BlockoutRecurringController::class);
     Route::get('blockout-recurrings/{blockoutRecurring}/audits', [\App\Http\Controllers\Api\BlockoutRecurringController::class, 'getHistory']);
 
-    // Calendar Events
+    /*
+    |--------------------------------------------------------------------------
+    | Calendar Events
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('calendar-events', \App\Http\Controllers\Api\CalendarEventController::class);
     Route::get('calendar-events/month', [\App\Http\Controllers\Api\CalendarEventController::class, 'getByMonth']);
     Route::post('calendar-events/sync', [\App\Http\Controllers\Api\CalendarEventController::class, 'syncEvents']);
 
-    // Services
+    /*
+    |--------------------------------------------------------------------------
+    | Services
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('services', \App\Http\Controllers\Api\ServiceController::class);
+    Route::get('service-prices', [\App\Http\Controllers\Api\ServicePriceController::class, 'index']);
+    Route::post('service-prices', [\App\Http\Controllers\Api\ServicePriceController::class, 'updateAll']);
+    Route::get('company-services', [\App\Http\Controllers\Api\CompanyServiceController::class, 'index']);
+    Route::post('company-services', [\App\Http\Controllers\Api\CompanyServiceController::class, 'updateAll']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Service Inventory Usage
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('service-inventory-usages', \App\Http\Controllers\Api\ServiceInventoryUsageController::class)->except(['show', 'create', 'edit']);
     Route::get('service-inventory-usages/{serviceId}/history', [\App\Http\Controllers\Api\ServiceInventoryUsageController::class, 'history']);
 
-    // Inventory
-    Route::get('inventory/items', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
-    Route::post('inventory/items', [\App\Http\Controllers\Api\InventoryController::class, 'store']);
-    Route::put('inventory/items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'update']);
-    Route::delete('inventory/items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'destroy']);
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Items
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('inventory')->group(function () {
+        Route::get('items', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
+        Route::post('items', [\App\Http\Controllers\Api\InventoryController::class, 'store']);
+        Route::put('items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'update']);
+        Route::delete('items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'destroy']);
+    });
 
-    // Inventory Orders
+    /*
+    |--------------------------------------------------------------------------
+    | Inventory Orders
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('inventory/orders', \App\Http\Controllers\Api\InventoryOrderController::class);
 
-    // News
+    /*
+    |--------------------------------------------------------------------------
+    | Stock Take
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('stock-take')->group(function () {
+        Route::get('last/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getLast']);
+        Route::get('history/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getHistory']);
+        Route::post('/', [\App\Http\Controllers\Api\StockTakeController::class, 'store']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Income & Expense Categories
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('income-categories', \App\Http\Controllers\Api\IncomeCategoryController::class);
+    Route::apiResource('expense-categories', \App\Http\Controllers\Api\ExpenseCategoryController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Incomes
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('incomes', \App\Http\Controllers\Api\IncomeController::class);
+    Route::get('incomes/{income}/audits', [\App\Http\Controllers\Api\IncomeController::class, 'getHistory']);
+    Route::apiResource('recurring-incomes', \App\Http\Controllers\Api\RecurringIncomeController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Expenses
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('expenses', \App\Http\Controllers\Api\ExpenseController::class);
+    Route::get('expenses/{expense}/audits', [\App\Http\Controllers\Api\ExpenseController::class, 'getHistory']);
+    Route::apiResource('recurring-expenses', \App\Http\Controllers\Api\RecurringExpenseController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Documents
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Reports
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('reports')->group(function () {
+        Route::get('booking', [\App\Http\Controllers\Api\BookingReportController::class, 'index']);
+        Route::get('service', [\App\Http\Controllers\Api\ServiceReportController::class, 'index']);
+        Route::get('suburb', [\App\Http\Controllers\Api\SuburbReportController::class, 'index']);
+        Route::get('customer', [\App\Http\Controllers\Api\CustomerReportController::class, 'index']);
+        Route::get('customer/unbooked', [\App\Http\Controllers\Api\UnbookedCustomerReportController::class, 'index']);
+        Route::get('benchmarking', [\App\Http\Controllers\Api\BenchmarkingController::class, 'index']);
+        Route::get('income', [\App\Http\Controllers\Api\IncomeReportController::class, 'index']);
+        Route::get('tracking', [\App\Http\Controllers\Api\ReportController::class, 'tracking']);
+        Route::get('gst', [\App\Http\Controllers\Api\ReportController::class, 'gstSummary']);
+        Route::get('profit-loss', [\App\Http\Controllers\Api\ReportController::class, 'profitLoss']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Communication History
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('communication')->group(function () {
+        Route::get('sms-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsIndex']);
+        Route::post('sms-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsStore']);
+        Route::get('sms-history/{smsHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsShow']);
+        Route::delete('sms-history/{smsHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsDestroy']);
+        Route::get('email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailIndex']);
+        Route::post('email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailStore']);
+        Route::get('email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailShow']);
+        Route::delete('email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailDestroy']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | SMS Credits
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('sms-credits')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\SmsCreditController::class, 'index']);
+        Route::post('purchase', [\App\Http\Controllers\Api\SmsCreditController::class, 'purchase']);
+        Route::get('history', [\App\Http\Controllers\Api\SmsCreditController::class, 'history']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Forum - Threads
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('forum')->group(function () {
+        Route::get('threads', [\App\Http\Controllers\Api\ForumController::class, 'index']);
+        Route::post('threads', [\App\Http\Controllers\Api\ForumController::class, 'store']);
+        Route::get('threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'show']);
+        Route::delete('threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'destroy']);
+        Route::post('threads/{forumThread}/comments', [\App\Http\Controllers\Api\ForumController::class, 'addComment']);
+        Route::post('threads/{forumThread}/like', [\App\Http\Controllers\Api\ForumController::class, 'like']);
+        Route::get('notifications', [\App\Http\Controllers\Api\ForumController::class, 'notifications']);
+        Route::post('notifications/read-all', [\App\Http\Controllers\Api\ForumController::class, 'markAllNotificationsAsRead']);
+        Route::post('notifications/{forumNotification}/read', [\App\Http\Controllers\Api\ForumController::class, 'markNotificationAsRead']);
+        Route::post('comments/{forumComment}/like', [\App\Http\Controllers\Api\ForumController::class, 'likeComment']);
+        Route::post('comments/{forumComment}/reply', [\App\Http\Controllers\Api\ForumController::class, 'replyToComment']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Forum - Groups
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('forum/groups')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\ForumGroupController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\ForumGroupController::class, 'store']);
+        Route::get('{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'show']);
+        Route::put('{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'update']);
+        Route::delete('{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'destroy']);
+        Route::post('{forumGroup}/join', [\App\Http\Controllers\Api\ForumGroupController::class, 'join']);
+        Route::post('{forumGroup}/leave', [\App\Http\Controllers\Api\ForumGroupController::class, 'leave']);
+        Route::get('{forumGroup}/members', [\App\Http\Controllers\Api\ForumGroupController::class, 'members']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | News
+    |--------------------------------------------------------------------------
+    */
     Route::apiResource('news', \App\Http\Controllers\Api\NewsController::class);
     Route::patch('news/{news}/publish', [\App\Http\Controllers\Api\NewsController::class, 'publish']);
 
-    // Dashboard
-    Route::get('dashboard/metrics', [\App\Http\Controllers\Api\DashboardController::class, 'metrics']);
-    Route::get('dashboard/activities', [\App\Http\Controllers\Api\DashboardController::class, 'activities']);
-    Route::get('dashboard/news', [\App\Http\Controllers\Api\DashboardController::class, 'news']);
-    Route::get('dashboard/booking-schedule', [\App\Http\Controllers\Api\DashboardController::class, 'bookingSchedule']);
-    Route::get('dashboard/forecast', [\App\Http\Controllers\Api\DashboardController::class, 'forecast']);
+    /*
+    |--------------------------------------------------------------------------
+    | Settings
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('settings')->group(function () {
+        Route::get('preferences', [\App\Http\Controllers\Api\SettingsController::class, 'getPreferences']);
+        Route::post('preferences', [\App\Http\Controllers\Api\SettingsController::class, 'savePreferences']);
+        Route::get('income-templates', [\App\Http\Controllers\Api\SettingsController::class, 'getIncomeTemplates']);
+        Route::post('income-templates', [\App\Http\Controllers\Api\SettingsController::class, 'saveIncomeTemplates']);
+        Route::get('calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getCalendarSettings']);
+        Route::post('calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveCalendarSettings']);
+        Route::get('cancellation-policy', [\App\Http\Controllers\Api\SettingsController::class, 'getCancellationPolicy']);
+        Route::post('cancellation-policy', [\App\Http\Controllers\Api\SettingsController::class, 'saveCancellationPolicy']);
+        Route::get('reminder', [\App\Http\Controllers\Api\SettingsController::class, 'getReminderSettings']);
+        Route::post('reminder', [\App\Http\Controllers\Api\SettingsController::class, 'saveReminderSettings']);
+        Route::get('app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getAppCalendarSettings']);
+        Route::post('app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveAppCalendarSettings']);
+    });
 
-    // Forum
-    Route::get('forum/threads', [\App\Http\Controllers\Api\ForumController::class, 'index']);
-    Route::post('forum/threads', [\App\Http\Controllers\Api\ForumController::class, 'store']);
-    Route::get('forum/threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'show']);
-    Route::post('forum/threads/{forumThread}/comments', [\App\Http\Controllers\Api\ForumController::class, 'addComment']);
-    Route::post('forum/threads/{forumThread}/like', [\App\Http\Controllers\Api\ForumController::class, 'like']);
-    Route::get('forum/notifications', [\App\Http\Controllers\Api\ForumController::class, 'notifications']);
-    Route::post('forum/notifications/read-all', [\App\Http\Controllers\Api\ForumController::class, 'markAllNotificationsAsRead']);
-    Route::post('forum/notifications/{forumNotification}/read', [\App\Http\Controllers\Api\ForumController::class, 'markNotificationAsRead']);
-    Route::delete('forum/threads/{forumThread}', [\App\Http\Controllers\Api\ForumController::class, 'destroy']);
-
-    // Forum Comments
-    Route::post('forum/comments/{forumComment}/like', [\App\Http\Controllers\Api\ForumController::class, 'likeComment']);
-    Route::post('forum/comments/{forumComment}/reply', [\App\Http\Controllers\Api\ForumController::class, 'replyToComment']);
-
-    // Forum Groups
-    Route::get('forum/groups', [\App\Http\Controllers\Api\ForumGroupController::class, 'index']);
-    Route::post('forum/groups', [\App\Http\Controllers\Api\ForumGroupController::class, 'store']);
-    Route::get('forum/groups/{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'show']);
-    Route::put('forum/groups/{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'update']);
-    Route::delete('forum/groups/{forumGroup}', [\App\Http\Controllers\Api\ForumGroupController::class, 'destroy']);
-    Route::post('forum/groups/{forumGroup}/join', [\App\Http\Controllers\Api\ForumGroupController::class, 'join']);
-    Route::post('forum/groups/{forumGroup}/leave', [\App\Http\Controllers\Api\ForumGroupController::class, 'leave']);
-    Route::get('forum/groups/{forumGroup}/members', [\App\Http\Controllers\Api\ForumGroupController::class, 'members']);
-
-    // Stock Take
-    Route::get('stock-take/last/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getLast']);
-    Route::get('stock-take/history/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getHistory']);
-    Route::post('stock-take', [\App\Http\Controllers\Api\StockTakeController::class, 'store']);
-
-    // Communication History
-    Route::get('communication/sms-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsIndex']);
-    Route::post('communication/sms-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsStore']);
-    Route::get('communication/sms-history/{smsHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsShow']);
-    Route::delete('communication/sms-history/{smsHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'smsDestroy']);
-
-    Route::get('communication/email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailIndex']);
-    Route::post('communication/email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailStore']);
-    Route::get('communication/email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailShow']);
-    Route::delete('communication/email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailDestroy']);
-
-    // Income Categories
-    Route::apiResource('income-categories', \App\Http\Controllers\Api\IncomeCategoryController::class);
-
-    // Expense Categories
-    Route::apiResource('expense-categories', \App\Http\Controllers\Api\ExpenseCategoryController::class);
-
-    // Incomes
-    Route::apiResource('incomes', \App\Http\Controllers\Api\IncomeController::class);
-    Route::get('incomes/{income}/audits', [\App\Http\Controllers\Api\IncomeController::class, 'getHistory']);
-
-    // Recurring Incomes
-    Route::apiResource('recurring-incomes', \App\Http\Controllers\Api\RecurringIncomeController::class);
-
-    // Expenses
-    Route::apiResource('expenses', \App\Http\Controllers\Api\ExpenseController::class);
-    Route::get('expenses/{expense}/audits', [\App\Http\Controllers\Api\ExpenseController::class, 'getHistory']);
-
-    // Recurring Expenses
-    Route::apiResource('recurring-expenses', \App\Http\Controllers\Api\RecurringExpenseController::class);
-
-    // Documents
-    Route::apiResource('documents', \App\Http\Controllers\Api\DocumentController::class);
-
-    // Reports
-    Route::get('reports/benchmarking', [\App\Http\Controllers\Api\BenchmarkingController::class, 'index']);
-    Route::get('reports/income', [\App\Http\Controllers\Api\IncomeReportController::class, 'index']);
-    Route::get('reports/tracking', [\App\Http\Controllers\Api\ReportController::class, 'tracking']);
-    Route::get('reports/gst', [\App\Http\Controllers\Api\ReportController::class, 'gstSummary']);
-    Route::get('reports/profit-loss', [\App\Http\Controllers\Api\ReportController::class, 'profitLoss']);
-
-    // Website Settings
+    /*
+    |--------------------------------------------------------------------------
+    | Website Settings
+    |--------------------------------------------------------------------------
+    */
     Route::get('website-settings', [\App\Http\Controllers\Api\WebsiteSettingsController::class, 'show']);
     Route::put('website-settings', [\App\Http\Controllers\Api\WebsiteSettingsController::class, 'update']);
 
-    // SMS Credits
-    Route::get('sms-credits', [\App\Http\Controllers\Api\SmsCreditController::class, 'index']);
-    Route::post('sms-credits/purchase', [\App\Http\Controllers\Api\SmsCreditController::class, 'purchase']);
-    Route::get('sms-credits/history', [\App\Http\Controllers\Api\SmsCreditController::class, 'history']);
-
-    // Settings
-    Route::get('settings/preferences', [\App\Http\Controllers\Api\SettingsController::class, 'getPreferences']);
-    Route::post('settings/preferences', [\App\Http\Controllers\Api\SettingsController::class, 'savePreferences']);
-    Route::get('settings/income-templates', [\App\Http\Controllers\Api\SettingsController::class, 'getIncomeTemplates']);
-    Route::post('settings/income-templates', [\App\Http\Controllers\Api\SettingsController::class, 'saveIncomeTemplates']);
-    Route::get('settings/calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getCalendarSettings']);
-    Route::post('settings/calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveCalendarSettings']);
-    Route::get('settings/cancellation-policy', [\App\Http\Controllers\Api\SettingsController::class, 'getCancellationPolicy']);
-    Route::post('settings/cancellation-policy', [\App\Http\Controllers\Api\SettingsController::class, 'saveCancellationPolicy']);
-    Route::get('settings/reminder', [\App\Http\Controllers\Api\SettingsController::class, 'getReminderSettings']);
-    Route::post('settings/reminder', [\App\Http\Controllers\Api\SettingsController::class, 'saveReminderSettings']);
-    Route::get('settings/app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'getAppCalendarSettings']);
-    Route::post('settings/app-calendar', [\App\Http\Controllers\Api\SettingsController::class, 'saveAppCalendarSettings']);
-
-    // Cancellation Policies
+    /*
+    |--------------------------------------------------------------------------
+    | Cancellation Policies
+    |--------------------------------------------------------------------------
+    */
     Route::get('cancellation-policies', [\App\Http\Controllers\Api\CancellationPoliciesController::class, 'index']);
 
-    // Version Updates
-    Route::get('version-updates', [\App\Http\Controllers\Api\VersionUpdateController::class, 'index']);
-    Route::post('version-updates', [\App\Http\Controllers\Api\VersionUpdateController::class, 'store']);
-    Route::put('version-updates/{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'update']);
-    Route::delete('version-updates/{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'destroy']);
-
-    // Service Prices
-    Route::get('service-prices', [\App\Http\Controllers\Api\ServicePriceController::class, 'index']);
-    Route::post('service-prices', [\App\Http\Controllers\Api\ServicePriceController::class, 'updateAll']);
-
-    // Company Services (replaces user_services)
-    Route::get('company-services', [\App\Http\Controllers\Api\CompanyServiceController::class, 'index']);
-    Route::post('company-services', [\App\Http\Controllers\Api\CompanyServiceController::class, 'updateAll']);
+    /*
+    |--------------------------------------------------------------------------
+    | Version Updates
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('version-updates')->group(function () {
+        Route::get('/', [\App\Http\Controllers\Api\VersionUpdateController::class, 'index']);
+        Route::post('/', [\App\Http\Controllers\Api\VersionUpdateController::class, 'store']);
+        Route::put('{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'update']);
+        Route::delete('{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'destroy']);
+    });
 });

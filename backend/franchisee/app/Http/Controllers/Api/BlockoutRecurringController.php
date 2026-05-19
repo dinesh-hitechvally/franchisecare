@@ -62,7 +62,7 @@ class BlockoutRecurringController extends Controller
         $recurring = DB::transaction(function () use ($validated) {
             $recurring = BlockoutRecurring::create($validated);
             $this->regenerateBlockouts($recurring);
-            return $recurring->fresh();
+            return $recurring->fresh()->load('blockouts');
         });
 
         return response()->json($recurring, 201);
@@ -107,12 +107,13 @@ class BlockoutRecurringController extends Controller
             'active' => 'sometimes|boolean',
         ]);
 
-        DB::transaction(function () use ($blockoutRecurring, $validated) {
+        $recurring = DB::transaction(function () use ($blockoutRecurring, $validated) {
             $blockoutRecurring->update($validated);
             $this->regenerateBlockouts($blockoutRecurring->fresh());
+            return $blockoutRecurring->fresh()->load('blockouts');
         });
 
-        return response()->json($blockoutRecurring->fresh());
+        return response()->json($recurring);
     }
 
     public function destroy(BlockoutRecurring $blockoutRecurring)

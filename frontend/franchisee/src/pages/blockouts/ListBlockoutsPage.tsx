@@ -45,7 +45,6 @@ export function ListBlockoutsPage() {
         per_page: perPage,
         company_id: user?.companyId,
         search: debouncedSearch.trim() || undefined,
-        is_recurring: false
       }),
   })
 
