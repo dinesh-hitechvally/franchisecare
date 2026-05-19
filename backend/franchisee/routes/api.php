@@ -186,6 +186,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('stock-take')->group(function () {
         Route::get('last/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getLast']);
         Route::get('history/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getHistory']);
+        Route::get('current-soh/{categoryId}', [\App\Http\Controllers\Api\StockTakeController::class, 'getCurrentSoh']);
         Route::post('/', [\App\Http\Controllers\Api\StockTakeController::class, 'store']);
     });
 

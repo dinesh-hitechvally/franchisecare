@@ -33,7 +33,7 @@ export const unbookedCustomerReportsApi = {
 };
 
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, BlockoutRecurring, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTake, StockTakeLog, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, BlockoutRecurring, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTakeBatch, StockTakeItem, CurrentSoh, StockMovement, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -994,19 +994,16 @@ export const calendarApi = {
 
 export const stockTakeApi = {
   getLast: (categoryId: string) =>
-    apiClient.get<StockTake>(`/stock-take/last/${categoryId}`),
-
-  getLastForCategory: (inventoryCategoryId: string) =>
-    apiClient.get<StockTake>(`/stock-take/category/${inventoryCategoryId}`),
-
-  update: (categoryId: string, data: Record<string, { qty: string; percent: string }>) =>
-    apiClient.post(`/stock-take/${categoryId}`, { values: data }),
-
-  submit: (inventoryCategoryId: string, data: Record<string, { qty: string; percent: string }>) =>
-    apiClient.post('/stock-take', { inventory_category_id: inventoryCategoryId, values: data }),
+    apiClient.get<StockTakeBatch>(`/stock-take/last/${categoryId}`),
 
   getHistory: (categoryId: string) =>
-    apiClient.get<StockTakeLog[]>(`/stock-take/history/${categoryId}`),
+    apiClient.get<StockMovement[]>(`/stock-take/history/${categoryId}`),
+
+  getCurrentSoh: (categoryId: string) =>
+    apiClient.get<CurrentSoh[]>(`/stock-take/current-soh/${categoryId}`),
+
+  submit: (categoryId: string, data: Record<string, { qty: string; percent: string }>) =>
+    apiClient.post('/stock-take', { category_id: categoryId, values: data }),
 
 }
 

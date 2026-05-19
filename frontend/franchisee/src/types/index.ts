@@ -565,6 +565,65 @@ export interface DashboardNewsPayload {
   bluesNews: NewsItem[]
 }
 
+export interface StockTakeBatch {
+  id?: string | number
+  company_id?: string | number
+  category_id?: string | number
+  created_at?: string
+  updated_at?: string
+  items?: StockTakeItem[]
+}
+
+export interface StockTakeItem {
+  id?: string | number
+  company_id?: string | number
+  category_id?: string | number
+  batch_id?: string | number
+  inventory_id?: string | number
+  available_quantity?: number
+  available_percentage?: number
+  created_at?: string
+  updated_at?: string
+  inventory?: InventoryItem
+}
+
+export interface CurrentSoh {
+  id?: string | number
+  company_id?: string | number
+  category_id?: string | number
+  inventory_id?: string | number
+  current_quantity?: number
+  current_percentage?: number
+  created_at?: string
+  updated_at?: string
+  inventory?: InventoryItem
+}
+
+export interface StockMovement {
+  id?: string | number
+  company_id?: string | number
+  category_id?: string | number
+  inventory_id?: string | number
+  batch_id?: string | number
+  movement_type?: 'stock_take' | 'booking_usage' | 'adjustment' | 'inward' | 'write_off'
+  quantity_change?: number
+  percentage_change?: number
+  quantity_before?: number
+  quantity_after?: number
+  percentage_before?: number
+  percentage_after?: number
+  reference_type?: string
+  reference_id?: string | number
+  notes?: string
+  performed_by?: string | number
+  created_at?: string
+  updated_at?: string
+  inventory?: InventoryItem
+  batch?: StockTakeBatch
+  performer?: { id: number; name: string; first_name?: string; last_name?: string }
+}
+
+// Legacy types for backwards compatibility
 export interface StockTake {
   id?: string
   stockTakeID?: string

@@ -37,13 +37,16 @@ export function StockTakePage() {
     queryFn: () => inventoryApi.getItems({ category: 'shampoo' }),
   })
 
-  // Fetch last stock take
-  const { data: lastStockTake } = useQuery({
+  // Fetch last stock take batch
+  const { data: lastBatch } = useQuery({
     queryKey: ['stock-take', categoryId],
-    queryFn: () => stockTakeApi.getLast(categoryId),
+    queryFn: async () => {
+      const response = await stockTakeApi.getLast(categoryId)
+      return response.data
+    },
   })
 
-  // Initialize quantities with current SOH values - only once, or when new items are missing
+  // Initialize quantities with last batch values or inventory SOH
   useEffect(() => {
     const defaultQuantities = { ...quantities }
     let hasChanges = false
@@ -54,7 +57,21 @@ export function StockTakePage() {
         return
       }
 
-      // Find matching inventory item by ID or SKU
+      // Try to find value from last batch items first
+      const batchItem = lastBatch?.items?.find(
+        (bi: any) => String(bi.inventory_id) === item.id || bi.inventory?.sku === item.id
+      )
+
+      if (batchItem) {
+        defaultQuantities[item.id] = {
+          qty: String(batchItem.available_quantity || 0),
+          percent: String(batchItem.available_percentage || ''),
+        }
+        hasChanges = true
+        return
+      }
+
+      // Fall back to inventory item
       const inventoryItem = inventoryItems.find(
         (inv) => inv.id === item.id || inv.sku === item.id || inv.sku === item.code.replace(/\[|\]/g, '')
       )
@@ -68,12 +85,13 @@ export function StockTakePage() {
     if (hasChanges) {
       setQuantities(defaultQuantities)
     }
-  }, [inventoryItems])
+  }, [inventoryItems, lastBatch])
 
   // Check if 4 months have passed
   useEffect(() => {
-    if (lastStockTake?.updated_at) {
-      const lastDate = parseISO(lastStockTake.updated_at)
+    if (lastBatch?.updated_at || lastBatch?.created_at) {
+      const dateStr = lastBatch.updated_at || lastBatch.created_at
+      const lastDate = parseISO(dateStr)
       setLastStockTakeDate(lastDate)
 
       const nextDate = addMonths(lastDate, 4)
@@ -86,7 +104,7 @@ export function StockTakePage() {
       // If no previous stocktake, allow entry
       setIsLocked(false)
     }
-  }, [lastStockTake])
+  }, [lastBatch])
 
   const handleInputChange = (id: string, field: 'qty' | 'percent', value: string) => {
     let processedValue = value
