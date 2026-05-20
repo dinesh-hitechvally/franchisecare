@@ -1,25 +1,21 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { inventoryApi } from '../../api/services'
 
 export function ShampooOrderPage() {
-  const [quantities, setQuantities] = useState<Record<string, number>>({
-    'SH201': 0,
-    'BWFT': 0,
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
+
+  // Fetch shampoo products from inventory_items API
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['inventory-items', 'shampoo'],
+    queryFn: () => inventoryApi.getItems({ category: 'shampoo' }),
   })
 
-  // Mocks based on screenshot analysis
-  const products = [
-    { id: 'SH201', name: 'Herbal Deluxe Shampoo', code: '[SH201]', price: 87.35, unit: '5L' },
-    { id: 'BWFT', name: 'Flea & Tick rinse', code: '[BWFT]', price: 95.00, unit: '2.5L' },
-    { id: 'SH202', name: 'Puppy Shampoo', code: '[SH202]', price: 85.00, unit: '5L' },
-    { id: 'OAT20', name: 'Oatmeal Shampoo', code: '[OAT20]', price: 89.50, unit: '5L' },
-    { id: 'CON50', name: 'Conditioner', code: '[CON50]', price: 75.00, unit: '5L' },
-  ]
-
-  const totalCost = products.reduce((total, p) => total + (quantities[p.id] || 0) * p.price, 0)
+  const totalCost = products.reduce((total, p) => total + (quantities[p.id] || 0) * p.unitPrice, 0)
   
   const handleQuantityChange = (id: string, value: number) => {
     setQuantities(prev => ({
@@ -58,35 +54,49 @@ export function ShampooOrderPage() {
                 </td>
               </tr>
               
-              {/* Items */}
-              {products.map(product => (
-                <tr key={product.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                  <td className="px-6 py-4">
-                    <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-xs text-gray-400 border border-gray-200 rounded">
-                      Image
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-gray-800">
-                    {product.name} {product.code}
-                  </td>
-                  <td className="px-6 py-4 text-center">
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-gray-500 mb-1">{product.name}</span>
-                      <input 
-                        type="number" 
-                        min="0"
-                        value={quantities[product.id] || 0}
-                        onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value))}
-                        className="w-20 text-center border border-gray-300 rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      />
-                      <span className="text-xs text-gray-500 mt-1">{product.unit}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right text-gray-800 font-medium">
-                    ${product.price.toFixed(2)} /{product.unit}
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">Loading products...</p>
                   </td>
                 </tr>
-              ))}
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    No shampoo products found. Add items with category "shampoo" in Inventory.
+                  </td>
+                </tr>
+              ) : (
+                products.map(product => (
+                  <tr key={product.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-xs text-gray-400 border border-gray-200 rounded">
+                        Image
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-gray-800">
+                      {product.name} {product.sku ? `[${product.sku}]` : ''}
+                    </td>
+                    <td className="px-6 py-4 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="text-xs text-gray-500 mb-1">{product.name}</span>
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={quantities[product.id] || 0}
+                          onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 0)}
+                          className="w-20 text-center border border-gray-300 rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                        />
+                        <span className="text-xs text-gray-500 mt-1">{product.unit || 'units'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right text-gray-800 font-medium">
+                      ${product.unitPrice.toFixed(2)} /{product.unit || 'unit'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>

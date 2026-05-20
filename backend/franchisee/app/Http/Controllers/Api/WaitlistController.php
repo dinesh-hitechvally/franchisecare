@@ -6,12 +6,52 @@ use App\Http\Controllers\Controller;
 use App\Models\Booking;
 use App\Models\Service;
 use App\Models\Waitlist;
+use App\Models\WaitlistAudit;
 use App\Models\WaitlistDetail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class WaitlistController extends Controller
 {
+    /**
+     * Create an audit record for a waitlist action.
+     */
+    private function createAuditRecord(Waitlist $waitlist, string $actionType, ?string $previousStatus = null, array $meta = []): void
+    {
+        $waitlist->load(['details.item', 'details.service']);
+        
+        $detailsSummary = $waitlist->details->map(function ($detail) {
+            return [
+                'item_id' => $detail->item_id,
+                'item_name' => $detail->item?->name ?? null,
+                'service_id' => $detail->service_id,
+                'service_name' => $detail->service?->name ?? null,
+                'price' => $detail->price,
+                'duration' => $detail->duration,
+            ];
+        })->toArray();
+
+        WaitlistAudit::create([
+            'waitlist_id' => $waitlist->id,
+            'customer_id' => $waitlist->customer_id,
+            'company_id' => $waitlist->company_id,
+            'action_type' => $actionType,
+            'previous_status' => $previousStatus,
+            'status' => $waitlist->status,
+            'start_date' => $waitlist->start_date,
+            'end_date' => $waitlist->end_date,
+            'start_time' => $waitlist->start_time,
+            'end_time' => $waitlist->end_time,
+            'total' => $waitlist->total,
+            'duration' => $waitlist->duration,
+            'calendar_color' => $waitlist->calendar_color,
+            'send_sms' => $waitlist->send_sms,
+            'send_email' => $waitlist->send_email,
+            'notes' => $waitlist->notes,
+            'details_summary' => $detailsSummary,
+            'meta' => !empty($meta) ? $meta : null,
+        ]);
+    }
     /**
      * Display a listing of waitlists.
      */
@@ -120,6 +160,9 @@ class WaitlistController extends Controller
             ]);
         }
 
+        // Create audit record for new waitlist
+        $this->createAuditRecord($waitlist, 'created');
+
         return response()->json($waitlist->fresh(['customer', 'details.item', 'details.service']), 201);
     }
 
@@ -155,6 +198,7 @@ class WaitlistController extends Controller
             'services.*.service_price' => 'required_with:services|numeric',
         ]);
 
+        $previousStatus = $waitlist->status;
         $waitlist->update($validated);
 
         if (isset($validated['services'])) {
@@ -175,6 +219,9 @@ class WaitlistController extends Controller
             }
         }
 
+        // Create audit record for update
+        $this->createAuditRecord($waitlist, 'updated', $previousStatus);
+
         return response()->json($waitlist->fresh(['customer', 'details.item', 'details.service']));
     }
 
@@ -187,7 +234,11 @@ class WaitlistController extends Controller
             'status' => 'required|in:active,cancelled,completed,expired',
         ]);
 
+        $previousStatus = $waitlist->status;
         $waitlist->update(['status' => $request->status]);
+
+        // Create audit record for status change
+        $this->createAuditRecord($waitlist, 'status_changed', $previousStatus);
 
         return response()->json($waitlist->fresh(['customer', 'details.item', 'details.service']));
     }
@@ -225,7 +276,13 @@ class WaitlistController extends Controller
                 ]);
             }
 
+            $previousStatus = $waitlist->status;
             $waitlist->update(['status' => 'completed']);
+
+            // Create audit record for conversion
+            $this->createAuditRecord($waitlist, 'converted_to_booking', $previousStatus, [
+                'booking_id' => $booking->id,
+            ]);
 
             return response()->json([
                 'message' => 'Waitlist converted to booking successfully.',
@@ -240,8 +297,24 @@ class WaitlistController extends Controller
      */
     public function sendEmailConfirmation(Waitlist $waitlist)
     {
+        // Create audit record for email sent
+        $this->createAuditRecord($waitlist, 'email_sent');
+
         // Hook into existing email infrastructure if available
         return response()->json(['message' => 'Email confirmation sent successfully.']);
+    }
+
+    /**
+     * Get audit history for a waitlist.
+     */
+    public function getHistory(Waitlist $waitlist)
+    {
+        $history = WaitlistAudit::where('waitlist_id', $waitlist->id)
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        return response()->json($history);
     }
 
     /**
@@ -249,6 +322,9 @@ class WaitlistController extends Controller
      */
     public function destroy(Waitlist $waitlist)
     {
+        // Create audit record before deletion
+        $this->createAuditRecord($waitlist, 'deleted');
+
         $waitlist->delete();
         return response()->json(null, 204);
     }

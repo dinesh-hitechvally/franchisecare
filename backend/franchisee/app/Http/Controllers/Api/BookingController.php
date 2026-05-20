@@ -9,12 +9,14 @@ use App\Models\BookingAudit;
 use App\Models\BookingDetailAudit;
 use App\Models\BookingInventoryAudit;
 use App\Models\BookingRecurring;
+use App\Models\CurrentSoh;
 use App\Models\EmailHistory;
 use App\Models\InventoryItem;
 use App\Models\Income;
 use App\Models\Service;
 use App\Models\ServiceInventoryUsage;
 use App\Models\SmsHistory;
+use App\Models\StockMovement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -414,6 +416,21 @@ class BookingController extends Controller
     }
 
     /**
+     * Get stock usages (movements) for a booking.
+     */
+    public function getStockUsages(Booking $booking)
+    {
+        $movements = StockMovement::with(['inventory:id,name,unit_id', 'inventory.unit:id,name'])
+            ->where('reference_type', 'booking')
+            ->where('reference_id', $booking->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        return response()->json($movements);
+    }
+
+    /**
      * Generate invoice PDF for the booking.
      */
     public function generateInvoice(Booking $booking)
@@ -709,22 +726,46 @@ class BookingController extends Controller
 
         $booking->loadMissing(['details.service', 'details.item']);
 
-        $usageRules = ServiceInventoryUsage::where('company_id', $booking->company_id)
+        $serviceIds = $booking->details->pluck('service_id')->filter()->unique()->values()->all();
+        
+        if (empty($serviceIds)) {
+            return;
+        }
+
+        $usageRules = ServiceInventoryUsage::with('unit')
+            ->where('company_id', $booking->company_id)
             ->where('is_active', true)
-            ->whereIn('service_id', $booking->details->pluck('service_id')->filter()->unique()->values()->all())
+            ->whereIn('service_id', $serviceIds)
             ->get()
             ->groupBy('service_id');
+
+        if ($usageRules->isEmpty()) {
+            return;
+        }
 
         foreach ($booking->details as $detail) {
             $rules = $usageRules->get($detail->service_id, collect());
 
             foreach ($rules as $rule) {
+                // Try to find inventory item by name (case-insensitive)
                 $inventoryItem = InventoryItem::where('company_id', $booking->company_id)
-                    ->where('name', $rule->inventory_name)
+                    ->whereRaw('LOWER(name) = ?', [strtolower($rule->inventory_name)])
                     ->first();
 
+                // Create inventory item if it doesn't exist
                 if (! $inventoryItem) {
-                    continue;
+                    $inventoryItem = InventoryItem::create([
+                        'company_id' => $booking->company_id,
+                        'name' => $rule->inventory_name,
+                        'category' => 'General',
+                        'sku' => null,
+                        'quantity' => 0,
+                        'min_stock' => 0,
+                        'unit_price' => 0,
+                        'unit_id' => $rule->unit_id,
+                        'notes' => 'Auto-created from service inventory usage rule',
+                        'is_active' => true,
+                    ]);
                 }
 
                 $changeAmount = (float) $rule->quantity_per_booking;
@@ -733,6 +774,54 @@ class BookingController extends Controller
                 $after = max(0, $before + $signedChange);
 
                 $inventoryItem->update(['quantity' => $after]);
+
+                // Update or create CurrentSoh record
+                $currentSoh = CurrentSoh::where('company_id', $booking->company_id)
+                    ->where('inventory_id', $inventoryItem->id)
+                    ->first();
+
+                if ($currentSoh) {
+                    $sohBefore = (int) $currentSoh->current_quantity;
+                    $sohAfter = max(0, $sohBefore + (int) $signedChange);
+                    $currentSoh->update(['current_quantity' => $sohAfter]);
+                } else {
+                    // Create CurrentSoh if it doesn't exist, assuming initial quantity is 0
+                    $sohBefore = 0;
+                    $sohAfter = max(0, $sohBefore + (int) $signedChange);
+                    $currentSoh = CurrentSoh::create([
+                        'company_id' => $booking->company_id,
+                        'category_id' => null,
+                        'inventory_id' => $inventoryItem->id,
+                        'current_quantity' => $sohAfter,
+                        'current_percentage' => 0,
+                    ]);
+                }
+
+                // Record stock movement for stock take history
+                StockMovement::create([
+                    'company_id' => $booking->company_id,
+                    'category_id' => $currentSoh->category_id ?? null,
+                    'inventory_id' => $inventoryItem->id,
+                    'batch_id' => null,
+                    'movement_type' => 'booking_usage',
+                    'quantity_change' => (int) $signedChange,
+                    'percentage_change' => 0,
+                    'quantity_before' => (int) $before,
+                    'quantity_after' => (int) $after,
+                    'percentage_before' => 0,
+                    'percentage_after' => 0,
+                    'reference_type' => 'booking',
+                    'reference_id' => $booking->id,
+                    'notes' => sprintf(
+                        '%s %s %s for service "%s" (booking #%s)',
+                        $shouldDeduct ? 'Deducted' : 'Restored',
+                        rtrim(rtrim(number_format($changeAmount, 2, '.', ''), '0'), '.'),
+                        $rule->unit?->name ?? 'units',
+                        $detail->service->name ?? 'service',
+                        $booking->id
+                    ),
+                    'performed_by' => auth()->id(),
+                ]);
 
                 BookingInventoryAudit::create([
                     'booking_id' => $booking->id,
@@ -748,7 +837,7 @@ class BookingController extends Controller
                         '%s %s %s for service %s on booking #%s.',
                         $shouldDeduct ? 'Deducted' : 'Restored',
                         rtrim(rtrim(number_format($changeAmount, 2, '.', ''), '0'), '.'),
-                        $rule->unit,
+                        $rule->unit?->name ?? 'units',
                         $detail->service->name ?? 'service',
                         $booking->id
                     ),
@@ -757,7 +846,7 @@ class BookingController extends Controller
                         'service_name' => $detail->service->name ?? null,
                         'booking_detail_id' => $detail->id,
                         'usage_rule_id' => $rule->id,
-                        'usage_unit' => $rule->unit,
+                        'usage_unit' => $rule->unit?->name ?? null,
                         'previous_status' => $previousStatus,
                         'new_status' => $newStatus,
                     ],

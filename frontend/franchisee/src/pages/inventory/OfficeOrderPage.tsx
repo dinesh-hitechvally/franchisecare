@@ -1,14 +1,28 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { inventoryApi } from '../../api/services'
 
 export function OfficeOrderPage() {
-  const [quantity, setQuantity] = useState(1)
+  const [quantities, setQuantities] = useState<Record<string, number>>({})
 
-  const costPerItem = 9.95
-  const subTotal = (costPerItem * quantity).toFixed(2)
+  // Fetch office products from inventory_items API
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['inventory-items', 'office'],
+    queryFn: () => inventoryApi.getItems({ category: 'office' }),
+  })
+
+  const totalCost = products.reduce((total, p) => total + (quantities[p.id] || 0) * p.unitPrice, 0)
+
+  const handleQuantityChange = (id: string, value: number) => {
+    setQuantities(prev => ({
+      ...prev,
+      [id]: value >= 0 ? value : 0
+    }))
+  }
 
   return (
     <div className="space-y-6">
@@ -36,35 +50,52 @@ export function OfficeOrderPage() {
               {/* Category Divider */}
               <tr className="bg-gray-100 border-b border-gray-200">
                 <td colSpan={4} className="px-6 py-2 font-bold text-gray-800 uppercase tracking-wider text-xs">
-                  Office Orders -
+                  Office Orders
                 </td>
               </tr>
               
-              {/* Item Row */}
-              <tr className="bg-white border-b border-gray-200 hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-xs text-gray-400 border border-gray-200 rounded">
-                    Image
-                  </div>
-                </td>
-                <td className="px-6 py-4 font-medium text-gray-800">
-                  Shampoo pump [pump]
-                </td>
-                <td className="px-6 py-4">
-                  <div className="flex justify-center">
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={quantity}
-                      onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
-                      className="w-20 text-center border border-gray-300 rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </td>
-                <td className="px-6 py-4 text-right text-gray-800 font-medium">
-                  ${costPerItem.toFixed(2)} /1
-                </td>
-              </tr>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center">
+                    <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">Loading products...</p>
+                  </td>
+                </tr>
+              ) : products.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-6 py-8 text-center text-gray-500">
+                    No office products found. Add items with category "office" in Inventory.
+                  </td>
+                </tr>
+              ) : (
+                products.map(product => (
+                  <tr key={product.id} className="bg-white border-b border-gray-200 hover:bg-gray-50">
+                    <td className="px-6 py-4">
+                      <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-xs text-gray-400 border border-gray-200 rounded">
+                        Image
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-medium text-gray-800">
+                      {product.name} {product.sku ? `[${product.sku}]` : ''}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col items-center">
+                        <input 
+                          type="number" 
+                          min="0"
+                          value={quantities[product.id] || 0}
+                          onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 0)}
+                          className="w-20 text-center border border-gray-300 rounded px-2 py-1 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                        <span className="text-xs text-gray-500 mt-1">{product.unit || 'units'}</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-right text-gray-800 font-medium">
+                      ${product.unitPrice.toFixed(2)} /{product.unit || 'unit'}
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -92,7 +123,7 @@ export function OfficeOrderPage() {
               </div>
               <div className="flex justify-between px-4 py-3 bg-white">
                 <span className="text-sm font-medium text-gray-600">Sub Total</span>
-                <span className="text-sm font-semibold text-gray-800">${subTotal}</span>
+                <span className="text-sm font-semibold text-gray-800">${totalCost.toFixed(2)}</span>
               </div>
               <div className="flex justify-between px-4 py-3 bg-white">
                 <span className="text-sm font-medium text-gray-600">Pick and Pack Order Fee</span>
@@ -104,7 +135,7 @@ export function OfficeOrderPage() {
               </div>
               <div className="flex justify-between px-4 py-3 bg-gray-50 border-t border-gray-200 text-base">
                 <span className="font-bold text-gray-900">Total Order</span>
-                <span className="font-bold text-blue-600">${subTotal}</span>
+                <span className="font-bold text-blue-600">${totalCost.toFixed(2)}</span>
               </div>
             </div>
           </div>

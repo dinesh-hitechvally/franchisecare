@@ -9,8 +9,8 @@ class InventoryItem extends Model
 {
     protected $fillable = [
         'company_id',
+        'category_id',
         'name',
-        'category',
         'sku',
         'quantity',
         'min_stock',
@@ -18,6 +18,7 @@ class InventoryItem extends Model
         'unit_id',
         'notes',
         'is_active',
+        'booking_usage',
     ];
 
     protected $casts = [
@@ -25,7 +26,13 @@ class InventoryItem extends Model
         'min_stock' => 'decimal:2',
         'unit_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'booking_usage' => 'boolean',
     ];
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(InventoryCategory::class, 'category_id');
+    }
 
     public function unit(): BelongsTo
     {

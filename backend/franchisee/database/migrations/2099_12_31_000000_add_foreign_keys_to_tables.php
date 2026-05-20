@@ -205,8 +205,8 @@ return new class extends Migration
 
         // 2026_05_14_000012_create_service_inventory_usages_table.php
         Schema::table('service_inventory_usages', function (Blueprint $table) {
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('set null');
             $table->foreign('service_id')->references('id')->on('services')->onDelete('cascade');
+            $table->foreign('inventory_id')->references('id')->on('inventory_items')->onDelete('cascade');
             $table->foreign('unit_id')->references('id')->on('units')->onDelete('cascade');
         });
 

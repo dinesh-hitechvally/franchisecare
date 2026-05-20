@@ -9,10 +9,11 @@ import { Input } from '../../components/ui/Input'
 import { inventoryApi } from '../../api/services'
 import type { InventoryItem } from '../../types'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { getCategoryColor, getCategoryLabel, INVENTORY_CATEGORY_LABELS } from '../../constants/inventory'
 
 type InventoryFormState = {
   name: string
-  category: InventoryItem['category']
+  category: string
   sku: string
   quantity: string
   minStock: string
@@ -22,28 +23,12 @@ type InventoryFormState = {
 
 const EMPTY_FORM: InventoryFormState = {
   name: '',
-  category: 'office',
+  category: 'General',
   sku: '',
   quantity: '0',
   minStock: '0',
   unitPrice: '0',
   unit: 'units',
-}
-
-const CATEGORY_COLORS: Record<InventoryItem['category'], string> = {
-  office: 'bg-gray-100 text-gray-700',
-  shampoo: 'bg-blue-100 text-blue-700',
-  treats: 'bg-green-100 text-green-700',
-  uniforms: 'bg-purple-100 text-purple-700',
-  marketing: 'bg-orange-100 text-orange-700',
-}
-
-const CATEGORY_LABELS: Record<InventoryItem['category'], string> = {
-  office: 'Office Supplies',
-  shampoo: 'Shampoo',
-  treats: 'Treats',
-  uniforms: 'Uniforms',
-  marketing: 'Marketing',
 }
 
 export function InventoryPage() {
@@ -156,11 +141,28 @@ export function InventoryPage() {
     createMutation.mutate(form)
   }
 
-  const summaryCards = Object.entries(CATEGORY_LABELS).map(([category, label]) => ({
-    category: category as InventoryItem['category'],
-    label,
-    count: items.filter((item) => item.category === category).length,
-  }))
+  // Build dynamic categories from actual inventory items
+  const uniqueCategories = useMemo(() => {
+    const categories = [...new Set(items.map(item => item.category))].filter(Boolean)
+    // Also include predefined categories for the form dropdown
+    const allCategories = [...new Set([...categories, ...Object.keys(INVENTORY_CATEGORY_LABELS)])]
+    return allCategories.sort()
+  }, [items])
+
+  const summaryCards = useMemo(() => {
+    // Build summary from actual items in database
+    const categoryMap = new Map<string, number>()
+    items.forEach(item => {
+      const count = categoryMap.get(item.category) || 0
+      categoryMap.set(item.category, count + 1)
+    })
+    
+    return Array.from(categoryMap.entries()).map(([category, count]) => ({
+      category,
+      label: getCategoryLabel(category),
+      count,
+    }))
+  }, [items])
 
   return (
     <div className="space-y-6 px-1 py-1">
@@ -188,23 +190,25 @@ export function InventoryPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-5">
-        {summaryCards.map((card) => (
-          <div key={card.category} className="cursor-pointer" onClick={() => setFilterCategory(filterCategory === card.category ? '' : card.category)}>
-            <Card className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${CATEGORY_COLORS[card.category]}`}>
-                  <Package className="h-5 w-5" />
+      {summaryCards.length > 0 && (
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+          {summaryCards.map((card) => (
+            <div key={card.category} className="cursor-pointer" onClick={() => setFilterCategory(filterCategory === card.category ? '' : card.category)}>
+              <Card className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${getCategoryColor(card.category)}`}>
+                    <Package className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-secondary-500">{card.label}</p>
+                    <p className="text-xl font-bold text-secondary-900">{card.count}</p>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-sm text-secondary-500">{card.label}</p>
-                  <p className="text-xl font-bold text-secondary-900">{card.count}</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-        ))}
-      </div>
+              </Card>
+            </div>
+          ))}
+        </div>
+      )}
 
       <Card className="border border-gray-200 shadow-sm">
         <div className="border-b border-gray-200 p-4">
@@ -225,8 +229,8 @@ export function InventoryPage() {
               className="input w-48"
             >
               <option value="">All Categories</option>
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
+              {uniqueCategories.map((category) => (
+                <option key={category} value={category}>{getCategoryLabel(category)}</option>
               ))}
             </select>
           </div>
@@ -240,8 +244,8 @@ export function InventoryPage() {
               key: 'category',
               title: 'Category',
               render: (row: InventoryItem) => (
-                <span className={`rounded-full px-2 py-1 text-xs font-medium ${CATEGORY_COLORS[row.category]}`}>
-                  {CATEGORY_LABELS[row.category]}
+                <span className={`rounded-full px-2 py-1 text-xs font-medium ${getCategoryColor(row.category)}`}>
+                  {getCategoryLabel(row.category)}
                 </span>
               ),
             },
@@ -306,10 +310,10 @@ export function InventoryPage() {
             <select
               className="input mt-1"
               value={form.category}
-              onChange={(e) => setForm((current) => ({ ...current, category: e.target.value as InventoryItem['category'] }))}
+              onChange={(e) => setForm((current) => ({ ...current, category: e.target.value }))}
             >
-              {Object.entries(CATEGORY_LABELS).map(([key, label]) => (
-                <option key={key} value={key}>{label}</option>
+              {uniqueCategories.map((category) => (
+                <option key={category} value={category}>{getCategoryLabel(category)}</option>
               ))}
             </select>
           </div>

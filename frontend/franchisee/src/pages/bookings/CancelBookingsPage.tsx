@@ -5,9 +5,11 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
-import { Search, Plus, MoreVertical, Eye, RotateCcw, RotateCw, XCircle } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, RotateCcw, RotateCw, XCircle, History, Package } from 'lucide-react'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { BookingAuditModal } from '../../components/modals/BookingAuditModal'
+import { StockUsagesModal } from '../../components/modals/StockUsagesModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 
@@ -19,6 +21,8 @@ export function CancelBookingsPage() {
   const [perPage, setPerPage] = useState(25)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
+  const [auditBooking, setAuditBooking] = useState<Booking | null>(null)
+  const [stockUsagesBooking, setStockUsagesBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -176,10 +180,30 @@ export function CancelBookingsPage() {
                         </button>
                         <button
                           onClick={() => {
+                            setAuditBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 mt-1"
+                        >
+                          <History className="w-4 h-4 text-blue-400" />
+                          Audit Trail
+                        </button>
+                        <button
+                          onClick={() => {
+                            setStockUsagesBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors"
+                        >
+                          <Package className="w-4 h-4 text-amber-400" />
+                          Stock Usages
+                        </button>
+                        <button
+                          onClick={() => {
                             restoreBookingMutation.mutate(row.id)
                           }}
                           disabled={restoreBookingMutation.isPending}
-                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors disabled:opacity-50 border-t border-gray-100 mt-1"
                         >
                           <RotateCw className="w-4 h-4 text-emerald-500" />
                           {restoreBookingMutation.isPending ? 'Restoring...' : 'Re Store'}
@@ -209,6 +233,18 @@ export function CancelBookingsPage() {
         isOpen={!!rebookBooking}
         onClose={() => setRebookBooking(null)}
         booking={rebookBooking}
+      />
+
+      <BookingAuditModal
+        isOpen={!!auditBooking}
+        onClose={() => setAuditBooking(null)}
+        booking={auditBooking}
+      />
+
+      <StockUsagesModal
+        isOpen={!!stockUsagesBooking}
+        onClose={() => setStockUsagesBooking(null)}
+        booking={stockUsagesBooking}
       />
     </div>
   )

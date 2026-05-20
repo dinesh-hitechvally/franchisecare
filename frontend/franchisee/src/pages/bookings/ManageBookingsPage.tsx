@@ -8,7 +8,7 @@ import { PortalMenu } from '../../components/ui/PortalMenu'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { BookingAuditModal } from '../../components/modals/BookingAuditModal'
-import { BookingInventoryAuditModal } from '../../components/modals/BookingInventoryAuditModal'
+import { StockUsagesModal } from '../../components/modals/StockUsagesModal'
 import type { Booking } from '../../types'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Check, MoreVertical, ThumbsUp, X, Eye, Edit3, Mail, FileText, Trash2, CheckCircle, Settings, History, Package } from 'lucide-react'
@@ -45,7 +45,7 @@ function getServiceCount(booking: Booking) {
 
 export function ManageBookingsPage() {
   const [auditBooking, setAuditBooking] = useState<Booking | null>(null)
-  const [inventoryAuditBooking, setInventoryAuditBooking] = useState<Booking | null>(null)
+  const [stockUsagesBooking, setStockUsagesBooking] = useState<Booking | null>(null)
   const queryClient = useQueryClient()
   const { addToast } = useToastStore()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
@@ -304,13 +304,13 @@ export function ManageBookingsPage() {
                         </button>
                         <button
                           onClick={() => {
-                            setInventoryAuditBooking(row)
+                            setStockUsagesBooking(row)
                             setOpenMenuId(null)
                           }}
                           className="w-full flex items-center gap-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors border-t border-gray-100 mt-1"
                         >
                           <Package className="w-4 h-4 text-amber-400" />
-                          Inventory Audit Trail
+                          Stock Usages
                         </button>
                         <button
                           onClick={() => {
@@ -356,10 +356,10 @@ export function ManageBookingsPage() {
         onClose={() => setAuditBooking(null)}
         booking={auditBooking}
       />
-      <BookingInventoryAuditModal
-        isOpen={!!inventoryAuditBooking}
-        onClose={() => setInventoryAuditBooking(null)}
-        booking={inventoryAuditBooking}
+      <StockUsagesModal
+        isOpen={!!stockUsagesBooking}
+        onClose={() => setStockUsagesBooking(null)}
+        booking={stockUsagesBooking}
       />
     </div>
   )

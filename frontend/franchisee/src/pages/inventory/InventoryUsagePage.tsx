@@ -5,7 +5,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Modal } from '../../components/ui/Modal'
 import { PortalMenu } from '../../components/ui/PortalMenu'
-import { serviceInventoryUsageApi, servicesApi } from '../../api/services'
+import { serviceInventoryUsageApi, servicesApi, inventoryApi } from '../../api/services'
 import type { Service, ServiceInventoryUsage } from '../../types'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { useToastStore } from '../../store/toastStore'
@@ -20,26 +20,12 @@ type ServiceWithInventory = {
 
 type InventoryRow = {
   id?: string
+  inventoryId: string
   inventoryName: string
   usageAmount: string
   unit: string
   isActive: boolean
 }
-
-// Predefined inventory items list
-const INVENTORY_ITEMS = [
-  'Cologne',
-  'HydroClean Sanitiser',
-  'Herbal Deluxe Shampoo',
-  'Shampoo',
-  'Conditioner',
-  'Flea Treatment',
-  'Ear Cleaner',
-  'Nail Polish',
-  'Paw Balm',
-  'Towels',
-  'Other'
-]
 
 // Usage amount options (1-5 pumps)
 const USAGE_OPTIONS = [
@@ -60,7 +46,7 @@ export function InventoryUsagePage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
   const [inventoryRows, setInventoryRows] = useState<InventoryRow[]>([
-    { inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }
+    { inventoryId: '', inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }
   ])
 
   // Close menu when clicking outside
@@ -82,6 +68,12 @@ export function InventoryUsagePage() {
   const { data: ruleResponse } = useQuery({
     queryKey: ['service-inventory-usages'],
     queryFn: () => serviceInventoryUsageApi.getAll(),
+  })
+
+  // Fetch inventory items with booking_usage enabled
+  const { data: bookingInventoryItems = [] } = useQuery({
+    queryKey: ['inventory-items-booking-usage'],
+    queryFn: () => inventoryApi.getItems({ booking_usage: true }),
   })
 
   const rules = Array.isArray(ruleResponse) ? ruleResponse : ruleResponse?.data ?? []
@@ -132,19 +124,18 @@ export function InventoryUsagePage() {
 
       // Create new rules
       const createPromises = data.rows
-        .filter(row => row.inventoryName && row.usageAmount)
+        .filter(row => row.inventoryId && row.usageAmount)
         .map(row => {
           // Extract number from "X pump(s)" format
           const usageNumber = parseFloat(row.usageAmount.split(' ')[0]) || 0
 
           return serviceInventoryUsageApi.create({
             service_id: data.serviceId,
-            inventory_name: row.inventoryName,
+            inventory_id: row.inventoryId,
             quantity_per_booking: usageNumber,
             unit: 'pumps',
             notes: '',
             is_active: row.isActive,
-            company_id: null,
           })
         })
 
@@ -171,14 +162,15 @@ export function InventoryUsagePage() {
 
         return {
           id: rule.id,
-          inventoryName: rule.inventory_name,
+          inventoryId: rule.inventory_id,
+          inventoryName: rule.inventory_name || rule.inventory_item?.name || '',
           usageAmount: usageAmount,
           unit: 'pumps',
           isActive: rule.is_active
         }
       }))
     } else {
-      setInventoryRows([{ inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
+      setInventoryRows([{ inventoryId: '', inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
     }
 
     setIsEditModalOpen(true)
@@ -187,11 +179,11 @@ export function InventoryUsagePage() {
   const handleCloseModal = () => {
     setIsEditModalOpen(false)
     setSelectedService(null)
-    setInventoryRows([{ inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
+    setInventoryRows([{ inventoryId: '', inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
   }
 
   const handleAddRow = () => {
-    setInventoryRows([...inventoryRows, { inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
+    setInventoryRows([...inventoryRows, { inventoryId: '', inventoryName: '', usageAmount: '', unit: 'pumps', isActive: true }])
   }
 
   const handleRemoveRow = (index: number) => {
@@ -202,7 +194,19 @@ export function InventoryUsagePage() {
 
   const handleRowChange = (index: number, field: keyof InventoryRow, value: string) => {
     const newRows = [...inventoryRows]
-    newRows[index] = { ...newRows[index], [field]: value }
+    
+    // When inventory item is selected, also set the name
+    if (field === 'inventoryId') {
+      const selectedItem = bookingInventoryItems.find(item => item.id === value)
+      newRows[index] = { 
+        ...newRows[index], 
+        inventoryId: value,
+        inventoryName: selectedItem?.name || ''
+      }
+    } else {
+      newRows[index] = { ...newRows[index], [field]: value }
+    }
+    
     setInventoryRows(newRows)
   }
 
@@ -360,14 +364,14 @@ export function InventoryUsagePage() {
                       Inventory Item Name
                     </label>
                     <select
-                      value={row.inventoryName}
-                      onChange={(e) => handleRowChange(index, 'inventoryName', e.target.value)}
+                      value={row.inventoryId}
+                      onChange={(e) => handleRowChange(index, 'inventoryId', e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                     >
                       <option value="">Select inventory item</option>
-                      {INVENTORY_ITEMS.map((item) => (
-                        <option key={item} value={item}>
-                          {item}
+                      {bookingInventoryItems.map((item) => (
+                        <option key={item.id} value={item.id}>
+                          {item.name}
                         </option>
                       ))}
                     </select>

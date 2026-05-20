@@ -14,8 +14,7 @@ class ServiceInventoryUsageController extends Controller
 {
     public function index(Request $request)
     {
-        $query = ServiceInventoryUsage::with(['service:id,name,category_id', 'unit'])
-            ->orderBy('inventory_name')
+        $query = ServiceInventoryUsage::with(['service:id,name,category_id', 'unit', 'inventoryItem'])
             ->orderByDesc('id');
 
         if ($request->filled('service_id')) {
@@ -25,7 +24,9 @@ class ServiceInventoryUsageController extends Controller
         if ($request->filled('search')) {
             $term = '%'.$request->input('search').'%';
             $query->where(function ($builder) use ($term) {
-                $builder->where('inventory_name', 'like', $term)
+                $builder->whereHas('inventoryItem', function ($itemQuery) use ($term) {
+                        $itemQuery->where('name', 'like', $term);
+                    })
                     ->orWhereHas('unit', function ($unitQuery) use ($term) {
                         $unitQuery->where('name', 'like', $term);
                     })
@@ -41,7 +42,7 @@ class ServiceInventoryUsageController extends Controller
             $paginator = $query->paginate($perPage, ['*'], 'page', $page);
 
             return response()->json([
-                'data' => $paginator->items(),
+                'data' => $this->transformCollection($paginator->items()),
                 'meta' => [
                     'current_page' => $paginator->currentPage(),
                     'last_page' => $paginator->lastPage(),
@@ -51,59 +52,85 @@ class ServiceInventoryUsageController extends Controller
             ]);
         }
 
-        return response()->json($query->get());
+        return response()->json($this->transformCollection($query->get()));
+    }
+
+    private function transformCollection($items)
+    {
+        return collect($items)->map(function ($item) {
+            return $this->transformItem($item);
+        });
+    }
+
+    private function transformItem($item)
+    {
+        return [
+            'id' => $item->id,
+            'service_id' => $item->service_id,
+            'inventory_id' => $item->inventory_id,
+            'inventory_name' => $item->inventoryItem?->name,
+            'quantity_per_booking' => $item->quantity_per_booking,
+            'unit_id' => $item->unit_id,
+            'unit' => $item->unit,
+            'notes' => $item->notes,
+            'is_active' => $item->is_active,
+            'service' => $item->service,
+            'inventory_item' => $item->inventoryItem,
+            'created_at' => $item->created_at,
+            'updated_at' => $item->updated_at,
+        ];
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
             'service_id' => 'required|exists:services,id',
-            'inventory_name' => 'required|string|max:255',
+            'inventory_id' => 'required|exists:inventory_items,id',
             'quantity_per_booking' => 'required|numeric|min:0',
             'unit' => 'required|string|max:50',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
-        $user = Auth::user();
-        $validated['company_id'] = $user?->company_id ?? $user?->franchise_id;
         $validated['is_active'] = $validated['is_active'] ?? true;
 
-        // Convert unit name to unit_id
-        $unit = \App\Models\Unit::where('name', $validated['unit'])->first();
-        if ($unit) {
-            $validated['unit_id'] = $unit->id;
-        }
+        // Convert unit name to unit_id - create unit if it doesn't exist
+        $unit = \App\Models\Unit::firstOrCreate(
+            ['name' => $validated['unit']],
+            ['abbreviation' => strtolower(substr($validated['unit'], 0, 3))]
+        );
+        $validated['unit_id'] = $unit->id;
         unset($validated['unit']);
 
         $usage = ServiceInventoryUsage::create($validated);
 
-        return response()->json($usage->load(['service:id,name,category_id', 'unit']), 201);
+        return response()->json($this->transformItem($usage->load(['service:id,name,category_id', 'unit', 'inventoryItem'])), 201);
     }
 
     public function update(Request $request, ServiceInventoryUsage $serviceInventoryUsage)
     {
         $validated = $request->validate([
             'service_id' => 'sometimes|exists:services,id',
-            'inventory_name' => 'sometimes|string|max:255',
+            'inventory_id' => 'sometimes|exists:inventory_items,id',
             'quantity_per_booking' => 'sometimes|numeric|min:0',
             'unit' => 'sometimes|string|max:50',
             'notes' => 'nullable|string',
             'is_active' => 'boolean',
         ]);
 
-        // Convert unit name to unit_id if provided
+        // Convert unit name to unit_id if provided - create unit if it doesn't exist
         if (isset($validated['unit'])) {
-            $unit = \App\Models\Unit::where('name', $validated['unit'])->first();
-            if ($unit) {
-                $validated['unit_id'] = $unit->id;
-            }
+            $unit = \App\Models\Unit::firstOrCreate(
+                ['name' => $validated['unit']],
+                ['abbreviation' => strtolower(substr($validated['unit'], 0, 3))]
+            );
+            $validated['unit_id'] = $unit->id;
             unset($validated['unit']);
         }
 
         $serviceInventoryUsage->update($validated);
 
-        return response()->json($serviceInventoryUsage->load(['service:id,name,category_id', 'unit']));
+        return response()->json($this->transformItem($serviceInventoryUsage->load(['service:id,name,category_id', 'unit', 'inventoryItem'])));
     }
 
     public function destroy(ServiceInventoryUsage $serviceInventoryUsage)

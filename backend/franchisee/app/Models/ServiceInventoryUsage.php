@@ -8,9 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class ServiceInventoryUsage extends Model
 {
     protected $fillable = [
-        'company_id',
         'service_id',
-        'inventory_name',
+        'inventory_id',
         'quantity_per_booking',
         'unit_id',
         'notes',
@@ -25,6 +24,11 @@ class ServiceInventoryUsage extends Model
     public function service(): BelongsTo
     {
         return $this->belongsTo(Service::class);
+    }
+
+    public function inventoryItem(): BelongsTo
+    {
+        return $this->belongsTo(InventoryItem::class, 'inventory_id');
     }
 
     public function unit(): BelongsTo

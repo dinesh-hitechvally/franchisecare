@@ -182,6 +182,37 @@ export interface BookingAuditEntry {
   updated_at: string
 }
 
+export interface WaitlistAuditEntry {
+  id: string
+  waitlist_id: string
+  customer_id?: string | null
+  company_id?: string | null
+  action_type: string
+  previous_status?: string | null
+  status?: string | null
+  start_date?: string | null
+  end_date?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  total?: number | string | null
+  duration?: number | null
+  calendar_color?: string | null
+  send_sms?: boolean
+  send_email?: boolean
+  notes?: string | null
+  details_summary?: Array<{
+    item_id?: string | number | null
+    item_name?: string | null
+    service_id?: string | number | null
+    service_name?: string | null
+    price?: number | string | null
+    duration?: number | null
+  }>
+  meta?: Record<string, unknown> | null
+  created_at: string
+  updated_at: string
+}
+
 export interface BookingInventoryAuditEntry {
   id: string
   booking_id: string
@@ -200,12 +231,14 @@ export interface BookingInventoryAuditEntry {
 
 export interface ServiceInventoryUsage {
   id: string
-  company_id?: string | null
   service_id: string
   service?: Service
-  inventory_name: string
+  inventory_id: string
+  inventory_name?: string
+  inventory_item?: InventoryItem
   quantity_per_booking: number | string
-  unit: string
+  unit_id?: string
+  unit?: { id: string; name: string }
   notes?: string | null
   is_active: boolean
   created_at: string
@@ -269,7 +302,7 @@ export interface BlockoutRecurring {
 export interface InventoryItem {
   id: string
   name: string
-  category: 'office' | 'shampoo' | 'treats' | 'uniforms' | 'marketing'
+  category: string
   sku: string
   quantity: number
   minStock: number

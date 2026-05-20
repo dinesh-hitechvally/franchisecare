@@ -1,24 +1,23 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { inventoryApi } from '../../api/services'
 
 export function PlaceUniformOrderPage() {
   const [orders, setOrders] = useState<Record<string, { quantity: number, size: string }>>({})
 
-  // Mocks based on screenshot analysis
-  const products = [
-    { id: '001', name: 'BW Womens Polo', price: 49.50, code: '[001]' },
-    { id: '002', name: 'BW Mens Polo', price: 49.50, code: '[002]' },
-    { id: '003', name: 'BW Unisex Champion Jacket', price: 58.00, code: '[003]' },
-    { id: '004', name: 'BW New Winter Jacket', price: 69.90, code: '[004]' },
-    { id: '005', name: 'BW Olympus Vest (Mens sizing)', price: 65.00, code: '[005]' },
-  ]
+  // Fetch uniforms products from inventory_items API
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['inventory-items', 'uniforms'],
+    queryFn: () => inventoryApi.getItems({ category: 'uniforms' }),
+  })
 
   const totalCost = products.reduce((total, p) => {
     const order = orders[p.id]
-    return total + (order?.quantity || 0) * p.price
+    return total + (order?.quantity || 0) * p.unitPrice
   }, 0)
 
   const sizes = ['Select Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '4XL']
@@ -54,64 +53,75 @@ export function PlaceUniformOrderPage() {
           <h2 className="font-bold text-gray-800 uppercase tracking-wider text-sm">Uniform</h2>
         </div>
 
-        <div className="divide-y divide-gray-100">
-          {products.map(product => {
-            const currentQty = orders[product.id]?.quantity || 0;
-            const currentSize = orders[product.id]?.size || '';
-            const rowTotal = currentQty * product.price;
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+            <p className="mt-2 text-sm text-gray-500">Loading products...</p>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No uniform products found. Add items with category "uniforms" in Inventory.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {products.map(product => {
+              const currentQty = orders[product.id]?.quantity || 0;
+              const currentSize = orders[product.id]?.size || '';
+              const rowTotal = currentQty * product.unitPrice;
 
-            return (
-              <div key={product.id} className="p-6 bg-white hover:bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-colors">
-                
-                {/* Item Details */}
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 text-base mb-1">
-                    {product.name} - ${product.price.toFixed(2)} <span className="text-gray-500 font-normal">{product.code}</span>
-                  </h3>
+              return (
+                <div key={product.id} className="p-6 bg-white hover:bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-colors">
+                  
+                  {/* Item Details */}
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-gray-900 text-base mb-1">
+                      {product.name} - ${product.unitPrice.toFixed(2)} {product.sku ? <span className="text-gray-500 font-normal">[{product.sku}]</span> : ''}
+                    </h3>
+                  </div>
+
+                  {/* Controls */}
+                  <div className="flex flex-wrap md:flex-nowrap items-center gap-6">
+                    {/* Quantity */}
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500 mb-1">Add Quantity</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={currentQty}
+                        onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 0)}
+                        className="w-24 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-center"
+                      />
+                    </div>
+
+                    {/* Size Dropdown */}
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500 mb-1">Select Size<span className="text-red-500">*</span></label>
+                      <select
+                        value={currentSize}
+                        onChange={(e) => handleSizeChange(product.id, e.target.value)}
+                        className={`w-32 border rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                          currentQty > 0 && !currentSize && currentSize !== 'Select Size' 
+                            ? 'border-red-500 bg-red-50' 
+                            : 'border-gray-300 bg-white'
+                        }`}
+                      >
+                        {sizes.map(size => (
+                          <option key={size} value={size === 'Select Size' ? '' : size}>{size}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Row Total */}
+                    <div className="w-24 text-right">
+                      <span className="font-semibold text-gray-900 text-lg">${rowTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+
                 </div>
-
-                {/* Controls */}
-                <div className="flex flex-wrap md:flex-nowrap items-center gap-6">
-                  {/* Quantity */}
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-500 mb-1">Add Quantity</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={currentQty}
-                      onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value))}
-                      className="w-24 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-center"
-                    />
-                  </div>
-
-                  {/* Size Dropdown */}
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-500 mb-1">Select Size<span className="text-red-500">*</span></label>
-                    <select
-                      value={currentSize}
-                      onChange={(e) => handleSizeChange(product.id, e.target.value)}
-                      className={`w-32 border rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none ${
-                        currentQty > 0 && !currentSize && currentSize !== 'Select Size' 
-                          ? 'border-red-500 bg-red-50' 
-                          : 'border-gray-300 bg-white'
-                      }`}
-                    >
-                      {sizes.map(size => (
-                        <option key={size} value={size === 'Select Size' ? '' : size}>{size}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  {/* Row Total */}
-                  <div className="w-24 text-right">
-                    <span className="font-semibold text-gray-900 text-lg">${rowTotal.toFixed(2)}</span>
-                  </div>
-                </div>
-
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="p-6 border-t border-gray-200 bg-gray-50 space-y-6">
           {/* Payment Section */}

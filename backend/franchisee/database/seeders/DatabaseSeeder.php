@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
     {
         $this->call([
             CompanySeeder::class,
+            InventoryItemsSeeder::class,
         ]);
 
         $company = Company::where('slug', 'mate-franchise-care')->first();
@@ -37,6 +38,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             BookingSeeder::class,
             CancellationPoliciesTableSeeder::class,
+            ServiceInventoryUsageSeeder::class,
         ]);
 
         // Seed News

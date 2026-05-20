@@ -1,20 +1,19 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { ShoppingCart } from 'lucide-react'
+import { ShoppingCart, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { inventoryApi } from '../../api/services'
 
 export function MarketingMaterialsPage() {
   const [orders, setOrders] = useState<Record<string, { quantity: number, copies: string }>>({})
 
-  // Mocks based on screenshot analysis
-  const products = [
-    { id: '10016', name: 'BW Business Cards (1,000)', price: 145.00, code: '[10016]', hasCopies: false },
-    { id: '10016-f', name: 'BW Flyers', price: 0, code: '[10016]', hasCopies: true },
-    { id: '0016', name: 'BW Magnets (500)', price: 170.00, code: '[0016]', hasCopies: false },
-    { id: '10014', name: 'DD Business Cards (1,000)', price: 145.00, code: '[10014]', hasCopies: false },
-    { id: '10017', name: 'DD Flyers', price: 0, code: '[10017]', hasCopies: true },
-  ]
+  // Fetch marketing products from inventory_items API
+  const { data: products = [], isLoading } = useQuery({
+    queryKey: ['inventory-items', 'marketing'],
+    queryFn: () => inventoryApi.getItems({ category: 'marketing' }),
+  })
 
   const copiesOptions = [
     { label: 'Select No of copies*', value: '' },
@@ -23,11 +22,14 @@ export function MarketingMaterialsPage() {
     { label: '2500 copies (+$200)', value: '2500', addCost: 200 },
   ]
 
+  // Check if product name contains "flyer" (case insensitive) to show copies dropdown
+  const hasCopies = (name: string) => name.toLowerCase().includes('flyer')
+
   const calculateRowTotal = (product: typeof products[0]) => {
     const order = orders[product.id]
     if (!order) return 0
-    let cost = product.price
-    if (product.hasCopies && order.copies) {
+    let cost = product.unitPrice
+    if (hasCopies(product.name) && order.copies) {
       const option = copiesOptions.find(o => o.value === order.copies)
       if (option && option.addCost) {
         cost += option.addCost
@@ -68,71 +70,83 @@ export function MarketingMaterialsPage() {
           <h2 className="font-bold text-gray-800 uppercase tracking-wider text-sm">Business Cards, Flyers, Magnets</h2>
         </div>
 
-        <div className="divide-y divide-gray-100">
-          {products.map(product => {
-            const currentQty = orders[product.id]?.quantity || 0;
-            const currentCopies = orders[product.id]?.copies || '';
-            const rowTotal = calculateRowTotal(product);
+        {isLoading ? (
+          <div className="p-8 text-center">
+            <Loader2 className="w-6 h-6 animate-spin mx-auto text-gray-400" />
+            <p className="mt-2 text-sm text-gray-500">Loading products...</p>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">
+            No marketing products found. Add items with category "marketing" in Inventory.
+          </div>
+        ) : (
+          <div className="divide-y divide-gray-100">
+            {products.map(product => {
+              const currentQty = orders[product.id]?.quantity || 0;
+              const currentCopies = orders[product.id]?.copies || '';
+              const rowTotal = calculateRowTotal(product);
+              const showCopies = hasCopies(product.name);
 
-            return (
-              <div key={product.id} className="p-6 bg-white hover:bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-colors">
-                
-                {/* Item Details */}
-                <div className="flex-1 flex flex-col md:flex-row items-start md:items-center gap-4">
-                  <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-xs text-gray-400 border border-gray-200 rounded shrink-0">
-                    Preview
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-gray-900 text-base mb-1">
-                      {product.name} <span className="text-gray-500 font-normal">{product.code}</span>
-                    </h3>
-                  </div>
-                </div>
-
-                {/* Controls */}
-                <div className="flex flex-wrap md:flex-nowrap items-center gap-6">
-                  {/* Quantity */}
-                  <div className="flex flex-col">
-                    <label className="text-xs text-gray-500 mb-1">Add Quantity</label>
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={currentQty}
-                      onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value))}
-                      className="w-24 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-center"
-                    />
-                  </div>
-
-                  {/* Copies Dropdown (Conditional) */}
-                  {product.hasCopies && (
-                    <div className="flex flex-col">
-                      <label className="text-xs text-gray-500 mb-1">Select No of copies<span className="text-red-500">*</span></label>
-                      <select
-                        value={currentCopies}
-                        onChange={(e) => handleCopiesChange(product.id, e.target.value)}
-                        className={`w-40 border rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none ${
-                          currentQty > 0 && !currentCopies
-                            ? 'border-red-500 bg-red-50' 
-                            : 'border-gray-300 bg-white'
-                        }`}
-                      >
-                        {copiesOptions.map(opt => (
-                          <option key={opt.value} value={opt.value}>{opt.label}</option>
-                        ))}
-                      </select>
+              return (
+                <div key={product.id} className="p-6 bg-white hover:bg-gray-50 flex flex-col md:flex-row md:items-center justify-between gap-6 transition-colors">
+                  
+                  {/* Item Details */}
+                  <div className="flex-1 flex flex-col md:flex-row items-start md:items-center gap-4">
+                    <div className="w-16 h-16 bg-gray-100 flex items-center justify-center text-xs text-gray-400 border border-gray-200 rounded shrink-0">
+                      Preview
                     </div>
-                  )}
-
-                  {/* Row Total */}
-                  <div className="w-24 text-right shrink-0">
-                    <span className="font-semibold text-gray-900 text-lg">${rowTotal.toFixed(2)}</span>
+                    <div>
+                      <h3 className="font-semibold text-gray-900 text-base mb-1">
+                        {product.name} {product.sku ? <span className="text-gray-500 font-normal">[{product.sku}]</span> : ''}
+                      </h3>
+                    </div>
                   </div>
-                </div>
 
-              </div>
-            );
-          })}
-        </div>
+                  {/* Controls */}
+                  <div className="flex flex-wrap md:flex-nowrap items-center gap-6">
+                    {/* Quantity */}
+                    <div className="flex flex-col">
+                      <label className="text-xs text-gray-500 mb-1">Add Quantity</label>
+                      <input 
+                        type="number" 
+                        min="0"
+                        value={currentQty}
+                        onChange={(e) => handleQuantityChange(product.id, parseInt(e.target.value) || 0)}
+                        className="w-24 border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 bg-white text-center"
+                      />
+                    </div>
+
+                    {/* Copies Dropdown (Conditional) */}
+                    {showCopies && (
+                      <div className="flex flex-col">
+                        <label className="text-xs text-gray-500 mb-1">Select No of copies<span className="text-red-500">*</span></label>
+                        <select
+                          value={currentCopies}
+                          onChange={(e) => handleCopiesChange(product.id, e.target.value)}
+                          className={`w-40 border rounded-md px-3 py-2 text-sm focus:ring-blue-500 focus:border-blue-500 outline-none ${
+                            currentQty > 0 && !currentCopies
+                              ? 'border-red-500 bg-red-50' 
+                              : 'border-gray-300 bg-white'
+                          }`}
+                        >
+                          {copiesOptions.map(opt => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+
+                    {/* Row Total */}
+                    <div className="w-24 text-right shrink-0">
+                      <span className="font-semibold text-gray-900 text-lg">${rowTotal.toFixed(2)}</span>
+                    </div>
+                  </div>
+
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="p-6 border-t border-gray-200 bg-gray-50 space-y-6">
           {/* Payment Section */}

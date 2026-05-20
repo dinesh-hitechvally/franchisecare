@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class WaitlistAudit extends Model
+{
+    protected $fillable = [
+        'waitlist_id',
+        'customer_id',
+        'company_id',
+        'action_type',
+        'action_at',
+        'previous_status',
+        'status',
+        'start_date',
+        'end_date',
+        'start_time',
+        'end_time',
+        'total',
+        'duration',
+        'calendar_color',
+        'send_sms',
+        'send_email',
+        'notes',
+        'details_summary',
+        'meta',
+    ];
+
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+        'total' => 'decimal:2',
+        'send_sms' => 'boolean',
+        'send_email' => 'boolean',
+        'details_summary' => 'array',
+        'meta' => 'array',
+    ];
+
+    public function waitlist(): BelongsTo
+    {
+        return $this->belongsTo(Waitlist::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class);
+    }
+
+    public function company(): BelongsTo
+    {
+        return $this->belongsTo(Company::class);
+    }
+}

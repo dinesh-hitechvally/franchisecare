@@ -7,10 +7,11 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { WaitlistDetailModal } from '../../components/modals/WaitlistDetailModal'
+import { WaitlistAuditModal } from '../../components/modals/WaitlistAuditModal'
 import { waitlistApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
-import { Calendar, CalendarDays, Check, Edit3, Eye, Mail, MoreVertical, Plus, Trash2 } from 'lucide-react'
+import { Calendar, CalendarDays, Check, Edit3, Eye, History, Mail, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import type { Booking } from '../../types'
 
 type WaitlistStatusFilter = 'all' | 'active' | 'cancelled' | 'completed' | 'expired'
@@ -60,6 +61,7 @@ export function WaitlistBookingsPage() {
   const [perPage, setPerPage] = useState(25)
   const [selectedBookingIds, setSelectedBookingIds] = useState<string[]>([])
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
+  const [auditWaitlist, setAuditWaitlist] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -345,6 +347,18 @@ export function WaitlistBookingsPage() {
                                   </Link>
                                 )}
 
+                                <button
+                                  onClick={() => {
+                                    setAuditWaitlist(booking)
+                                    setOpenMenuId(null)
+                                    setMenuPos(null)
+                                  }}
+                                  className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors"
+                                >
+                                  <History className="w-4 h-4 text-blue-400" />
+                                  Audit Trail
+                                </button>
+
                                 {menuAccess === 'all' && (
                                   <>
                                     <button
@@ -402,6 +416,12 @@ export function WaitlistBookingsPage() {
         onCancel={(bookingId) => cancelBookingMutation.mutate(bookingId)}
         isConverting={convertToBookingMutation.isPending}
         isCancelling={cancelBookingMutation.isPending}
+      />
+
+      <WaitlistAuditModal
+        isOpen={!!auditWaitlist}
+        onClose={() => setAuditWaitlist(null)}
+        waitlist={auditWaitlist}
       />
     </div>
   )

@@ -5,10 +5,12 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
-import { Search, Plus, MoreVertical, Eye, Check, X, RotateCcw, Archive } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, Check, X, RotateCcw, Archive, History, Package } from 'lucide-react'
 import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 import type { Booking } from '../../types'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { BookingAuditModal } from '../../components/modals/BookingAuditModal'
+import { StockUsagesModal } from '../../components/modals/StockUsagesModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 
 export function ArchivedBookingsPage() {
@@ -18,6 +20,8 @@ export function ArchivedBookingsPage() {
   const [perPage, setPerPage] = useState(25)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
+  const [auditBooking, setAuditBooking] = useState<Booking | null>(null)
+  const [stockUsagesBooking, setStockUsagesBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
@@ -157,6 +161,26 @@ export function ArchivedBookingsPage() {
                           <RotateCcw className="w-4 h-4 text-blue-500" />
                           Re Book
                         </button>
+                        <button
+                          onClick={() => {
+                            setAuditBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 mt-1"
+                        >
+                          <History className="w-4 h-4 text-blue-400" />
+                          Audit Trail
+                        </button>
+                        <button
+                          onClick={() => {
+                            setStockUsagesBooking(row)
+                            setOpenMenuId(null); setMenuPos(null)
+                          }}
+                          className="w-full flex items-center gap-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors"
+                        >
+                          <Package className="w-4 h-4 text-amber-400" />
+                          Stock Usages
+                        </button>
                       </PortalMenu>
                     </td>
                   </tr>
@@ -182,6 +206,18 @@ export function ArchivedBookingsPage() {
         isOpen={!!rebookBooking}
         onClose={() => setRebookBooking(null)}
         booking={rebookBooking}
+      />
+
+      <BookingAuditModal
+        isOpen={!!auditBooking}
+        onClose={() => setAuditBooking(null)}
+        booking={auditBooking}
+      />
+
+      <StockUsagesModal
+        isOpen={!!stockUsagesBooking}
+        onClose={() => setStockUsagesBooking(null)}
+        booking={stockUsagesBooking}
       />
     </div>
   )

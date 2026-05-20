@@ -6,8 +6,10 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { BookingAuditModal } from '../../components/modals/BookingAuditModal'
+import { StockUsagesModal } from '../../components/modals/StockUsagesModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
-import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Check, X, CheckCircle } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, RotateCcw, XCircle, FileText, Send, Check, X, CheckCircle, History, Package } from 'lucide-react'
 import type { Booking } from '../../types'
 import { createPortal } from 'react-dom'
 import { useToastStore } from '../../store/toastStore'
@@ -114,6 +116,8 @@ export function CompletedBookingsPage() {
   const [page, setPage] = useState(1)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
+  const [auditBooking, setAuditBooking] = useState<Booking | null>(null)
+  const [stockUsagesBooking, setStockUsagesBooking] = useState<Booking | null>(null)
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [cancellingBookingId, setCancellingBookingId] = useState<string | null>(null)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
@@ -333,6 +337,27 @@ export function CompletedBookingsPage() {
                             <div className="border-t border-gray-200 my-1" />
                             <DropdownItem
                               onClick={() => {
+                                setAuditBooking(row)
+                                setOpenMenuId(null)
+                              }}
+                              icon={History}
+                              className="text-blue-700 hover:text-blue-800"
+                            >
+                              Audit Trail
+                            </DropdownItem>
+                            <DropdownItem
+                              onClick={() => {
+                                setStockUsagesBooking(row)
+                                setOpenMenuId(null)
+                              }}
+                              icon={Package}
+                              className="text-amber-700 hover:text-amber-800"
+                            >
+                              Stock Usages
+                            </DropdownItem>
+                            <div className="border-t border-gray-200 my-1" />
+                            <DropdownItem
+                              onClick={() => {
                                 setOpenMenuId(null)
                                 bookingsApi.generateReceipt(row.id)
                               }}
@@ -385,6 +410,18 @@ export function CompletedBookingsPage() {
         isOpen={!!rebookBooking}
         onClose={() => setRebookBooking(null)}
         booking={rebookBooking}
+      />
+
+      <BookingAuditModal
+        isOpen={!!auditBooking}
+        onClose={() => setAuditBooking(null)}
+        booking={auditBooking}
+      />
+
+      <StockUsagesModal
+        isOpen={!!stockUsagesBooking}
+        onClose={() => setStockUsagesBooking(null)}
+        booking={stockUsagesBooking}
       />
     </div>
   )

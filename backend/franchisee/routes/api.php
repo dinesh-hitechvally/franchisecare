@@ -86,6 +86,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::patch('waitlists/{waitlist}/status', [\App\Http\Controllers\Api\WaitlistController::class, 'updateStatus']);
     Route::post('waitlists/{waitlist}/convert-to-booking', [\App\Http\Controllers\Api\WaitlistController::class, 'convertToBooking']);
     Route::post('waitlists/{waitlist}/send-email-confirmation', [\App\Http\Controllers\Api\WaitlistController::class, 'sendEmailConfirmation']);
+    Route::get('waitlists/{waitlist}/audits', [\App\Http\Controllers\Api\WaitlistController::class, 'getHistory']);
 
     /*
     |--------------------------------------------------------------------------
@@ -98,6 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('bookings/{booking}/audits', [\App\Http\Controllers\Api\BookingController::class, 'getHistory']);
     Route::get('bookings/{booking}/detail-audits', [\App\Http\Controllers\Api\BookingController::class, 'getDetailHistory']);
     Route::get('bookings/{booking}/inventory-audits', [\App\Http\Controllers\Api\BookingController::class, 'getInventoryHistory']);
+    Route::get('bookings/{booking}/stock-usages', [\App\Http\Controllers\Api\BookingController::class, 'getStockUsages']);
     Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
     Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);
     Route::post('bookings/{booking}/send-invoice', [\App\Http\Controllers\Api\BookingController::class, 'sendInvoice']);
@@ -153,7 +155,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
-    | Service Inventory Usage
+    | Service Inventory Usage (Global definitions)
     |--------------------------------------------------------------------------
     */
     Route::apiResource('service-inventory-usages', \App\Http\Controllers\Api\ServiceInventoryUsageController::class)->except(['show', 'create', 'edit']);
@@ -161,10 +163,24 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Company Service Inventory Usage (Company-specific)
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('company-service-inventory-usages', \App\Http\Controllers\Api\CompanyServiceInventoryUsageController::class)->except(['show', 'create', 'edit']);
+
+    /*
+    |--------------------------------------------------------------------------
     | Inventory Items
     |--------------------------------------------------------------------------
     */
     Route::prefix('inventory')->group(function () {
+        // Categories
+        Route::get('categories', [\App\Http\Controllers\Api\InventoryCategoryController::class, 'index']);
+        Route::post('categories', [\App\Http\Controllers\Api\InventoryCategoryController::class, 'store']);
+        Route::put('categories/{inventoryCategory}', [\App\Http\Controllers\Api\InventoryCategoryController::class, 'update']);
+        Route::delete('categories/{inventoryCategory}', [\App\Http\Controllers\Api\InventoryCategoryController::class, 'destroy']);
+        
+        // Items
         Route::get('items', [\App\Http\Controllers\Api\InventoryController::class, 'index']);
         Route::post('items', [\App\Http\Controllers\Api\InventoryController::class, 'store']);
         Route::put('items/{inventoryItem}', [\App\Http\Controllers\Api\InventoryController::class, 'update']);

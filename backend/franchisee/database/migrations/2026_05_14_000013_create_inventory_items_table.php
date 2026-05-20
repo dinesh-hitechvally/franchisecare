@@ -13,19 +13,20 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->string('name');
-            $table->string('category');
-            $table->string('sku');
+            $table->unsignedBigInteger('category_id')->nullable();
+            $table->string('sku')->nullable();
+            $table->boolean('booking_usage')->default(false);
             $table->decimal('quantity', 10, 2)->default(0);
             $table->decimal('min_stock', 10, 2)->default(0);
             $table->decimal('unit_price', 10, 2)->default(0);
-            $table->unsignedBigInteger('unit_id');
+            $table->unsignedBigInteger('unit_id')->nullable();
             $table->text('notes')->nullable();
             $table->boolean('is_active')->default(true);
             $table->timestamps();
 
             $table->index('company_id');
             $table->index('unit_id');
-            $table->index(['company_id', 'category']);
+            $table->index(['company_id', 'category_id']);
             $table->index(['company_id', 'sku']);
         });
     }

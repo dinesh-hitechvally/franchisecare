@@ -459,6 +459,9 @@ export const bookingsApi = {
   getInventoryAudits: (id: string, page: number = 1) =>
     apiClient.get<{ data: BookingInventoryAuditEntry[]; current_page: number; last_page: number }>(`/bookings/${id}/inventory-audits?page=${page}`),
 
+  getStockUsages: (id: string, page: number = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/bookings/${id}/stock-usages?page=${page}`),
+
   sendInvoice: (id: string) =>
     apiClient.post<{ message: string }>(`/bookings/${id}/send-invoice`),
 
@@ -532,6 +535,9 @@ export const waitlistApi = {
     apiClient.post<{ message: string }>(`/waitlists/${id}/send-email-confirmation`),
 
   delete: (id: string) => apiClient.delete(`/waitlists/${id}`),
+
+  getAudits: (id: string, page = 1) =>
+    apiClient.get<{ data: any[]; current_page: number; last_page: number }>(`/waitlists/${id}/audits?page=${page}`),
 }
 
 // Recurring Bookings API
@@ -665,7 +671,7 @@ export const blockoutRecurringsApi = {
 }
 
 export const inventoryApi = {
-  getItems: (params?: { category?: string; franchiseId?: string }) =>
+  getItems: (params?: { category?: string; franchiseId?: string; booking_usage?: boolean }) =>
     apiClient.get<InventoryItem[]>('/inventory/items', { params }).then((rows) => mapInventoryItemsFromApi(rows)),
   
   createItem: (data: Omit<InventoryItem, 'id' | 'companyId'>) =>

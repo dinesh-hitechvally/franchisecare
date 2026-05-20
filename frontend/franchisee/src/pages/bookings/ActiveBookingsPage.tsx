@@ -5,10 +5,12 @@ import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { bookingsApi } from '../../api/services'
-import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X, RotateCcw, Calendar } from 'lucide-react'
+import { Search, Plus, MoreVertical, Eye, Edit3, Trash2, Mail, FileText, Check, X, RotateCcw, Calendar, History, Package } from 'lucide-react'
 import type { Booking } from '../../types'
 import { Link } from 'react-router-dom'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
+import { BookingAuditModal } from '../../components/modals/BookingAuditModal'
+import { StockUsagesModal } from '../../components/modals/StockUsagesModal'
 import { RebookBookingModal } from '../../components/modals/RebookBookingModal'
 import { useToastStore } from '../../store/toastStore'
 import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
@@ -24,6 +26,8 @@ export function ActiveBookingsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const [viewBooking, setViewBooking] = useState<Booking | null>(null)
   const [rebookBooking, setRebookBooking] = useState<Booking | null>(null)
+  const [auditBooking, setAuditBooking] = useState<Booking | null>(null)
+  const [stockUsagesBooking, setStockUsagesBooking] = useState<Booking | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -255,6 +259,28 @@ export function ActiveBookingsPage() {
                             Re Book
                           </button>
                           <button
+                            onClick={() => {
+                              setAuditBooking(row)
+                              setOpenMenuId(null)
+                              setMenuPos(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-blue-700 hover:bg-blue-50 transition-colors border-t border-gray-100 mt-1"
+                          >
+                            <History className="w-4 h-4 text-blue-400" />
+                            Audit Trail
+                          </button>
+                          <button
+                            onClick={() => {
+                              setStockUsagesBooking(row)
+                              setOpenMenuId(null)
+                              setMenuPos(null)
+                            }}
+                            className="w-full flex items-center gap-3 px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 transition-colors"
+                          >
+                            <Package className="w-4 h-4 text-amber-400" />
+                            Stock Usages
+                          </button>
+                          <button
                             onClick={() => markCompleteMutation.mutate(row.id)}
                             className="w-full flex items-center gap-3 px-4 py-2 text-sm text-emerald-600 hover:bg-emerald-50 transition-colors border-t border-gray-100 mt-1"
                           >
@@ -295,6 +321,18 @@ export function ActiveBookingsPage() {
         isOpen={!!rebookBooking}
         onClose={() => setRebookBooking(null)}
         booking={rebookBooking}
+      />
+
+      <BookingAuditModal
+        isOpen={!!auditBooking}
+        onClose={() => setAuditBooking(null)}
+        booking={auditBooking}
+      />
+
+      <StockUsagesModal
+        isOpen={!!stockUsagesBooking}
+        onClose={() => setStockUsagesBooking(null)}
+        booking={stockUsagesBooking}
       />
     </div>
   )
