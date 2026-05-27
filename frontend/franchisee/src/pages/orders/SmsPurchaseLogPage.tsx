@@ -1,119 +1,64 @@
 import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
-import { CreditCard, Calendar, DollarSign, MessageSquare } from 'lucide-react'
+import { CreditCard, Calendar, DollarSign, MessageSquare, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { formatDisplayDate } from '../../lib/timeFormatUtils'
-
-interface SmsPurchase {
-  id: string
-  date: string
-  credits: number
-  amount: number
-  paymentMethod: string
-  status: 'completed' | 'pending' | 'failed'
-  transactionId: string
-}
+import { smsCreditsApi, type SmsCreditPurchase } from '../../api/services'
 
 export function SmsPurchaseLogPage() {
-  const { data: purchases } = useQuery({
+  const { data: purchasesData, isLoading } = useQuery({
     queryKey: ['sms-purchases'],
-    queryFn: async () => {
-      return [
-        {
-          id: '1',
-          date: '2026-05-10',
-          credits: 1000,
-          amount: 89.00,
-          paymentMethod: 'Credit Card',
-          status: 'completed',
-          transactionId: 'TXN-2026051001',
-        },
-        {
-          id: '2',
-          date: '2026-04-15',
-          credits: 500,
-          amount: 45.00,
-          paymentMethod: 'Credit Card',
-          status: 'completed',
-          transactionId: 'TXN-2026041502',
-        },
-        {
-          id: '3',
-          date: '2026-03-20',
-          credits: 2000,
-          amount: 169.00,
-          paymentMethod: 'Credit Card',
-          status: 'completed',
-          transactionId: 'TXN-2026032003',
-        },
-        {
-          id: '4',
-          date: '2026-02-28',
-          credits: 1000,
-          amount: 89.00,
-          paymentMethod: 'Credit Card',
-          status: 'completed',
-          transactionId: 'TXN-2026022804',
-        },
-        {
-          id: '5',
-          date: '2026-01-18',
-          credits: 500,
-          amount: 45.00,
-          paymentMethod: 'Credit Card',
-          status: 'completed',
-          transactionId: 'TXN-2026011805',
-        },
-      ] as SmsPurchase[]
-    },
+    queryFn: () => smsCreditsApi.history(),
   })
 
-  const totalCredits = purchases?.reduce((sum, p) => sum + p.credits, 0) || 0
-  const totalSpent = purchases?.reduce((sum, p) => sum + p.amount, 0) || 0
+  const purchases = purchasesData?.data || []
+
+  const totalCredits = purchases.reduce((sum, p) => sum + (p.quantity || 0), 0)
+  const totalSpent = purchases.reduce((sum, p) => sum + (p.amount || 0), 0)
 
   const columns = [
     {
       key: 'date',
       title: 'Purchase Date',
-      render: (purchase: SmsPurchase) => (
+      render: (purchase: SmsCreditPurchase) => (
         <div className="flex items-center gap-2">
           <Calendar className="w-4 h-4 text-gray-400" />
-          <span>{formatDisplayDate(purchase.date)}</span>
+          <span>{formatDisplayDate(purchase.purchased_at)}</span>
         </div>
       ),
     },
     {
       key: 'credits',
       title: 'Credits Purchased',
-      render: (purchase: SmsPurchase) => (
-        <span className="font-semibold text-blue-600">{purchase.credits.toLocaleString()}</span>
+      render: (purchase: SmsCreditPurchase) => (
+        <span className="font-semibold text-blue-600">{(purchase.quantity || 0).toLocaleString()}</span>
       ),
     },
     {
       key: 'amount',
       title: 'Amount',
-      render: (purchase: SmsPurchase) => (
+      render: (purchase: SmsCreditPurchase) => (
         <div className="flex items-center gap-1">
           <DollarSign className="w-4 h-4 text-gray-400" />
-          <span className="font-medium">${purchase.amount.toFixed(2)}</span>
+          <span className="font-medium">${Number(purchase.amount || 0).toFixed(2)}</span>
         </div>
       ),
     },
     {
       key: 'paymentMethod',
       title: 'Payment Method',
-      render: (purchase: SmsPurchase) => (
+      render: () => (
         <div className="flex items-center gap-2">
           <CreditCard className="w-4 h-4 text-gray-400" />
-          <span>{purchase.paymentMethod}</span>
+          <span>Credit Card</span>
         </div>
       ),
     },
     {
       key: 'status',
       title: 'Status',
-      render: (purchase: SmsPurchase) => (
+      render: (purchase: SmsCreditPurchase) => (
         <span
           className={`px-3 py-1 rounded-full text-xs font-medium ${
             purchase.status === 'completed'
@@ -123,18 +68,36 @@ export function SmsPurchaseLogPage() {
               : 'bg-red-100 text-red-700'
           }`}
         >
-          {purchase.status.charAt(0).toUpperCase() + purchase.status.slice(1)}
+          {(purchase.status || 'completed').charAt(0).toUpperCase() + (purchase.status || 'completed').slice(1)}
         </span>
       ),
     },
     {
       key: 'transactionId',
       title: 'Transaction ID',
-      render: (purchase: SmsPurchase) => (
-        <span className="text-sm text-gray-600 font-mono">{purchase.transactionId}</span>
+      render: (purchase: SmsCreditPurchase) => (
+        <span className="text-sm text-gray-600 font-mono">{purchase.id || '-'}</span>
       ),
     },
   ]
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="SMS Purchase Log"
+          description="View history of SMS credit purchases"
+          icon={<MessageSquare className="w-5 h-5" />}
+        />
+        <Card className="p-8">
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Loading purchase history...</span>
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -149,7 +112,7 @@ export function SmsPurchaseLogPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-blue-700 font-medium">Total Purchases</p>
-              <p className="text-2xl font-bold text-blue-900 mt-1">{purchases?.length || 0}</p>
+              <p className="text-2xl font-bold text-blue-900 mt-1">{purchases.length}</p>
             </div>
             <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
               <CreditCard className="w-6 h-6 text-white" />
@@ -184,9 +147,9 @@ export function SmsPurchaseLogPage() {
 
       <Card>
         <Table
-          data={purchases || []}
+          data={purchases}
           columns={columns}
-          keyExtractor={(purchase) => purchase.id}
+          keyExtractor={(purchase) => String(purchase.id)}
           emptyMessage="No SMS purchases found"
         />
       </Card>

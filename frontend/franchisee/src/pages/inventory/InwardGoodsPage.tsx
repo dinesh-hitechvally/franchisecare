@@ -1,20 +1,25 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
-import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2, Inbox } from 'lucide-react'
+import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2, Inbox, Loader2 } from 'lucide-react'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { inventoryApi } from '../../api/services'
 
 interface Order {
   id: string
-  date: string
-  items: number
-  total: number
-  orderStatus: 'Order Locked' | 'Shipped' | 'Delivered'
-  paymentStatus: 'Paid' | 'Pending' | 'Failed'
-  editable: boolean
+  order_number?: string
+  order_date?: string
+  created_at?: string
+  items_count?: number
+  items?: unknown[]
+  total_amount?: number
+  status?: string
+  payment_status?: string
+  is_editable?: boolean
 }
 
 export function InwardGoodsPage() {
@@ -28,68 +33,36 @@ export function InwardGoodsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Mock data
-  const allOrders: Order[] = [
-    {
-      id: 'BWO-2025-13328',
-      date: 'Wednesday, 11th Jun 2025',
-      items: 1,
-      total: 33.90,
-      orderStatus: 'Order Locked',
-      paymentStatus: 'Paid',
-      editable: false,
-    },
-    {
-      id: 'BWO-2025-13245',
-      date: 'Monday, 2nd Jun 2025',
-      items: 3,
-      total: 140.00,
-      orderStatus: 'Shipped',
-      paymentStatus: 'Paid',
-      editable: false,
-    },
-    {
-      id: 'BWO-2025-13110',
-      date: 'Friday, 23rd May 2025',
-      items: 5,
-      total: 615.35,
-      orderStatus: 'Order Locked',
-      paymentStatus: 'Paid',
-      editable: true,
-    },
-    {
-      id: 'BWO-2025-13050',
-      date: 'Wednesday, 21st May 2025',
-      items: 2,
-      total: 89.50,
-      orderStatus: 'Delivered',
-      paymentStatus: 'Paid',
-      editable: false,
-    },
-    {
-      id: 'BWO-2025-12999',
-      date: 'Monday, 19th May 2025',
-      items: 4,
-      total: 250.75,
-      orderStatus: 'Shipped',
-      paymentStatus: 'Pending',
-      editable: true,
-    },
-  ]
+  const { data: ordersData, isLoading } = useQuery({
+    queryKey: ['inward-goods', filterStatus],
+    queryFn: () => inventoryApi.getOrders({ type: 'inward', status: filterStatus || undefined }),
+  })
+
+  const allOrders: Order[] = ordersData?.data || []
+
+  const formatDate = (dateStr?: string) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    const day = date.getDate()
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th'
+    const weekday = date.toLocaleDateString('en-AU', { weekday: 'long' })
+    const month = date.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+    return `${weekday}, ${day}${suffix} ${month}`
+  }
 
   // Filter and search
   const filteredOrders = useMemo(() => {
     return allOrders.filter((order) => {
+      const orderNum = order.order_number || order.id
+      const orderDate = formatDate(order.order_date || order.created_at)
       const matchesSearch =
         searchTerm === '' ||
-        order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.date.toLowerCase().includes(searchTerm.toLowerCase())
+        orderNum.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        orderDate.toLowerCase().includes(searchTerm.toLowerCase())
 
-      const matchesStatus = filterStatus === '' || order.orderStatus === filterStatus
-
-      return matchesSearch && matchesStatus
+      return matchesSearch
     })
-  }, [searchTerm, filterStatus])
+  }, [allOrders, searchTerm])
 
   // Pagination
   const totalPages = Math.ceil(filteredOrders.length / perPage)
@@ -120,20 +93,20 @@ export function InwardGoodsPage() {
     {
       key: 'id',
       title: 'Order Number/Code',
-      render: (order: Order) => <span className="font-medium text-gray-900">{order.id}</span>,
+      render: (order: Order) => <span className="font-medium text-gray-900">{order.order_number || order.id}</span>,
       sortable: true,
     },
     {
       key: 'date',
       title: 'Order Date',
-      render: (order: Order) => <span className="text-gray-600">{order.date}</span>,
+      render: (order: Order) => <span className="text-gray-600">{formatDate(order.order_date || order.created_at)}</span>,
       sortable: true,
     },
     {
       key: 'items',
       title: '# of Items',
       render: (order: Order) => (
-        <span className="text-center font-medium text-gray-700">{order.items}</span>
+        <span className="text-center font-medium text-gray-700">{order.items_count || order.items?.length || 0}</span>
       ),
       sortable: true,
     },
@@ -141,50 +114,56 @@ export function InwardGoodsPage() {
       key: 'total',
       title: 'Total Amount',
       render: (order: Order) => (
-        <span className="text-right font-semibold text-gray-900">${order.total.toFixed(2)}</span>
+        <span className="text-right font-semibold text-gray-900">${Number(order.total_amount || 0).toFixed(2)}</span>
       ),
       sortable: true,
     },
     {
       key: 'orderStatus',
       title: 'Order Status',
-      render: (order: Order) => (
+      render: (order: Order) => {
+        const status = order.status || 'pending'
+        return (
         <span
           className={`text-xs font-semibold ${
-            order.orderStatus === 'Shipped'
+            status === 'shipped'
               ? 'text-blue-600'
-              : order.orderStatus === 'Delivered'
+              : status === 'delivered'
                 ? 'text-green-600'
                 : 'text-gray-700'
           }`}
         >
-          {order.orderStatus}
+          {status.charAt(0).toUpperCase() + status.slice(1).replace('_', ' ')}
         </span>
-      ),
+        )
+      },
     },
     {
       key: 'paymentStatus',
       title: 'Payment Status',
-      render: (order: Order) => (
+      render: (order: Order) => {
+        const payment = order.payment_status || 'pending'
+        return (
         <span
           className={`text-xs font-semibold ${
-            order.paymentStatus === 'Paid'
+            payment === 'paid'
               ? 'text-green-600'
-              : order.paymentStatus === 'Pending'
+              : payment === 'pending'
                 ? 'text-yellow-600'
                 : 'text-red-600'
           }`}
         >
-          {order.paymentStatus}
+          {payment.charAt(0).toUpperCase() + payment.slice(1)}
         </span>
-      ),
+        )
+      },
     },
     {
       key: 'editable',
       title: 'Editable?',
       render: (order: Order) => (
         <div className="flex justify-center">
-          {order.editable ? (
+          {order.is_editable ? (
             <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
           ) : (
             <X className="w-5 h-5 text-gray-400" strokeWidth={3} />

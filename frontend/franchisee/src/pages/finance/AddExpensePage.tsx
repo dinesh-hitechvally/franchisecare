@@ -1,12 +1,18 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from 'react-router-dom'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { PageHeader } from '../../components/layout/PageHeader'
-import { Receipt } from 'lucide-react'
+import { Receipt, Loader2 } from 'lucide-react'
+import { expenseCategoriesApi, expensesApi } from '../../api/services'
 
 export function AddExpensePage() {
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  
   const [formData, setFormData] = useState({
-    date: '2026-04-02',
+    date: new Date().toISOString().split('T')[0],
     type: '',
     category: '',
     title: '',
@@ -16,6 +22,56 @@ export function AddExpensePage() {
     description: '',
     isRecurring: false,
   })
+
+  const { data: categories = [], isLoading: categoriesLoading } = useQuery({
+    queryKey: ['expense-categories'],
+    queryFn: () => expenseCategoriesApi.getAll(),
+  })
+
+  // Group categories by type
+  const expenseTypes = useMemo(() => {
+    const grouped = categories.reduce((acc: Record<string, typeof categories>, cat) => {
+      const type = cat.type || 'Other'
+      if (!acc[type]) acc[type] = []
+      acc[type].push(cat)
+      return acc
+    }, {} as Record<string, typeof categories>)
+    return Object.keys(grouped)
+  }, [categories])
+
+  const filteredCategories = useMemo(() => {
+    if (!formData.type) return []
+    return categories.filter(cat => (cat.type || 'Other') === formData.type)
+  }, [categories, formData.type])
+
+  const createMutation = useMutation({
+    mutationFn: (data: { 
+      expense_date: string
+      category_id: string
+      title: string
+      amount: number
+      gst_inclusive: boolean
+      description?: string
+      is_recurring?: boolean
+    }) => expensesApi.create(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] })
+      navigate('/finance/expenses')
+    },
+  })
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    createMutation.mutate({
+      expense_date: formData.date,
+      category_id: formData.category,
+      title: formData.title,
+      amount: parseFloat(formData.amount) || 0,
+      gst_inclusive: formData.gst === 'GST Included',
+      description: formData.description,
+      is_recurring: formData.isRecurring,
+    })
+  }
 
   return (
     <div className="space-y-6">
@@ -32,7 +88,7 @@ export function AddExpensePage() {
               <h2 className="text-3xl font-light text-gray-400 uppercase tracking-tight">Add Expense</h2>
             </div>
 
-            <form className="space-y-10">
+            <form onSubmit={handleSubmit} className="space-y-10">
               {/* Expense Date */}
               <div className="relative">
                 <label className="block text-sm font-medium text-gray-500 mb-1">
@@ -53,12 +109,14 @@ export function AddExpensePage() {
                 </label>
                 <select
                   value={formData.type}
-                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value, category: '' })}
                   className="w-full bg-transparent border-b border-gray-300 py-2 outline-none focus:border-blue-500 transition-colors text-gray-800 appearance-none"
+                  disabled={categoriesLoading}
                 >
-                  <option value="">Select Type</option>
-                  <option value="Operating">Operating</option>
-                  <option value="Non-Operating">Non-Operating</option>
+                  <option value="">{categoriesLoading ? 'Loading...' : 'Select Type'}</option>
+                  {expenseTypes.map(type => (
+                    <option key={type} value={type}>{type}</option>
+                  ))}
                 </select>
                 <div className="absolute right-0 bottom-3 pointer-events-none text-gray-400">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -74,11 +132,12 @@ export function AddExpensePage() {
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full bg-transparent border-b border-gray-300 py-2 outline-none focus:border-blue-500 transition-colors text-gray-800 appearance-none"
+                  disabled={!formData.type || categoriesLoading}
                 >
-                  <option value="">Select Category</option>
-                  <option value="Fuel">Fuel</option>
-                  <option value="Marketing">Marketing</option>
-                  <option value="Maintenance">Maintenance</option>
+                  <option value="">{!formData.type ? 'Select Type First' : 'Select Category'}</option>
+                  {filteredCategories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
                 </select>
                 <div className="absolute right-0 bottom-3 pointer-events-none text-gray-400">
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -173,7 +232,12 @@ export function AddExpensePage() {
 
               {/* Submit Button */}
               <div className="pt-6">
-                <Button className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded shadow-lg transition-all transform active:scale-95 uppercase tracking-wider font-semibold">
+                <Button 
+                  type="submit"
+                  disabled={createMutation.isPending || !formData.category || !formData.amount}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-3 rounded shadow-lg transition-all transform active:scale-95 uppercase tracking-wider font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  {createMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
                   Save Expense
                 </Button>
               </div>

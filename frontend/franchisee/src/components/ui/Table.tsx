@@ -77,7 +77,7 @@ export function Table<T>({
 
   if (data.length === 0) {
     return (
-      <div className="overflow-x-auto">
+      <div className="w-full">
         <table className="w-full">
           <thead>
             <tr className="border-b">
@@ -104,7 +104,7 @@ export function Table<T>({
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="w-full">
       <table className="w-full">
         <thead>
           <tr className="border-b">

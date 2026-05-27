@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::post('/login', [AuthController::class, 'login']);
 
+// PDF downloads with token authentication (accessed via browser link)
+Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
+Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -100,8 +104,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('bookings/{booking}/detail-audits', [\App\Http\Controllers\Api\BookingController::class, 'getDetailHistory']);
     Route::get('bookings/{booking}/inventory-audits', [\App\Http\Controllers\Api\BookingController::class, 'getInventoryHistory']);
     Route::get('bookings/{booking}/stock-usages', [\App\Http\Controllers\Api\BookingController::class, 'getStockUsages']);
-    Route::get('bookings/{booking}/invoice', [\App\Http\Controllers\Api\BookingController::class, 'generateInvoice']);
-    Route::get('bookings/{booking}/receipt', [\App\Http\Controllers\Api\BookingController::class, 'generateReceipt']);
+    // Invoice and receipt routes moved to public routes with token auth
     Route::post('bookings/{booking}/send-invoice', [\App\Http\Controllers\Api\BookingController::class, 'sendInvoice']);
     Route::post('bookings/{booking}/send-receipt', [\App\Http\Controllers\Api\BookingController::class, 'sendReceipt']);
     Route::post('bookings/{booking}/send-sms-confirmation', [\App\Http\Controllers\Api\BookingController::class, 'sendSmsConfirmation']);
@@ -271,6 +274,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('email-history', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailStore']);
         Route::get('email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailShow']);
         Route::delete('email-history/{emailHistory}', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'emailDestroy']);
+        
+        // Send emails (actually delivers the email)
+        Route::post('send-email', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'sendEmail']);
+        Route::post('send-bulk-email', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'sendBulkEmail']);
+        Route::post('send-booking-list', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'sendBookingList']);
     });
 
     /*

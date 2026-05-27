@@ -74,13 +74,29 @@ class CustomerController extends Controller
         $customer = Customer::create($validated);
 
         // Record Audit
-        CustomerAudit::create(array_merge($customer->toArray(), [
-            'customer_id' => $customer->id,
-            'action_at' => now(),
-            'action_type' => 'created'
-        ]));
+        $this->recordCustomerAudit($customer, 'created');
 
         return (new CustomerResource($customer))->resolve();
+    }
+
+    /**
+     * Record a customer audit entry
+     */
+    private function recordCustomerAudit(Customer $customer, string $actionType): void
+    {
+        $auditData = $customer->only([
+            'first_name', 'last_name', 'email', 'other_email',
+            'phone', 'other_phone', 'address', 'street_address',
+            'suburb', 'postcode', 'state', 'company_id', 'notes',
+            'referred_by', 'is_ndis', 'is_subscribed', 'is_active',
+            'latitude', 'longitude', 'reference_id', 'is_archived'
+        ]);
+        
+        $auditData['customer_id'] = $customer->id;
+        $auditData['action_type'] = $actionType;
+        $auditData['action_at'] = now();
+        
+        CustomerAudit::create($auditData);
     }
 
     /**
@@ -121,11 +137,7 @@ class CustomerController extends Controller
         $customer->update($validated);
 
         // Record Audit
-        CustomerAudit::create(array_merge($customer->fresh()->toArray(), [
-            'customer_id' => $customer->id,
-            'action_at' => now(),
-            'action_type' => 'updated'
-        ]));
+        $this->recordCustomerAudit($customer->fresh(), 'updated');
 
         return (new CustomerResource($customer->fresh(['customerItems'])))->resolve();
     }
@@ -136,11 +148,7 @@ class CustomerController extends Controller
         $customer->update(['is_archived' => true]);
 
         // Record Audit
-        CustomerAudit::create(array_merge($customer->fresh()->toArray(), [
-            'customer_id' => $customer->id,
-            'action_at' => now(),
-            'action_type' => 'archived'
-        ]));
+        $this->recordCustomerAudit($customer->fresh(), 'archived');
 
         return response()->json(['message' => 'Customer archived successfully']);
     }
@@ -154,11 +162,7 @@ class CustomerController extends Controller
         $customer->update(['is_archived' => false]);
 
         // Record Audit
-        CustomerAudit::create(array_merge($customer->fresh()->toArray(), [
-            'customer_id' => $customer->id,
-            'action_at' => now(),
-            'action_type' => 'restored'
-        ]));
+        $this->recordCustomerAudit($customer->fresh(), 'restored');
 
         return response()->json(['message' => 'Customer restored successfully']);
     }

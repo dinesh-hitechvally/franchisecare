@@ -1,38 +1,40 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/layout/PageHeader'
-import { Check, X, MoreVertical, Wallet } from 'lucide-react'
+import { Check, X, MoreVertical, Wallet, Loader2 } from 'lucide-react'
+import { expenseCategoriesApi } from '../../api/services'
+import type { ExpenseCategory } from '../../types'
 
 export function ExpenseCategoriesPage() {
   const [openMenuId, setOpenMenuId] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
-  const expenseTypes = [
-    {
-      type: 'Administration',
-      categories: [
-        { name: 'Accountancy', description: 'Fees for accounting services', entries: 12, gst: true, status: true },
-        { name: 'Bank Fees', description: 'Monthly service fees', entries: 45, gst: false, status: true },
-        { name: 'Donations', description: 'Charitable contributions', entries: 2, gst: false, status: true },
-      ]
-    },
-    {
-      type: 'Motor Vehicle',
-      categories: [
-        { name: 'Fuel', description: 'Fuel and oil for van', entries: 203, gst: true, status: true },
-        { name: 'Maintenance', description: 'Repairs and servicing', entries: 18, gst: true, status: true },
-        { name: 'Registration', description: 'Vehicle registration fees', entries: 1, gst: false, status: true },
-      ]
-    },
-    {
-      type: 'Trailer/Mobile Salon',
-      categories: [
-        { name: 'Shampoos/Sanitiser/Cologne', description: 'Consumable supplies', entries: 87, gst: true, status: true },
-        { name: 'Equipment Repairs', description: 'Repairs for dryer, tub, etc.', entries: 5, gst: true, status: true },
-      ]
-    }
-  ]
+  const { data: categories = [], isLoading } = useQuery({
+    queryKey: ['expense-categories'],
+    queryFn: () => expenseCategoriesApi.getAll(),
+  })
+
+  // Group categories by type (using description or a default)
+  const groupedCategories = categories.reduce((acc, cat) => {
+    const type = (cat as any).type || 'General'
+    if (!acc[type]) acc[type] = []
+    acc[type].push(cat)
+    return acc
+  }, {} as Record<string, ExpenseCategory[]>)
+
+  const expenseTypes = Object.entries(groupedCategories).map(([type, cats]) => ({
+    type,
+    categories: cats.map(cat => ({
+      id: cat.id,
+      name: cat.name,
+      description: cat.description || '',
+      entries: (cat as any).entries_count || 0,
+      gst: cat.gst_inclusive ?? false,
+      status: cat.is_active ?? true,
+    }))
+  }))
 
   return (
     <div className="space-y-6">
@@ -41,6 +43,14 @@ export function ExpenseCategoriesPage() {
         icon={<Wallet className="w-5 h-5" />}
       />
 
+      {isLoading ? (
+        <Card className="border border-gray-200 shadow-sm bg-white p-8">
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Loading categories...</span>
+          </div>
+        </Card>
+      ) : (
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
@@ -56,7 +66,14 @@ export function ExpenseCategoriesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {expenseTypes.map((typeGroup) => (
+              {expenseTypes.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-8 text-center text-gray-500">
+                    No expense categories found
+                  </td>
+                </tr>
+              ) : (
+              expenseTypes.map((typeGroup) => (
                 typeGroup.categories.map((cat, index) => (
                   <tr key={`${typeGroup.type}-${cat.name}`} className="hover:bg-gray-50/50 transition-colors">
                     {index === 0 && (
@@ -130,11 +147,13 @@ export function ExpenseCategoriesPage() {
                     </td>
                   </tr>
                 ))
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
       </Card>
+      )}
     </div>
   )
 }

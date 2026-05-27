@@ -433,11 +433,24 @@ class BookingController extends Controller
     /**
      * Generate invoice PDF for the booking.
      */
-    public function generateInvoice(Booking $booking)
+    public function generateInvoice(Request $request, Booking $booking)
     {
-        $booking->load(['customer', 'details.item', 'details.service']);
+        // Verify token from query parameter for browser access
+        $token = $request->query('token');
+        if ($token) {
+            $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            if (!$tokenModel || !$tokenModel->tokenable) {
+                abort(401, 'Invalid or expired token');
+            }
+        } elseif (!$request->user()) {
+            abort(401, 'Authentication required');
+        }
+
+        $booking->load(['customer', 'details.item', 'details.service', 'company']);
+        $company = $booking->company;
+        $invoiceNumber = 4060000 + $booking->id;
         
-        $pdf = PDF::loadView('bookings.invoice', compact('booking'));
+        $pdf = PDF::loadView('bookings.invoice', compact('booking', 'company', 'invoiceNumber'));
         
         return $pdf->download("invoice-{$booking->id}.pdf");
     }
@@ -445,11 +458,24 @@ class BookingController extends Controller
     /**
      * Generate receipt PDF for the booking.
      */
-    public function generateReceipt(Booking $booking)
+    public function generateReceipt(Request $request, Booking $booking)
     {
-        $booking->load(['customer', 'details.item', 'details.service']);
+        // Verify token from query parameter for browser access
+        $token = $request->query('token');
+        if ($token) {
+            $tokenModel = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+            if (!$tokenModel || !$tokenModel->tokenable) {
+                abort(401, 'Invalid or expired token');
+            }
+        } elseif (!$request->user()) {
+            abort(401, 'Authentication required');
+        }
+
+        $booking->load(['customer', 'details.item', 'details.service', 'company']);
+        $company = $booking->company;
+        $invoiceNumber = 4060000 + $booking->id;
         
-        $pdf = PDF::loadView('bookings.receipt', compact('booking'));
+        $pdf = PDF::loadView('bookings.receipt', compact('booking', 'company', 'invoiceNumber'));
         
         return $pdf->download("receipt-{$booking->id}.pdf");
     }
@@ -646,8 +672,7 @@ class BookingController extends Controller
         $booking->loadMissing(['details.item', 'details.service']);
 
         $customerName = trim(($booking->customer->first_name ?? '') . ' ' . ($booking->customer->last_name ?? ''));
-        $usageRules = ServiceInventoryUsage::where('company_id', $booking->company_id)
-            ->where('is_active', true)
+        $usageRules = ServiceInventoryUsage::where('is_active', true)
             ->whereIn('service_id', $booking->details->pluck('service_id')->filter()->unique()->values()->all())
             ->get()
             ->groupBy('service_id');

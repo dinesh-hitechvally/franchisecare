@@ -19,9 +19,6 @@ class Blockout extends Model
         'end_date',
         'end_time',
         'recurring_id',
-        'repeat_every',
-        'repeat_on',
-        'repeat_until',
         'notes',
         'active',
         'company_id',
@@ -31,7 +28,6 @@ class Blockout extends Model
         'active' => 'boolean',
         'start_date' => 'date',
         'end_date' => 'date',
-        'repeat_until' => 'date',
     ];
 
     public function company()
@@ -64,9 +60,6 @@ class Blockout extends Model
             'end_date' => $this->end_date,
             'end_time' => $this->end_time,
             'recurring_id' => $this->recurring_id,
-            'repeat_every' => $this->repeat_every,
-            'repeat_on' => $this->repeat_on,
-            'repeat_until' => $this->repeat_until,
             'notes' => $this->notes,
             'active' => (bool) $this->active,
         ];

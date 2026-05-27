@@ -1,32 +1,46 @@
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { PageHeader } from '../../components/layout/PageHeader'
-import { Check, ChevronLeft, ChevronRight, Repeat } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Repeat, Loader2, X } from 'lucide-react'
+import { apiClient } from '../../api/client'
+
+interface RecurringExpense {
+  id: string
+  title: string
+  description?: string
+  category_id?: string
+  category?: { name: string; type?: string }
+  amount: number
+  start_date: string
+  frequency: string
+  next_date?: string
+  end_date?: string
+  is_active: boolean
+  created_at: string
+}
 
 export function RecurringExpensesPage() {
-  const recurringExpenses = [
-    {
-      id: '1',
-      title: 'Car Loan',
-      description: 'Monthly car loan repayment',
-      category: 'Motor Vehicle > Loan',
-      created: '31st Jul, 2023',
-      amount: 200.75,
-      recurStart: '9th Jul, 2023',
-      recurRule: 'Every Week on Monday until 30th Jul, 2024',
-      active: true
+  const { data: recurringExpenses = [], isLoading } = useQuery({
+    queryKey: ['recurring-expenses'],
+    queryFn: async () => {
+      const response = await apiClient.get<RecurringExpense[]>('/recurring-expenses')
+      return response
     },
-    {
-      id: '2',
-      title: 'Mate Fees',
-      description: 'Weekly service fees',
-      category: 'Administration > Fees',
-      created: '15th Apr, 2024',
-      amount: 150.00,
-      recurStart: '15th Apr, 2024',
-      recurRule: 'Every Fortnight on Monday until 31st Dec, 2024',
-      active: true
-    }
-  ]
+  })
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    const day = date.getDate()
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th'
+    return `${day}${suffix} ${date.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })}`
+  }
+
+  const getRecurRule = (exp: RecurringExpense) => {
+    const freq = exp.frequency || 'weekly'
+    const endDate = exp.end_date ? formatDate(exp.end_date) : 'ongoing'
+    return `${freq.charAt(0).toUpperCase() + freq.slice(1)} until ${endDate}`
+  }
 
   return (
     <div className="space-y-6">
@@ -35,6 +49,14 @@ export function RecurringExpensesPage() {
         icon={<Repeat className="w-5 h-5" />}
       />
 
+      {isLoading ? (
+        <Card className="border border-gray-200 shadow-sm bg-white p-8">
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Loading recurring expenses...</span>
+          </div>
+        </Card>
+      ) : (
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
@@ -52,21 +74,28 @@ export function RecurringExpensesPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {recurringExpenses.map((exp) => (
+              {recurringExpenses.length === 0 ? (
+                <tr>
+                  <td colSpan={9} className="px-6 py-8 text-center text-gray-500">
+                    No recurring expenses found
+                  </td>
+                </tr>
+              ) : (
+              recurringExpenses.map((exp) => (
                 <tr key={exp.id} className="hover:bg-gray-50 transition-colors">
                   <td className="px-6 py-4 text-gray-900 font-medium">{exp.title}</td>
-                  <td className="px-6 py-4 text-gray-500">{exp.description}</td>
-                  <td className="px-6 py-4 text-gray-600">{exp.category}</td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{exp.created}</td>
-                  <td className="px-6 py-4 text-gray-900 font-bold">${exp.amount.toFixed(2)}</td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{exp.recurStart}</td>
-                  <td className="px-6 py-4 text-gray-600 text-xs italic">{exp.recurRule}</td>
+                  <td className="px-6 py-4 text-gray-500">{exp.description || '-'}</td>
+                  <td className="px-6 py-4 text-gray-600">{exp.category?.name || '-'}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{formatDate(exp.created_at)}</td>
+                  <td className="px-6 py-4 text-gray-900 font-bold">${Number(exp.amount).toFixed(2)}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{formatDate(exp.start_date)}</td>
+                  <td className="px-6 py-4 text-gray-600 text-xs italic">{getRecurRule(exp)}</td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center">
-                      {exp.active ? (
+                      {exp.is_active ? (
                         <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
                       ) : (
-                        <span className="text-gray-300">X</span>
+                        <X className="w-5 h-5 text-gray-300" strokeWidth={3} />
                       )}
                     </div>
                   </td>
@@ -74,7 +103,8 @@ export function RecurringExpensesPage() {
                     <button className="text-blue-600 hover:underline font-semibold">Delete</button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
@@ -89,7 +119,7 @@ export function RecurringExpensesPage() {
               <option>100</option>
             </select>
           </div>
-          <span className="text-sm text-gray-600">1-24 of 24</span>
+          <span className="text-sm text-gray-600">1-{recurringExpenses.length} of {recurringExpenses.length}</span>
           <div className="flex items-center gap-1">
             <button className="p-1 hover:bg-gray-100 rounded-full">
               <ChevronLeft className="w-5 h-5" />
@@ -100,6 +130,7 @@ export function RecurringExpensesPage() {
           </div>
         </div>
       </Card>
+      )}
     </div>
   )
 }

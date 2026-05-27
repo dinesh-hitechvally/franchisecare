@@ -5,7 +5,7 @@ import { ChevronRight, Settings, User, Key, LogOut } from 'lucide-react'
 import { cn } from '../../lib/utils'
 import { useAuthStore } from '../../store/authStore'
 import { useToastStore } from '../../store/toastStore'
-import { authApi } from '../../api/services'
+import { authApi, smsCreditsApi } from '../../api/services'
 
 interface NavItem {
   name: string
@@ -273,7 +273,21 @@ export function Sidebar() {
   const addToast = useToastStore((state) => state.addToast)
   const [expandedItems, setExpandedItems] = useState<string[]>([])
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [smsCredit, setSmsCredit] = useState<number>(0)
   const profileRef = useRef<HTMLDivElement>(null)
+
+  // Fetch SMS credit balance
+  useEffect(() => {
+    const fetchSmsCredit = async () => {
+      try {
+        const creditInfo = await smsCreditsApi.get()
+        setSmsCredit(creditInfo.balance)
+      } catch (error) {
+        console.error('Failed to fetch SMS credit:', error)
+      }
+    }
+    fetchSmsCredit()
+  }, [])
 
   const toggleExpanded = (name: string) => {
     setExpandedItems(prev =>
@@ -340,7 +354,7 @@ export function Sidebar() {
             {user?.name || 'Mate Support'} 
             <span className="sb-dropdown-arrow">▾</span>
           </span>
-          <span className="sb-sms-credit">SMS Credit: $1.14 AU</span>
+          <span className="sb-sms-credit">SMS Credit: ${smsCredit.toFixed(2)} AU</span>
         </div>
 
         {/* Profile Dropdown Menu */}

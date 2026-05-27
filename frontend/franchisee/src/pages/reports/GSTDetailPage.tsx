@@ -1,43 +1,47 @@
-import { useState } from 'react'
-import { Printer, Download, Search, Receipt, Landmark } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { Printer, Download, Search, Receipt, Landmark, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
-
-interface GSTEntry {
-  date: string
-  name: string
-  amount: number
-  gst: number
-  total: number
-}
-
-interface GSTSection {
-  title: string
-  entries: GSTEntry[]
-  totalGST: number
-}
+import { reportsApi } from '../../api/services'
+import { format, startOfMonth, endOfMonth, subMonths, parse } from 'date-fns'
 
 export function GSTDetailPage() {
-  const [year, setYear] = useState('2026')
-  const [month, setMonth] = useState('April')
+  const currentDate = new Date()
+  const [year, setYear] = useState(currentDate.getFullYear().toString())
+  const [month, setMonth] = useState(format(currentDate, 'MMMM'))
 
-  const salesGST: GSTSection = {
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ]
+
+  const dateRange = useMemo(() => {
+    const monthIndex = months.indexOf(month)
+    const selectedDate = new Date(parseInt(year), monthIndex, 1)
+    return {
+      from: format(startOfMonth(selectedDate), 'yyyy-MM-dd'),
+      to: format(endOfMonth(selectedDate), 'yyyy-MM-dd'),
+    }
+  }, [year, month])
+
+  const { data: gstData, isLoading, refetch } = useQuery({
+    queryKey: ['gst-report', dateRange.from, dateRange.to],
+    queryFn: () => reportsApi.getGstSummary({ date_from: dateRange.from, date_to: dateRange.to }),
+  })
+
+  const salesGST = {
     title: 'GST Collected (Sales)',
-    entries: [
-      { date: '2026-04-03', name: 'John Doe - Full Groom', amount: 77.27, gst: 7.73, total: 85.00 },
-      { date: '2026-04-03', name: 'Sarah Smith - Bath & Dry', amount: 40.91, gst: 4.09, total: 45.00 },
-      { date: '2026-04-03', name: 'Mike Johnson - Nail Trim', amount: 27.27, gst: 2.73, total: 30.00 },
-    ],
-    totalGST: 14.55
+    entries: gstData?.gst_collected?.items || [],
+    totalGST: gstData?.gst_collected?.total || 0
   }
 
-  const purchaseGST: GSTSection = {
+  const purchaseGST = {
     title: 'GST Paid (Purchases)',
-    entries: [
-      { date: '2026-04-01', name: 'Shell - Fuel', amount: 72.72, gst: 7.28, total: 80.00 },
-      { date: '2026-04-02', name: 'Pet Supplies Co - Shampoos', amount: 150.00, gst: 15.00, total: 165.00 },
-    ],
-    totalGST: 22.28
+    entries: gstData?.gst_paid?.items || [],
+    totalGST: gstData?.gst_paid?.total || 0
   }
+
+  const netGST = gstData?.net_gst || (salesGST.totalGST - purchaseGST.totalGST)
 
   return (
     <div className="flex flex-col gap-6 p-6 min-h-screen bg-[#f4f6f8]">
@@ -67,8 +71,9 @@ export function GSTDetailPage() {
               onChange={(e) => setYear(e.target.value)}
               className="w-full text-sm p-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             >
-              <option value="2026">2026-2027</option>
-              <option value="2025">2025-2026</option>
+              {[currentDate.getFullYear(), currentDate.getFullYear() - 1, currentDate.getFullYear() - 2].map(y => (
+                <option key={y} value={y}>{y}-{y + 1}</option>
+              ))}
             </select>
           </div>
           <div className="space-y-1.5">
@@ -78,18 +83,31 @@ export function GSTDetailPage() {
               onChange={(e) => setMonth(e.target.value)}
               className="w-full text-sm p-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500/20"
             >
-              <option value="April">April</option>
-              <option value="March">March</option>
+              {months.map(m => (
+                <option key={m} value={m}>{m}</option>
+              ))}
             </select>
           </div>
-          <button className="flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all shadow-md font-bold text-xs uppercase tracking-widest active:scale-[0.98]">
-            <Search size={18} />
+          <button 
+            onClick={() => refetch()}
+            disabled={isLoading}
+            className="flex items-center justify-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg transition-all shadow-md font-bold text-xs uppercase tracking-widest active:scale-[0.98] disabled:opacity-50"
+          >
+            {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Search size={18} />}
             Generate Detail Report
           </button>
         </div>
       </div>
 
       {/* Report Tables */}
+      {isLoading ? (
+        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-12">
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <Loader2 className="w-6 h-6 animate-spin" />
+            <span>Loading GST report...</span>
+          </div>
+        </div>
+      ) : (
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="p-8 text-center border-b border-gray-100">
           <h2 className="text-2xl font-bold text-gray-900">RetailCare Pty Ltd</h2>
@@ -114,20 +132,26 @@ export function GSTDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {salesGST.entries.map((entry, idx) => (
+                {salesGST.entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-gray-500 text-sm">No sales entries for this period</td>
+                  </tr>
+                ) : (
+                salesGST.entries.map((entry, idx) => (
                   <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                     <td className="p-3 text-xs text-gray-500 font-medium">{entry.date}</td>
-                    <td className="p-3 text-xs text-gray-600 font-bold">{entry.name}</td>
-                    <td className="p-3 text-xs text-gray-500 text-right font-medium">${entry.amount.toFixed(2)}</td>
-                    <td className="p-3 text-xs text-primary-600 text-right font-black">${entry.gst.toFixed(2)}</td>
-                    <td className="p-3 text-xs text-gray-900 text-right font-black border-l border-gray-50 bg-gray-50/20">${entry.total.toFixed(2)}</td>
+                    <td className="p-3 text-xs text-gray-600 font-bold">{entry.description}</td>
+                    <td className="p-3 text-xs text-gray-500 text-right font-medium">${Number(entry.amount).toFixed(2)}</td>
+                    <td className="p-3 text-xs text-primary-600 text-right font-black">${Number(entry.gst).toFixed(2)}</td>
+                    <td className="p-3 text-xs text-gray-900 text-right font-black border-l border-gray-50 bg-gray-50/20">${(Number(entry.amount) + Number(entry.gst)).toFixed(2)}</td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
               <tfoot>
                 <tr className="bg-primary-50 font-black">
                   <td colSpan={3} className="p-4 text-xs text-primary-900 text-right uppercase tracking-widest">Total GST on Sales</td>
-                  <td className="p-4 text-sm text-primary-900 text-right">${salesGST.totalGST.toFixed(2)}</td>
+                  <td className="p-4 text-sm text-primary-900 text-right">${Number(salesGST.totalGST).toFixed(2)}</td>
                   <td className="p-4 text-sm text-primary-900 text-right"></td>
                 </tr>
               </tfoot>
@@ -150,20 +174,26 @@ export function GSTDetailPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {purchaseGST.entries.map((entry, idx) => (
+                {purchaseGST.entries.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-6 text-center text-gray-500 text-sm">No purchase entries for this period</td>
+                  </tr>
+                ) : (
+                purchaseGST.entries.map((entry, idx) => (
                   <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
                     <td className="p-3 text-xs text-gray-500 font-medium">{entry.date}</td>
-                    <td className="p-3 text-xs text-gray-600 font-bold">{entry.name}</td>
-                    <td className="p-3 text-xs text-gray-500 text-right font-medium">${entry.amount.toFixed(2)}</td>
-                    <td className="p-3 text-xs text-error-600 text-right font-black">${entry.gst.toFixed(2)}</td>
-                    <td className="p-3 text-xs text-gray-900 text-right font-black border-l border-gray-50 bg-gray-50/20">${entry.total.toFixed(2)}</td>
+                    <td className="p-3 text-xs text-gray-600 font-bold">{entry.description}</td>
+                    <td className="p-3 text-xs text-gray-500 text-right font-medium">${Number(entry.amount).toFixed(2)}</td>
+                    <td className="p-3 text-xs text-error-600 text-right font-black">${Number(entry.gst).toFixed(2)}</td>
+                    <td className="p-3 text-xs text-gray-900 text-right font-black border-l border-gray-50 bg-gray-50/20">${(Number(entry.amount) + Number(entry.gst)).toFixed(2)}</td>
                   </tr>
-                ))}
+                ))
+                )}
               </tbody>
               <tfoot>
                 <tr className="bg-error-50 font-black">
                   <td colSpan={3} className="p-4 text-xs text-error-900 text-right uppercase tracking-widest">Total GST Credits</td>
-                  <td className="p-4 text-sm text-error-900 text-right">${purchaseGST.totalGST.toFixed(2)}</td>
+                  <td className="p-4 text-sm text-error-900 text-right">${Number(purchaseGST.totalGST).toFixed(2)}</td>
                   <td className="p-4 text-sm text-error-900 text-right"></td>
                 </tr>
               </tfoot>
@@ -181,11 +211,14 @@ export function GSTDetailPage() {
             </div>
           </div>
           <div className="text-right">
-            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">Difference</span>
-            <span className="text-3xl font-black">${Math.abs(salesGST.totalGST - purchaseGST.totalGST).toFixed(2)}</span>
+            <span className="block text-[10px] font-bold uppercase tracking-widest text-gray-400 mb-1">
+              {netGST >= 0 ? 'Amount Owed' : 'Credit'}
+            </span>
+            <span className="text-3xl font-black">${Math.abs(netGST).toFixed(2)}</span>
           </div>
         </div>
       </div>
+      )}
     </div>
   )
 }

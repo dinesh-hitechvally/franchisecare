@@ -120,7 +120,9 @@ class SettingsController extends Controller
                 'show_pet_name' => true,
                 'show_pet_breed' => true,
                 'show_services_name' => true,
+                'show_time' => true,
                 'show_cancellation_policy' => true,
+                'display_order' => null,
             ]);
         }
 
@@ -138,7 +140,9 @@ class SettingsController extends Controller
             'show_pet_name' => 'boolean',
             'show_pet_breed' => 'boolean',
             'show_services_name' => 'boolean',
+            'show_time' => 'boolean',
             'show_cancellation_policy' => 'boolean',
+            'display_order' => 'nullable|array',
         ]);
 
         $settings = CalendarSetting::updateOrCreate(

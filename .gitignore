@@ -95,6 +95,44 @@ Thumbs.db
 /frontend/franchisee/.stylelintcache
 
 # =========================
+# FRONTEND (React/Vite - /frontend/superadmin)
+# =========================
+/frontend/superadmin/node_modules/
+
+# Build outputs
+/frontend/superadmin/build/
+/frontend/superadmin/dist/
+/frontend/superadmin/.next/
+/frontend/superadmin/out/
+
+# Env files
+/frontend/superadmin/.env
+/frontend/superadmin/.env.*
+!/frontend/superadmin/.env.example
+
+# Logs
+/frontend/superadmin/npm-debug.log*
+/frontend/superadmin/yarn-debug.log*
+/frontend/superadmin/yarn-error.log*
+/frontend/superadmin/pnpm-debug.log*
+
+# Testing
+/frontend/superadmin/coverage/
+
+# Cache
+/frontend/superadmin/.cache/
+/frontend/superadmin/.vite/
+/frontend/superadmin/.turbo/
+
+# IDE
+/frontend/superadmin/.idea/
+/frontend/superadmin/.vscode/
+
+# Misc
+/frontend/superadmin/.eslintcache
+/frontend/superadmin/.stylelintcache
+
+# =========================
 # OPTIONAL GLOBAL
 # =========================
 .env

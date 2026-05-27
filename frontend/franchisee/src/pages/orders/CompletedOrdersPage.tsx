@@ -1,38 +1,26 @@
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { Check, X, ChevronLeft, ChevronRight, ShoppingBag } from 'lucide-react'
+import { Check, X, ChevronLeft, ChevronRight, ShoppingBag, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { inventoryApi } from '../../api/services'
 
 export function CompletedOrdersPage() {
-  // Mocks based on screenshot analysis
-  const orders = [
-    { 
-      id: 'BWO-2024-12650', 
-      date: 'Wednesday, 9th Oct 2024', 
-      items: 4, 
-      total: 216.60, 
-      orderStatus: 'Completed', 
-      paymentStatus: 'Not Paid', 
-      editable: true 
-    },
-    { 
-      id: 'BWO-2024-12582', 
-      date: 'Monday, 30th Sep 2024', 
-      items: 2, 
-      total: 85.00, 
-      orderStatus: 'Completed', 
-      paymentStatus: 'Paid', 
-      editable: false 
-    },
-    { 
-      id: 'BWO-2024-12490', 
-      date: 'Friday, 20th Sep 2024', 
-      items: 6, 
-      total: 412.30, 
-      orderStatus: 'Completed', 
-      paymentStatus: 'Paid', 
-      editable: false 
-    },
-  ]
+  const { data: ordersData, isLoading } = useQuery({
+    queryKey: ['completed-orders'],
+    queryFn: () => inventoryApi.getOrders({ status: 'completed' }),
+  })
+
+  const orders = ordersData?.data || []
+
+  const formatDate = (dateStr: string) => {
+    if (!dateStr) return '-'
+    const date = new Date(dateStr)
+    const day = date.getDate()
+    const suffix = day === 1 || day === 21 || day === 31 ? 'st' : day === 2 || day === 22 ? 'nd' : day === 3 || day === 23 ? 'rd' : 'th'
+    const weekday = date.toLocaleDateString('en-AU', { weekday: 'long' })
+    const month = date.toLocaleDateString('en-AU', { month: 'short', year: 'numeric' })
+    return `${weekday}, ${day}${suffix} ${month}`
+  }
 
   return (
     <div className="space-y-6">
@@ -46,6 +34,14 @@ export function CompletedOrdersPage() {
         <p className="text-gray-800 text-sm font-medium">All prices are GST included.</p>
       </div>
 
+      {isLoading ? (
+        <Card className="border border-gray-200 shadow-sm bg-white p-8">
+          <div className="flex items-center justify-center gap-2 text-gray-500">
+            <Loader2 className="w-5 h-5 animate-spin" />
+            <span>Loading completed orders...</span>
+          </div>
+        </Card>
+      ) : (
       <Card className="border border-gray-200 shadow-sm overflow-hidden bg-white">
         <div className="overflow-x-auto">
           <table className="w-full text-sm text-left border-collapse">
@@ -62,25 +58,32 @@ export function CompletedOrdersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {orders.map((order) => (
+              {orders.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="px-6 py-8 text-center text-gray-500">
+                    No completed orders found
+                  </td>
+                </tr>
+              ) : (
+              orders.map((order) => (
                 <tr key={order.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 text-gray-700 font-medium whitespace-nowrap">{order.id}</td>
-                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{order.date}</td>
-                  <td className="px-6 py-4 text-center text-gray-700 font-medium">{order.items}</td>
-                  <td className="px-6 py-4 text-right text-gray-900 font-semibold">${order.total.toFixed(2)}</td>
+                  <td className="px-6 py-4 text-gray-700 font-medium whitespace-nowrap">{order.order_number || order.id}</td>
+                  <td className="px-6 py-4 text-gray-600 whitespace-nowrap">{formatDate(order.order_date || order.created_at)}</td>
+                  <td className="px-6 py-4 text-center text-gray-700 font-medium">{order.items_count || order.items?.length || 0}</td>
+                  <td className="px-6 py-4 text-right text-gray-900 font-semibold">${Number(order.total_amount || 0).toFixed(2)}</td>
                   <td className="px-6 py-4">
                     <span className="text-xs font-bold text-green-600 uppercase">
-                      {order.orderStatus}
+                      {order.status || 'Completed'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className={`text-sm ${order.paymentStatus === 'Paid' ? 'text-gray-800' : 'text-red-500 font-medium'}`}>
-                      {order.paymentStatus}
+                    <span className={`text-sm ${order.payment_status === 'paid' ? 'text-gray-800' : 'text-red-500 font-medium'}`}>
+                      {order.payment_status === 'paid' ? 'Paid' : 'Not Paid'}
                     </span>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex justify-center">
-                      {order.editable ? (
+                      {order.is_editable ? (
                         <Check className="w-5 h-5 text-green-500" strokeWidth={3} />
                       ) : (
                         <X className="w-5 h-5 text-gray-400" strokeWidth={3} />
@@ -91,7 +94,8 @@ export function CompletedOrdersPage() {
                     <button className="text-blue-600 hover:underline font-semibold">View</button>
                   </td>
                 </tr>
-              ))}
+              ))
+              )}
             </tbody>
           </table>
         </div>
@@ -106,7 +110,7 @@ export function CompletedOrdersPage() {
               <option>100</option>
             </select>
           </div>
-          <span className="text-sm text-gray-600">1-3 of 31</span>
+          <span className="text-sm text-gray-600">1-{orders.length} of {ordersData?.meta?.total || orders.length}</span>
           <div className="flex items-center gap-1">
             <button disabled className="p-1 hover:bg-gray-100 rounded-full disabled:opacity-30 disabled:cursor-not-allowed">
               <ChevronLeft className="w-5 h-5" />
@@ -117,6 +121,7 @@ export function CompletedOrdersPage() {
           </div>
         </div>
       </Card>
+      )}
     </div>
   )
 }

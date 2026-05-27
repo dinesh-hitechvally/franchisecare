@@ -868,6 +868,16 @@ export const communicationHistoryApi = {
 
   deleteEmailHistory: (id: string) =>
     apiClient.delete(`/communication/email-history/${id}`),
+
+  // Send emails (actually delivers the email)
+  sendEmail: (data: { to_email: string; subject: string; body: string; from_name?: string }) =>
+    apiClient.post<{ message: string; data: EmailHistory }>('/communication/send-email', data),
+
+  sendBulkEmail: (data: { customer_ids: string[]; subject: string; body: string; from_name?: string }) =>
+    apiClient.post<{ message: string; results: { sent: number; failed: number; skipped: number; details: Array<{ customer_id: string; customer_name: string; status: string; email?: string; error?: string; reason?: string }> } }>('/communication/send-bulk-email', data),
+
+  sendBookingList: (data: { customer_ids: string[]; date_from?: string; date_to?: string; include_completed?: boolean; include_cancelled?: boolean; subject?: string; intro_message?: string }) =>
+    apiClient.post<{ message: string; results: { sent: number; failed: number; skipped: number; details: Array<{ customer_id: string; customer_name: string; status: string; email?: string; bookings_count?: number; error?: string; reason?: string }> } }>('/communication/send-booking-list', data),
 }
 
 export const forumApi = {
@@ -1284,6 +1294,8 @@ export interface CalendarSettings {
   show_pet_name: boolean
   show_pet_breed: boolean
   show_services_name: boolean
+  show_time: boolean
+  display_order?: string[]
 }
 
 export interface CancellationPolicy {

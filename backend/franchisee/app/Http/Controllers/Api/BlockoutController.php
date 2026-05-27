@@ -70,6 +70,14 @@ class BlockoutController extends Controller
         $isRecurring = (bool) ($validated['is_recurring'] ?? false);
         unset($validated['is_recurring']);
 
+        // Extract repeat fields for recurring (not stored in blockouts table)
+        $repeatData = [
+            'repeat_every' => $validated['repeat_every'] ?? null,
+            'repeat_on' => $validated['repeat_on'] ?? null,
+            'repeat_until' => $validated['repeat_until'] ?? null,
+        ];
+        unset($validated['repeat_every'], $validated['repeat_on'], $validated['repeat_until']);
+
         // Use authenticated user's company_id if not provided
         if (empty($validated['company_id']) && Auth::check()) {
             $validated['company_id'] = Auth::user()?->company_id;
@@ -79,10 +87,10 @@ class BlockoutController extends Controller
             return response()->json(['message' => 'Company information is required'], 422);
         }
 
-        $blockout = DB::transaction(function () use ($validated, $isRecurring) {
+        $blockout = DB::transaction(function () use ($validated, $isRecurring, $repeatData) {
             $blockout = Blockout::create($validated);
 
-            $this->syncRecurringData($blockout, $isRecurring);
+            $this->syncRecurringData($blockout, $isRecurring, $repeatData);
 
             return $blockout->fresh();
         });
@@ -145,10 +153,18 @@ class BlockoutController extends Controller
             : ($blockout->recurring_id !== null);
         unset($validated['is_recurring']);
 
-        DB::transaction(function () use ($blockout, $validated, $isRecurring) {
+        // Extract repeat fields for recurring (not stored in blockouts table)
+        $repeatData = [
+            'repeat_every' => $validated['repeat_every'] ?? null,
+            'repeat_on' => $validated['repeat_on'] ?? null,
+            'repeat_until' => $validated['repeat_until'] ?? null,
+        ];
+        unset($validated['repeat_every'], $validated['repeat_on'], $validated['repeat_until']);
+
+        DB::transaction(function () use ($blockout, $validated, $isRecurring, $repeatData) {
             $blockout->update($validated);
 
-            $this->syncRecurringData($blockout->fresh(), $isRecurring);
+            $this->syncRecurringData($blockout->fresh(), $isRecurring, $repeatData);
         });
 
         return response()->json($blockout);
@@ -159,7 +175,7 @@ class BlockoutController extends Controller
      */
     public function destroy(Blockout $blockout)
     {
-        if ($blockout->recurring_id && ($blockout->repeat_every || $blockout->repeat_on || $blockout->repeat_until)) {
+        if ($blockout->recurring_id) {
             Blockout::where('recurring_id', $blockout->recurring_id)->delete();
             BlockoutRecurring::where('id', $blockout->recurring_id)->delete();
             return response()->json(null, 204);
@@ -195,7 +211,7 @@ class BlockoutController extends Controller
         return response()->json($history);
     }
 
-    private function syncRecurringData(Blockout $blockout, bool $isRecurring): void
+    private function syncRecurringData(Blockout $blockout, bool $isRecurring, array $repeatData = []): void
     {
         if (! $isRecurring) {
             if ($blockout->recurring_id) {
@@ -206,9 +222,6 @@ class BlockoutController extends Controller
 
                 $blockout->update([
                     'recurring_id' => null,
-                    'repeat_every' => null,
-                    'repeat_on' => null,
-                    'repeat_until' => null,
                 ]);
             }
             return;
@@ -218,36 +231,25 @@ class BlockoutController extends Controller
             ? BlockoutRecurring::find($blockout->recurring_id)
             : null;
 
+        $recurringData = [
+            'company_id' => $blockout->company_id,
+            'title' => $blockout->title,
+            'location' => $blockout->location,
+            'start_date' => $blockout->start_date,
+            'start_time' => $blockout->start_time,
+            'end_date' => $blockout->end_date,
+            'end_time' => $blockout->end_time,
+            'repeat_every' => $repeatData['repeat_every'] ?? ($recurring->repeat_every ?? null),
+            'repeat_on' => $repeatData['repeat_on'] ?? ($recurring->repeat_on ?? null),
+            'repeat_until' => $repeatData['repeat_until'] ?? ($recurring->repeat_until ?? null),
+            'notes' => $blockout->notes,
+            'active' => (bool) $blockout->active,
+        ];
+
         if ($recurring) {
-            $recurring->update([
-                'company_id' => $blockout->company_id,
-                'title' => $blockout->title,
-                'location' => $blockout->location,
-                'start_date' => $blockout->start_date,
-                'start_time' => $blockout->start_time,
-                'end_date' => $blockout->end_date,
-                'end_time' => $blockout->end_time,
-                'repeat_every' => $blockout->repeat_every,
-                'repeat_on' => $blockout->repeat_on,
-                'repeat_until' => $blockout->repeat_until,
-                'notes' => $blockout->notes,
-                'active' => (bool) $blockout->active,
-            ]);
+            $recurring->update($recurringData);
         } else {
-            $recurring = BlockoutRecurring::create([
-                'company_id' => $blockout->company_id,
-                'title' => $blockout->title,
-                'location' => $blockout->location,
-                'start_date' => $blockout->start_date,
-                'start_time' => $blockout->start_time,
-                'end_date' => $blockout->end_date,
-                'end_time' => $blockout->end_time,
-                'repeat_every' => $blockout->repeat_every,
-                'repeat_on' => $blockout->repeat_on,
-                'repeat_until' => $blockout->repeat_until,
-                'notes' => $blockout->notes,
-                'active' => (bool) $blockout->active,
-            ]);
+            $recurring = BlockoutRecurring::create($recurringData);
         }
 
         if ((int) $blockout->recurring_id !== (int) $recurring->id) {
@@ -264,7 +266,7 @@ class BlockoutController extends Controller
             ->where('id', '!=', $blockout->id)
             ->delete();
 
-        if (empty($blockout->repeat_until)) {
+        if (empty($recurring->repeat_until)) {
             return;
         }
 
@@ -272,12 +274,12 @@ class BlockoutController extends Controller
         $baseEndDate = Carbon::parse($blockout->end_date);
         $durationDays = max(0, $baseStartDate->diffInDays($baseEndDate, false));
 
-        $repeatEvery = (int) ($blockout->repeat_every ?: 1);
+        $repeatEvery = (int) ($recurring->repeat_every ?: 1);
         if ($repeatEvery < 1) {
             $repeatEvery = 1;
         }
 
-        $repeatUntil = Carbon::parse($blockout->repeat_until);
+        $repeatUntil = Carbon::parse($recurring->repeat_until);
 
         $dayMap = [
             'Sunday' => 0,
@@ -289,7 +291,7 @@ class BlockoutController extends Controller
             'Saturday' => 6,
         ];
 
-        $targetDay = $dayMap[$blockout->repeat_on] ?? $baseStartDate->dayOfWeek;
+        $targetDay = $dayMap[$recurring->repeat_on] ?? $baseStartDate->dayOfWeek;
         $cursor = $baseStartDate->copy();
         if ($cursor->dayOfWeek !== $targetDay) {
             $daysToAdd = ($targetDay - $cursor->dayOfWeek + 7) % 7;
@@ -308,9 +310,6 @@ class BlockoutController extends Controller
                     'end_date' => $generatedEndDate->toDateString(),
                     'end_time' => $blockout->end_time,
                     'recurring_id' => $recurring->id,
-                    'repeat_every' => null,
-                    'repeat_on' => null,
-                    'repeat_until' => null,
                     'notes' => $blockout->notes,
                     'active' => (bool) $blockout->active,
                     'company_id' => $blockout->company_id,

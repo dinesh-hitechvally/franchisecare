@@ -4,10 +4,82 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
 import { TimePicker } from '../../components/ui/TimePicker'
-import { Settings } from 'lucide-react'
+import { Settings, GripVertical } from 'lucide-react'
 import { settingsApi } from '../../api/services'
 import { policiesApi, CancellationPolicyRecord } from '../../api/policies'
 import { toast } from 'react-hot-toast'
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+
+interface SortableSettingItemProps {
+  id: string
+  label: string
+  isEnabled: boolean
+  onToggle: () => void
+}
+
+function SortableSettingItem({ id, label, isEnabled, onToggle }: SortableSettingItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between py-1 bg-white"
+    >
+      <div className="flex items-center gap-3">
+        <span
+          {...attributes}
+          {...listeners}
+          className="text-gray-400 cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical size={16} />
+        </span>
+        <span className="text-sm text-gray-700">{label}</span>
+      </div>
+      <button
+        onClick={onToggle}
+        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+          isEnabled ? 'bg-indigo-600' : 'bg-gray-300'
+        }`}
+      >
+        <span
+          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+            isEnabled ? 'translate-x-6' : 'translate-x-1'
+          }`}
+        />
+      </button>
+    </div>
+  )
+}
 
 export function SettingsPage() {
   // Preferences state
@@ -76,7 +148,19 @@ export function SettingsPage() {
     showPetName: true,
     showPetBreed: true,
     showServicesName: true,
+    showTime: true,
   })
+
+  // Calendar settings display order
+  const [calendarSettingsOrder, setCalendarSettingsOrder] = useState([
+    'showBookingTotal',
+    'showCustomerName',
+    'showCustomerAddress',
+    'showPetName',
+    'showPetBreed',
+    'showServicesName',
+    'showTime',
+  ])
 
   // App Calendar settings state
   const [appCalendarSettings, setAppCalendarSettings] = useState({
@@ -89,8 +173,27 @@ export function SettingsPage() {
     showPetBreed: true,
   })
 
+  // App Calendar settings display order
+  const [appCalendarSettingsOrder, setAppCalendarSettingsOrder] = useState([
+    'showCustomerName',
+    'showCustomerAddress',
+    'showBookingTotal',
+    'showTime',
+    'showPetName',
+    'showServicesName',
+    'showPetBreed',
+  ])
+
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState<string | null>(null)
+
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
 
   // Fetch settings on mount
   useEffect(() => {
@@ -133,7 +236,13 @@ export function SettingsPage() {
           showPetName: calendar.show_pet_name,
           showPetBreed: calendar.show_pet_breed,
           showServicesName: calendar.show_services_name,
+          showTime: calendar.show_time ?? true,
         })
+
+        // Set calendar settings display order if available
+        if (calendar.display_order && Array.isArray(calendar.display_order)) {
+          setCalendarSettingsOrder(calendar.display_order)
+        }
 
         // Convert 24-hour format (HH:mm) to 12-hour format (HH:mm AM/PM)
         const convertTo12Hour = (time?: string) => {
@@ -168,6 +277,11 @@ export function SettingsPage() {
           showServicesName: appCalendar.show_services_name,
           showPetBreed: appCalendar.show_pet_breed,
         })
+
+        // Set app calendar settings display order if available
+        if (appCalendar.display_order && Array.isArray(appCalendar.display_order)) {
+          setAppCalendarSettingsOrder(appCalendar.display_order)
+        }
       } catch (error) {
         console.error('Error fetching settings:', error)
         toast.error('Failed to load settings')
@@ -257,6 +371,8 @@ export function SettingsPage() {
         show_pet_name: calendarSettings.showPetName,
         show_pet_breed: calendarSettings.showPetBreed,
         show_services_name: calendarSettings.showServicesName,
+        show_time: calendarSettings.showTime,
+        display_order: calendarSettingsOrder,
       })
       toast.success('Calendar settings saved successfully')
     } catch (error) {
@@ -327,6 +443,7 @@ export function SettingsPage() {
         show_pet_name: appCalendarSettings.showPetName,
         show_services_name: appCalendarSettings.showServicesName,
         show_pet_breed: appCalendarSettings.showPetBreed,
+        display_order: appCalendarSettingsOrder,
       })
       toast.success('App calendar settings saved successfully')
     } catch (error) {
@@ -334,6 +451,28 @@ export function SettingsPage() {
       toast.error('Failed to save app calendar settings')
     } finally {
       setSaving(null)
+    }
+  }
+
+  const handleCalendarSettingsDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setCalendarSettingsOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
+  const handleAppCalendarSettingsDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setAppCalendarSettingsOrder((items) => {
+        const oldIndex = items.indexOf(active.id as string)
+        const newIndex = items.indexOf(over.id as string)
+        return arrayMove(items, oldIndex, newIndex)
+      })
     }
   }
 
@@ -347,6 +486,17 @@ export function SettingsPage() {
 
   const toggleAppCalendarSetting = (key: keyof typeof appCalendarSettings) => {
     setAppCalendarSettings(prev => ({ ...prev, [key]: !prev[key] }))
+  }
+
+  // Label mapping for settings
+  const settingLabels: Record<string, string> = {
+    showBookingTotal: 'Show Booking Total',
+    showCustomerName: 'Show Customer Name',
+    showCustomerAddress: 'Show Customer Address',
+    showPetName: 'Show Pet Name',
+    showPetBreed: 'Show Pet Breed',
+    showServicesName: 'Show Services Name',
+    showTime: 'Show Time',
   }
 
   return (
@@ -485,43 +635,46 @@ export function SettingsPage() {
           <Card className="border border-gray-200 shadow-sm">
             <div className="p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Calendar Settings</h3>
-              <div className="space-y-3">
-                {[
-                  { key: 'showBookingTotal', label: 'Show Booking Total' },
-                  { key: 'showCustomerName', label: 'Show Customer Name' },
-                  { key: 'showCustomerAddress', label: 'Show Customer Address' },
-                  { key: 'showPetName', label: 'Show Pet Name' },
-                  { key: 'showPetBreed', label: 'Show Pet Breed' },
-                  { key: 'showServicesName', label: 'Show Services Name' },
-                ].map(({ key, label }) => (
-                  <div key={key} className="flex items-center justify-between py-1">
-                    <span className="text-sm text-gray-700">{label}</span>
-                    <button
-                      onClick={() => toggleCalendarSetting(key as keyof typeof calendarSettings)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        calendarSettings[key as keyof typeof calendarSettings] ? 'bg-indigo-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          calendarSettings[key as keyof typeof calendarSettings] ? 'translate-x-6' : 'translate-x-1'
-                        }`}
+              <p className="text-sm text-gray-600 mb-4">
+                Drag the icon to re-order items. Toggle switches to show/hide in calendar.
+              </p>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleCalendarSettingsDragEnd}
+              >
+                <SortableContext items={calendarSettingsOrder} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-3">
+                    {calendarSettingsOrder.map((key) => (
+                      <SortableSettingItem
+                        key={key}
+                        id={key}
+                        label={settingLabels[key] || key}
+                        isEnabled={calendarSettings[key as keyof typeof calendarSettings]}
+                        onToggle={() => toggleCalendarSetting(key as keyof typeof calendarSettings)}
                       />
-                    </button>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
               <p className="mt-6 font-semibold text-gray-900">Calendar Event Preview</p>
-              <div className="mt-2 bg-indigo-600 p-4 rounded-lg text-white space-y-1 text-sm">
-                <div className="space-y-1 text-xs">
-                  {calendarSettings.showBookingTotal && <p>$150.00</p>}
-                  {calendarSettings.showCustomerName && <p>John Doe</p>}
-                  {calendarSettings.showCustomerAddress && <p>123 Main St, Sydney</p>}
-                  {calendarSettings.showPetName && <p>Fluffy</p>}
-                  {calendarSettings.showPetBreed && <p>Golden Retriever</p>}
-                  {calendarSettings.showServicesName && <p>Full Grooming Service</p>}
-                  {!calendarSettings.showBookingTotal && !calendarSettings.showCustomerName && !calendarSettings.showCustomerAddress && !calendarSettings.showPetName && !calendarSettings.showPetBreed && !calendarSettings.showServicesName && <p className="italic opacity-75">No details selected</p>}
-                </div>
+              <div className="mt-2 bg-indigo-600 p-4 rounded-lg text-white space-y-1 text-xs">
+                {calendarSettingsOrder.map((key) => {
+                  if (!calendarSettings[key as keyof typeof calendarSettings]) return null
+                  const previewData: Record<string, string> = {
+                    showBookingTotal: '$150.00',
+                    showCustomerName: 'John Doe',
+                    showCustomerAddress: '123 Main St, Sydney 2000',
+                    showPetName: 'Fluffy',
+                    showPetBreed: 'Golden Retriever',
+                    showServicesName: 'Full Grooming Service',
+                    showTime: '10:30 AM',
+                  }
+                  return <p key={key}>{previewData[key]}</p>
+                })}
+                {!calendarSettingsOrder.some((key) => calendarSettings[key as keyof typeof calendarSettings]) && (
+                  <p className="italic opacity-75">No details selected</p>
+                )}
               </div>
               <div className="flex justify-end mt-4">
                 <Button
@@ -742,44 +895,43 @@ export function SettingsPage() {
               <p className="text-sm text-gray-600 mb-4">
                 Drag the icon to re-order items. Toggle switches to show/hide in app calendar.
               </p>
-              <div className="space-y-3">
-                {[
-                  { key: 'showCustomerName', label: 'Show Customer Name' },
-                  { key: 'showCustomerAddress', label: 'Show Customer Address' },
-                  { key: 'showBookingTotal', label: 'Show Booking Total' },
-                  { key: 'showTime', label: 'Show Time' },
-                  { key: 'showPetName', label: 'Show Pet Name' },
-                  { key: 'showServicesName', label: 'Show Services Name' },
-                  { key: 'showPetBreed', label: 'Show Pet Breed' },
-                ].map(({ key, label }) => (
-                  <div key={key} className="flex items-center justify-between py-1">
-                    <div className="flex items-center gap-3">
-                      <span className="text-gray-400">☰</span>
-                      <span className="text-sm text-gray-700">{label}</span>
-                    </div>
-                    <button
-                      onClick={() => toggleAppCalendarSetting(key as keyof typeof appCalendarSettings)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        appCalendarSettings[key as keyof typeof appCalendarSettings] ? 'bg-indigo-600' : 'bg-gray-300'
-                      }`}
-                    >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          appCalendarSettings[key as keyof typeof appCalendarSettings] ? 'translate-x-6' : 'translate-x-1'
-                        }`}
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleAppCalendarSettingsDragEnd}
+              >
+                <SortableContext items={appCalendarSettingsOrder} strategy={verticalListSortingStrategy}>
+                  <div className="space-y-3">
+                    {appCalendarSettingsOrder.map((key) => (
+                      <SortableSettingItem
+                        key={key}
+                        id={key}
+                        label={settingLabels[key] || key}
+                        isEnabled={appCalendarSettings[key as keyof typeof appCalendarSettings]}
+                        onToggle={() => toggleAppCalendarSetting(key as keyof typeof appCalendarSettings)}
                       />
-                    </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="mt-6 bg-indigo-600 p-4 rounded-lg text-white space-y-1 text-sm">
-                <p className="font-semibold">Preview</p>
-                <p>Customer Name</p>
-                <p>Liza Boim @ Sydney 2000</p>
-                <p>$250.00</p>
-                <p>10:30 AM</p>
-                <p>Pet Name</p>
-                <p>Full Grooming</p>
+                </SortableContext>
+              </DndContext>
+              <p className="mt-6 font-semibold text-gray-900">App Calendar Event Preview</p>
+              <div className="mt-2 bg-indigo-600 p-4 rounded-lg text-white space-y-1 text-xs">
+                {appCalendarSettingsOrder.map((key) => {
+                  if (!appCalendarSettings[key as keyof typeof appCalendarSettings]) return null
+                  const previewData: Record<string, string> = {
+                    showBookingTotal: '$150.00',
+                    showCustomerName: 'John Doe',
+                    showCustomerAddress: '123 Main St, Sydney 2000',
+                    showPetName: 'Fluffy',
+                    showPetBreed: 'Golden Retriever',
+                    showServicesName: 'Full Grooming Service',
+                    showTime: '10:30 AM',
+                  }
+                  return <p key={key}>{previewData[key]}</p>
+                })}
+                {!appCalendarSettingsOrder.some((key) => appCalendarSettings[key as keyof typeof appCalendarSettings]) && (
+                  <p className="italic opacity-75">No details selected</p>
+                )}
               </div>
               <div className="flex justify-end mt-4">
                 <Button

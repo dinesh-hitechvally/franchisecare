@@ -18,9 +18,6 @@ class BlockoutAudit extends Model
         'end_date',
         'end_time',
         'recurring_id',
-        'repeat_every',
-        'repeat_on',
-        'repeat_until',
         'notes',
         'active',
         'performed_by',
@@ -29,7 +26,6 @@ class BlockoutAudit extends Model
     protected $casts = [
         'start_date' => 'date',
         'end_date' => 'date',
-        'repeat_until' => 'date',
         'recurring_id' => 'integer',
         'active' => 'boolean',
     ];

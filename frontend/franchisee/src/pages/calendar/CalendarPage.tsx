@@ -3,7 +3,7 @@ import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Table } from '../../components/ui/Table'
 import { Input } from '../../components/ui/Input'
-import { Search, Filter, ChevronLeft, ChevronRight, CalendarDays, Clock, List, GripVertical, Calendar } from 'lucide-react'
+import { Search, Filter, ChevronLeft, ChevronRight, CalendarDays, Clock, List, GripVertical, Calendar, MoreVertical, Eye, Edit, Trash2, Copy } from 'lucide-react'
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek, addWeeks, subWeeks, addDays, subDays, parseISO, isWithinInterval, differenceInCalendarDays } from 'date-fns'
 import {
   DndContext,
@@ -640,13 +640,13 @@ export function CalendarPage() {
           const monthEnd = endOfMonth(currentDate)
           dateFrom = format(monthStart, 'yyyy-MM-dd')
           dateTo = format(monthEnd, 'yyyy-MM-dd')
-        } else if (viewMode === 'week') {
+        } else if (viewMode === 'week' || viewMode === 'agenda') {
           const weekStart = startOfWeek(currentDate)
           const weekEnd = endOfWeek(currentDate)
           dateFrom = format(weekStart, 'yyyy-MM-dd')
           dateTo = format(weekEnd, 'yyyy-MM-dd')
         } else {
-          // day or agenda view
+          // day view
           dateFrom = format(currentDate, 'yyyy-MM-dd')
           dateTo = format(currentDate, 'yyyy-MM-dd')
         }
@@ -1191,6 +1191,154 @@ export function CalendarPage() {
   }
 
   const renderAgendaView = () => {
+    // Sort bookings by date and time for agenda view
+    const sortedBookings = [...bookings].sort((a, b) => {
+      const dateCompare = a.startDate.localeCompare(b.startDate)
+      if (dateCompare !== 0) return dateCompare
+      return (a.startTime || '').localeCompare(b.startTime || '')
+    })
+
+    const agendaData = sortedBookings.map((b) => ({
+      ...b,
+      date: format(parseISO(b.startDate), 'MMM d, yyyy'),
+      time: b.startTime || '-',
+    }))
+
+    const handleViewBooking = async (item: Booking) => {
+      if (item.eventType === 'blockout' && item.blockoutId) {
+        try {
+          const blockoutData = await blockoutsApi.getById(item.blockoutId)
+          setSelectedBlockout(blockoutData)
+          setIsBlockoutModalOpen(true)
+        } catch (error) {
+          console.error('Error fetching blockout:', error)
+          addToast('Failed to load blockout details', 'error')
+        }
+      } else if (item.bookingId) {
+        try {
+          const bookingData = await bookingsApi.getById(item.bookingId)
+          setSelectedBooking(bookingData)
+          setIsBookingModalOpen(true)
+        } catch (error) {
+          console.error('Error fetching booking:', error)
+          addToast('Failed to load booking details', 'error')
+        }
+      }
+    }
+
+    const handleEditBooking = (item: Booking) => {
+      if (item.eventType === 'blockout' && item.blockoutId) {
+        navigate(`/blockouts/edit/${item.blockoutId}`)
+      } else if (item.bookingId) {
+        navigate(`/bookings/edit/${item.bookingId}`)
+      }
+    }
+
+    const handleDuplicateBooking = (item: Booking) => {
+      if (item.bookingId) {
+        navigate(`/bookings/create?duplicate=${item.bookingId}`)
+      }
+    }
+
+    const handleDeleteBooking = async (item: Booking) => {
+      if (!confirm('Are you sure you want to delete this item?')) return
+      
+      try {
+        if (item.eventType === 'blockout' && item.blockoutId) {
+          await blockoutsApi.delete(item.blockoutId)
+          addToast('Blockout deleted successfully', 'success')
+        } else if (item.bookingId) {
+          await bookingsApi.delete(item.bookingId)
+          addToast('Booking deleted successfully', 'success')
+        }
+        // Refresh the calendar data
+        setBookings(bookings.filter(b => b.id !== item.id))
+      } catch (error) {
+        console.error('Error deleting item:', error)
+        addToast('Failed to delete item', 'error')
+      }
+    }
+
+    const ActionsDropdown = ({ item }: { item: Booking }) => {
+      const [isOpen, setIsOpen] = useState(false)
+      const dropdownRef = useRef<HTMLDivElement>(null)
+
+      useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+          if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            setIsOpen(false)
+          }
+        }
+        document.addEventListener('mousedown', handleClickOutside)
+        return () => document.removeEventListener('mousedown', handleClickOutside)
+      }, [])
+
+      return (
+        <div className="relative" ref={dropdownRef}>
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              setIsOpen(!isOpen)
+            }}
+            className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          >
+            <MoreVertical className="w-4 h-4 text-gray-500" />
+          </button>
+          {isOpen && (
+            <div className="absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsOpen(false)
+                  handleViewBooking(item)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Eye className="w-4 h-4 text-gray-500" />
+                View Details
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsOpen(false)
+                  handleEditBooking(item)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+              >
+                <Edit className="w-4 h-4 text-gray-500" />
+                Edit
+              </button>
+              {item.eventType !== 'blockout' && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setIsOpen(false)
+                    handleDuplicateBooking(item)
+                  }}
+                  className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
+                >
+                  <Copy className="w-4 h-4 text-gray-500" />
+                  Duplicate
+                </button>
+              )}
+              <div className="border-t border-gray-100 my-1" />
+              <button
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setIsOpen(false)
+                  handleDeleteBooking(item)
+                }}
+                className="w-full px-3 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2 text-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            </div>
+          )}
+        </div>
+      )
+    }
+
     return (
       <Table
         columns={[
@@ -1200,8 +1348,13 @@ export function CalendarPage() {
           { key: 'petName', title: 'Pet' },
           { key: 'service', title: 'Service' },
           { key: 'status', title: 'Status' },
+          { 
+            key: 'actions', 
+            title: '', 
+            render: (row) => <ActionsDropdown item={row as unknown as Booking} />
+          },
         ]}
-        data={bookings.slice(1)}
+        data={agendaData}
         keyExtractor={(row) => row.id}
       />
     )
