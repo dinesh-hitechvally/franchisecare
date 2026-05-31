@@ -18,7 +18,7 @@ class CompanyServiceService implements CompanyServiceServiceInterface
         return Auth::user()->company_id ?? 1;
     }
 
-    public function all(): Collection
+    public function index(): Collection
     {
         return $this->repository->all($this->getCompanyId());
     }

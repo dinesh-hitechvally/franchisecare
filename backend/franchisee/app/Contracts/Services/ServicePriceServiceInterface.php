@@ -6,6 +6,6 @@ use Illuminate\Support\Collection;
 
 interface ServicePriceServiceInterface
 {
-    public function all(): Collection;
+    public function index(): Collection;
     public function updateAll(array $services): Collection;
 }

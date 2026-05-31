@@ -3,208 +3,72 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\CalendarEventServiceInterface;
+use App\Http\Requests\CalendarEvent\IndexCalendarEventRequest;
+use App\Http\Requests\CalendarEvent\GetByMonthCalendarEventRequest;
+use App\Http\Requests\CalendarEvent\StoreCalendarEventRequest;
+use App\Http\Requests\CalendarEvent\UpdateCalendarEventRequest;
+use App\Http\Requests\CalendarEvent\SyncCalendarEventRequest;
 use App\Models\CalendarEvent;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class CalendarEventController extends Controller
 {
-    /**
-     * Display calendar events for a date range
-     */
-    public function index(Request $request)
+    public function __construct(
+        protected CalendarEventServiceInterface $calendarEventService
+    ) {}
+
+    public function index(IndexCalendarEventRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-        ]);
-
-        $query = CalendarEvent::query()
-            ->where('company_id', $validated['company_id'])
-            ->where('is_active', true)
-            ->whereBetween('start_date', [$validated['start_date'], $validated['end_date']])
-            ->orWhere(function($q) use ($validated) {
-                $q->where('company_id', $validated['company_id'])
-                    ->where('is_active', true)
-                    ->whereBetween('end_date', [$validated['start_date'], $validated['end_date']]);
-            });
-
-        if ($request->has('event_type')) {
-            $query->where('event_type', $request->event_type);
-        }
-
-        return response()->json($query->with('customer', 'booking', 'blockout')->orderBy('start_date')->get());
-    }
-
-    /**
-     * Get calendar events by month
-     */
-    public function getByMonth(Request $request)
-    {
-        $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
-            'year' => 'required|integer|min:2000|max:2100',
-            'month' => 'required|integer|min:1|max:12',
-        ]);
-
-        $startDate = \Carbon\Carbon::createFromDate($validated['year'], $validated['month'], 1)->startOfMonth();
-        $endDate = $startDate->clone()->endOfMonth();
-
-        $events = CalendarEvent::query()
-            ->where('company_id', $validated['company_id'])
-            ->where('is_active', true)
-            ->where(function($q) use ($startDate, $endDate) {
-                $q->whereBetween('start_date', [$startDate, $endDate])
-                    ->orWhereBetween('end_date', [$startDate, $endDate])
-                    ->orWhere(function($subQ) use ($startDate, $endDate) {
-                        $subQ->where('start_date', '<=', $startDate)
-                             ->where('end_date', '>=', $endDate);
-                    });
-            })
-            ->with('customer', 'booking', 'blockout')
-            ->orderBy('start_date')
-            ->get();
+        $validated = $request->validated();
+        $events = $this->calendarEventService->index(
+            (int) $validated['company_id'],
+            $validated['start_date'],
+            $validated['end_date'],
+            $validated['event_type'] ?? null
+        );
 
         return response()->json($events);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function getByMonth(GetByMonthCalendarEventRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
-            'event_type' => 'required|in:booking,blockout',
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'required|date',
-            'start_time' => 'required|string',
-            'end_date' => 'required|date',
-            'end_time' => 'required|string',
-            'color' => 'nullable|string',
-            'location' => 'nullable|string',
-            'customer_id' => 'nullable|exists:customers,id',
-            'booking_id' => 'nullable|exists:bookings,id',
-            'blockout_id' => 'nullable|exists:blockouts,id',
-            'is_recurring' => 'boolean',
-        ]);
+        $validated = $request->validated();
+        $events = $this->calendarEventService->getByMonth(
+            (int) $validated['company_id'],
+            (int) $validated['year'],
+            (int) $validated['month']
+        );
 
-        $validated['start_time'] = $this->convertTo24Hour($validated['start_time']);
-        $validated['end_time'] = $this->convertTo24Hour($validated['end_time']);
+        return response()->json($events);
+    }
 
-        $event = CalendarEvent::create($validated);
-
+    public function store(StoreCalendarEventRequest $request): JsonResponse
+    {
+        $event = $this->calendarEventService->create($request->validated());
         return response()->json($event, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(CalendarEvent $calendarEvent)
+    public function show(CalendarEvent $calendarEvent): JsonResponse
     {
-        return response()->json($calendarEvent->load('customer', 'booking', 'blockout'));
+        return response()->json($this->calendarEventService->show($calendarEvent));
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, CalendarEvent $calendarEvent)
+    public function update(UpdateCalendarEventRequest $request, CalendarEvent $calendarEvent): JsonResponse
     {
-        $validated = $request->validate([
-            'event_type' => 'sometimes|in:booking,blockout',
-            'title' => 'sometimes|string|max:255',
-            'description' => 'nullable|string',
-            'start_date' => 'sometimes|date',
-            'start_time' => 'sometimes|string',
-            'end_date' => 'sometimes|date',
-            'end_time' => 'sometimes|string',
-            'color' => 'nullable|string',
-            'location' => 'nullable|string',
-            'customer_id' => 'nullable|exists:customers,id',
-            'is_recurring' => 'sometimes|boolean',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        $calendarEvent->update($validated);
-
-        return response()->json($calendarEvent);
+        $event = $this->calendarEventService->update($calendarEvent, $request->validated());
+        return response()->json($event);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CalendarEvent $calendarEvent)
+    public function destroy(CalendarEvent $calendarEvent): JsonResponse
     {
-        $calendarEvent->delete();
-
+        $this->calendarEventService->delete($calendarEvent);
         return response()->json(null, 204);
     }
 
-    /**
-     * Sync calendar events from bookings and blockouts
-     */
-    public function syncEvents(Request $request)
+    public function syncEvents(SyncCalendarEventRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'company_id' => 'required|exists:companies,id',
-        ]);
-
-        $companyId = $validated['company_id'];
-
-        // Clear existing events for this company
-        CalendarEvent::where('company_id', $companyId)->delete();
-
-        // Sync bookings
-        $bookings = \App\Models\Booking::where('company_id', $companyId)->get();
-        foreach ($bookings as $booking) {
-            CalendarEvent::create([
-                'company_id' => $companyId,
-                'event_type' => 'booking',
-                'title' => $booking->customer?->name ?? 'Booking',
-                'description' => $booking->notes,
-                'start_date' => $booking->start_date,
-                'start_time' => $this->convertTo24Hour($booking->start_time),
-                'end_date' => $booking->start_date,
-                'end_time' => $this->convertTo24Hour($booking->end_time),
-                'color' => $booking->calendar_color ?? '#3b82f6',
-                'customer_id' => $booking->customer_id,
-                'booking_id' => $booking->id,
-                'is_recurring' => !!$booking->recurring_id,
-                'is_active' => $booking->status !== 'cancelled',
-            ]);
-        }
-
-        // Sync blockouts
-        $blockouts = \App\Models\Blockout::where('company_id', $companyId)->get();
-        foreach ($blockouts as $blockout) {
-            CalendarEvent::create([
-                'company_id' => $companyId,
-                'event_type' => 'blockout',
-                'title' => $blockout->title,
-                'description' => $blockout->notes,
-                'start_date' => $blockout->start_date,
-                'start_time' => $this->convertTo24Hour($blockout->start_time),
-                'end_date' => $blockout->end_date,
-                'end_time' => $this->convertTo24Hour($blockout->end_time),
-                'location' => $blockout->location,
-                'color' => '#9333ea',
-                'blockout_id' => $blockout->id,
-                'is_recurring' => !!$blockout->recurring_id,
-                'is_active' => $blockout->active,
-            ]);
-        }
-
-        return response()->json(['message' => 'Calendar events synced successfully']);
-    }
-
-    private function convertTo24Hour($time)
-    {
-        if (!$time) return '00:00:00';
-        try {
-            return \Carbon\Carbon::createFromFormat('h:i A', $time)->format('H:i:s');
-        } catch (\Exception $e) {
-            return $time;
-        }
+        $result = $this->calendarEventService->syncEvents((int) $request->validated('company_id'));
+        return response()->json($result);
     }
 }

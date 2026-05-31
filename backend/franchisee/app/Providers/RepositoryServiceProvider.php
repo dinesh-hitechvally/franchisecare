@@ -33,6 +33,7 @@ use App\Contracts\Repositories\ServiceInventoryUsageRepositoryInterface;
 use App\Contracts\Repositories\CompanyServiceInventoryUsageRepositoryInterface;
 use App\Contracts\Repositories\ServicePriceRepositoryInterface;
 use App\Contracts\Repositories\CompanyServiceRepositoryInterface;
+use App\Contracts\Repositories\CalendarEventRepositoryInterface;
 
 // Repository Implementations
 use App\Repositories\BookingRepository;
@@ -63,6 +64,7 @@ use App\Repositories\ServiceInventoryUsageRepository;
 use App\Repositories\CompanyServiceInventoryUsageRepository;
 use App\Repositories\ServicePriceRepository;
 use App\Repositories\CompanyServiceRepository;
+use App\Repositories\CalendarEventRepository;
 
 // Service Interfaces
 use App\Contracts\Services\BookingServiceInterface;
@@ -93,6 +95,10 @@ use App\Contracts\Services\ServiceInventoryUsageServiceInterface;
 use App\Contracts\Services\CompanyServiceInventoryUsageServiceInterface;
 use App\Contracts\Services\ServicePriceServiceInterface;
 use App\Contracts\Services\CompanyServiceServiceInterface;
+use App\Contracts\Services\AuthServiceInterface;
+use App\Contracts\Services\CalendarEventServiceInterface;
+use App\Contracts\Services\DashboardServiceInterface;
+use App\Contracts\Services\BenchmarkingServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -123,6 +129,10 @@ use App\Services\ServiceInventoryUsageService;
 use App\Services\CompanyServiceInventoryUsageService;
 use App\Services\ServicePriceService;
 use App\Services\CompanyServiceService;
+use App\Services\AuthService;
+use App\Services\CalendarEventService;
+use App\Services\DashboardService;
+use App\Services\BenchmarkingService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -173,6 +183,7 @@ class RepositoryServiceProvider extends ServiceProvider
         CompanyServiceInventoryUsageRepositoryInterface::class => CompanyServiceInventoryUsageRepository::class,
         ServicePriceRepositoryInterface::class => ServicePriceRepository::class,
         CompanyServiceRepositoryInterface::class => CompanyServiceRepository::class,
+        CalendarEventRepositoryInterface::class => CalendarEventRepository::class,
 
         // Services
         BookingServiceInterface::class => BookingService::class,
@@ -203,6 +214,10 @@ class RepositoryServiceProvider extends ServiceProvider
         CompanyServiceInventoryUsageServiceInterface::class => CompanyServiceInventoryUsageService::class,
         ServicePriceServiceInterface::class => ServicePriceService::class,
         CompanyServiceServiceInterface::class => CompanyServiceService::class,
+        AuthServiceInterface::class => AuthService::class,
+        CalendarEventServiceInterface::class => CalendarEventService::class,
+        DashboardServiceInterface::class => DashboardService::class,
+        BenchmarkingServiceInterface::class => BenchmarkingService::class,
     ];
 
     /**
