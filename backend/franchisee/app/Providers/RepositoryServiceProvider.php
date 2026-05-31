@@ -99,6 +99,19 @@ use App\Contracts\Services\AuthServiceInterface;
 use App\Contracts\Services\CalendarEventServiceInterface;
 use App\Contracts\Services\DashboardServiceInterface;
 use App\Contracts\Services\BenchmarkingServiceInterface;
+use App\Contracts\Services\ReportServiceInterface;
+use App\Contracts\Services\BookingReportServiceInterface;
+use App\Contracts\Services\CustomerReportServiceInterface;
+use App\Contracts\Services\IncomeReportServiceInterface;
+use App\Contracts\Services\ServiceReportServiceInterface;
+use App\Contracts\Services\SuburbReportServiceInterface;
+use App\Contracts\Services\UnbookedCustomerReportServiceInterface;
+use App\Contracts\Services\SmsServiceInterface;
+use App\Contracts\Services\SmsCreditServiceInterface;
+use App\Contracts\Services\NewsServiceInterface;
+use App\Contracts\Services\TrainingServiceInterface;
+use App\Contracts\Services\ForumServiceInterface;
+use App\Contracts\Services\ForumGroupServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -133,6 +146,19 @@ use App\Services\AuthService;
 use App\Services\CalendarEventService;
 use App\Services\DashboardService;
 use App\Services\BenchmarkingService;
+use App\Services\ReportService;
+use App\Services\BookingReportService;
+use App\Services\CustomerReportService;
+use App\Services\IncomeReportService;
+use App\Services\ServiceReportService;
+use App\Services\SuburbReportService;
+use App\Services\UnbookedCustomerReportService;
+use App\Services\SmsService;
+use App\Services\SmsCreditService;
+use App\Services\NewsService;
+use App\Services\TrainingService;
+use App\Services\ForumService;
+use App\Services\ForumGroupService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -218,6 +244,19 @@ class RepositoryServiceProvider extends ServiceProvider
         CalendarEventServiceInterface::class => CalendarEventService::class,
         DashboardServiceInterface::class => DashboardService::class,
         BenchmarkingServiceInterface::class => BenchmarkingService::class,
+        ReportServiceInterface::class => ReportService::class,
+        BookingReportServiceInterface::class => BookingReportService::class,
+        CustomerReportServiceInterface::class => CustomerReportService::class,
+        IncomeReportServiceInterface::class => IncomeReportService::class,
+        ServiceReportServiceInterface::class => ServiceReportService::class,
+        SuburbReportServiceInterface::class => SuburbReportService::class,
+        UnbookedCustomerReportServiceInterface::class => UnbookedCustomerReportService::class,
+        SmsServiceInterface::class => SmsService::class,
+        SmsCreditServiceInterface::class => SmsCreditService::class,
+        NewsServiceInterface::class => NewsService::class,
+        TrainingServiceInterface::class => TrainingService::class,
+        ForumServiceInterface::class => ForumService::class,
+        ForumGroupServiceInterface::class => ForumGroupService::class,
     ];
 
     /**

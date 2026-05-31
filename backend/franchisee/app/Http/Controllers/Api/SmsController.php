@@ -3,9 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\SmsServiceInterface;
 use App\Models\Customer;
-use App\Models\SmsHistory;
-use App\Services\MessageMediaService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -13,12 +12,9 @@ use Illuminate\Validation\ValidationException;
 class SmsController extends Controller
 {
     public function __construct(
-        private MessageMediaService $smsService
+        private SmsServiceInterface $smsService
     ) {}
 
-    /**
-     * Send SMS to a customer
-     */
     public function send(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -28,67 +24,27 @@ class SmsController extends Controller
             'customer_name' => 'nullable|string|max:255',
         ]);
 
-        // Check if service is configured
-        if (! $this->smsService->isConfigured()) {
-            return response()->json([
-                'message' => 'SMS service is not configured. Please add MessageMedia API credentials.',
-            ], 503);
-        }
+        $result = $this->smsService->send($request->user(), $validated);
 
-        // Validate phone number
-        if (! $this->smsService->isValidPhoneNumber($validated['to_number'])) {
+        if (!empty($result['validation_error'])) {
             throw ValidationException::withMessages([
-                'to_number' => 'Invalid phone number format.',
+                $result['validation_error'] => $result['error'],
             ]);
         }
 
-        // Get customer name if customer_id provided
-        $customerName = $validated['customer_name'] ?? null;
-        if (! $customerName && ! empty($validated['customer_id'])) {
-            $customer = Customer::find($validated['customer_id']);
-            $customerName = $customer ? trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')) : null;
-        }
-
-        // Send SMS
-        $result = $this->smsService->sendSms(
-            $validated['to_number'],
-            $validated['message'],
-            [
-                'source_name' => config('services.messagemedia.source_name'),
-            ]
-        );
-
-        // Record in history
-        $record = SmsHistory::create([
-            'company_id' => $request->user()?->company_id,
-            'to_number' => $this->smsService->formatPhoneNumber($validated['to_number']),
-            'customer_name' => $customerName,
-            'message' => $validated['message'],
-            'status' => $result['success'] ? 'sent' : 'failed',
-            'gateway_response' => json_encode([
-                'message_id' => $result['message_id'] ?? null,
-                'status' => $result['status'] ?? ($result['error'] ?? 'unknown'),
-                'parts' => $result['parts'] ?? 1,
-            ]),
-            'sent_at' => $result['success'] ? now() : null,
-        ]);
-
-        if (! $result['success']) {
+        if (!$result['success']) {
             return response()->json([
-                'message' => 'Failed to send SMS: ' . ($result['error'] ?? 'Unknown error'),
-                'data' => $record,
-            ], 500);
+                'message' => $result['error'] ?? $result['message'],
+                'data' => $result['data'] ?? null,
+            ], $result['status_code'] ?? 500);
         }
 
         return response()->json([
-            'message' => 'SMS sent successfully.',
-            'data' => $record,
+            'message' => $result['message'],
+            'data' => $result['data'],
         ], 201);
     }
 
-    /**
-     * Send bulk SMS to multiple customers
-     */
     public function sendBulk(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -97,196 +53,73 @@ class SmsController extends Controller
             'message' => 'required|string|max:1600',
         ]);
 
-        if (! $this->smsService->isConfigured()) {
+        $result = $this->smsService->sendBulk($request->user(), $validated);
+
+        if (!$result['success']) {
             return response()->json([
-                'message' => 'SMS service is not configured.',
-            ], 503);
-        }
-
-        $customers = Customer::whereIn('id', $validated['customer_ids'])
-            ->whereNotNull('phone')
-            ->get();
-
-        if ($customers->isEmpty()) {
-            return response()->json([
-                'message' => 'No customers with valid phone numbers found.',
-            ], 400);
-        }
-
-        $results = [
-            'sent' => 0,
-            'failed' => 0,
-            'skipped' => 0,
-            'records' => [],
-        ];
-
-        foreach ($customers as $customer) {
-            if (! $this->smsService->isValidPhoneNumber($customer->phone)) {
-                $results['skipped']++;
-                continue;
-            }
-
-            $result = $this->smsService->sendSms(
-                $customer->phone,
-                $validated['message'],
-                [
-                    'source_name' => config('services.messagemedia.source_name'),
-                    'metadata' => [
-                        'customer_id' => $customer->id,
-                    ],
-                ]
-            );
-
-            $record = SmsHistory::create([
-                'company_id' => $request->user()?->company_id,
-                'to_number' => $this->smsService->formatPhoneNumber($customer->phone),
-                'customer_name' => trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')),
-                'message' => $validated['message'],
-                'status' => $result['success'] ? 'sent' : 'failed',
-                'gateway_response' => json_encode([
-                    'message_id' => $result['message_id'] ?? null,
-                    'status' => $result['status'] ?? ($result['error'] ?? 'unknown'),
-                ]),
-                'sent_at' => $result['success'] ? now() : null,
-            ]);
-
-            $results['records'][] = $record;
-
-            if ($result['success']) {
-                $results['sent']++;
-            } else {
-                $results['failed']++;
-            }
+                'message' => $result['error'],
+            ], $result['status_code'] ?? 500);
         }
 
         return response()->json([
-            'message' => "Bulk SMS: {$results['sent']} sent, {$results['failed']} failed, {$results['skipped']} skipped",
-            'sent' => $results['sent'],
-            'failed' => $results['failed'],
-            'skipped' => $results['skipped'],
+            'message' => $result['message'],
+            'sent' => $result['sent'],
+            'failed' => $result['failed'],
+            'skipped' => $result['skipped'],
         ]);
     }
 
-    /**
-     * Send SMS to a specific customer
-     */
     public function sendToCustomer(Customer $customer, Request $request): JsonResponse
     {
         $validated = $request->validate([
             'message' => 'required|string|max:1600',
         ]);
 
-        if (! $customer->phone) {
+        $result = $this->smsService->sendToCustomer($request->user(), $customer, $validated['message']);
+
+        if (!empty($result['validation_error'])) {
             throw ValidationException::withMessages([
-                'phone' => 'Customer does not have a phone number.',
+                $result['validation_error'] => $result['error'],
             ]);
         }
 
-        if (! $this->smsService->isConfigured()) {
+        if (!$result['success']) {
             return response()->json([
-                'message' => 'SMS service is not configured.',
-            ], 503);
-        }
-
-        if (! $this->smsService->isValidPhoneNumber($customer->phone)) {
-            throw ValidationException::withMessages([
-                'phone' => 'Customer has an invalid phone number format.',
-            ]);
-        }
-
-        $result = $this->smsService->sendSms(
-            $customer->phone,
-            $validated['message'],
-            [
-                'source_name' => config('services.messagemedia.source_name'),
-                'metadata' => [
-                    'customer_id' => $customer->id,
-                ],
-            ]
-        );
-
-        $record = SmsHistory::create([
-            'company_id' => $request->user()?->company_id,
-            'to_number' => $this->smsService->formatPhoneNumber($customer->phone),
-            'customer_name' => trim(($customer->first_name ?? '') . ' ' . ($customer->last_name ?? '')),
-            'message' => $validated['message'],
-            'status' => $result['success'] ? 'sent' : 'failed',
-            'gateway_response' => json_encode([
-                'message_id' => $result['message_id'] ?? null,
-                'status' => $result['status'] ?? ($result['error'] ?? 'unknown'),
-                'parts' => $result['parts'] ?? 1,
-            ]),
-            'sent_at' => $result['success'] ? now() : null,
-        ]);
-
-        if (! $result['success']) {
-            return response()->json([
-                'message' => 'Failed to send SMS: ' . ($result['error'] ?? 'Unknown error'),
-                'data' => $record,
-            ], 500);
+                'message' => $result['message'] ?? $result['error'],
+                'data' => $result['data'] ?? null,
+            ], $result['status_code'] ?? 500);
         }
 
         return response()->json([
-            'message' => 'SMS sent successfully.',
-            'data' => $record,
+            'message' => $result['message'],
+            'data' => $result['data'],
         ], 201);
     }
 
-    /**
-     * Get SMS service status and balance
-     */
     public function status(): JsonResponse
     {
-        if (! $this->smsService->isConfigured()) {
-            return response()->json([
-                'configured' => false,
-                'message' => 'SMS service is not configured.',
-            ]);
-        }
-
-        $balance = $this->smsService->getAccountBalance();
-
-        return response()->json([
-            'configured' => true,
-            'balance' => $balance['success'] ? $balance['data'] : null,
-            'error' => $balance['success'] ? null : $balance['error'],
-        ]);
+        return response()->json($this->smsService->getStatus());
     }
 
-    /**
-     * Get message delivery status
-     */
     public function messageStatus(string $messageId): JsonResponse
     {
-        if (! $this->smsService->isConfigured()) {
-            return response()->json([
-                'message' => 'SMS service is not configured.',
-            ], 503);
-        }
-
         $result = $this->smsService->getMessageStatus($messageId);
 
-        if (! $result['success']) {
+        if (!$result['success']) {
             return response()->json([
-                'message' => 'Failed to get message status: ' . ($result['error'] ?? 'Unknown error'),
-            ], 500);
+                'message' => $result['error'],
+            ], $result['status_code'] ?? 500);
         }
 
         return response()->json($result['data']);
     }
 
-    /**
-     * Calculate SMS parts for a message (useful for preview)
-     */
     public function calculateParts(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'message' => 'required|string',
         ]);
 
-        return response()->json([
-            'parts' => $this->smsService->calculateSmsParts($validated['message']),
-            'characters' => strlen($validated['message']),
-        ]);
+        return response()->json($this->smsService->calculateParts($validated['message']));
     }
 }

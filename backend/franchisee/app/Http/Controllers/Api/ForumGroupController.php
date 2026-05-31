@@ -3,31 +3,26 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\ForumGroupServiceInterface;
 use App\Models\ForumGroup;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ForumGroupController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        protected ForumGroupServiceInterface $forumGroupService
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        $query = ForumGroup::with(['members', 'creator'])
-            ->withCount(['members', 'threads']);
+        $filters = $request->only(['type', 'my_groups']);
+        $filters['my_groups'] = $request->boolean('my_groups');
 
-        if ($request->filled('type')) {
-            $query->where('type', $request->type);
-        }
-
-        // Get user's groups if filtering by membership
-        if ($request->boolean('my_groups')) {
-            $query->whereHas('members', function ($q) {
-                $q->where('user_id', auth()->id());
-            });
-        }
-
-        return $query->orderBy('type')->orderBy('name')->get();
+        return response()->json($this->forumGroupService->index($request->user(), $filters));
     }
 
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -38,54 +33,16 @@ class ForumGroupController extends Controller
             'is_public' => 'boolean',
         ]);
 
-        $validated['created_by'] = auth()->id();
-        $group = ForumGroup::create($validated);
-
-        // Automatically add creator as admin member
-        $group->members()->attach(auth()->id(), ['role' => 'admin']);
-
-        return response()->json($group->load(['members', 'creator']), 201);
+        return response()->json($this->forumGroupService->store($request->user(), $validated), 201);
     }
 
-    public function show(ForumGroup $forumGroup)
+    public function show(ForumGroup $forumGroup): JsonResponse
     {
-        return response()->json($forumGroup->load(['members', 'creator', 'threads.author']));
+        return response()->json($this->forumGroupService->show($forumGroup));
     }
 
-    public function join(ForumGroup $forumGroup)
+    public function update(Request $request, ForumGroup $forumGroup): JsonResponse
     {
-        if ($forumGroup->isMember(auth()->id())) {
-            return response()->json(['message' => 'Already a member'], 400);
-        }
-
-        $forumGroup->members()->attach(auth()->id(), ['role' => 'member']);
-
-        return response()->json(['message' => 'Joined successfully']);
-    }
-
-    public function leave(ForumGroup $forumGroup)
-    {
-        if (!$forumGroup->isMember(auth()->id())) {
-            return response()->json(['message' => 'Not a member'], 400);
-        }
-
-        $forumGroup->members()->detach(auth()->id());
-
-        return response()->json(['message' => 'Left successfully']);
-    }
-
-    public function members(ForumGroup $forumGroup)
-    {
-        return response()->json($forumGroup->members()->get());
-    }
-
-    public function update(Request $request, ForumGroup $forumGroup)
-    {
-        // Only creator or admin can update
-        if ($forumGroup->created_by !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
-        }
-
         $validated = $request->validate([
             'name' => 'string|max:255',
             'description' => 'nullable|string',
@@ -94,20 +51,50 @@ class ForumGroupController extends Controller
             'is_public' => 'boolean',
         ]);
 
-        $forumGroup->update($validated);
+        $result = $this->forumGroupService->update($request->user(), $forumGroup, $validated);
 
-        return response()->json($forumGroup->load(['members', 'creator']));
-    }
-
-    public function destroy(ForumGroup $forumGroup)
-    {
-        // Only creator can delete
-        if ($forumGroup->created_by !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized'], 403);
+        if (!$result['success']) {
+            return response()->json(['message' => $result['error']], $result['status_code']);
         }
 
-        $forumGroup->delete();
+        return response()->json($result['data']);
+    }
+
+    public function destroy(Request $request, ForumGroup $forumGroup): JsonResponse
+    {
+        $result = $this->forumGroupService->destroy($request->user(), $forumGroup);
+
+        if (!$result['success']) {
+            return response()->json(['message' => $result['error']], $result['status_code']);
+        }
 
         return response()->json(null, 204);
+    }
+
+    public function join(Request $request, ForumGroup $forumGroup): JsonResponse
+    {
+        $result = $this->forumGroupService->join($request->user(), $forumGroup);
+
+        if (!$result['success']) {
+            return response()->json(['message' => $result['error']], $result['status_code']);
+        }
+
+        return response()->json(['message' => $result['message']]);
+    }
+
+    public function leave(Request $request, ForumGroup $forumGroup): JsonResponse
+    {
+        $result = $this->forumGroupService->leave($request->user(), $forumGroup);
+
+        if (!$result['success']) {
+            return response()->json(['message' => $result['error']], $result['status_code']);
+        }
+
+        return response()->json(['message' => $result['message']]);
+    }
+
+    public function members(ForumGroup $forumGroup): JsonResponse
+    {
+        return response()->json($this->forumGroupService->members($forumGroup));
     }
 }
