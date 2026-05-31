@@ -17,7 +17,7 @@ export const StockTakeHistoryModal: React.FC<StockTakeHistoryModalProps> = ({ is
     queryKey: ['stock-take-history', categoryId],
     queryFn: async () => {
       const response = await stockTakeApi.getHistory(categoryId)
-      return response.data as StockMovement[]
+      return response as StockMovement[]
     },
     enabled: isOpen,
   })

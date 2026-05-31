@@ -81,7 +81,7 @@ const sections: NavSection[] = [
     hasChildren: true,
     children: [
       { name: 'New Blockouts', href: '/blockouts/new' },
-      { name: 'List Blockouts', href: '/blockouts' },
+      { name: 'List Blockouts', href: '/blockouts/list' },
       { name: 'Recurring Blockouts', href: '/blockouts/recurring' },
     ],
   },
@@ -132,7 +132,7 @@ const sections: NavSection[] = [
       { name: 'Add Income', href: '/finance/income/add' },
       { name: 'Add Income Category', href: '/finance/income/add-category' },
       { name: 'Income Categories', href: '/finance/income/categories' },
-      { name: 'List Income', href: '/finance/income' },
+      { name: 'List Income', href: '/finance/income/list' },
       { name: 'Recurring Income', href: '/finance/income/recurring' },
     ],
   },
@@ -143,7 +143,7 @@ const sections: NavSection[] = [
     children: [
       { name: 'Add Expense', href: '/finance/expense/add' },
       { name: 'Expense Categories', href: '/finance/expense/categories' },
-      { name: 'List Expenses', href: '/finance/expense' },
+      { name: 'List Expenses', href: '/finance/expense/list' },
       { name: 'Recurring Expenses', href: '/finance/expense/recurring' },
     ],
   },
@@ -213,6 +213,7 @@ const sections: NavSection[] = [
     hasChildren: true,
     children: [
       { name: 'API Settings', href: '/integration/api' },
+      { name: 'Xero Accounting', href: '/integration/xero' },
     ],
   },
 ]

@@ -3,10 +3,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { ChevronLeft, ChevronRight, CalendarDays, Loader2 } from 'lucide-react'
-import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay, parseISO } from 'date-fns'
+import { format, startOfWeek, endOfWeek, addWeeks, subWeeks, eachDayOfInterval, isSameDay } from 'date-fns'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { calendarApi } from '../../api/services'
-import { useAuth } from '../../contexts/AuthContext'
+import { useAuthStore } from '../../store/authStore'
 
 interface CalendarEvent {
   id: string
@@ -21,7 +21,7 @@ interface CalendarEvent {
 }
 
 export function CalendarWeekViewPage() {
-  const { user } = useAuth()
+  const { user } = useAuthStore()
   const companyId = user?.company_id || ''
   const [currentWeek, setCurrentWeek] = useState(new Date())
 

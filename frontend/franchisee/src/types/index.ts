@@ -148,6 +148,7 @@ export interface Booking {
   recurringId?: string
   isRecurring?: boolean // Derived from recurringId
   notes?: string
+  ndis_notes?: string
   createdAt: string
   updatedAt: string
 }
@@ -318,12 +319,17 @@ export interface InventoryOrder {
   order_number: string
   type: 'inventory' | 'treats' | 'marketing'
   items: InventoryOrderItem[]
+  items_count?: number
   status: 'pending' | 'confirmed' | 'shipped' | 'delivered' | 'cancelled'
   total: number
+  total_amount?: number
   notes?: string
+  order_date?: string
   ordered_at?: string
   shipped_at?: string
   delivered_at?: string
+  payment_status?: string
+  is_editable?: boolean
   created_at: string
   updated_at: string
   user?: { id: string; name: string }
@@ -357,6 +363,7 @@ export interface ExpenseCategory {
   id: string
   company_id?: string
   name: string
+  type?: string
   description?: string
   gst_inclusive: boolean
   is_active: boolean

@@ -35,4 +35,42 @@ return [
         ],
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | CyberSource Payment Gateway
+    |--------------------------------------------------------------------------
+    */
+    'cybersource' => [
+        'merchant_id' => env('CYBERSOURCE_MERCHANT_ID'),
+        'api_key_id' => env('CYBERSOURCE_API_KEY_ID'),
+        'secret_key' => env('CYBERSOURCE_SECRET_KEY'),
+        'sandbox' => env('CYBERSOURCE_SANDBOX', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Xero Accounting Integration
+    |--------------------------------------------------------------------------
+    */
+    'xero' => [
+        'client_id' => env('XERO_CLIENT_ID'),
+        'client_secret' => env('XERO_CLIENT_SECRET'),
+        'redirect_uri' => env('XERO_REDIRECT_URI'),
+        'scopes' => 'openid profile email accounting.transactions accounting.contacts accounting.settings offline_access',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | MessageMedia SMS Gateway
+    |--------------------------------------------------------------------------
+    | Get your API credentials from https://developers.messagemedia.com/
+    */
+    'messagemedia' => [
+        'api_key' => env('MESSAGEMEDIA_API_KEY'),
+        'api_secret' => env('MESSAGEMEDIA_API_SECRET'),
+        'base_url' => env('MESSAGEMEDIA_BASE_URL', 'https://api.messagemedia.com'),
+        'source_number' => env('MESSAGEMEDIA_SOURCE_NUMBER'),  // Your dedicated number or null for shared
+        'source_name' => env('MESSAGEMEDIA_SOURCE_NAME'),      // Alphanumeric sender ID (max 11 chars)
+    ],
+
 ];

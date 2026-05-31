@@ -1,14 +1,15 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Input } from '../../components/ui/Input'
-import { Mail, ChevronUp, ChevronDown, Loader2, Users, Calendar } from 'lucide-react'
-import { customersApi, communicationHistoryApi } from '../../api/services'
+import { Mail, ChevronUp, ChevronDown, Loader2, Users, Calendar, Download, ArrowLeft } from 'lucide-react'
+import { customersApi, communicationHistoryApi, bookingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { formatDisplayDate } from '../../lib/timeFormatUtils'
+import type { Booking } from '../../types'
 
 export function SendEmailPage() {
   const queryClient = useQueryClient()
@@ -16,8 +17,8 @@ export function SendEmailPage() {
   const { user } = useAuthStore()
   const [genericExpanded, setGenericExpanded] = useState(true)
   const [bulkExpanded, setBulkExpanded] = useState(true)
-  const [bulkGenericExpanded, setBulkGenericExpanded] = useState(false)
-  const [bookingListExpanded, setBookingListExpanded] = useState(false)
+  const [bulkGenericExpanded, setBulkGenericExpanded] = useState(true)
+  const [bookingListExpanded, setBookingListExpanded] = useState(true)
   
   // Generic email form state
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
@@ -33,13 +34,21 @@ export function SendEmailPage() {
 
   // Booking list form state
   const [bookingListCustomers, setBookingListCustomers] = useState<string[]>([])
-  const [bookingListDateFrom, setBookingListDateFrom] = useState('')
-  const [bookingListDateTo, setBookingListDateTo] = useState('')
-  const [includeCompleted, setIncludeCompleted] = useState(true)
-  const [includeCancelled, setIncludeCancelled] = useState(false)
-  const [bookingListSubject, setBookingListSubject] = useState('Your Booking Summary')
-  const [bookingListIntro, setBookingListIntro] = useState('Here is a summary of your bookings:')
-  const [selectAllBookingCustomers, setSelectAllBookingCustomers] = useState(false)
+  const [_bookingListDateFrom, _setBookingListDateFrom] = useState('')
+  const [_bookingListDateTo, _setBookingListDateTo] = useState('')
+  const [_includeCompleted, _setIncludeCompleted] = useState(true)
+  const [_includeCancelled, _setIncludeCancelled] = useState(false)
+  const [_bookingListSubject, _setBookingListSubject] = useState('Your Booking Summary')
+  const [_bookingListIntro, _setBookingListIntro] = useState('Here is a summary of your bookings:')
+  const [_selectAllBookingCustomers, setSelectAllBookingCustomers] = useState(false)
+
+  // Booking list load state (new UI)
+  const [bookingCustomerId, setBookingCustomerId] = useState('')
+  const [bookingType, setBookingType] = useState('months')
+  const [numberOfMonths, setNumberOfMonths] = useState('6')
+  const [loadedBookings, setLoadedBookings] = useState<Booking[]>([])
+  const [isLoadingBookings, setIsLoadingBookings] = useState(false)
+  const [showBookingsList, setShowBookingsList] = useState(false)
 
   // Fetch customers for dropdown
   const { data: customers = [] } = useQuery({
@@ -74,7 +83,7 @@ export function SendEmailPage() {
     onSuccess: (response) => {
       const { results } = response
       addToast(`Bulk email: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`, 
-        results.failed > 0 ? 'warning' : 'success')
+        results.failed > 0 ? 'info' : 'success')
       queryClient.invalidateQueries({ queryKey: ['email-history'] })
       setBulkSelectedCustomers([])
       setBulkSubject('')
@@ -93,7 +102,7 @@ export function SendEmailPage() {
     onSuccess: (response) => {
       const { results } = response
       addToast(`Booking list emails: ${results.sent} sent, ${results.failed} failed, ${results.skipped} skipped`, 
-        results.failed > 0 ? 'warning' : 'success')
+        results.failed > 0 ? 'info' : 'success')
       queryClient.invalidateQueries({ queryKey: ['email-history'] })
       setBookingListCustomers([])
       setSelectAllBookingCustomers(false)
@@ -157,7 +166,7 @@ export function SendEmailPage() {
     })
   }
 
-  const handleSendBookingList = () => {
+  const _handleSendBookingList = () => {
     if (bookingListCustomers.length === 0) {
       addToast('Please select at least one customer', 'error')
       return
@@ -165,12 +174,12 @@ export function SendEmailPage() {
 
     sendBookingListMutation.mutate({
       customer_ids: bookingListCustomers,
-      date_from: bookingListDateFrom || undefined,
-      date_to: bookingListDateTo || undefined,
-      include_completed: includeCompleted,
-      include_cancelled: includeCancelled,
-      subject: bookingListSubject,
-      intro_message: bookingListIntro,
+      date_from: _bookingListDateFrom || undefined,
+      date_to: _bookingListDateTo || undefined,
+      include_completed: _includeCompleted,
+      include_cancelled: _includeCancelled,
+      subject: _bookingListSubject,
+      intro_message: _bookingListIntro,
     })
   }
 
@@ -183,7 +192,7 @@ export function SendEmailPage() {
     }
   }
 
-  const handleSelectAllBookingCustomers = (checked: boolean) => {
+  const _handleSelectAllBookingCustomers = (checked: boolean) => {
     setSelectAllBookingCustomers(checked)
     if (checked) {
       setBookingListCustomers(customersWithEmail.map(c => String(c.id)))
@@ -200,13 +209,92 @@ export function SendEmailPage() {
     )
   }
 
-  const toggleBookingCustomer = (customerId: string) => {
+  const _toggleBookingCustomer = (customerId: string) => {
     setBookingListCustomers(prev => 
       prev.includes(customerId) 
         ? prev.filter(id => id !== customerId)
         : [...prev, customerId]
     )
   }
+  // Intentionally unused functions for future UI
+  void _handleSendBookingList
+  void _handleSelectAllBookingCustomers
+  void _toggleBookingCustomer
+
+  // Load bookings for selected customer
+  const handleLoadBookings = async () => {
+    if (!bookingCustomerId) {
+      addToast('Please select a customer', 'error')
+      return
+    }
+
+    setIsLoadingBookings(true)
+    try {
+      const months = parseInt(numberOfMonths, 10)
+      const dateFrom = new Date()
+      dateFrom.setMonth(dateFrom.getMonth() - months)
+      
+      const bookings = await bookingsApi.getAll({
+        customer_id: bookingCustomerId,
+        dateFrom: dateFrom.toISOString().split('T')[0],
+      })
+      
+      console.log('Loaded bookings:', bookings)
+      setLoadedBookings(bookings || [])
+      setShowBookingsList(true)
+      
+      if (bookings.length === 0) {
+        addToast('No bookings found for this customer', 'info')
+      } else {
+        addToast(`Loaded ${bookings.length} booking(s)`, 'success')
+      }
+    } catch (error) {
+      console.error('Failed to load bookings:', error)
+      addToast('Failed to load bookings', 'error')
+    } finally {
+      setIsLoadingBookings(false)
+    }
+  }
+
+  // Handle back from booking list view
+  const handleBackFromBookings = () => {
+    setShowBookingsList(false)
+    setLoadedBookings([])
+  }
+
+  // Send booking email for loaded bookings
+  const handleSendBookingEmail = () => {
+    if (loadedBookings.length === 0) {
+      addToast('No bookings to send', 'error')
+      return
+    }
+
+    sendBookingListMutation.mutate({
+      customer_ids: [bookingCustomerId],
+      include_completed: true,
+      include_cancelled: false,
+      subject: _bookingListSubject,
+      intro_message: _bookingListIntro,
+    })
+  }
+
+  // Memoized comma-separated emails for bulk selected customers
+  const bulkSelectedEmails = useMemo(() => {
+    return bulkSelectedCustomers
+      .map(id => customers.find(c => String(c.id) === id)?.email)
+      .filter(Boolean)
+      .join(', ')
+  }, [bulkSelectedCustomers, customers])
+
+  // Memoized comma-separated emails for booking list customers
+  const _bookingListSelectedEmails = useMemo(() => {
+    return bookingListCustomers
+      .map(id => customers.find(c => String(c.id) === id)?.email)
+      .filter(Boolean)
+      .join(', ')
+  }, [bookingListCustomers, customers])
+  // Intentionally unused for future UI
+  void _bookingListSelectedEmails
 
   // Generate HTML email template
   const generateEmailHtml = ({ subject, body, customerName, fromEmail }: { 
@@ -457,6 +545,11 @@ export function SendEmailPage() {
                           )}
                         </div>
                         <p className="text-xs text-gray-500 mt-1">{bulkSelectedCustomers.length} customer(s) selected</p>
+                        {bulkSelectedCustomers.length >= 1 && (
+                          <p className="text-xs text-gray-600 mt-1 break-all">
+                            {bulkSelectedEmails}
+                          </p>
+                        )}
                       </div>
 
                       <div>
@@ -511,116 +604,147 @@ export function SendEmailPage() {
                   
                   {bookingListExpanded && (
                     <div className="p-4 space-y-4 bg-white">
+                      {/* Customer Selection */}
                       <div>
-                        <div className="flex items-center justify-between mb-2">
-                          <label className="text-sm font-medium text-gray-700">Select Customers</label>
-                          <label className="flex items-center gap-2 text-sm text-gray-600">
-                            <input
-                              type="checkbox"
-                              checked={selectAllBookingCustomers}
-                              onChange={(e) => handleSelectAllBookingCustomers(e.target.checked)}
-                              className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                            />
-                            Select All ({customersWithEmail.length})
-                          </label>
-                        </div>
-                        <div className="max-h-40 overflow-y-auto border border-gray-200 rounded-md p-2 space-y-1">
-                          {customersWithEmail.length === 0 ? (
-                            <p className="text-sm text-gray-500 text-center py-2">No customers with email addresses</p>
-                          ) : (
-                            customersWithEmail.map((customer) => (
-                              <label key={customer.id} className="flex items-center gap-2 p-1 hover:bg-gray-50 rounded cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  checked={bookingListCustomers.includes(String(customer.id))}
-                                  onChange={() => toggleBookingCustomer(String(customer.id))}
-                                  className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                                />
-                                <span className="text-sm text-gray-700">
-                                  {customer.first_name} {customer.last_name}
-                                  <span className="text-gray-400 ml-1">({customer.email})</span>
-                                </span>
-                              </label>
-                            ))
-                          )}
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">{bookingListCustomers.length} customer(s) selected</p>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Select Customer Name</label>
+                        <select
+                          value={bookingCustomerId}
+                          onChange={(e) => {
+                            setBookingCustomerId(e.target.value)
+                            setShowBookingsList(false)
+                            setLoadedBookings([])
+                          }}
+                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+                        >
+                          <option value="">Select Customer</option>
+                          {customersWithEmail.map((customer) => (
+                            <option key={customer.id} value={customer.id}>
+                              {customer.first_name} {customer.last_name} - {customer.email}
+                            </option>
+                          ))}
+                        </select>
                       </div>
 
+                      {/* Booking Type and Number of Months */}
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Date From</label>
-                          <Input 
-                            type="date"
-                            value={bookingListDateFrom}
-                            onChange={(e) => setBookingListDateFrom(e.target.value)}
-                            className="w-full"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Select Booking Type</label>
+                          <select
+                            value={bookingType}
+                            onChange={(e) => setBookingType(e.target.value)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+                          >
+                            <option value="months">Number of Months</option>
+                          </select>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Date To</label>
-                          <Input 
-                            type="date"
-                            value={bookingListDateTo}
-                            onChange={(e) => setBookingListDateTo(e.target.value)}
-                            className="w-full"
-                          />
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Number of Months</label>
+                          <select
+                            value={numberOfMonths}
+                            onChange={(e) => setNumberOfMonths(e.target.value)}
+                            className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500 outline-none bg-white"
+                          >
+                            {[1, 2, 3, 4, 5, 6, 9, 12, 18, 24].map((num) => (
+                              <option key={num} value={num}>{num}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 
-                      <div className="flex gap-4">
-                        <label className="flex items-center gap-2 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={includeCompleted}
-                            onChange={(e) => setIncludeCompleted(e.target.checked)}
-                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                          Include Completed
-                        </label>
-                        <label className="flex items-center gap-2 text-sm text-gray-700">
-                          <input
-                            type="checkbox"
-                            checked={includeCancelled}
-                            onChange={(e) => setIncludeCancelled(e.target.checked)}
-                            className="rounded border-gray-300 text-green-600 focus:ring-green-500"
-                          />
-                          Include Cancelled
-                        </label>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email Subject</label>
-                        <Input 
-                          value={bookingListSubject}
-                          onChange={(e) => setBookingListSubject(e.target.value)}
-                          placeholder="Your Booking Summary"
-                          className="w-full"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Introduction Message</label>
-                        <textarea 
-                          value={bookingListIntro}
-                          onChange={(e) => setBookingListIntro(e.target.value)}
-                          placeholder="Here is a summary of your bookings:"
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:ring-green-500 focus:border-green-500 outline-none resize-none h-20"
-                        />
-                      </div>
-
+                      {/* Load Bookings Button */}
                       <Button 
-                        onClick={handleSendBookingList}
-                        disabled={sendBookingListMutation.isPending || bookingListCustomers.length === 0}
-                        className="w-full justify-center bg-green-600 hover:bg-green-700 text-white gap-2"
+                        onClick={handleLoadBookings}
+                        disabled={isLoadingBookings || !bookingCustomerId}
+                        className="justify-center bg-blue-600 hover:bg-blue-700 text-white gap-2"
                       >
-                        {sendBookingListMutation.isPending ? (
+                        {isLoadingBookings ? (
                           <Loader2 className="w-4 h-4 animate-spin" />
                         ) : (
-                          <Calendar className="w-4 h-4" />
+                          <Download className="w-4 h-4" />
                         )}
-                        {sendBookingListMutation.isPending ? 'Sending...' : `Send Booking List to ${bookingListCustomers.length} Customer(s)`}
+                        {isLoadingBookings ? 'Loading...' : 'Load Bookings'}
                       </Button>
+
+                      {/* Booking Lists */}
+                      {showBookingsList && (
+                        <div className="border border-gray-200 rounded-md">
+                          <div 
+                            className="bg-gray-50 p-3 flex justify-between items-center cursor-pointer border-b border-gray-200"
+                          >
+                            <h4 className="text-sm font-medium text-gray-800">Booking Lists</h4>
+                            <ChevronUp className="w-4 h-4 text-gray-500" />
+                          </div>
+                          
+                          <div className="p-4">
+                            {/* Booking Table */}
+                            <div className="overflow-x-auto">
+                              <table className="w-full text-sm">
+                                <thead>
+                                  <tr className="border-b border-gray-200">
+                                    <th className="text-left py-2 px-2 font-medium text-gray-700">Full Name</th>
+                                    <th className="text-left py-2 px-2 font-medium text-gray-700">Email</th>
+                                    <th className="text-left py-2 px-2 font-medium text-gray-700">Service Name</th>
+                                    <th className="text-left py-2 px-2 font-medium text-gray-700">Suburb</th>
+                                    <th className="text-left py-2 px-2 font-medium text-gray-700">Address</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {loadedBookings.length === 0 ? (
+                                    <tr>
+                                      <td colSpan={5} className="text-center py-4 text-gray-500">No Bookings Found</td>
+                                    </tr>
+                                  ) : (
+                                    loadedBookings.map((booking) => {
+                                      const customerName = booking.customer 
+                                        ? `${booking.customer.first_name || ''} ${booking.customer.last_name || ''}`.trim()
+                                        : booking.customerName || '-';
+                                      const customerEmail = booking.customer?.email || '-';
+                                      const services = booking.details?.map(d => d.service?.name).filter(Boolean).join(', ') 
+                                        || booking.petName || '-';
+                                      const suburb = booking.customer?.suburb || '-';
+                                      const address = booking.customer?.street_address || '-';
+                                      
+                                      return (
+                                        <tr key={booking.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                          <td className="py-2 px-2">{customerName}</td>
+                                          <td className="py-2 px-2">{customerEmail}</td>
+                                          <td className="py-2 px-2">{services}</td>
+                                          <td className="py-2 px-2">{suburb}</td>
+                                          <td className="py-2 px-2">{address}</td>
+                                        </tr>
+                                      );
+                                    })
+                                  )}
+                                </tbody>
+                              </table>
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex justify-between mt-4">
+                              <Button 
+                                onClick={handleBackFromBookings}
+                                variant="secondary"
+                                className="gap-2"
+                              >
+                                <ArrowLeft className="w-4 h-4" />
+                                Back
+                              </Button>
+                              <Button 
+                                onClick={handleSendBookingEmail}
+                                disabled={sendBookingListMutation.isPending || loadedBookings.length === 0}
+                                className="bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                              >
+                                {sendBookingListMutation.isPending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Mail className="w-4 h-4" />
+                                )}
+                                {sendBookingListMutation.isPending ? 'Sending...' : 'Send Booking Email'}
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

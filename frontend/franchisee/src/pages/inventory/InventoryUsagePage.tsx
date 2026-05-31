@@ -133,7 +133,6 @@ export function InventoryUsagePage() {
             service_id: data.serviceId,
             inventory_id: row.inventoryId,
             quantity_per_booking: usageNumber,
-            unit: 'pumps',
             notes: '',
             is_active: row.isActive,
           })

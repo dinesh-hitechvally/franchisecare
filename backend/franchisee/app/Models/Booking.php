@@ -20,6 +20,7 @@ class Booking extends Model
         'send_sms',
         'send_email',
         'notes',
+        'ndis_notes',
     ];
 
     protected $casts = [

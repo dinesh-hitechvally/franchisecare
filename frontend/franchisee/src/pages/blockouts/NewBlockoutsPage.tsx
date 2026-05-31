@@ -39,7 +39,7 @@ export function NewBlockoutsPage() {
       recurring ? blockoutRecurringsApi.create(data) : blockoutsApi.create(data),
     onSuccess: (_response, variables) => {
       addToast(variables.recurring ? 'Recurring blockout created successfully' : 'Blockout created successfully', 'success')
-      navigate('/blockouts')
+      navigate('/blockouts/list')
     },
     onError: () => {
       addToast('Could not create blockout', 'error')
@@ -323,7 +323,7 @@ export function NewBlockoutsPage() {
            <Button
              type="button"
              variant="secondary"
-             onClick={() => navigate('/blockouts')}
+             onClick={() => navigate('/blockouts/list')}
            >
              Cancel
            </Button>

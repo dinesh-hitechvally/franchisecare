@@ -42,6 +42,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
   const [bookingStartTime, setBookingStartTime] = useState('')
   const [bookingEndTime, setBookingEndTime] = useState('')
   const [bookingNotes, setBookingNotes] = useState('')
+  const [ndisNotes, setNdisNotes] = useState('')
   const [sendSmsConfirmation, setSendSmsConfirmation] = useState(false)
   const [sendEmailConfirmation, setSendEmailConfirmation] = useState(false)
   const [calendarColor, setCalendarColor] = useState('#4F46E5')
@@ -194,6 +195,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
     setBookingStartTime(bookingToEdit.startTime || bookingToEdit.start_time || '')
     setBookingEndTime(bookingToEdit.endTime || bookingToEdit.end_time || '')
     setBookingNotes(bookingToEdit.notes || '')
+    setNdisNotes(bookingToEdit.ndis_notes || bookingToEdit.ndisNotes || '')
     setSendSmsConfirmation(!!bookingToEdit.sendSms || !!bookingToEdit.send_sms)
     setSendEmailConfirmation(!!bookingToEdit.sendEmail || !!bookingToEdit.send_email)
     setCalendarColor(bookingToEdit.calendarColor || bookingToEdit.calendar_color || '#4F46E5')
@@ -291,6 +293,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
             total: parseFloat(bookingTotal),
             duration: totalDuration,
             notes: bookingNotes,
+            ndis_notes: selectedCustomer.is_ndis ? ndisNotes : null,
             frequency: parseInt(recurringFrequency),
             repeat_day: recurringRepeatDay,
             repeat_time: recurringRepeatTime,
@@ -313,6 +316,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
             total: parseFloat(bookingTotal),
             duration: totalDuration,
             notes: bookingNotes,
+            ndis_notes: selectedCustomer.is_ndis ? ndisNotes : null,
             send_sms: sendSmsConfirmation,
             send_email: sendEmailConfirmation,
           },
@@ -337,6 +341,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
         },
         color: calendarColor,
         notes: bookingNotes,
+        ndis_notes: selectedCustomer.is_ndis ? ndisNotes : null,
       })
     } else {
       // Create single booking via BookingController
@@ -352,6 +357,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
         total: parseFloat(bookingTotal),
         duration: totalDuration,
         notes: bookingNotes,
+        ndis_notes: selectedCustomer.is_ndis ? ndisNotes : null,
         send_sms: sendSmsConfirmation,
         send_email: sendEmailConfirmation,
       })
@@ -363,6 +369,7 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
     setSearchTerm('')
     setPetServices({})
     setExpandedPetIds([])
+    setNdisNotes('')
   }
 
   const togglePetAccordion = (petId: string) => {
@@ -754,6 +761,20 @@ export function NewBookingsPage({ mode = 'booking' }: NewBookingsPageProps) {
                     />
                    </div>
                 </div>
+
+                {selectedCustomer?.is_ndis && (
+                  <div className="pt-4">
+                    <label className="block text-[14px] font-bold text-blue-600 mb-4 tracking-tight">NDIS Notes</label>
+                    <div className="relative">
+                      <textarea 
+                        value={ndisNotes}
+                        onChange={(e) => setNdisNotes(e.target.value)}
+                        placeholder="NDIS specific notes for this booking"
+                        className="w-full border-b border-blue-200 p-0 pb-2 bg-blue-50 focus:ring-0 focus:border-blue-500 outline-none resize-none h-16 text-[14px] transition-all rounded px-2"
+                      />
+                    </div>
+                  </div>
+                )}
 
                   <div className="flex items-center gap-4 pt-4">
                     <span className="text-[14px] font-bold text-gray-700">Calendar Color:</span>

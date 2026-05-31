@@ -334,6 +334,7 @@ export function CalendarAgendaViewPage() {
       {/* Booking Detail Modal */}
       {showBookingModal && selectedBooking && (
         <BookingDetailModal
+          isOpen={showBookingModal}
           booking={selectedBooking}
           onClose={() => {
             setShowBookingModal(false)
@@ -345,6 +346,7 @@ export function CalendarAgendaViewPage() {
       {/* Blockout Detail Modal */}
       {showBlockoutModal && selectedBlockout && (
         <BlockoutDetailModal
+          isOpen={showBlockoutModal}
           blockout={selectedBlockout}
           onClose={() => {
             setShowBlockoutModal(false)

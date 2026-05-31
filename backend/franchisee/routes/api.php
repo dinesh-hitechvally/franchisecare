@@ -279,6 +279,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('send-email', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'sendEmail']);
         Route::post('send-bulk-email', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'sendBulkEmail']);
         Route::post('send-booking-list', [\App\Http\Controllers\Api\CommunicationHistoryController::class, 'sendBookingList']);
+
+        // Send SMS (via MessageMedia)
+        Route::post('send-sms', [\App\Http\Controllers\Api\SmsController::class, 'send']);
+        Route::post('send-bulk-sms', [\App\Http\Controllers\Api\SmsController::class, 'sendBulk']);
+        Route::post('customers/{customer}/send-sms', [\App\Http\Controllers\Api\SmsController::class, 'sendToCustomer']);
+        Route::get('sms-status', [\App\Http\Controllers\Api\SmsController::class, 'status']);
+        Route::get('sms-status/{messageId}', [\App\Http\Controllers\Api\SmsController::class, 'messageStatus']);
+        Route::post('sms-calculate-parts', [\App\Http\Controllers\Api\SmsController::class, 'calculateParts']);
     });
 
     /*
@@ -290,6 +298,37 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/', [\App\Http\Controllers\Api\SmsCreditController::class, 'index']);
         Route::post('purchase', [\App\Http\Controllers\Api\SmsCreditController::class, 'purchase']);
         Route::get('history', [\App\Http\Controllers\Api\SmsCreditController::class, 'history']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Payments (CyberSource)
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('payments')->group(function () {
+        Route::get('config', [\App\Http\Controllers\Api\PaymentController::class, 'config']);
+        Route::post('capture-context', [\App\Http\Controllers\Api\PaymentController::class, 'generateCaptureContext']);
+        Route::post('sms-credits', [\App\Http\Controllers\Api\PaymentController::class, 'purchaseSmsCredits']);
+        Route::post('inventory-order', [\App\Http\Controllers\Api\PaymentController::class, 'payInventoryOrder']);
+        Route::post('booking', [\App\Http\Controllers\Api\PaymentController::class, 'payBooking']);
+        Route::get('history', [\App\Http\Controllers\Api\PaymentController::class, 'history']);
+        Route::get('{transaction}', [\App\Http\Controllers\Api\PaymentController::class, 'show']);
+        Route::post('{transaction}/refund', [\App\Http\Controllers\Api\PaymentController::class, 'refund']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Xero Integration
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('xero')->group(function () {
+        Route::get('status', [\App\Http\Controllers\Api\XeroController::class, 'status']);
+        Route::get('authorize', [\App\Http\Controllers\Api\XeroController::class, 'authorize']);
+        Route::post('callback', [\App\Http\Controllers\Api\XeroController::class, 'callback']);
+        Route::post('disconnect', [\App\Http\Controllers\Api\XeroController::class, 'disconnect']);
+        Route::get('accounts', [\App\Http\Controllers\Api\XeroController::class, 'accounts']);
+        Route::post('sync-booking', [\App\Http\Controllers\Api\XeroController::class, 'syncBooking']);
+        Route::get('test', [\App\Http\Controllers\Api\XeroController::class, 'test']);
     });
 
     /*
@@ -380,5 +419,29 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [\App\Http\Controllers\Api\VersionUpdateController::class, 'store']);
         Route::put('{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'update']);
         Route::delete('{versionUpdate}', [\App\Http\Controllers\Api\VersionUpdateController::class, 'destroy']);
+    });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Training
+    |--------------------------------------------------------------------------
+    */
+    Route::prefix('training')->group(function () {
+        // Public training endpoints
+        Route::get('elearning', [\App\Http\Controllers\Api\TrainingController::class, 'elearning']);
+        Route::get('videos', [\App\Http\Controllers\Api\TrainingController::class, 'videos']);
+        Route::get('marketing', [\App\Http\Controllers\Api\TrainingController::class, 'marketing']);
+        Route::get('items/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'show']);
+        Route::post('items/{id}/progress', [\App\Http\Controllers\Api\TrainingController::class, 'updateProgress']);
+
+        // Admin routes for managing training content
+        Route::get('categories', [\App\Http\Controllers\Api\TrainingController::class, 'categories']);
+        Route::post('categories', [\App\Http\Controllers\Api\TrainingController::class, 'storeCategory']);
+        Route::put('categories/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'updateCategory']);
+        Route::delete('categories/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'deleteCategory']);
+        Route::get('items', [\App\Http\Controllers\Api\TrainingController::class, 'items']);
+        Route::post('items', [\App\Http\Controllers\Api\TrainingController::class, 'storeItem']);
+        Route::put('items/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'updateItem']);
+        Route::delete('items/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'deleteItem']);
     });
 });

@@ -1,85 +1,49 @@
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
-import { ExternalLink, MapPin, Users, FileText, Megaphone } from 'lucide-react'
+import { ExternalLink, MapPin, Users, FileText, Megaphone, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { trainingApi, MarketingCategory, MarketingItem } from '../../api/services'
 
 export function PhysicalMarketingIdeasPage() {
-  const physicalMarketingResources = [
-    {
-      title: 'Local Business Directories',
-      description: 'List your business in local directories like ARA (Australian Retailers Association)',
-      icon: FileText,
-      link: '#',
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['training', 'marketing'],
+    queryFn: async () => {
+      const response = await trainingApi.getMarketing()
+      return response.data
     },
-    {
-      title: 'Community Engagement',
-      description: 'Participate in local events, sponsorships, and community activities',
-      icon: Users,
-      link: '#',
-    },
-    {
-      title: 'Physical Marketing Materials',
-      description: 'Business cards, flyers, magnets, and promotional materials for local distribution',
-      icon: FileText,
-      link: '#',
-    },
-  ]
+  })
 
-  const googleBusinessTips = [
-    {
-      title: 'Optimize Your Google My Business Profile',
-      description: 'Keep your business information up-to-date including hours, services, and contact details',
-    },
-    {
-      title: 'Manage Multiple Locations',
-      description: 'If you have multiple service areas, set up location-specific profiles',
-    },
-    {
-      title: 'Respond to Reviews',
-      description: 'Actively engage with customer reviews to build trust and improve your online reputation',
-    },
-    {
-      title: 'Post Regular Updates',
-      description: 'Share updates, offers, and news through Google My Business posts',
-    },
-    {
-      title: 'Add Photos Regularly',
-      description: 'Showcase your work with before/after photos and happy customers (with permission)',
-    },
-  ]
+  const categories = data || []
 
-  const facebookGroupTips = [
-    {
-      title: 'Join Local Pet Groups',
-      description: 'Participate in local dog owner groups and pet communities',
-    },
-    {
-      title: 'Create Engaging Content',
-      description: 'Share grooming tips, before/after photos, and educational content',
-    },
-    {
-      title: 'Build Community',
-      description: 'Engage authentically with members, answer questions, and provide value',
-    },
-    {
-      title: 'Run Special Promotions',
-      description: 'Offer exclusive deals for group members to drive bookings',
-    },
-    {
-      title: 'Leverage User-Generated Content',
-      description: 'Encourage customers to share their pets\' grooming transformations',
-    },
-  ]
+  // Find specific categories
+  const physicalMarketing = categories.find((c: MarketingCategory) => c.slug === 'physical-marketing-ideas')
+  const googleBusiness = categories.find((c: MarketingCategory) => c.slug === 'google-my-business')
+  const facebookMarketing = categories.find((c: MarketingCategory) => c.slug === 'facebook-groups')
 
-  const marketingCourse = {
-    title: 'Beyond the Likes: Mastering Social Media that Converts with Dan Nikas',
-    instructor: 'Dan Nikas, CEO & Director of Elite Brands',
-    description: 'A certified Global Trainer with 20+ years experience running high-performing social campaigns and creating content that builds trust and converts.',
-    highlights: [
-      'Solid social strategies you can use immediately',
-      'Save time and market efficiently',
-      'Stop chasing likes and start driving results',
-      'No big budgets or marketing degree required',
-    ],
+  // Find featured marketing course
+  const featuredCourse = facebookMarketing?.items?.find((item: MarketingItem) => item.instructor && item.highlights)
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Physical Marketing Ideas"
+          description="Marketing strategies and resources to grow your business"
+          icon={<Megaphone className="w-5 h-5" />}
+        />
+        <Card className="p-8 text-center">
+          <p className="text-red-600">Failed to load marketing resources. Please try again later.</p>
+        </Card>
+      </div>
+    )
   }
 
   return (
@@ -100,13 +64,13 @@ export function PhysicalMarketingIdeasPage() {
               <p className="text-sm text-gray-600">ARA - Australian Retailers Association</p>
             </div>
 
-            {physicalMarketingResources.map((resource, index) => (
-              <div key={index} className="border-l-4 border-orange-400 pl-4 py-2">
+            {physicalMarketing?.items?.map((item: MarketingItem) => (
+              <div key={item.id} className="border-l-4 border-orange-400 pl-4 py-2">
                 <div className="flex items-start gap-3">
-                  <resource.icon className="w-5 h-5 text-orange-500 mt-1 flex-shrink-0" />
+                  <FileText className="w-5 h-5 text-orange-500 mt-1 flex-shrink-0" />
                   <div>
-                    <h3 className="font-medium text-gray-800 mb-1">{resource.title}</h3>
-                    <p className="text-sm text-gray-600">{resource.description}</p>
+                    <h3 className="font-medium text-gray-800 mb-1">{item.title}</h3>
+                    <p className="text-sm text-gray-600">{item.description}</p>
                   </div>
                 </div>
               </div>
@@ -158,10 +122,10 @@ export function PhysicalMarketingIdeasPage() {
           </div>
 
           <div className="space-y-4">
-            {googleBusinessTips.map((tip, index) => (
-              <div key={index} className="border-b border-gray-200 pb-3 last:border-0">
-                <h3 className="font-medium text-gray-800 mb-1 text-sm">{tip.title}</h3>
-                <p className="text-xs text-gray-600">{tip.description}</p>
+            {googleBusiness?.items?.map((item: MarketingItem) => (
+              <div key={item.id} className="border-b border-gray-200 pb-3 last:border-0">
+                <h3 className="font-medium text-gray-800 mb-1 text-sm">{item.title}</h3>
+                <p className="text-xs text-gray-600">{item.description}</p>
               </div>
             ))}
           </div>
@@ -200,10 +164,10 @@ export function PhysicalMarketingIdeasPage() {
           </div>
 
           <div className="space-y-4">
-            {facebookGroupTips.map((tip, index) => (
-              <div key={index} className="border-b border-gray-200 pb-3 last:border-0">
-                <h3 className="font-medium text-gray-800 mb-1 text-sm">{tip.title}</h3>
-                <p className="text-xs text-gray-600">{tip.description}</p>
+            {facebookMarketing?.items?.filter((item: MarketingItem) => !item.instructor).map((item: MarketingItem) => (
+              <div key={item.id} className="border-b border-gray-200 pb-3 last:border-0">
+                <h3 className="font-medium text-gray-800 mb-1 text-sm">{item.title}</h3>
+                <p className="text-xs text-gray-600">{item.description}</p>
               </div>
             ))}
           </div>
@@ -217,34 +181,38 @@ export function PhysicalMarketingIdeasPage() {
       </div>
 
       {/* Marketing Course Section */}
-      <Card className="p-6">
-        <div className="flex flex-col md:flex-row gap-6">
-          <div className="md:w-1/3">
-            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg p-6 text-white">
-              <h3 className="font-bold text-xl mb-2">Marketing and business</h3>
-              <div className="aspect-video bg-white/10 rounded mt-4 flex items-center justify-center">
-                <Users className="w-16 h-16 opacity-50" />
+      {featuredCourse && (
+        <Card className="p-6">
+          <div className="flex flex-col md:flex-row gap-6">
+            <div className="md:w-1/3">
+              <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-lg p-6 text-white">
+                <h3 className="font-bold text-xl mb-2">Marketing and business</h3>
+                <div className="aspect-video bg-white/10 rounded mt-4 flex items-center justify-center">
+                  <Users className="w-16 h-16 opacity-50" />
+                </div>
               </div>
             </div>
-          </div>
-          <div className="md:w-2/3">
-            <h2 className="text-xl font-bold text-gray-800 mb-2">{marketingCourse.title}</h2>
-            <p className="text-sm text-blue-600 mb-3">{marketingCourse.instructor}</p>
-            <p className="text-gray-700 mb-4">{marketingCourse.description}</p>
-            <div className="space-y-2">
-              <p className="font-medium text-gray-800 text-sm">What you'll expect:</p>
-              <ul className="space-y-1">
-                {marketingCourse.highlights.map((highlight, index) => (
-                  <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
-                    <span className="text-blue-500 mt-1">•</span>
-                    <span>{highlight}</span>
-                  </li>
-                ))}
-              </ul>
+            <div className="md:w-2/3">
+              <h2 className="text-xl font-bold text-gray-800 mb-2">{featuredCourse.title}</h2>
+              <p className="text-sm text-blue-600 mb-3">{featuredCourse.instructor}</p>
+              <p className="text-gray-700 mb-4">{featuredCourse.description}</p>
+              {featuredCourse.highlights && featuredCourse.highlights.length > 0 && (
+                <div className="space-y-2">
+                  <p className="font-medium text-gray-800 text-sm">What you'll expect:</p>
+                  <ul className="space-y-1">
+                    {featuredCourse.highlights.map((highlight: string, index: number) => (
+                      <li key={index} className="text-sm text-gray-600 flex items-start gap-2">
+                        <span className="text-blue-500 mt-1">•</span>
+                        <span>{highlight}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      )}
     </div>
   )
 }

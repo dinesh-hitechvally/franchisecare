@@ -107,12 +107,55 @@ class BenchmarkingController extends Controller
             $buildRow('Average Hourly Income', $yourMetrics['avg_hourly_rate'], $stateMetrics['avg_hourly_rate'], $nationalMetrics['avg_hourly_rate']),
         ];
 
+        // Calculate rank based on income
+        $rank = $this->calculateRank($start, $end, $companyId, $yourMetrics['income_total']);
+
         return response()->json([
             'success' => true,
             'data' => $data,
-            'rank' => '-',
+            'rank' => $rank,
             'message' => 'Benchmarking report retrieved successfully.',
         ]);
+    }
+
+    /**
+     * Calculate the rank of the current company based on income
+     * Rank 1 = highest income
+     */
+    private function calculateRank(string $start, string $end, ?int $companyId, float $yourIncome): string
+    {
+        if (!$companyId) {
+            return '-';
+        }
+
+        // Get all companies with their income totals for the period
+        $companyIncomes = Income::query()
+            ->whereBetween('income_date', [$start, $end])
+            ->whereNotNull('company_id')
+            ->selectRaw('company_id, SUM(amount) as total_income')
+            ->groupBy('company_id')
+            ->orderByDesc('total_income')
+            ->pluck('total_income', 'company_id');
+
+        // Count how many companies have higher income
+        $higherCount = 0;
+        foreach ($companyIncomes as $cId => $income) {
+            if ($cId != $companyId && (float) $income > $yourIncome) {
+                $higherCount++;
+            }
+        }
+
+        // Rank is 1 + number of companies with higher income
+        $rank = $higherCount + 1;
+        $totalCompanies = $companyIncomes->count();
+        
+        // If current company has no income recorded, add them to total
+        if (!isset($companyIncomes[$companyId])) {
+            $totalCompanies++;
+            $rank = $totalCompanies; // They would be at the bottom
+        }
+
+        return $rank . ' of ' . $totalCompanies;
     }
 
     private function calculateMetrics(string $start, string $end, ?callable $scope = null): array

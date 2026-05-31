@@ -41,7 +41,7 @@ class InventoryOrderController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'type' => 'required|in:inventory,treats,marketing',
+            'type' => 'required|in:inventory,treats,marketing,uniforms,shampoo,office',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.product_name' => 'required|string|max:255',

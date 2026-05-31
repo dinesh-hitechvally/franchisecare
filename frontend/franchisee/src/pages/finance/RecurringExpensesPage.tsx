@@ -23,8 +23,8 @@ export function RecurringExpensesPage() {
   const { data: recurringExpenses = [], isLoading } = useQuery({
     queryKey: ['recurring-expenses'],
     queryFn: async () => {
-      const response = await apiClient.get<RecurringExpense[]>('/recurring-expenses')
-      return response
+      const response = await apiClient.get<{ data: RecurringExpense[] }>('/recurring-expenses')
+      return response.data
     },
   })
 

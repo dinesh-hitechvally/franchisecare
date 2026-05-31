@@ -22,8 +22,8 @@ export function RecurringIncomePage() {
   const { data: recurringIncomes = [], isLoading } = useQuery({
     queryKey: ['recurring-incomes'],
     queryFn: async () => {
-      const response = await apiClient.get<RecurringIncome[]>('/recurring-incomes')
-      return response
+      const response = await apiClient.get<{ data: RecurringIncome[] }>('/recurring-incomes')
+      return response.data
     },
   })
 

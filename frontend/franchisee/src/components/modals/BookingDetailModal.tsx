@@ -407,6 +407,15 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                         </p>
                       </div>
 
+                      {booking.customer?.is_ndis && booking.ndis_notes && (
+                        <div>
+                          <label className="mb-2 block text-[13px] font-bold text-blue-600">NDIS Notes</label>
+                          <p className="mt-1 text-sm italic text-blue-600 bg-blue-50 rounded p-2">
+                            {booking.ndis_notes}
+                          </p>
+                        </div>
+                      )}
+
                       <div className="flex items-center gap-2">
                         <span className="text-[13px] font-bold text-gray-800">Recurring Booking:</span>
                         <span className={cn('rounded-full px-3 py-1 text-xs font-bold text-white', booking.isRecurring ? 'bg-[#4a5ebc]' : 'bg-gray-700')}>

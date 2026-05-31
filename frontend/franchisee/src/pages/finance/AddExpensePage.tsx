@@ -53,10 +53,11 @@ export function AddExpensePage() {
       gst_inclusive: boolean
       description?: string
       is_recurring?: boolean
+      is_active: boolean
     }) => expensesApi.create(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] })
-      navigate('/finance/expenses')
+      navigate('/finance/expense/list')
     },
   })
 
@@ -70,6 +71,7 @@ export function AddExpensePage() {
       gst_inclusive: formData.gst === 'GST Included',
       description: formData.description,
       is_recurring: formData.isRecurring,
+      is_active: true,
     })
   }
 

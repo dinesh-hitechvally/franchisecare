@@ -14,8 +14,8 @@ export function SmsPurchaseLogPage() {
 
   const purchases = purchasesData?.data || []
 
-  const totalCredits = purchases.reduce((sum, p) => sum + (p.quantity || 0), 0)
-  const totalSpent = purchases.reduce((sum, p) => sum + (p.amount || 0), 0)
+  const totalCredits = purchases.reduce((sum, p) => sum + (Number(p.quantity) || 0), 0)
+  const totalSpent = purchases.reduce((sum, p) => sum + (Number(p.amount) || 0), 0)
 
   const columns = [
     {

@@ -33,7 +33,7 @@ export const unbookedCustomerReportsApi = {
 };
 
 import { apiClient, API_BASE_URL } from './client'
-import type { Lead, Customer, Pet, Service, Booking, Blockout, BlockoutRecurring, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTakeBatch, StockTakeItem, CurrentSoh, StockMovement, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
+import type { Lead, Customer, Pet, Service, Booking, Blockout, BlockoutRecurring, InventoryItem, InventoryOrder, Income, Expense, IncomeCategory, ExpenseCategory, Document, CommunicationTemplate, CommunicationLog, ForumThread, ForumGroup, ForumComment, ForumNotification, NewsItem, DashboardMetrics, DashboardActivity, DashboardScheduleItem, DashboardForecastItem, DashboardNewsPayload, User, StockTakeBatch, CurrentSoh, StockMovement, SmsHistory, EmailHistory, BookingAuditEntry, BookingInventoryAuditEntry, ServiceInventoryUsage, InventoryUsageHistory } from '../types'
 
 export type PaginationMeta = {
   current_page: number
@@ -878,6 +878,25 @@ export const communicationHistoryApi = {
 
   sendBookingList: (data: { customer_ids: string[]; date_from?: string; date_to?: string; include_completed?: boolean; include_cancelled?: boolean; subject?: string; intro_message?: string }) =>
     apiClient.post<{ message: string; results: { sent: number; failed: number; skipped: number; details: Array<{ customer_id: string; customer_name: string; status: string; email?: string; bookings_count?: number; error?: string; reason?: string }> } }>('/communication/send-booking-list', data),
+
+  // Send SMS (via MessageMedia)
+  sendSms: (data: { to_number: string; message: string; customer_id?: string; customer_name?: string }) =>
+    apiClient.post<{ message: string; data: SmsHistory }>('/communication/send-sms', data),
+
+  sendBulkSms: (data: { customer_ids: string[]; message: string }) =>
+    apiClient.post<{ message: string; sent: number; failed: number; skipped: number }>('/communication/send-bulk-sms', data),
+
+  sendSmsToCustomer: (customerId: string, data: { message: string }) =>
+    apiClient.post<{ message: string; data: SmsHistory }>(`/communication/customers/${customerId}/send-sms`, data),
+
+  getSmsStatus: () =>
+    apiClient.get<{ configured: boolean; balance?: unknown; error?: string }>('/communication/sms-status'),
+
+  getSmsMessageStatus: (messageId: string) =>
+    apiClient.get<unknown>(`/communication/sms-status/${messageId}`),
+
+  calculateSmsParts: (message: string) =>
+    apiClient.post<{ parts: number; characters: number }>('/communication/sms-calculate-parts', { message }),
 }
 
 export const forumApi = {
@@ -1421,4 +1440,262 @@ export const companyServicesApi = {
   getAll: () => apiClient.get<CompanyService[]>('/company-services'),
   updateAll: (services: Partial<CompanyService>[]) =>
     apiClient.post<CompanyService[]>('/company-services', { services }),
+}
+
+// Payment Types
+export interface BillingInfo {
+  first_name: string
+  last_name: string
+  address: string
+  city: string
+  state: string
+  postal_code: string
+  country?: string
+  email: string
+}
+
+export interface PaymentConfig {
+  configured: boolean
+  currency: string
+  supported_cards: string[]
+}
+
+export interface PaymentTransaction {
+  id: number
+  company_id: number
+  user_id: number
+  transaction_id: string | null
+  type: 'credit_purchase' | 'order' | 'booking'
+  reference_type: string | null
+  reference_id: number | null
+  amount: number
+  currency: string
+  status: 'pending' | 'completed' | 'failed' | 'refunded' | 'voided'
+  payment_method: string
+  card_last_four: string | null
+  card_brand: string | null
+  authorization_code: string | null
+  error_message: string | null
+  metadata: Record<string, unknown> | null
+  processed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface PaymentResult {
+  success: boolean
+  message?: string
+  error?: string
+  transaction_id?: string
+  new_balance?: number
+  purchase?: SmsCreditPurchase
+  order?: any
+  booking?: any
+}
+
+export const paymentsApi = {
+  getConfig: () => apiClient.get<PaymentConfig>('/payments/config'),
+  
+  purchaseSmsCredits: (data: {
+    package_id: string
+    card_number: string
+    expiration_month: string
+    expiration_year: string
+    cvv: string
+    billing: BillingInfo
+  }) => apiClient.post<PaymentResult>('/payments/sms-credits', data),
+  
+  payInventoryOrder: (data: {
+    order_id: number
+    card_number: string
+    expiration_month: string
+    expiration_year: string
+    cvv: string
+    billing: BillingInfo
+  }) => apiClient.post<PaymentResult>('/payments/inventory-order', data),
+  
+  payBooking: (data: {
+    booking_id: number
+    amount: number
+    card_number: string
+    expiration_month: string
+    expiration_year: string
+    cvv: string
+    billing: BillingInfo
+  }) => apiClient.post<PaymentResult>('/payments/booking', data),
+  
+  getHistory: (params?: { type?: string; status?: string; per_page?: number; page?: number }) =>
+    apiClient.get<{ data: PaymentTransaction[]; meta: PaginationMeta }>('/payments/history', { params }),
+  
+  getTransaction: (id: number) => apiClient.get<PaymentTransaction>(`/payments/${id}`),
+  
+  refund: (id: number, amount?: number) =>
+    apiClient.post<{ success: boolean; refund_id?: string; error?: string }>(`/payments/${id}/refund`, { amount }),
+}
+
+// Xero Integration API
+export interface XeroStatus {
+  connected: boolean
+  tenant_name?: string
+  organization?: string
+  last_synced_at?: string
+  message?: string
+}
+
+export interface XeroAccount {
+  AccountID: string
+  Code: string
+  Name: string
+  Type: string
+  Status: string
+}
+
+export const xeroApi = {
+  getStatus: () => apiClient.get<XeroStatus>('/xero/status'),
+  
+  getAuthUrl: () => apiClient.get<{ auth_url: string }>('/xero/authorize'),
+  
+  callback: (code: string, state: string) =>
+    apiClient.post<{ success: boolean; message: string; tenant_name?: string; error?: string }>('/xero/callback', { code, state }),
+  
+  disconnect: () =>
+    apiClient.post<{ success: boolean; message: string }>('/xero/disconnect'),
+  
+  getAccounts: () =>
+    apiClient.get<{ accounts: XeroAccount[] }>('/xero/accounts'),
+  
+  syncBooking: (bookingId: number) =>
+    apiClient.post<{ success: boolean; message: string; invoice_id?: string; error?: string }>('/xero/sync-booking', { booking_id: bookingId }),
+  
+  test: () =>
+    apiClient.get<{ success: boolean; message: string; organization?: string }>('/xero/test'),
+}
+
+// Training Types
+export interface TrainingCourse {
+  id: number
+  title: string
+  description: string
+  duration: string
+  thumbnail: string
+  video_url?: string
+  completed: boolean
+  progress: number
+}
+
+export interface TrainingCategory {
+  id: number
+  name: string
+  slug: string
+  courses: TrainingCourse[]
+}
+
+export interface TrainingVideo {
+  id: number
+  title: string
+  description: string
+  duration: string
+  thumbnail: string
+  video_url?: string
+}
+
+export interface MarketingItem {
+  id: number
+  title: string
+  description: string
+  content?: string
+  type: string
+  external_url?: string
+  instructor?: string
+  highlights?: string[]
+}
+
+export interface MarketingCategory {
+  id: number
+  name: string
+  slug: string
+  icon?: string
+  items: MarketingItem[]
+}
+
+// Training API
+export const trainingApi = {
+  // E-Learning
+  getElearning: () =>
+    apiClient.get<{ success: boolean; data: TrainingCategory[] }>('/training/elearning'),
+  
+  // Training Videos
+  getVideos: () =>
+    apiClient.get<{ success: boolean; data: TrainingVideo[] }>('/training/videos'),
+  
+  // Marketing Resources
+  getMarketing: () =>
+    apiClient.get<{ success: boolean; data: MarketingCategory[] }>('/training/marketing'),
+  
+  // Get single item
+  getItem: (id: number) =>
+    apiClient.get<{ success: boolean; data: TrainingCourse }>(`/training/items/${id}`),
+  
+  // Update progress
+  updateProgress: (id: number, data: { status: 'not_started' | 'in_progress' | 'completed'; progress_percent?: number }) =>
+    apiClient.post<{ success: boolean; data: any }>(`/training/items/${id}/progress`, data),
+  
+  // Admin: Categories
+  getCategories: () =>
+    apiClient.get<{ success: boolean; data: any[] }>('/training/categories'),
+  
+  createCategory: (data: { name: string; type: 'elearning' | 'videos' | 'marketing'; description?: string; icon?: string; sort_order?: number }) =>
+    apiClient.post<{ success: boolean; data: any }>('/training/categories', data),
+  
+  updateCategory: (id: number, data: Partial<{ name: string; type: string; description: string; icon: string; sort_order: number; is_active: boolean }>) =>
+    apiClient.put<{ success: boolean; data: any }>(`/training/categories/${id}`, data),
+  
+  deleteCategory: (id: number) =>
+    apiClient.delete<{ success: boolean; message: string }>(`/training/categories/${id}`),
+  
+  // Admin: Items
+  getItems: (params?: { category_id?: number; type?: string }) =>
+    apiClient.get<{ success: boolean; data: any[] }>('/training/items', { params }),
+  
+  createItem: (data: {
+    category_id?: number
+    title: string
+    description?: string
+    content?: string
+    type: 'course' | 'video' | 'document' | 'link'
+    thumbnail?: string
+    video_url?: string
+    document_url?: string
+    external_url?: string
+    duration?: string
+    duration_minutes?: number
+    instructor?: string
+    highlights?: string[]
+    sort_order?: number
+    is_featured?: boolean
+  }) =>
+    apiClient.post<{ success: boolean; data: any }>('/training/items', data),
+  
+  updateItem: (id: number, data: Partial<{
+    category_id: number
+    title: string
+    description: string
+    content: string
+    type: string
+    thumbnail: string
+    video_url: string
+    document_url: string
+    external_url: string
+    duration: string
+    duration_minutes: number
+    instructor: string
+    highlights: string[]
+    sort_order: number
+    is_featured: boolean
+    is_active: boolean
+  }>) =>
+    apiClient.put<{ success: boolean; data: any }>(`/training/items/${id}`, data),
+  
+  deleteItem: (id: number) =>
+    apiClient.delete<{ success: boolean; message: string }>(`/training/items/${id}`),
 }

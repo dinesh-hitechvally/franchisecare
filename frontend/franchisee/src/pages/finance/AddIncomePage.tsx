@@ -77,7 +77,7 @@ export function AddIncomePage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['incomes'] })
-      navigate('/finance/income')
+      navigate('/finance/income/list')
     },
   })
 
@@ -294,7 +294,7 @@ export function AddIncomePage() {
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => navigate('/finance/income')}
+                    onClick={() => navigate('/finance/income/list')}
                     className="bg-gray-600 hover:bg-gray-700 text-white px-10 py-3 rounded shadow-lg transition-all transform active:scale-95"
                   >
                     Back
@@ -311,7 +311,7 @@ export function AddIncomePage() {
                   </Button>
                   <Button
                     type="button"
-                    onClick={() => navigate('/finance/income')}
+                    onClick={() => navigate('/finance/income/list')}
                     className="bg-gray-600 hover:bg-gray-700 text-white px-10 py-3 rounded shadow-lg transition-all transform active:scale-95"
                   >
                     Cancel

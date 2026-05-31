@@ -49,6 +49,7 @@ import { ListExpensePage } from './pages/finance/ListExpensePage'
 import { AddExpensePage } from './pages/finance/AddExpensePage'
 import { ExpenseCategoriesPage } from './pages/finance/ExpenseCategoriesPage'
 import { RecurringExpensesPage } from './pages/finance/RecurringExpensesPage'
+import { PaymentHistoryPage } from './pages/finance/PaymentHistoryPage'
 
 import { InventoryPage } from './pages/inventory/InventoryPage'
 import { InwardGoodsPage } from './pages/inventory/InwardGoodsPage'
@@ -116,6 +117,8 @@ import { ServicePricesPage } from './pages/settings/ServicePricesPage'
 
 // Integration Pages
 import { IntegrationsPage } from './pages/integration/IntegrationsPage'
+import { XeroIntegrationPage } from './pages/settings/XeroIntegrationPage'
+import { XeroCallbackPage } from './pages/settings/XeroCallbackPage'
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((state) => state.token)
@@ -126,6 +129,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route path="/signin" element={<LoginPage />} />
+      <Route path="/xero/callback" element={<XeroCallbackPage />} />
       <Route
         path="/"
         element={
@@ -176,12 +180,12 @@ export function AppRoutes() {
         <Route path="leads/message-operator" element={<MessageForOperatorPage />} />
 
         {/* Blockouts Routes */}
-        <Route path="blockouts" element={<ListBlockoutsPage />} />
+        <Route path="blockouts/list" element={<ListBlockoutsPage />} />
         <Route path="blockouts/new" element={<NewBlockoutsPage />} />
         <Route path="blockouts/recurring" element={<RecurringBlockoutsPage />} />
 
         {/* Finance Routes */}
-        <Route path="finance/income" element={<ListIncomesPage />} />
+        <Route path="finance/income/list" element={<ListIncomesPage />} />
         <Route path="finance/income/add" element={<AddIncomePage />} />
         <Route path="finance/income/view/:id" element={<AddIncomePage />} />
         <Route path="finance/income/edit/:id" element={<AddIncomePage />} />
@@ -189,10 +193,11 @@ export function AppRoutes() {
         <Route path="finance/income/add-category" element={<AddIncomeCategoryPage />} />
         <Route path="finance/income/edit-category/:id" element={<AddIncomeCategoryPage />} />
         <Route path="finance/income/recurring" element={<RecurringIncomePage />} />
-        <Route path="finance/expense" element={<ListExpensePage />} />
+        <Route path="finance/expense/list" element={<ListExpensePage />} />
         <Route path="finance/expense/add" element={<AddExpensePage />} />
         <Route path="finance/expense/categories" element={<ExpenseCategoriesPage />} />
         <Route path="finance/expense/recurring" element={<RecurringExpensesPage />} />
+        <Route path="finance/payments" element={<PaymentHistoryPage />} />
 
         {/* Inventory Routes */}
         <Route path="inventory" element={<InventoryPage />} />
@@ -249,6 +254,7 @@ export function AppRoutes() {
 
         {/* Integration Routes */}
         <Route path="integration/api" element={<IntegrationsPage />} />
+        <Route path="integration/xero" element={<XeroIntegrationPage />} />
 
         {/* Orders Routes */}
         <Route path="orders/completed" element={<CompletedOrdersPage />} />

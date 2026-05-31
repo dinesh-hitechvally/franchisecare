@@ -1,97 +1,51 @@
 import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Input } from '../../components/ui/Input'
-import { Search, Play, Video } from 'lucide-react'
+import { Search, Play, Video, Loader2 } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
-
-interface TrainingVideo {
-  id: string
-  title: string
-  description: string
-  thumbnail: string
-  duration: string
-}
+import { trainingApi, TrainingVideo } from '../../api/services'
 
 export function MateTrainingVideosPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
-  const videos: TrainingVideo[] = [
-    {
-      id: '1',
-      title: 'Mate - Intro',
-      description: 'Introduction to the Mate system and overview of features',
-      thumbnail: '/images/videos/mate-intro.jpg',
-      duration: '5:30',
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['training', 'videos'],
+    queryFn: async () => {
+      const response = await trainingApi.getVideos()
+      return response.data
     },
-    {
-      id: '2',
-      title: 'Mate - New Booking',
-      description: 'How to create and manage new bookings in the Mate system',
-      thumbnail: '/images/videos/mate-new-booking.jpg',
-      duration: '8:45',
-    },
-    {
-      id: '3',
-      title: 'Mate - New Customer',
-      description: 'Adding and managing new customers and their pet profiles',
-      thumbnail: '/images/videos/mate-new-customer.jpg',
-      duration: '7:20',
-    },
-    {
-      id: '4',
-      title: 'Mate - Adjusting preferences settings',
-      description: 'Customizing your Mate system preferences and settings',
-      thumbnail: '/images/videos/mate-settings.jpg',
-      duration: '6:15',
-    },
-    {
-      id: '5',
-      title: 'Mate - Download and Read Blues News',
-      description: 'Accessing and reading company news and updates',
-      thumbnail: '/images/videos/mate-news.jpg',
-      duration: '4:30',
-    },
-    {
-      id: '6',
-      title: 'Mate - Setting Up and Adjusting Two-Factor Authentication',
-      description: 'Security setup and configuration for two-factor authentication',
-      thumbnail: '/images/videos/mate-2fa.jpg',
-      duration: '5:45',
-    },
-    {
-      id: '7',
-      title: 'Mate - How to Place Your Orders on Mate',
-      description: 'Ordering supplies and inventory through the Mate system',
-      thumbnail: '/images/videos/mate-orders.jpg',
-      duration: '9:10',
-    },
-    {
-      id: '8',
-      title: 'Mate - Using online waivers',
-      description: 'Managing customer waivers and digital signatures',
-      thumbnail: '/images/videos/mate-waivers.jpg',
-      duration: '6:40',
-    },
-    {
-      id: '9',
-      title: 'Mate - Sending a customer a tax invoice / receipt',
-      description: 'Generating and sending invoices and receipts to customers',
-      thumbnail: '/images/videos/mate-invoices.jpg',
-      duration: '7:55',
-    },
-    {
-      id: '10',
-      title: 'Mate - How to complete your bookings',
-      description: 'Processing and finalizing completed bookings',
-      thumbnail: '/images/videos/mate-complete-bookings.jpg',
-      duration: '8:20',
-    },
-  ]
+  })
 
-  const filteredVideos = videos.filter((video) =>
+  const videos = data || []
+
+  const filteredVideos = videos.filter((video: TrainingVideo) =>
     video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
     video.description.toLowerCase().includes(searchTerm.toLowerCase())
   )
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Mate Training Videos"
+          description="Learn how to use the Mate system effectively"
+          icon={<Video className="w-5 h-5" />}
+        />
+        <Card className="p-8 text-center">
+          <p className="text-red-600">Failed to load videos. Please try again later.</p>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-6">
@@ -115,7 +69,7 @@ export function MateTrainingVideosPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredVideos.map((video) => (
+        {filteredVideos.map((video: TrainingVideo) => (
           <Card
             key={video.id}
             className="hover:shadow-lg transition-shadow cursor-pointer overflow-hidden group"
@@ -148,7 +102,7 @@ export function MateTrainingVideosPage() {
         ))}
       </div>
 
-      {filteredVideos.length === 0 && (
+      {filteredVideos.length === 0 && !isLoading && (
         <Card className="p-8 text-center">
           <Video className="w-12 h-12 text-gray-400 mx-auto mb-3" />
           <p className="text-gray-600">No videos found matching your search.</p>

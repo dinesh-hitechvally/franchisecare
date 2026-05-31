@@ -4,7 +4,7 @@ import { Card } from '../../components/ui/Card'
 import { Table } from '../../components/ui/Table'
 import { TablePagination } from '../../components/ui/TablePagination'
 import { Input } from '../../components/ui/Input'
-import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2, Inbox, Loader2 } from 'lucide-react'
+import { Check, X, Search as SearchIcon, MoreVertical, Eye, Edit3, Trash2, Inbox } from 'lucide-react'
 import { PortalMenu } from '../../components/ui/PortalMenu'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { inventoryApi } from '../../api/services'
@@ -33,7 +33,7 @@ export function InwardGoodsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  const { data: ordersData, isLoading } = useQuery({
+  const { data: ordersData } = useQuery({
     queryKey: ['inward-goods', filterStatus],
     queryFn: () => inventoryApi.getOrders({ type: 'inward', status: filterStatus || undefined }),
   })
@@ -210,7 +210,7 @@ export function InwardGoodsPage() {
                 <Eye className="w-4 h-4 text-gray-400" />
                 View
               </button>
-              {order.editable && (
+              {order.is_editable && (
                 <button
                   onClick={() => {
                     // Edit action
@@ -223,7 +223,7 @@ export function InwardGoodsPage() {
                   Edit
                 </button>
               )}
-              {order.editable && (
+              {order.is_editable && (
                 <button className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1">
                   <Trash2 className="w-4 h-4 text-red-400" />
                   Cancel

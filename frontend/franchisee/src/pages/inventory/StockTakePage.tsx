@@ -42,7 +42,7 @@ export function StockTakePage() {
     queryKey: ['stock-take', categoryId],
     queryFn: async () => {
       const response = await stockTakeApi.getLast(categoryId)
-      return response.data
+      return response
     },
   })
 
@@ -90,7 +90,8 @@ export function StockTakePage() {
   // Check if 4 months have passed
   useEffect(() => {
     if (lastBatch?.updated_at || lastBatch?.created_at) {
-      const dateStr = lastBatch.updated_at || lastBatch.created_at
+      const dateStr = lastBatch.updated_at ?? lastBatch.created_at
+      if (!dateStr) return
       const lastDate = parseISO(dateStr)
       setLastStockTakeDate(lastDate)
 

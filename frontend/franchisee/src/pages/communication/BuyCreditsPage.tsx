@@ -1,32 +1,214 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
-import { ShoppingCart, CreditCard, History, CheckCircle } from 'lucide-react'
-import { smsCreditsApi } from '../../api/services'
+import { ShoppingCart, CreditCard, History, ArrowLeft } from 'lucide-react'
+import { smsCreditsApi, paymentsApi } from '../../api/services'
 import { useState } from 'react'
 import { PageHeader } from '../../components/layout/PageHeader'
+import { PaymentModal } from '../../components/modals/PaymentModal'
+import { useToastStore } from '../../store/toastStore'
+import { useAuthStore } from '../../store/authStore'
+
+interface Package {
+  id: string
+  title: string
+  price: number
+  quantity: number
+  rate: number
+}
+
+type Step = 'select' | 'review'
 
 export function BuyCreditsPage() {
   const queryClient = useQueryClient()
-  const [purchasedPackage, setPurchasedPackage] = useState<string | null>(null)
+  const addToast = useToastStore((state) => state.addToast)
+  const user = useAuthStore((state) => state.user)
+  
+  const [step, setStep] = useState<Step>('select')
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({
     queryKey: ['sms-credits'],
     queryFn: () => smsCreditsApi.get(),
   })
 
-  const purchaseMutation = useMutation({
-    mutationFn: (packageId: string) => smsCreditsApi.purchase(packageId),
-    onSuccess: (_, packageId) => {
-      queryClient.invalidateQueries({ queryKey: ['sms-credits'] })
-      setPurchasedPackage(packageId)
-      setTimeout(() => setPurchasedPackage(null), 3000)
+  const paymentMutation = useMutation({
+    mutationFn: (paymentData: {
+      package_id: string
+      card_number: string
+      expiration_month: string
+      expiration_year: string
+      cvv: string
+      billing: {
+        first_name: string
+        last_name: string
+        address: string
+        city: string
+        state: string
+        postal_code: string
+        country: string
+        email: string
+      }
+    }) => paymentsApi.purchaseSmsCredits(paymentData),
+    onSuccess: (result) => {
+      if (result.success) {
+        queryClient.invalidateQueries({ queryKey: ['sms-credits'] })
+        setPaymentError(null)
+        // Don't close modal - let PaymentModal show success state
+        // The modal's onSuccess callback will handle closing and reset
+      } else {
+        setPaymentError(result.error || 'Payment failed. Please try again.')
+        throw new Error(result.error || 'Payment failed')
+      }
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.error || error?.message || 'Payment failed. Please try again.'
+      setPaymentError(errorMessage)
+      throw error // Re-throw so PaymentModal knows payment failed
     },
   })
+
+  const handleSelectPackage = (pkg: Package) => {
+    setSelectedPackage(pkg)
+    setStep('review')
+  }
+
+  const handleBackToSelect = () => {
+    setStep('select')
+    setSelectedPackage(null)
+  }
+
+  const handlePayClick = () => {
+    setPaymentError(null)
+    setIsPaymentModalOpen(true)
+  }
+
+  // Get user billing info from authenticated user
+  const getUserBillingInfo = () => {
+    const nameParts = (user?.name || '').split(' ')
+    const firstName = nameParts[0] || ''
+    const lastName = nameParts.slice(1).join(' ') || ''
+    const locationParts = (user?.location || '').split(',').map(s => s.trim())
+    
+    return {
+      first_name: firstName,
+      last_name: lastName,
+      address: locationParts[0] || '',
+      city: locationParts[1] || '',
+      state: locationParts[2] || '',
+      postal_code: '',
+      country: 'AU',
+      email: user?.email || '',
+    }
+  }
+
+  const handlePaymentSubmit = async (paymentData: {
+    card_number: string
+    expiration_month: string
+    expiration_year: string
+    cvv: string
+    billing: {
+      first_name: string
+      last_name: string
+      address: string
+      city: string
+      state: string
+      postal_code: string
+      country: string
+      email: string
+    }
+  }) => {
+    if (!selectedPackage) return
+
+    await paymentMutation.mutateAsync({
+      package_id: selectedPackage.id,
+      ...paymentData,
+    })
+  }
 
   const packages = data?.packages ?? []
   const balance = data?.balance ?? 0
 
+  // Review Page
+  if (step === 'review' && selectedPackage) {
+    return (
+      <div className="space-y-6">
+        <PageHeader
+          title="Review Order"
+          icon={<CreditCard className="w-5 h-5" />}
+        />
+
+        <Card className="border border-gray-200 shadow-sm overflow-hidden">
+          <table className="w-full text-sm">
+            <tbody className="divide-y divide-gray-200">
+              <tr>
+                <td className="px-6 py-4 text-gray-600 font-medium">Credits For</td>
+                <td className="px-6 py-4 text-gray-900">SMS</td>
+              </tr>
+              <tr>
+                <td className="px-6 py-4 text-gray-600 font-medium">Rate</td>
+                <td className="px-6 py-4 text-gray-900">${selectedPackage.rate.toFixed(2)}/SMS</td>
+              </tr>
+              <tr>
+                <td className="px-6 py-4 text-gray-600 font-medium">Quantity</td>
+                <td className="px-6 py-4 text-gray-900">{selectedPackage.quantity} SMS</td>
+              </tr>
+              <tr>
+                <td className="px-6 py-4 text-gray-600 font-medium">Total:</td>
+                <td className="px-6 py-4 text-gray-900 font-semibold">${selectedPackage.price.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div className="px-6 py-4 border-t border-gray-200 flex flex-col items-center gap-4">
+            <p className="text-sm text-gray-600 text-center">
+              Mate Pay accepts Visa, Mastercard credit and Debit cards but does not accept Amex.
+            </p>
+
+            <Button
+              onClick={handlePayClick}
+              className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-3"
+            >
+              PAY WITH MATE PAY
+            </Button>
+
+            <Button
+              variant="secondary"
+              onClick={handleBackToSelect}
+              className="flex items-center gap-2"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back to Package Selection
+            </Button>
+          </div>
+        </Card>
+
+        {/* Payment Modal */}
+        <PaymentModal
+          isOpen={isPaymentModalOpen}
+          onClose={() => {
+            setIsPaymentModalOpen(false)
+            setPaymentError(null)
+          }}
+          amount={selectedPackage.price}
+          initialBilling={getUserBillingInfo()}
+          onSubmit={handlePaymentSubmit}
+          isLoading={paymentMutation.isPending}
+          error={paymentError}
+          onSuccess={() => {
+            setIsPaymentModalOpen(false)
+            setStep('select')
+            setSelectedPackage(null)
+            addToast('SMS credits purchased successfully!', 'success')
+          }}
+        />
+      </div>
+    )
+  }
+
+  // Package Selection Page
   return (
     <div className="space-y-6">
       <PageHeader
@@ -71,27 +253,11 @@ export function BuyCreditsPage() {
                   <p className="text-lg font-bold text-green-600 mt-2">${pkg.price.toFixed(2)}</p>
                 </div>
                 <Button
-                  onClick={() => purchaseMutation.mutate(pkg.id)}
-                  disabled={purchaseMutation.isPending}
-                  className={`w-full justify-center gap-2 mt-auto ${
-                    purchasedPackage === pkg.id
-                      ? 'bg-green-600 hover:bg-green-600'
-                      : 'bg-blue-600 hover:bg-blue-700'
-                  } text-white`}
+                  onClick={() => handleSelectPackage(pkg)}
+                  className="w-full justify-center gap-2 mt-auto bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  {purchasedPackage === pkg.id ? (
-                    <>
-                      <CheckCircle className="w-4 h-4" />
-                      Purchased!
-                    </>
-                  ) : purchaseMutation.isPending ? (
-                    'Processing...'
-                  ) : (
-                    <>
-                      <ShoppingCart className="w-4 h-4" />
-                      Buy Now
-                    </>
-                  )}
+                  <ShoppingCart className="w-4 h-4" />
+                  Buy Now
                 </Button>
               </div>
             </div>
