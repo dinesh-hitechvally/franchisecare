@@ -3,39 +3,48 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\ServiceServiceInterface;
+use App\Http\Requests\Service\StoreServiceRequest;
+use App\Http\Requests\Service\UpdateServiceRequest;
 use App\Models\Service;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class ServiceController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index(Request $request)
+    public function __construct(
+        private ServiceServiceInterface $serviceService
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        $query = Service::query();
-
-        if ($request->has('category')) {
-            $query->where('category', $request->category);
-        }
-
-        return response()->json($query->orderBy('name')->get());
-    }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'category' => 'required|string',
-            'price' => 'required|numeric',
-            'duration' => 'required|integer',
+        $filters = array_filter([
+            'category' => $request->input('category'),
         ]);
 
-        $service = Service::create($validated);
+        return response()->json($this->serviceService->listServices($filters));
+    }
 
+    public function store(StoreServiceRequest $request): JsonResponse
+    {
+        $service = $this->serviceService->createService($request->validated());
         return response()->json($service, 201);
+    }
+
+    public function show(Service $service): JsonResponse
+    {
+        return response()->json($service);
+    }
+
+    public function update(UpdateServiceRequest $request, Service $service): JsonResponse
+    {
+        $service = $this->serviceService->updateService($service, $request->validated());
+        return response()->json($service);
+    }
+
+    public function destroy(Service $service): JsonResponse
+    {
+        $this->serviceService->deleteService($service);
+        return response()->json(null, 204);
     }
 }

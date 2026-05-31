@@ -2,22 +2,24 @@
 
 namespace App\Contracts\Services;
 
-use App\Models\Inventory;
+use App\Models\InventoryItem;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface InventoryServiceInterface
 {
     public function listInventory(array $filters = [], int $perPage = 25): LengthAwarePaginator;
 
-    public function getInventory(int $id): Inventory;
+    public function getInventory(int $id): InventoryItem;
 
-    public function createInventory(array $data): Inventory;
+    public function createInventory(array $data): InventoryItem;
 
-    public function updateInventory(Inventory $inventory, array $data): Inventory;
+    public function updateInventory(InventoryItem $inventory, array $data): InventoryItem;
 
-    public function deleteInventory(Inventory $inventory): bool;
+    public function deleteInventory(InventoryItem $inventory): bool;
 
-    public function adjustStock(Inventory $inventory, int $quantity, string $reason): Inventory;
+    public function adjustStock(InventoryItem $inventory, int $quantity, string $reason): InventoryItem;
 
-    public function getInventoryHistory(Inventory $inventory): LengthAwarePaginator;
+    public function getInventoryHistory(InventoryItem $inventory): LengthAwarePaginator;
+
+    public function formatInventoryItem(InventoryItem $item): array;
 }

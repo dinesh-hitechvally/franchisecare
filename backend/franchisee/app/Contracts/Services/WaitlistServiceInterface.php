@@ -16,4 +16,12 @@ interface WaitlistServiceInterface
     public function updateWaitlist(Waitlist $waitlist, array $data): Waitlist;
 
     public function deleteWaitlist(Waitlist $waitlist): bool;
+
+    public function updateStatus(Waitlist $waitlist, string $status): Waitlist;
+
+    public function convertToBooking(Waitlist $waitlist): array;
+
+    public function sendEmailConfirmation(Waitlist $waitlist): void;
+
+    public function getWaitlistHistory(Waitlist $waitlist): LengthAwarePaginator;
 }

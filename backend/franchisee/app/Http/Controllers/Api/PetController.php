@@ -3,135 +3,65 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\PetServiceInterface;
+use App\Http\Requests\Pet\StorePetRequest;
+use App\Http\Requests\Pet\UpdatePetRequest;
+use App\Http\Resources\PetResource;
 use App\Models\CustomerItem;
 use App\Models\Customer;
-use App\Models\CustomerItemAudit;
-use App\Http\Resources\PetResource;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\JsonResponse;
 
 class PetController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function __construct(
+        private PetServiceInterface $petService
+    ) {}
+
+    public function index(): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
-        return PetResource::collection(CustomerItem::latest()->get());
+        return PetResource::collection($this->petService->listPets());
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    public function store(StorePetRequest $request): PetResource
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'gender' => 'nullable|in:male,female',
-            'birth_date' => 'nullable|date',
-            'breed' => 'nullable|string|max:255',
-            'size' => 'required|string|max:50',
-            'image' => 'nullable|image|max:5120',
-            'notes' => 'nullable|string',
-            'customer_id' => 'required|exists:customers,id',
-            'is_active' => 'boolean',
-        ]);
-
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('customer_items', 'public');
-            $validated['image'] = $path;
-        }
-
-        $pet = CustomerItem::create($validated);
-
-        // Record Audit
-        CustomerItemAudit::create(array_merge($pet->toArray(), [
-            'item_id' => $pet->id,
-            'action_at' => now(),
-            'action_type' => 'created'
-        ]));
+        $pet = $this->petService->createPet(
+            $request->validated(),
+            $request->file('image')
+        );
 
         return new PetResource($pet);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(CustomerItem $pet)
+    public function show(CustomerItem $pet): PetResource
     {
         return new PetResource($pet);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, CustomerItem $pet)
+    public function update(UpdatePetRequest $request, CustomerItem $pet): PetResource
     {
-        $validated = $request->validate([
-            'name' => 'sometimes|string|max:255',
-            'gender' => 'sometimes|nullable|in:male,female',
-            'birth_date' => 'sometimes|nullable|date',
-            'breed' => 'sometimes|nullable|string|max:255',
-            'size' => 'sometimes|string|max:50',
-            'image' => 'sometimes|nullable|image|max:5120',
-            'notes' => 'sometimes|nullable|string',
-            'customer_id' => 'sometimes|exists:customers,id',
-            'is_active' => 'sometimes|boolean',
-        ]);
-
-        if ($request->hasFile('image')) {
-            // Delete old image if it exists
-            if ($pet->image) {
-                Storage::disk('public')->delete($pet->image);
-            }
-            $path = $request->file('image')->store('customer_items', 'public');
-            $validated['image'] = $path;
-        } elseif ($request->boolean('remove_image')) {
-            if ($pet->image) {
-                Storage::disk('public')->delete($pet->image);
-            }
-            $validated['image'] = null;
-        }
-
-        $pet->update($validated);
-
-        // Record Audit
-        CustomerItemAudit::create(array_merge($pet->fresh()->toArray(), [
-            'item_id' => $pet->id,
-            'action_at' => now(),
-            'action_type' => 'updated'
-        ]));
+        $pet = $this->petService->updatePet(
+            $pet,
+            $request->validated(),
+            $request->file('image'),
+            $request->boolean('remove_image')
+        );
 
         return new PetResource($pet);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(CustomerItem $pet)
+    public function destroy(CustomerItem $pet): JsonResponse
     {
-        $pet->delete();
+        $this->petService->deletePet($pet);
         return response()->json(null, 204);
     }
 
-    /**
-     * Display pets for a specific customer.
-     */
-    public function getByCustomer(Customer $customer)
+    public function getByCustomer(Customer $customer): \Illuminate\Http\Resources\Json\AnonymousResourceCollection
     {
-        return PetResource::collection($customer->customerItems()->latest()->get());
+        return PetResource::collection($this->petService->getPetsByCustomer($customer->id));
     }
 
-    /**
-     * Display the audit history for the specified pet.
-     */
-    public function getHistory(CustomerItem $pet)
+    public function getHistory(CustomerItem $pet): JsonResponse
     {
-        $history = CustomerItemAudit::where('item_id', $pet->id)
-            ->orderByDesc('action_at')
-            ->orderByDesc('id')
-            ->paginate(5);
-
-        return response()->json($history);
+        return response()->json($this->petService->getPetHistory($pet));
     }
 }

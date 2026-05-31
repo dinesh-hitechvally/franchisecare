@@ -3,6 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\CommunicationServiceInterface;
+use App\Http\Requests\Communication\SendEmailRequest;
+use App\Http\Requests\Communication\SendBulkEmailRequest;
 use App\Models\SmsHistory;
 use App\Models\EmailHistory;
 use App\Models\Customer;
@@ -14,20 +17,21 @@ use Illuminate\Support\Facades\Log;
 
 class CommunicationHistoryController extends Controller
 {
+    public function __construct(
+        private CommunicationServiceInterface $communicationService
+    ) {}
+
     // ─── SMS History ────────────────────────────────────────────────────────────
 
     public function smsIndex(Request $request): JsonResponse
     {
         $perPage = (int) $request->input('per_page', 25);
-        $status  = $request->input('status'); // 'sent' or 'queued'
+        $filters = [
+            'status' => $request->input('status'),
+            'company_id' => $request->user()?->company_id,
+        ];
 
-        $query = SmsHistory::query()->orderByDesc('created_at');
-
-        if (in_array($status, ['sent', 'queued'], true)) {
-            $query->where('status', $status);
-        }
-
-        $data = $query->paginate($perPage);
+        $data = $this->communicationService->listSmsHistory(array_filter($filters), $perPage);
 
         return response()->json([
             'data' => $data->items(),
@@ -52,9 +56,9 @@ class CommunicationHistoryController extends Controller
         ]);
 
         $validated['company_id'] = $request->user()?->company_id;
-        $validated['status']     = $validated['status'] ?? 'queued';
+        $validated['status'] = $validated['status'] ?? 'queued';
 
-        $record = SmsHistory::create($validated);
+        $record = $this->communicationService->createSms($validated);
 
         return response()->json($record, 201);
     }
@@ -66,8 +70,7 @@ class CommunicationHistoryController extends Controller
 
     public function smsDestroy(SmsHistory $smsHistory): JsonResponse
     {
-        $smsHistory->delete();
-
+        $this->communicationService->deleteSms($smsHistory);
         return response()->json(null, 204);
     }
 
@@ -76,15 +79,12 @@ class CommunicationHistoryController extends Controller
     public function emailIndex(Request $request): JsonResponse
     {
         $perPage = (int) $request->input('per_page', 25);
-        $status  = $request->input('status'); // 'sent' or 'queued'
+        $filters = [
+            'status' => $request->input('status'),
+            'company_id' => $request->user()?->company_id,
+        ];
 
-        $query = EmailHistory::query()->orderByDesc('created_at');
-
-        if (in_array($status, ['sent', 'queued'], true)) {
-            $query->where('status', $status);
-        }
-
-        $data = $query->paginate($perPage);
+        $data = $this->communicationService->listEmailHistory(array_filter($filters), $perPage);
 
         return response()->json([
             'data' => $data->items(),
@@ -110,9 +110,9 @@ class CommunicationHistoryController extends Controller
         ]);
 
         $validated['company_id'] = $request->user()?->company_id;
-        $validated['status']     = $validated['status'] ?? 'queued';
+        $validated['status'] = $validated['status'] ?? 'queued';
 
-        $record = EmailHistory::create($validated);
+        $record = $this->communicationService->createEmail($validated);
 
         return response()->json($record, 201);
     }
@@ -124,24 +124,15 @@ class CommunicationHistoryController extends Controller
 
     public function emailDestroy(EmailHistory $emailHistory): JsonResponse
     {
-        $emailHistory->delete();
-
+        $this->communicationService->deleteEmail($emailHistory);
         return response()->json(null, 204);
     }
 
     // ─── Send Email (Actually delivers the email) ────────────────────────────────
 
-    /**
-     * Send a single email to a customer
-     */
-    public function sendEmail(Request $request): JsonResponse
+    public function sendEmail(SendEmailRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'to_email'   => 'required|email|max:255',
-            'subject'    => 'required|string|max:500',
-            'body'       => 'required|string',
-            'from_name'  => 'nullable|string|max:255',
-        ]);
+        $validated = $request->validated();
 
         $fromEmail = $request->user()?->email ?? config('mail.from.address', 'no-reply@example.com');
         $fromName = $validated['from_name'] ?? $request->user()?->name ?? config('mail.from.name', 'System');
@@ -153,7 +144,7 @@ class CommunicationHistoryController extends Controller
                         ->subject($validated['subject']);
             });
 
-            $record = EmailHistory::create([
+            $record = $this->communicationService->createEmail([
                 'company_id'      => $request->user()?->company_id,
                 'user_id'         => $request->user()?->id,
                 'from_email'      => $fromEmail,
@@ -173,7 +164,7 @@ class CommunicationHistoryController extends Controller
         } catch (\Exception $e) {
             Log::error('Failed to send email: ' . $e->getMessage());
 
-            $record = EmailHistory::create([
+            $record = $this->communicationService->createEmail([
                 'company_id'      => $request->user()?->company_id,
                 'user_id'         => $request->user()?->id,
                 'from_email'      => $fromEmail,
@@ -193,18 +184,9 @@ class CommunicationHistoryController extends Controller
         }
     }
 
-    /**
-     * Send bulk generic email to multiple customers
-     */
-    public function sendBulkEmail(Request $request): JsonResponse
+    public function sendBulkEmail(SendBulkEmailRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'customer_ids' => 'required|array|min:1',
-            'customer_ids.*' => 'exists:customers,id',
-            'subject'      => 'required|string|max:500',
-            'body'         => 'required|string',
-            'from_name'    => 'nullable|string|max:255',
-        ]);
+        $validated = $request->validated();
 
         $fromEmail = $request->user()?->email ?? config('mail.from.address', 'no-reply@example.com');
         $fromName = $validated['from_name'] ?? $request->user()?->name ?? config('mail.from.name', 'System');
@@ -232,7 +214,6 @@ class CommunicationHistoryController extends Controller
                 continue;
             }
 
-            // Personalize the email body with customer name
             $customerName = trim($customer->first_name . ' ' . $customer->last_name);
             $personalizedBody = str_replace(
                 ['{{customer_name}}', '{{first_name}}', '{{last_name}}'],
@@ -247,7 +228,7 @@ class CommunicationHistoryController extends Controller
                             ->subject($validated['subject']);
                 });
 
-                EmailHistory::create([
+                $this->communicationService->createEmail([
                     'company_id'      => $request->user()?->company_id,
                     'user_id'         => $request->user()?->id,
                     'from_email'      => $fromEmail,
@@ -270,7 +251,7 @@ class CommunicationHistoryController extends Controller
             } catch (\Exception $e) {
                 Log::error('Failed to send bulk email to ' . $customer->email . ': ' . $e->getMessage());
 
-                EmailHistory::create([
+                $this->communicationService->createEmail([
                     'company_id'      => $request->user()?->company_id,
                     'user_id'         => $request->user()?->id,
                     'from_email'      => $fromEmail,
@@ -302,9 +283,6 @@ class CommunicationHistoryController extends Controller
         ], $results['failed'] > 0 && $results['sent'] === 0 ? 500 : 200);
     }
 
-    /**
-     * Send booking list email to customers
-     */
     public function sendBookingList(Request $request): JsonResponse
     {
         $validated = $request->validate([
@@ -346,29 +324,23 @@ class CommunicationHistoryController extends Controller
                 continue;
             }
 
-            // Get bookings for this customer
             $bookingsQuery = Booking::where('customer_id', $customer->id)
-                ->with(['details.service', 'details.item'])
-                ->orderBy('start_date', 'desc');
+                ->with(['details.service', 'details.item']);
 
             if (!empty($validated['date_from'])) {
-                $bookingsQuery->where('start_date', '>=', $validated['date_from']);
+                $bookingsQuery->whereDate('start_date', '>=', $validated['date_from']);
             }
             if (!empty($validated['date_to'])) {
-                $bookingsQuery->where('start_date', '<=', $validated['date_to']);
+                $bookingsQuery->whereDate('start_date', '<=', $validated['date_to']);
+            }
+            if (empty($validated['include_completed'])) {
+                $bookingsQuery->where('status', '!=', 'completed');
+            }
+            if (empty($validated['include_cancelled'])) {
+                $bookingsQuery->where('status', '!=', 'cancelled');
             }
 
-            // Filter by status
-            $statuses = ['active'];
-            if (!empty($validated['include_completed'])) {
-                $statuses[] = 'completed';
-            }
-            if (!empty($validated['include_cancelled'])) {
-                $statuses[] = 'cancelled';
-            }
-            $bookingsQuery->whereIn('status', $statuses);
-
-            $bookings = $bookingsQuery->get();
+            $bookings = $bookingsQuery->orderBy('start_date')->get();
 
             if ($bookings->isEmpty()) {
                 $results['skipped']++;
@@ -381,24 +353,23 @@ class CommunicationHistoryController extends Controller
                 continue;
             }
 
-            // Generate HTML email with booking list
             $customerName = trim($customer->first_name . ' ' . $customer->last_name);
-            $emailBody = $this->generateBookingListHtml($customer, $bookings, $introMessage);
+            $body = $this->buildBookingListHtml($customer, $bookings, $introMessage);
 
             try {
-                Mail::html($emailBody, function ($message) use ($customer, $subject, $fromEmail, $fromName) {
+                Mail::html($body, function ($message) use ($customer, $subject, $fromEmail, $fromName) {
                     $message->to($customer->email)
                             ->from($fromEmail, $fromName)
                             ->subject($subject);
                 });
 
-                EmailHistory::create([
+                $this->communicationService->createEmail([
                     'company_id'      => $request->user()?->company_id,
                     'user_id'         => $request->user()?->id,
                     'from_email'      => $fromEmail,
                     'to_email'        => $customer->email,
                     'subject'         => $subject,
-                    'body'            => $emailBody,
+                    'body'            => $body,
                     'status'          => 'sent',
                     'mailer_response' => 'Booking list email sent successfully',
                     'sent_at'         => now(),
@@ -409,25 +380,12 @@ class CommunicationHistoryController extends Controller
                     'customer_id' => $customer->id,
                     'customer_name' => $customerName,
                     'email' => $customer->email,
-                    'bookings_count' => $bookings->count(),
                     'status' => 'sent',
+                    'bookings_count' => $bookings->count(),
                 ];
 
             } catch (\Exception $e) {
-                Log::error('Failed to send booking list to ' . $customer->email . ': ' . $e->getMessage());
-
-                EmailHistory::create([
-                    'company_id'      => $request->user()?->company_id,
-                    'user_id'         => $request->user()?->id,
-                    'from_email'      => $fromEmail,
-                    'to_email'        => $customer->email,
-                    'subject'         => $subject,
-                    'body'            => $emailBody,
-                    'status'          => 'failed',
-                    'mailer_response' => $e->getMessage(),
-                    'sent_at'         => now(),
-                ]);
-
+                Log::error('Failed to send booking list email to ' . $customer->email . ': ' . $e->getMessage());
                 $results['failed']++;
                 $results['details'][] = [
                     'customer_id' => $customer->id,
@@ -448,117 +406,21 @@ class CommunicationHistoryController extends Controller
         ], $results['failed'] > 0 && $results['sent'] === 0 ? 500 : 200);
     }
 
-    /**
-     * Generate HTML email body with booking list
-     */
-    private function generateBookingListHtml(Customer $customer, $bookings, string $introMessage): string
+    private function buildBookingListHtml(Customer $customer, $bookings, string $introMessage): string
     {
         $customerName = trim($customer->first_name . ' ' . $customer->last_name);
-        $currentDate = now()->format('F j, Y');
+        $html = "<p>Dear {$customerName},</p><p>{$introMessage}</p><table border='1' cellpadding='5' cellspacing='0'><thead><tr><th>Date</th><th>Time</th><th>Services</th><th>Status</th></tr></thead><tbody>";
 
-        $bookingRows = '';
         foreach ($bookings as $booking) {
-            $services = $booking->details->map(fn($d) => $d->service?->name)->filter()->implode(', ') ?: 'N/A';
-            $pets = $booking->details->map(fn($d) => $d->item?->name)->filter()->unique()->implode(', ') ?: 'N/A';
-            $statusColor = match($booking->status) {
-                'active' => '#10b981',
-                'completed' => '#3b82f6',
-                'cancelled' => '#ef4444',
-                default => '#6b7280'
-            };
-            $date = \Carbon\Carbon::parse($booking->start_date)->format('M j, Y');
-            $time = $booking->start_time ? \Carbon\Carbon::parse($booking->start_time)->format('g:i A') : 'N/A';
-            $total = '$' . number_format($booking->total ?? 0, 2);
-
-            $bookingRows .= "
-                <tr>
-                    <td style=\"padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;\">{$date}</td>
-                    <td style=\"padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;\">{$time}</td>
-                    <td style=\"padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;\">{$pets}</td>
-                    <td style=\"padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;\">{$services}</td>
-                    <td style=\"padding: 12px 16px; border-bottom: 1px solid #e5e7eb; font-size: 14px; color: #374151;\">{$total}</td>
-                    <td style=\"padding: 12px 16px; border-bottom: 1px solid #e5e7eb;\">
-                        <span style=\"display: inline-block; padding: 4px 12px; border-radius: 9999px; font-size: 12px; font-weight: 500; color: white; background-color: {$statusColor};\">" . ucfirst($booking->status) . "</span>
-                    </td>
-                </tr>
-            ";
+            $date = $booking->start_date;
+            $time = $booking->start_time ?? 'TBD';
+            $services = $booking->details->map(fn($d) => $d->service?->name ?? 'Unknown')->implode(', ');
+            $status = ucfirst($booking->status);
+            $html .= "<tr><td>{$date}</td><td>{$time}</td><td>{$services}</td><td>{$status}</td></tr>";
         }
 
-        $totalAmount = '$' . number_format($bookings->sum('total'), 2);
-        $bookingsCount = $bookings->count();
+        $html .= "</tbody></table><p>Thank you for your business!</p>";
 
-        return <<<HTML
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Your Booking Summary</title>
-</head>
-<body style="margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f4f6f8;">
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f4f6f8; padding: 40px 20px;">
-        <tr>
-            <td align="center">
-                <table role="presentation" width="700" cellspacing="0" cellpadding="0" style="background-color: #ffffff; border-radius: 12px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); overflow: hidden;">
-                    <!-- Header -->
-                    <tr>
-                        <td style="background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%); padding: 30px 40px; text-align: center;">
-                            <h1 style="margin: 0; color: #ffffff; font-size: 24px; font-weight: 600;">Your Booking Summary</h1>
-                        </td>
-                    </tr>
-                    
-                    <!-- Body -->
-                    <tr>
-                        <td style="padding: 40px;">
-                            <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px;">Dear <strong>{$customerName}</strong>,</p>
-                            
-                            <p style="margin: 0 0 30px 0; color: #4b5563; font-size: 15px; line-height: 1.7;">{$introMessage}</p>
-                            
-                            <!-- Bookings Table -->
-                            <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-                                <thead>
-                                    <tr style="background-color: #f9fafb;">
-                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;">Date</th>
-                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;">Time</th>
-                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;">Pet(s)</th>
-                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;">Services</th>
-                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;">Total</th>
-                                        <th style="padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; border-bottom: 1px solid #e5e7eb;">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {$bookingRows}
-                                </tbody>
-                            </table>
-                            
-                            <!-- Summary -->
-                            <div style="margin-top: 20px; padding: 16px; background-color: #f0f9ff; border-radius: 8px; border: 1px solid #bae6fd;">
-                                <p style="margin: 0; font-size: 14px; color: #0369a1;">
-                                    <strong>Total Bookings:</strong> {$bookingsCount} | <strong>Total Amount:</strong> {$totalAmount}
-                                </p>
-                            </div>
-                            
-                            <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                                <p style="margin: 0; color: #6b7280; font-size: 14px;">Best regards,</p>
-                                <p style="margin: 5px 0 0 0; color: #374151; font-size: 14px; font-weight: 600;">The Team</p>
-                            </div>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background-color: #f9fafb; padding: 25px 40px; border-top: 1px solid #e5e7eb;">
-                            <p style="margin: 0; text-align: center; color: #9ca3af; font-size: 12px;">
-                                This email was sent on {$currentDate}
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
-HTML;
+        return $html;
     }
 }

@@ -3,84 +3,53 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Booking;
+use App\Contracts\Services\BookingRecurringServiceInterface;
+use App\Http\Requests\BookingRecurring\StoreBookingRecurringRequest;
+use App\Http\Requests\BookingRecurring\UpdateBookingRecurringRequest;
 use App\Models\BookingRecurring;
 use App\Models\BookingRecurringAudit;
 use App\Models\BookingRecurringDetailAudit;
 use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class BookingRecurringController extends Controller
 {
-    /**
-     * Display a listing of recurring bookings.
-     */
-    public function index(Request $request)
+    public function __construct(
+        private BookingRecurringServiceInterface $bookingRecurringService
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        $query = BookingRecurring::with(['customer', 'details.item', 'details.service', 'bookings']);
-
-        // Filter by authenticated user's company_id
-        if (auth()->check() && auth()->user()->company_id) {
-            $query->where('company_id', auth()->user()->company_id);
-        }
-
-        if ($request->has('status')) {
-            $query->where('status', $request->status);
-        }
-
-        if ($request->has('customer_id')) {
-            $query->where('customer_id', $request->customer_id);
-        }
-
-        if ($request->filled('search')) {
-            $term = '%'.$request->search.'%';
-
-            $query->where(function ($q) use ($term) {
-                $q->where('notes', 'like', $term);
-
-                $q->orWhereHas('customer', function ($customerQuery) use ($term) {
-                    $customerQuery->where('first_name', 'like', $term)
-                        ->orWhere('last_name', 'like', $term)
-                        ->orWhereRaw("CONCAT(COALESCE(first_name, ''), ' ', COALESCE(last_name, '')) LIKE ?", [$term]);
-                });
-
-                $q->orWhereHas('details.service', function ($serviceQuery) use ($term) {
-                    $serviceQuery->where('name', 'like', $term);
-                });
-            });
-        }
-
-        // Only for active (or unscoped) lists — do not strip cancelled rows by repeat_until
-        if ($request->boolean('hide_expired') && $request->get('status') !== 'cancelled') {
-            $query->whereNotNull('repeat_until')
-                ->whereDate('repeat_until', '>=', now()->toDateString());
-        }
+        $filters = [
+            'company_id' => auth()->user()?->company_id,
+            'status' => $request->input('status'),
+            'customer_id' => $request->input('customer_id'),
+            'search' => $request->input('search'),
+            'hide_expired' => $request->boolean('hide_expired'),
+        ];
 
         $perPage = (int) $request->input('per_page', 25);
         $perPage = max(1, min($perPage, 100));
 
         if ($request->filled('page')) {
-            $page = max(1, (int) $request->input('page'));
-            $paginator = $query->latest()->paginate($perPage, ['*'], 'page', $page);
-
+            $result = $this->bookingRecurringService->listBookingRecurrings(array_filter($filters), $perPage);
+            
             return response()->json([
-                'data' => $paginator->items(),
+                'data' => $result->items(),
                 'meta' => [
-                    'current_page' => $paginator->currentPage(),
-                    'last_page' => $paginator->lastPage(),
-                    'per_page' => $paginator->perPage(),
-                    'total' => $paginator->total(),
+                    'current_page' => $result->currentPage(),
+                    'last_page' => $result->lastPage(),
+                    'per_page' => $result->perPage(),
+                    'total' => $result->total(),
                 ],
             ]);
         }
 
-        return response()->json($query->latest()->get());
+        return response()->json($this->bookingRecurringService->listBookingRecurrings(array_filter($filters)));
     }
 
-    /**
-     * Store a newly created recurring booking.
-     */
-    public function store(Request $request)
+    public function store(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
@@ -100,54 +69,44 @@ class BookingRecurringController extends Controller
             'recurring.auto_extend' => 'required|boolean',
         ]);
 
-        // Calculate total and duration from services
-        $total = collect($validated['services'])->sum('service_price');
-        $duration = collect($validated['services'])->sum('duration');
+        // Prepare data for service
+        $data = [
+            'company_id' => auth()->user()->company_id,
+            'customer_id' => $validated['customer_id'],
+            'start_date' => $validated['start_date'],
+            'color' => $validated['color'] ?? null,
+            'notes' => $validated['notes'] ?? null,
+            'frequency' => $request->input('recurring.frequency'),
+            'repeat_time' => $request->input('recurring.repeat_time'),
+            'repeat_day' => $request->input('recurring.repeat_day'),
+            'repeat_until' => $request->input('recurring.repeat_until'),
+            'auto_extend' => $request->input('recurring.auto_extend', false),
+            'status' => 'active',
+            'total' => collect($validated['services'])->sum('service_price'),
+            'duration' => collect($validated['services'])->sum('duration'),
+            'details' => array_map(function ($service) use ($validated) {
+                return [
+                    'company_id' => auth()->user()->company_id,
+                    'customer_id' => $validated['customer_id'],
+                    'item_id' => $service['item_id'],
+                    'service_id' => $service['service_id'],
+                    'price' => $service['service_price'],
+                    'duration' => $service['duration'],
+                ];
+            }, $validated['services']),
+        ];
 
-        // Set company_id from authenticated user
-        $validated['company_id'] = auth()->user()->company_id;
-        $validated['frequency'] = $request->input('recurring.frequency');
-        $validated['repeat_time'] = $request->input('recurring.repeat_time');
-        $validated['repeat_day'] = $request->input('recurring.repeat_day');
-        $validated['repeat_until'] = $request->input('recurring.repeat_until');
-        $validated['auto_extend'] = $request->input('recurring.auto_extend', false);
-        $validated['status'] = 'active';
-        $validated['total'] = $total;
-        $validated['duration'] = $duration;
+        $recurring = $this->bookingRecurringService->createBookingRecurring($data);
 
-        $recurring = BookingRecurring::create($validated);
-
-        // Create recurring details from services array
-        foreach ($validated['services'] as $serviceItem) {
-            $recurring->details()->create([
-                'company_id' => auth()->user()->company_id,
-                'customer_id' => $validated['customer_id'],
-                'item_id' => $serviceItem['item_id'],
-                'service_id' => $serviceItem['service_id'],
-                'price' => $serviceItem['service_price'],
-                'duration' => $serviceItem['duration'],
-            ]);
-        }
-
-        // Reload recurring with fresh data and generate individual bookings
-        $recurring = $recurring->fresh(['details']);
-        $this->generateBookingsFromRecurring($recurring);
-
-        return response()->json($recurring->fresh(['customer', 'details.item', 'details.service', 'bookings']), 201);
+        return response()->json($recurring, 201);
     }
 
-    /**
-     * Display the specified recurring booking.
-     */
-    public function show(BookingRecurring $bookingRecurring)
+    public function show(BookingRecurring $bookingRecurring): JsonResponse
     {
-        return response()->json($bookingRecurring->load(['customer', 'details.item', 'details.service', 'bookings']));
+        return response()->json($this->bookingRecurringService->getBookingRecurring($bookingRecurring->id));
     }
 
-    /**
-     * Update the specified recurring booking.
-     */
-    public function update(Request $request, BookingRecurring $bookingRecurring)
+    public function update(Request $request, BookingRecurring $bookingRecurring): JsonResponse
     {
         $validated = $request->validate([
             'customer_id' => 'sometimes|exists:customers,id',
@@ -167,37 +126,129 @@ class BookingRecurringController extends Controller
             'recurring.auto_extend' => 'boolean',
         ]);
 
-        // Update recurring fields if provided
+        // Map recurring fields
+        $data = $validated;
         if ($request->has('recurring.frequency')) {
-            $validated['frequency'] = $request->input('recurring.frequency');
+            $data['frequency'] = $request->input('recurring.frequency');
         }
         if ($request->has('recurring.repeat_time')) {
-            $validated['repeat_time'] = $request->input('recurring.repeat_time');
+            $data['repeat_time'] = $request->input('recurring.repeat_time');
         }
         if ($request->has('recurring.repeat_day')) {
-            $validated['repeat_day'] = $request->input('recurring.repeat_day');
+            $data['repeat_day'] = $request->input('recurring.repeat_day');
         }
         if ($request->has('recurring.repeat_until')) {
-            $validated['repeat_until'] = $request->input('recurring.repeat_until');
+            $data['repeat_until'] = $request->input('recurring.repeat_until');
         }
         if ($request->has('recurring.auto_extend')) {
-            $validated['auto_extend'] = $request->input('recurring.auto_extend');
+            $data['auto_extend'] = $request->input('recurring.auto_extend');
         }
 
-        $bookingRecurring->update($validated);
-
-        // Handle services update
+        // Map services to details
         if (isset($validated['services'])) {
-            $bookingRecurring->details()->delete();
-            foreach ($validated['services'] as $serviceItem) {
-                $bookingRecurring->details()->create([
+            $data['total'] = collect($validated['services'])->sum('service_price');
+            $data['duration'] = collect($validated['services'])->sum('duration');
+            $data['details'] = array_map(function ($service) use ($validated, $bookingRecurring) {
+                return [
                     'company_id' => auth()->user()->company_id,
                     'customer_id' => $validated['customer_id'] ?? $bookingRecurring->customer_id,
-                    'item_id' => $serviceItem['item_id'],
-                    'service_id' => $serviceItem['service_id'],
-                    'price' => $serviceItem['service_price'],
-                    'duration' => $serviceItem['duration'],
-                ]);
+                    'item_id' => $service['item_id'],
+                    'service_id' => $service['service_id'],
+                    'price' => $service['service_price'],
+                    'duration' => $service['duration'],
+                ];
+            }, $validated['services']);
+        }
+
+        unset($data['services'], $data['recurring']);
+
+        $recurring = $this->bookingRecurringService->updateBookingRecurring($bookingRecurring, $data);
+
+        return response()->json($recurring);
+    }
+
+    public function cancel(Request $request, BookingRecurring $bookingRecurring): JsonResponse
+    {
+        $validated = $request->validate([
+            'cancellation_reason' => 'nullable|string',
+        ]);
+
+        $bookingRecurring->update([
+            'status' => 'cancelled',
+            'cancelled_date' => now(),
+            'cancellation_reason' => $validated['cancellation_reason'] ?? null,
+        ]);
+
+        $today = now()->format('Y-m-d');
+        $bookingRecurring->bookings()
+            ->where('start_date', '>=', $today)
+            ->where('status', 'active')
+            ->update(['status' => 'cancelled']);
+
+        return response()->json(
+            $bookingRecurring->fresh()->load(['customer', 'details.item', 'details.service', 'bookings'])
+        );
+    }
+
+    public function destroy(BookingRecurring $bookingRecurring): JsonResponse
+    {
+        $today = now()->format('Y-m-d');
+        $bookingRecurring->bookings()
+            ->where('start_date', '>=', $today)
+            ->where('status', 'active')
+            ->update(['status' => 'cancelled']);
+
+        $this->bookingRecurringService->deleteBookingRecurring($bookingRecurring);
+
+        return response()->json(null, 204);
+    }
+
+    public function getHistory(BookingRecurring $bookingRecurring): JsonResponse
+    {
+        $history = BookingRecurringAudit::where('booking_recurring_id', $bookingRecurring->id)
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        $userIds = $history->getCollection()->pluck('performed_by')->filter()->unique()->values();
+        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'first_name', 'last_name'])->keyBy('id');
+
+        $history->setCollection($history->getCollection()->map(function ($audit) use ($users) {
+            $user = $users->get($audit->performed_by);
+            if (!$user) {
+                return $audit;
+            }
+            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            $audit->performed_by_name = $fullName !== '' ? $fullName : ($user->name ?? null);
+            return $audit;
+        }));
+
+        return response()->json($history);
+    }
+
+    public function getDetailHistory(BookingRecurring $bookingRecurring): JsonResponse
+    {
+        $history = BookingRecurringDetailAudit::where('recurring_id', $bookingRecurring->id)
+            ->orderByDesc('action_at')
+            ->orderByDesc('id')
+            ->paginate(10);
+
+        $userIds = $history->getCollection()->pluck('performed_by')->filter()->unique()->values();
+        $users = User::whereIn('id', $userIds)->get(['id', 'name', 'first_name', 'last_name'])->keyBy('id');
+
+        $history->setCollection($history->getCollection()->map(function ($audit) use ($users) {
+            $user = $users->get($audit->performed_by);
+            if (!$user) {
+                return $audit;
+            }
+            $fullName = trim(($user->first_name ?? '') . ' ' . ($user->last_name ?? ''));
+            $audit->performed_by_name = $fullName !== '' ? $fullName : ($user->name ?? null);
+            return $audit;
+        }));
+
+        return response()->json($history);
+    }
+}
             }
 
             // Recalculate total and duration

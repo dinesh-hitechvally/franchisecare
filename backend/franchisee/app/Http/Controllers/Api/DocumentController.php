@@ -3,89 +3,39 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\DocumentServiceInterface;
+use App\Http\Requests\Document\StoreDocumentRequest;
+use App\Http\Requests\Document\UpdateDocumentRequest;
 use App\Models\Document;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DocumentController extends Controller
 {
+    public function __construct(
+        private DocumentServiceInterface $documentService
+    ) {}
+
     public function index(Request $request): JsonResponse
     {
-        $query = Document::query()->latest();
+        $filters = [
+            'company_id' => $request->user()?->company_id,
+            'visibility' => $request->input('visibility'),
+            'category' => $request->input('category'),
+            'search' => $request->input('search'),
+        ];
 
-        $user = $request->user();
-
-        if ($user && $user->company_id) {
-            $query->where(function ($q) use ($user) {
-                $q->where('visibility', 'global')
-                  ->orWhere('company_id', $user->company_id);
-            });
-        }
-
-        if ($request->filled('visibility')) {
-            $query->where('visibility', $request->input('visibility'));
-        }
-
-        if ($request->filled('category')) {
-            $query->where('category', $request->input('category'));
-        }
-
-        if ($request->filled('search')) {
-            $term = '%' . $request->input('search') . '%';
-            $query->where(function ($q) use ($term) {
-                $q->where('title', 'like', $term)
-                  ->orWhere('description', 'like', $term);
-            });
-        }
-
-        return response()->json($query->get());
+        return response()->json($this->documentService->listDocuments(array_filter($filters)));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store(StoreDocumentRequest $request): JsonResponse
     {
-        $metadata = json_decode((string) $request->input('metadata', '{}'), true);
-        if (!is_array($metadata)) {
-            $metadata = [];
-        }
-
-        $title = $request->input('title', $metadata['title'] ?? null);
-        $description = $request->input('description', $metadata['description'] ?? null);
-        $visibility = $request->input('visibility', $metadata['visibility'] ?? 'global');
-        $category = $request->input('category', $metadata['category'] ?? 'other');
-
-        $validated = validator([
-            'title' => $title,
-            'description' => $description,
-            'visibility' => $visibility,
-            'category' => $category,
-            'file' => $request->file('file'),
-        ], [
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'visibility' => 'required|in:global,franchise',
-            'category' => 'required|in:manual,template,other,general',
-            'file' => 'nullable|file|max:10240',
-        ])->validate();
-
-        $fileUrl = null;
-        $fileType = null;
-
-        if ($request->hasFile('file')) {
-            $path = $request->file('file')->store('documents', 'public');
-            $fileUrl = '/storage/' . $path;
-            $fileType = strtolower((string) $request->file('file')->getClientOriginalExtension());
-        }
-
-        $document = Document::create([
+        $data = array_merge($request->validated(), [
             'company_id' => $request->user()?->company_id,
             'user_id' => $request->user()?->id,
-            'title' => $validated['title'],
-            'description' => $validated['description'] ?? null,
-            'file_url' => $fileUrl,
-            'file_type' => $fileType,
-            'visibility' => $validated['visibility'],
-            'category' => $validated['category'],
         ]);
+
+        $document = $this->documentService->createDocument($data, $request->file('file'));
 
         return response()->json($document, 201);
     }
@@ -95,26 +45,20 @@ class DocumentController extends Controller
         return response()->json($document);
     }
 
-    public function update(Request $request, Document $document): JsonResponse
+    public function update(UpdateDocumentRequest $request, Document $document): JsonResponse
     {
-        $validated = $request->validate([
-            'title' => 'sometimes|required|string|max:255',
-            'description' => 'nullable|string',
-            'file_url' => 'nullable|string|max:2048',
-            'file_type' => 'nullable|string|max:20',
-            'visibility' => 'sometimes|required|in:global,franchise',
-            'category' => 'sometimes|required|in:manual,template,other,general',
-        ]);
-
-        $document->update($validated);
+        $document = $this->documentService->updateDocument(
+            $document,
+            $request->validated(),
+            $request->file('file')
+        );
 
         return response()->json($document);
     }
 
     public function destroy(Document $document): JsonResponse
     {
-        $document->delete();
-
+        $this->documentService->deleteDocument($document);
         return response()->json(null, 204);
     }
 }

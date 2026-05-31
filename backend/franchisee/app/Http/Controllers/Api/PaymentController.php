@@ -3,29 +3,29 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\PaymentServiceInterface;
+use App\Http\Requests\Payment\PurchaseSmsCreditRequest;
+use App\Http\Requests\Payment\PayInventoryOrderRequest;
+use App\Http\Requests\Payment\PayBookingRequest;
 use App\Models\PaymentTransaction;
 use App\Models\SmsCredit;
 use App\Models\SmsCreditPurchase;
 use App\Models\InventoryOrder;
 use App\Services\CyberSourceService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class PaymentController extends Controller
 {
-    private CyberSourceService $cyberSource;
+    public function __construct(
+        private PaymentServiceInterface $paymentService,
+        private CyberSourceService $cyberSource
+    ) {}
 
-    public function __construct(CyberSourceService $cyberSource)
-    {
-        $this->cyberSource = $cyberSource;
-    }
-
-    /**
-     * Get payment configuration (for frontend)
-     */
-    public function config()
+    public function config(): JsonResponse
     {
         return response()->json([
             'configured' => $this->cyberSource->isConfigured(),
@@ -34,10 +34,7 @@ class PaymentController extends Controller
         ]);
     }
 
-    /**
-     * Generate capture context for Flex Microform
-     */
-    public function generateCaptureContext(Request $request)
+    public function generateCaptureContext(Request $request): JsonResponse
     {
         $targetOrigins = $request->input('target_origins', []);
         
@@ -58,10 +55,7 @@ class PaymentController extends Controller
         return response()->json($result);
     }
 
-    /**
-     * Process SMS credit purchase payment
-     */
-    public function purchaseSmsCredits(Request $request)
+    public function purchaseSmsCredits(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'package_id' => 'required|string|in:sms_500,sms_1000',
@@ -82,7 +76,6 @@ class PaymentController extends Controller
         $companyId = Auth::user()->company_id;
         $userId = Auth::id();
 
-        // Define packages
         $packages = [
             'sms_500' => ['price' => 100.00, 'quantity' => 500],
             'sms_1000' => ['price' => 180.00, 'quantity' => 1000],
@@ -91,7 +84,6 @@ class PaymentController extends Controller
         $package = $packages[$validated['package_id']];
         $orderId = 'SMS-' . $companyId . '-' . time();
 
-        // Create pending transaction record
         $transaction = PaymentTransaction::create([
             'company_id' => $companyId,
             'user_id' => $userId,
@@ -108,7 +100,6 @@ class PaymentController extends Controller
             ],
         ]);
 
-        // Process payment with CyberSource
         $paymentResult = $this->cyberSource->processPayment([
             'order_id' => $orderId,
             'amount' => $package['price'],
@@ -132,11 +123,9 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        // Payment successful - update records in transaction
         try {
             DB::beginTransaction();
 
-            // Update transaction record
             $transaction->update([
                 'transaction_id' => $paymentResult['transaction_id'],
                 'status' => 'completed',
@@ -145,7 +134,6 @@ class PaymentController extends Controller
                 'processed_at' => now(),
             ]);
 
-            // Create purchase record
             $purchase = SmsCreditPurchase::create([
                 'company_id' => $companyId,
                 'user_id' => $userId,
@@ -156,12 +144,10 @@ class PaymentController extends Controller
                 'purchased_at' => now(),
             ]);
 
-            // Link purchase to transaction
             $transaction->update([
                 'reference_id' => $purchase->id,
             ]);
 
-            // Update credit balance
             $credit = SmsCredit::firstOrCreate(
                 ['company_id' => $companyId],
                 ['balance' => 0, 'total_purchased' => 0, 'total_used' => 0]
@@ -187,7 +173,6 @@ class PaymentController extends Controller
                 'transaction_id' => $paymentResult['transaction_id'],
             ]);
 
-            // Payment was successful but DB update failed - log for manual reconciliation
             return response()->json([
                 'success' => false,
                 'error' => 'Payment was processed but an error occurred. Please contact support.',
@@ -196,10 +181,7 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Process inventory order payment
-     */
-    public function payInventoryOrder(Request $request)
+    public function payInventoryOrder(Request $request): JsonResponse
     {
         $validated = $request->validate([
             'order_id' => 'required|exists:inventory_orders,id',
@@ -220,12 +202,10 @@ class PaymentController extends Controller
         $companyId = Auth::user()->company_id;
         $userId = Auth::id();
 
-        // Get the inventory order
         $order = InventoryOrder::where('id', $validated['order_id'])
             ->where('company_id', $companyId)
             ->firstOrFail();
 
-        // Check if order is already paid
         if ($order->payment_status === 'paid') {
             return response()->json([
                 'success' => false,
@@ -243,7 +223,6 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        // Create pending transaction record
         $transaction = PaymentTransaction::create([
             'company_id' => $companyId,
             'user_id' => $userId,
@@ -260,7 +239,6 @@ class PaymentController extends Controller
             ],
         ]);
 
-        // Process payment with CyberSource
         $paymentResult = $this->cyberSource->processPayment([
             'order_id' => $orderId,
             'amount' => $amount,
@@ -284,11 +262,9 @@ class PaymentController extends Controller
             ], 400);
         }
 
-        // Payment successful - update records
         try {
             DB::beginTransaction();
 
-            // Update transaction record
             $transaction->update([
                 'transaction_id' => $paymentResult['transaction_id'],
                 'status' => 'completed',
@@ -297,18 +273,16 @@ class PaymentController extends Controller
                 'processed_at' => now(),
             ]);
 
-            // Update order payment status
             $order->update([
                 'payment_status' => 'paid',
                 'paid_at' => now(),
-                'payment_transaction_id' => $transaction->id,
             ]);
 
             DB::commit();
 
             return response()->json([
                 'success' => true,
-                'message' => 'Order payment processed successfully',
+                'message' => 'Payment processed successfully',
                 'transaction_id' => $paymentResult['transaction_id'],
                 'order' => $order->fresh(),
             ]);
@@ -318,7 +292,6 @@ class PaymentController extends Controller
             Log::error('Error processing inventory order payment', [
                 'error' => $e->getMessage(),
                 'transaction_id' => $paymentResult['transaction_id'],
-                'order_id' => $order->id,
             ]);
 
             return response()->json([
@@ -329,44 +302,33 @@ class PaymentController extends Controller
         }
     }
 
-    /**
-     * Process booking payment
-     */
-    public function payBooking(Request $request)
+    public function transactionHistory(Request $request): JsonResponse
     {
-        $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'amount' => 'required|numeric|min:0.01',
-            'card_number' => 'required|string|min:13|max:19',
-            'expiration_month' => 'required|string|size:2',
-            'expiration_year' => 'required|string|size:4',
-            'cvv' => 'required|string|min:3|max:4',
-            'billing.first_name' => 'required|string',
-            'billing.last_name' => 'required|string',
-            'billing.address' => 'nullable|string',
-            'billing.city' => 'nullable|string',
-            'billing.state' => 'nullable|string',
-            'billing.postal_code' => 'nullable|string',
-            'billing.country' => 'nullable|string',
-            'billing.email' => 'required|email',
+        $filters = array_filter([
+            'type' => $request->input('type'),
+            'status' => $request->input('status'),
         ]);
 
-        $companyId = Auth::user()->company_id;
-        $userId = Auth::id();
+        $perPage = (int) $request->input('per_page', 20);
 
-        // Get the booking
-        $booking = \App\Models\Booking::where('id', $validated['booking_id'])
-            ->where('company_id', $companyId)
-            ->firstOrFail();
+        $history = $this->paymentService->getHistory($filters, $perPage);
 
-        $orderId = 'BKG-' . $booking->id . '-' . time();
-        $amount = $validated['amount'];
+        return response()->json([
+            'data' => $history->items(),
+            'meta' => [
+                'current_page' => $history->currentPage(),
+                'last_page' => $history->lastPage(),
+                'per_page' => $history->perPage(),
+                'total' => $history->total(),
+            ],
+        ]);
+    }
 
-        // Create pending transaction record
-        $transaction = PaymentTransaction::create([
-            'company_id' => $companyId,
-            'user_id' => $userId,
-            'type' => 'booking',
+    public function showTransaction(PaymentTransaction $transaction): JsonResponse
+    {
+        return response()->json($transaction);
+    }
+}
             'reference_type' => 'booking',
             'reference_id' => $booking->id,
             'amount' => $amount,
