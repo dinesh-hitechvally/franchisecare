@@ -27,6 +27,12 @@ use App\Contracts\Repositories\RecurringIncomeRepositoryInterface;
 use App\Contracts\Repositories\ExpenseCategoryRepositoryInterface;
 use App\Contracts\Repositories\IncomeCategoryRepositoryInterface;
 use App\Contracts\Repositories\InventoryCategoryRepositoryInterface;
+use App\Contracts\Repositories\InventoryOrderRepositoryInterface;
+use App\Contracts\Repositories\StockTakeRepositoryInterface;
+use App\Contracts\Repositories\ServiceInventoryUsageRepositoryInterface;
+use App\Contracts\Repositories\CompanyServiceInventoryUsageRepositoryInterface;
+use App\Contracts\Repositories\ServicePriceRepositoryInterface;
+use App\Contracts\Repositories\CompanyServiceRepositoryInterface;
 
 // Repository Implementations
 use App\Repositories\BookingRepository;
@@ -51,6 +57,12 @@ use App\Repositories\RecurringIncomeRepository;
 use App\Repositories\ExpenseCategoryRepository;
 use App\Repositories\IncomeCategoryRepository;
 use App\Repositories\InventoryCategoryRepository;
+use App\Repositories\InventoryOrderRepository;
+use App\Repositories\StockTakeRepository;
+use App\Repositories\ServiceInventoryUsageRepository;
+use App\Repositories\CompanyServiceInventoryUsageRepository;
+use App\Repositories\ServicePriceRepository;
+use App\Repositories\CompanyServiceRepository;
 
 // Service Interfaces
 use App\Contracts\Services\BookingServiceInterface;
@@ -75,6 +87,12 @@ use App\Contracts\Services\RecurringIncomeServiceInterface;
 use App\Contracts\Services\ExpenseCategoryServiceInterface;
 use App\Contracts\Services\IncomeCategoryServiceInterface;
 use App\Contracts\Services\InventoryCategoryServiceInterface;
+use App\Contracts\Services\InventoryOrderServiceInterface;
+use App\Contracts\Services\StockTakeServiceInterface;
+use App\Contracts\Services\ServiceInventoryUsageServiceInterface;
+use App\Contracts\Services\CompanyServiceInventoryUsageServiceInterface;
+use App\Contracts\Services\ServicePriceServiceInterface;
+use App\Contracts\Services\CompanyServiceServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -99,6 +117,12 @@ use App\Services\RecurringIncomeService;
 use App\Services\ExpenseCategoryService;
 use App\Services\IncomeCategoryService;
 use App\Services\InventoryCategoryService;
+use App\Services\InventoryOrderService;
+use App\Services\StockTakeService;
+use App\Services\ServiceInventoryUsageService;
+use App\Services\CompanyServiceInventoryUsageService;
+use App\Services\ServicePriceService;
+use App\Services\CompanyServiceService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -143,6 +167,12 @@ class RepositoryServiceProvider extends ServiceProvider
         ExpenseCategoryRepositoryInterface::class => ExpenseCategoryRepository::class,
         IncomeCategoryRepositoryInterface::class => IncomeCategoryRepository::class,
         InventoryCategoryRepositoryInterface::class => InventoryCategoryRepository::class,
+        InventoryOrderRepositoryInterface::class => InventoryOrderRepository::class,
+        StockTakeRepositoryInterface::class => StockTakeRepository::class,
+        ServiceInventoryUsageRepositoryInterface::class => ServiceInventoryUsageRepository::class,
+        CompanyServiceInventoryUsageRepositoryInterface::class => CompanyServiceInventoryUsageRepository::class,
+        ServicePriceRepositoryInterface::class => ServicePriceRepository::class,
+        CompanyServiceRepositoryInterface::class => CompanyServiceRepository::class,
 
         // Services
         BookingServiceInterface::class => BookingService::class,
@@ -167,6 +197,12 @@ class RepositoryServiceProvider extends ServiceProvider
         ExpenseCategoryServiceInterface::class => ExpenseCategoryService::class,
         IncomeCategoryServiceInterface::class => IncomeCategoryService::class,
         InventoryCategoryServiceInterface::class => InventoryCategoryService::class,
+        InventoryOrderServiceInterface::class => InventoryOrderService::class,
+        StockTakeServiceInterface::class => StockTakeService::class,
+        ServiceInventoryUsageServiceInterface::class => ServiceInventoryUsageService::class,
+        CompanyServiceInventoryUsageServiceInterface::class => CompanyServiceInventoryUsageService::class,
+        ServicePriceServiceInterface::class => ServicePriceService::class,
+        CompanyServiceServiceInterface::class => CompanyServiceService::class,
     ];
 
     /**
