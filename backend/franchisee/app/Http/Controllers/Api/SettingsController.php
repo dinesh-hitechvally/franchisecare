@@ -3,151 +3,87 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Preference;
-use App\Models\IncomeTemplate;
-use App\Models\CalendarSetting;
-use App\Models\CancellationPolicy;
-use App\Models\ReminderSetting;
-use App\Models\AppCalendarSetting;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
+use App\Contracts\Services\SettingsServiceInterface;
+use App\Http\Requests\Settings\SavePreferencesRequest;
+use App\Http\Requests\Settings\SaveIncomeTemplatesRequest;
+use App\Http\Requests\Settings\SaveCalendarSettingsRequest;
+use App\Http\Requests\Settings\SaveCancellationPolicyRequest;
+use App\Http\Requests\Settings\SaveReminderSettingsRequest;
+use App\Http\Requests\Settings\SaveAppCalendarSettingsRequest;
+use Illuminate\Http\JsonResponse;
 
 class SettingsController extends Controller
 {
-    private function getCompanyId()
-    {
-        $user = Auth::user();
-        return $user?->company_id ?? $user?->franchise_id;
-    }
+    public function __construct(
+        protected SettingsServiceInterface $settingsService
+    ) {}
 
     // Preferences
-    public function getPreferences()
+    public function getPreferences(): JsonResponse
     {
-        $companyId = $this->getCompanyId();
-        $preferences = Preference::where('company_id', $companyId)->first();
-
-        if (!$preferences) {
-            // Return defaults if not found
-            $preferences = new Preference([
-                'company_id' => $companyId,
-                'display_customer_notes' => true,
-                'hide_expired_bookings' => true,
-                'hide_booking_cash_notifications' => true,
-                'hide_past_bookings' => false,
-                'filter_services_by_pet_size' => false,
-                'display_booking_end_time' => true,
-                'show_address_in_invoice' => true,
-                'show_personal_phone' => true,
-                'time_format' => 'H:i', // default
-                'date_format' => 'd/m/Y', // default
-            ]);
-        }
-
-        return response()->json($preferences);
+        return response()->json($this->settingsService->getPreferences());
     }
 
-    public function savePreferences(Request $request)
+    public function savePreferences(SavePreferencesRequest $request): JsonResponse
     {
-        $companyId = $this->getCompanyId();
-
-        $validated = $request->validate([
-            'display_customer_notes' => 'boolean',
-            'hide_expired_bookings' => 'boolean',
-            'hide_booking_cash_notifications' => 'boolean',
-            'hide_past_bookings' => 'boolean',
-            'filter_services_by_pet_size' => 'boolean',
-            'display_booking_end_time' => 'boolean',
-            'show_address_in_invoice' => 'boolean',
-            'show_personal_phone' => 'boolean',
-            'time_format' => 'string',
-            'date_format' => 'string',
-        ]);
-
-        $preferences = Preference::updateOrCreate(
-            ['company_id' => $companyId],
-            $validated
-        );
-
-        return response()->json($preferences);
+        return response()->json($this->settingsService->savePreferences($request->validated()));
     }
 
     // Income Templates
-    public function getIncomeTemplates()
+    public function getIncomeTemplates(): JsonResponse
     {
-        $companyId = $this->getCompanyId();
-        $templates = IncomeTemplate::where('company_id', $companyId)->first();
-
-        if (!$templates) {
-            $templates = new IncomeTemplate([
-                'company_id' => $companyId,
-                'income_title_template' => 'Income from {{customername}} - {{date}}',
-                'invoice_statement_template' => 'income from {{customername}} - {{date}}',
-            ]);
-        }
-
-        return response()->json($templates);
+        return response()->json($this->settingsService->getIncomeTemplates());
     }
 
-    public function saveIncomeTemplates(Request $request)
+    public function saveIncomeTemplates(SaveIncomeTemplatesRequest $request): JsonResponse
     {
-        $companyId = $this->getCompanyId();
-
-        $validated = $request->validate([
-            'income_title_template' => 'nullable|string',
-            'invoice_statement_template' => 'nullable|string',
-        ]);
-
-        $templates = IncomeTemplate::updateOrCreate(
-            ['company_id' => $companyId],
-            $validated
-        );
-
-        return response()->json($templates);
+        return response()->json($this->settingsService->saveIncomeTemplates($request->validated()));
     }
 
     // Calendar Settings
-    public function getCalendarSettings()
+    public function getCalendarSettings(): JsonResponse
     {
-        $companyId = $this->getCompanyId();
-        $settings = CalendarSetting::where('company_id', $companyId)->first();
-
-        if (!$settings) {
-            $settings = new CalendarSetting([
-                'company_id' => $companyId,
-                'show_booking_total' => true,
-                'show_customer_name' => true,
-                'show_customer_address' => true,
-                'show_pet_name' => true,
-                'show_pet_breed' => true,
-                'show_services_name' => true,
-                'show_time' => true,
-                'show_cancellation_policy' => true,
-                'display_order' => null,
-            ]);
-        }
-
-        return response()->json($settings);
+        return response()->json($this->settingsService->getCalendarSettings());
     }
 
-    public function saveCalendarSettings(Request $request)
+    public function saveCalendarSettings(SaveCalendarSettingsRequest $request): JsonResponse
     {
-        $companyId = $this->getCompanyId();
+        return response()->json($this->settingsService->saveCalendarSettings($request->validated()));
+    }
 
-        $validated = $request->validate([
-            'show_booking_total' => 'boolean',
-            'show_customer_name' => 'boolean',
-            'show_customer_address' => 'boolean',
-            'show_pet_name' => 'boolean',
-            'show_pet_breed' => 'boolean',
-            'show_services_name' => 'boolean',
-            'show_time' => 'boolean',
-            'show_cancellation_policy' => 'boolean',
-            'display_order' => 'nullable|array',
-        ]);
+    // Cancellation Policy
+    public function getCancellationPolicy(): JsonResponse
+    {
+        return response()->json($this->settingsService->getCancellationPolicy());
+    }
 
-        $settings = CalendarSetting::updateOrCreate(
-            ['company_id' => $companyId],
-            $validated
+    public function saveCancellationPolicy(SaveCancellationPolicyRequest $request): JsonResponse
+    {
+        return response()->json($this->settingsService->saveCancellationPolicy($request->validated()));
+    }
+
+    // Reminder Settings
+    public function getReminderSettings(): JsonResponse
+    {
+        return response()->json($this->settingsService->getReminderSettings());
+    }
+
+    public function saveReminderSettings(SaveReminderSettingsRequest $request): JsonResponse
+    {
+        return response()->json($this->settingsService->saveReminderSettings($request->validated()));
+    }
+
+    // App Calendar Settings
+    public function getAppCalendarSettings(): JsonResponse
+    {
+        return response()->json($this->settingsService->getAppCalendarSettings());
+    }
+
+    public function saveAppCalendarSettings(SaveAppCalendarSettingsRequest $request): JsonResponse
+    {
+        return response()->json($this->settingsService->saveAppCalendarSettings($request->validated()));
+    }
+}
         );
 
         return response()->json($settings);

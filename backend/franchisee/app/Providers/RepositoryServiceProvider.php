@@ -20,6 +20,7 @@ use App\Contracts\Repositories\CommunicationRepositoryInterface;
 use App\Contracts\Repositories\PaymentRepositoryInterface;
 use App\Contracts\Repositories\IntakeFormRepositoryInterface;
 use App\Contracts\Repositories\ServiceRepositoryInterface;
+use App\Contracts\Repositories\SettingsRepositoryInterface;
 
 // Repository Implementations
 use App\Repositories\BookingRepository;
@@ -37,6 +38,7 @@ use App\Repositories\CommunicationRepository;
 use App\Repositories\PaymentRepository;
 use App\Repositories\IntakeFormRepository;
 use App\Repositories\ServiceRepository;
+use App\Repositories\SettingsRepository;
 
 // Service Interfaces
 use App\Contracts\Services\BookingServiceInterface;
@@ -54,6 +56,7 @@ use App\Contracts\Services\CommunicationServiceInterface;
 use App\Contracts\Services\PaymentServiceInterface;
 use App\Contracts\Services\IntakeFormServiceInterface;
 use App\Contracts\Services\ServiceServiceInterface;
+use App\Contracts\Services\SettingsServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -71,6 +74,7 @@ use App\Services\CommunicationService;
 use App\Services\PaymentService;
 use App\Services\IntakeFormService;
 use App\Services\ServiceService;
+use App\Services\SettingsService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -108,6 +112,7 @@ class RepositoryServiceProvider extends ServiceProvider
         PaymentRepositoryInterface::class => PaymentRepository::class,
         IntakeFormRepositoryInterface::class => IntakeFormRepository::class,
         ServiceRepositoryInterface::class => ServiceRepository::class,
+        SettingsRepositoryInterface::class => SettingsRepository::class,
 
         // Services
         BookingServiceInterface::class => BookingService::class,
@@ -125,6 +130,7 @@ class RepositoryServiceProvider extends ServiceProvider
         PaymentServiceInterface::class => PaymentService::class,
         IntakeFormServiceInterface::class => IntakeFormService::class,
         ServiceServiceInterface::class => ServiceService::class,
+        SettingsServiceInterface::class => SettingsService::class,
     ];
 
     /**
