@@ -3,69 +3,43 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\IncomeCategoryServiceInterface;
+use App\Http\Requests\IncomeCategory\StoreIncomeCategoryRequest;
+use App\Http\Requests\IncomeCategory\UpdateIncomeCategoryRequest;
 use App\Models\IncomeCategory;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class IncomeCategoryController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        protected IncomeCategoryServiceInterface $incomeCategoryService
+    ) {}
+
+    public function index(): JsonResponse
     {
-        $query = IncomeCategory::withCount('incomes');
-
-        if (auth()->check() && auth()->user()->company_id) {
-            $query->where(function ($q) {
-                $q->where('company_id', auth()->user()->company_id)
-                  ->orWhere('is_system', true);
-            });
-        }
-
-        return response()->json($query->orderBy('name')->get());
+        return response()->json($this->incomeCategoryService->all());
     }
 
-    public function store(Request $request)
+    public function store(StoreIncomeCategoryRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name'          => 'required|string|max:255',
-            'description'   => 'nullable|string',
-            'gst_inclusive' => 'boolean',
-            'is_active'     => 'boolean',
-        ]);
-
-        $validated['company_id'] = auth()->user()->company_id;
-        $validated['is_system']  = false;
-
-        $category = IncomeCategory::create($validated);
-
-        return response()->json($category->loadCount('incomes'), 201);
+        $category = $this->incomeCategoryService->create($request->validated());
+        return response()->json($category, 201);
     }
 
-    public function show(IncomeCategory $incomeCategory)
+    public function show(IncomeCategory $incomeCategory): JsonResponse
     {
         return response()->json($incomeCategory->loadCount('incomes'));
     }
 
-    public function update(Request $request, IncomeCategory $incomeCategory)
+    public function update(UpdateIncomeCategoryRequest $request, IncomeCategory $incomeCategory): JsonResponse
     {
-        abort_if($incomeCategory->is_system, 403, 'System categories cannot be modified.');
-
-        $validated = $request->validate([
-            'name'          => 'sometimes|required|string|max:255',
-            'description'   => 'nullable|string',
-            'gst_inclusive' => 'boolean',
-            'is_active'     => 'boolean',
-        ]);
-
-        $incomeCategory->update($validated);
-
-        return response()->json($incomeCategory->loadCount('incomes'));
+        $category = $this->incomeCategoryService->update($incomeCategory, $request->validated());
+        return response()->json($category);
     }
 
-    public function destroy(IncomeCategory $incomeCategory)
+    public function destroy(IncomeCategory $incomeCategory): JsonResponse
     {
-        abort_if($incomeCategory->is_system, 403, 'System categories cannot be deleted.');
-
-        $incomeCategory->delete();
-
+        $this->incomeCategoryService->delete($incomeCategory);
         return response()->json(null, 204);
     }
 }

@@ -3,84 +3,47 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\RecurringExpenseServiceInterface;
+use App\Http\Requests\RecurringExpense\StoreRecurringExpenseRequest;
+use App\Http\Requests\RecurringExpense\UpdateRecurringExpenseRequest;
 use App\Models\RecurringExpense;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class RecurringExpenseController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        protected RecurringExpenseServiceInterface $recurringExpenseService
+    ) {}
+
+    public function index(Request $request): JsonResponse
     {
-        $query = RecurringExpense::with('category')->latest('start_date');
+        $filters = $request->only(['status']);
+        $perPage = max(1, min((int) $request->input('per_page', 25), 100));
 
-        if (auth()->check() && auth()->user()->company_id) {
-            $query->where('company_id', auth()->user()->company_id);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $perPage = (int) $request->input('per_page', 25);
-        $perPage = max(1, min($perPage, 100));
-
-        $paginator = $query->paginate($perPage, ['*'], 'page', max(1, (int) $request->input('page', 1)));
-
-        return response()->json([
-            'data' => $paginator->items(),
-            'meta' => [
-                'current_page' => $paginator->currentPage(),
-                'last_page'    => $paginator->lastPage(),
-                'per_page'     => $paginator->perPage(),
-                'total'        => $paginator->total(),
-            ],
-        ]);
+        return response()->json($this->recurringExpenseService->paginate($filters, $perPage));
     }
 
-    public function store(Request $request)
+    public function store(StoreRecurringExpenseRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'expense_category_id' => 'nullable|exists:expense_categories,id',
-            'start_date'          => 'required|date',
-            'frequency'           => 'required|in:daily,weekly,monthly,yearly',
-            'auto_extend'         => 'boolean',
-            'total'               => 'required|numeric|min:0',
-            'notes'               => 'nullable|string',
-        ]);
-
-        $validated['company_id'] = auth()->user()->company_id;
-        $validated['status'] = 'active';
-
-        $recurringExpense = RecurringExpense::create($validated);
-
-        return response()->json($recurringExpense->load('category'), 201);
+        $recurringExpense = $this->recurringExpenseService->create($request->validated());
+        return response()->json($recurringExpense, 201);
     }
 
-    public function show(RecurringExpense $recurringExpense)
+    public function show(RecurringExpense $recurringExpense): JsonResponse
     {
         return response()->json($recurringExpense->load('category'));
     }
 
-    public function update(Request $request, RecurringExpense $recurringExpense)
+    public function update(UpdateRecurringExpenseRequest $request, RecurringExpense $recurringExpense): JsonResponse
     {
-        $validated = $request->validate([
-            'expense_category_id' => 'nullable|exists:expense_categories,id',
-            'start_date'          => 'sometimes|required|date',
-            'frequency'           => 'sometimes|required|in:daily,weekly,monthly,yearly',
-            'auto_extend'         => 'boolean',
-            'total'               => 'sometimes|required|numeric|min:0',
-            'notes'               => 'nullable|string',
-            'status'              => 'sometimes|in:active,cancelled,completed',
-        ]);
-
-        $recurringExpense->update($validated);
-
-        return response()->json($recurringExpense->load('category'));
+        $recurringExpense = $this->recurringExpenseService->update($recurringExpense, $request->validated());
+        return response()->json($recurringExpense);
     }
 
-    public function destroy(RecurringExpense $recurringExpense)
+    public function destroy(RecurringExpense $recurringExpense): JsonResponse
     {
-        $recurringExpense->delete();
-
+        $this->recurringExpenseService->delete($recurringExpense);
         return response()->json(null, 204);
     }
 }

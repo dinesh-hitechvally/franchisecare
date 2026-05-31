@@ -21,6 +21,12 @@ use App\Contracts\Repositories\PaymentRepositoryInterface;
 use App\Contracts\Repositories\IntakeFormRepositoryInterface;
 use App\Contracts\Repositories\ServiceRepositoryInterface;
 use App\Contracts\Repositories\SettingsRepositoryInterface;
+use App\Contracts\Repositories\BlockoutRecurringRepositoryInterface;
+use App\Contracts\Repositories\RecurringExpenseRepositoryInterface;
+use App\Contracts\Repositories\RecurringIncomeRepositoryInterface;
+use App\Contracts\Repositories\ExpenseCategoryRepositoryInterface;
+use App\Contracts\Repositories\IncomeCategoryRepositoryInterface;
+use App\Contracts\Repositories\InventoryCategoryRepositoryInterface;
 
 // Repository Implementations
 use App\Repositories\BookingRepository;
@@ -39,6 +45,12 @@ use App\Repositories\PaymentRepository;
 use App\Repositories\IntakeFormRepository;
 use App\Repositories\ServiceRepository;
 use App\Repositories\SettingsRepository;
+use App\Repositories\BlockoutRecurringRepository;
+use App\Repositories\RecurringExpenseRepository;
+use App\Repositories\RecurringIncomeRepository;
+use App\Repositories\ExpenseCategoryRepository;
+use App\Repositories\IncomeCategoryRepository;
+use App\Repositories\InventoryCategoryRepository;
 
 // Service Interfaces
 use App\Contracts\Services\BookingServiceInterface;
@@ -57,6 +69,12 @@ use App\Contracts\Services\PaymentServiceInterface;
 use App\Contracts\Services\IntakeFormServiceInterface;
 use App\Contracts\Services\ServiceServiceInterface;
 use App\Contracts\Services\SettingsServiceInterface;
+use App\Contracts\Services\BlockoutRecurringServiceInterface;
+use App\Contracts\Services\RecurringExpenseServiceInterface;
+use App\Contracts\Services\RecurringIncomeServiceInterface;
+use App\Contracts\Services\ExpenseCategoryServiceInterface;
+use App\Contracts\Services\IncomeCategoryServiceInterface;
+use App\Contracts\Services\InventoryCategoryServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -75,6 +93,12 @@ use App\Services\PaymentService;
 use App\Services\IntakeFormService;
 use App\Services\ServiceService;
 use App\Services\SettingsService;
+use App\Services\BlockoutRecurringService;
+use App\Services\RecurringExpenseService;
+use App\Services\RecurringIncomeService;
+use App\Services\ExpenseCategoryService;
+use App\Services\IncomeCategoryService;
+use App\Services\InventoryCategoryService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -113,6 +137,12 @@ class RepositoryServiceProvider extends ServiceProvider
         IntakeFormRepositoryInterface::class => IntakeFormRepository::class,
         ServiceRepositoryInterface::class => ServiceRepository::class,
         SettingsRepositoryInterface::class => SettingsRepository::class,
+        BlockoutRecurringRepositoryInterface::class => BlockoutRecurringRepository::class,
+        RecurringExpenseRepositoryInterface::class => RecurringExpenseRepository::class,
+        RecurringIncomeRepositoryInterface::class => RecurringIncomeRepository::class,
+        ExpenseCategoryRepositoryInterface::class => ExpenseCategoryRepository::class,
+        IncomeCategoryRepositoryInterface::class => IncomeCategoryRepository::class,
+        InventoryCategoryRepositoryInterface::class => InventoryCategoryRepository::class,
 
         // Services
         BookingServiceInterface::class => BookingService::class,
@@ -131,6 +161,12 @@ class RepositoryServiceProvider extends ServiceProvider
         IntakeFormServiceInterface::class => IntakeFormService::class,
         ServiceServiceInterface::class => ServiceService::class,
         SettingsServiceInterface::class => SettingsService::class,
+        BlockoutRecurringServiceInterface::class => BlockoutRecurringService::class,
+        RecurringExpenseServiceInterface::class => RecurringExpenseService::class,
+        RecurringIncomeServiceInterface::class => RecurringIncomeService::class,
+        ExpenseCategoryServiceInterface::class => ExpenseCategoryService::class,
+        IncomeCategoryServiceInterface::class => IncomeCategoryService::class,
+        InventoryCategoryServiceInterface::class => InventoryCategoryService::class,
     ];
 
     /**

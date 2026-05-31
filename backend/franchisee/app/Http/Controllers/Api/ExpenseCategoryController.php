@@ -3,69 +3,43 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Contracts\Services\ExpenseCategoryServiceInterface;
+use App\Http\Requests\ExpenseCategory\StoreExpenseCategoryRequest;
+use App\Http\Requests\ExpenseCategory\UpdateExpenseCategoryRequest;
 use App\Models\ExpenseCategory;
-use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class ExpenseCategoryController extends Controller
 {
-    public function index(Request $request)
+    public function __construct(
+        protected ExpenseCategoryServiceInterface $expenseCategoryService
+    ) {}
+
+    public function index(): JsonResponse
     {
-        $query = ExpenseCategory::withCount('expenses');
-
-        if (auth()->check() && auth()->user()->company_id) {
-            $query->where(function ($q) {
-                $q->where('company_id', auth()->user()->company_id)
-                  ->orWhere('is_system', true);
-            });
-        }
-
-        return response()->json($query->orderBy('name')->get());
+        return response()->json($this->expenseCategoryService->all());
     }
 
-    public function store(Request $request)
+    public function store(StoreExpenseCategoryRequest $request): JsonResponse
     {
-        $validated = $request->validate([
-            'name'          => 'required|string|max:255',
-            'description'   => 'nullable|string',
-            'gst_inclusive' => 'boolean',
-            'is_active'     => 'boolean',
-        ]);
-
-        $validated['company_id'] = auth()->user()->company_id;
-        $validated['is_system']  = false;
-
-        $category = ExpenseCategory::create($validated);
-
-        return response()->json($category->loadCount('expenses'), 201);
+        $category = $this->expenseCategoryService->create($request->validated());
+        return response()->json($category, 201);
     }
 
-    public function show(ExpenseCategory $expenseCategory)
+    public function show(ExpenseCategory $expenseCategory): JsonResponse
     {
         return response()->json($expenseCategory->loadCount('expenses'));
     }
 
-    public function update(Request $request, ExpenseCategory $expenseCategory)
+    public function update(UpdateExpenseCategoryRequest $request, ExpenseCategory $expenseCategory): JsonResponse
     {
-        abort_if($expenseCategory->is_system, 403, 'System categories cannot be modified.');
-
-        $validated = $request->validate([
-            'name'          => 'sometimes|required|string|max:255',
-            'description'   => 'nullable|string',
-            'gst_inclusive' => 'boolean',
-            'is_active'     => 'boolean',
-        ]);
-
-        $expenseCategory->update($validated);
-
-        return response()->json($expenseCategory->loadCount('expenses'));
+        $category = $this->expenseCategoryService->update($expenseCategory, $request->validated());
+        return response()->json($category);
     }
 
-    public function destroy(ExpenseCategory $expenseCategory)
+    public function destroy(ExpenseCategory $expenseCategory): JsonResponse
     {
-        abort_if($expenseCategory->is_system, 403, 'System categories cannot be deleted.');
-
-        $expenseCategory->delete();
-
+        $this->expenseCategoryService->delete($expenseCategory);
         return response()->json(null, 204);
     }
 }
