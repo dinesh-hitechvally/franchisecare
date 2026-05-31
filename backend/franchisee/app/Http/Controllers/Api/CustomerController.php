@@ -2,181 +2,99 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Contracts\Services\CustomerServiceInterface;
 use App\Http\Controllers\Controller;
-use App\Models\Customer;
-use App\Models\CustomerAudit;
+use App\Http\Requests\Customer\StoreCustomerRequest;
+use App\Http\Requests\Customer\UpdateCustomerRequest;
 use App\Http\Resources\CustomerResource;
+use App\Models\Customer;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
+/**
+ * SOLID CustomerController
+ * 
+ * Single Responsibility: Only handles HTTP request/response concerns
+ * Open/Closed: Extensible through service injection
+ * Dependency Inversion: Depends on CustomerServiceInterface abstraction
+ */
 class CustomerController extends Controller
 {
+    public function __construct(
+        private CustomerServiceInterface $customerService
+    ) {}
+
     /**
-     * Display a listing of the resource.
+     * Display a listing of customers.
      */
-    public function index(Request $request)
+    public function index(Request $request): array
     {
-        $query = Customer::query();
+        $filters = [
+            'status' => $request->get('status'),
+            'search' => $request->get('search'),
+        ];
 
-        // Filter by authenticated user's company_id
-        if (auth()->check() && auth()->user()->company_id) {
-            $query->where('company_id', auth()->user()->company_id);
-        }
+        $customers = $this->customerService->listCustomers($filters);
 
-        // Filter by archive status
-        if ($request->get('status') === 'archived') {
-            $query->where('is_archived', true);
-        } elseif ($request->get('status') === 'inactive') {
-            $query->where('is_active', false)->where('is_archived', false);
-        } else {
-            $query->where('is_active', true)->where('is_archived', false);
-        }
-
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%")
-                  ->orWhere('phone', 'like', "%{$search}%");
-            });
-        }
-
-        return CustomerResource::collection($query->with('customerItems')->latest()->get())->resolve();
+        return CustomerResource::collection($customers)->resolve();
     }
 
     /**
-     * Store a newly created resource in storage.
+     * Store a newly created customer.
      */
-    public function store(Request $request)
+    public function store(StoreCustomerRequest $request): array
     {
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|email|unique:customers',
-            'phone' => 'required|string',
-            'other_phone' => 'nullable|string',
-            'address' => 'nullable|string',
-            'street_address' => 'nullable|string|max:255',
-            'suburb' => 'nullable|string|max:255',
-            'postcode' => 'nullable|string|max:20',
-            'state' => 'nullable|string|max:100',
-            'notes' => 'nullable|string',
-            'other_email' => 'nullable|email',
-            'referred_by' => 'nullable|string',
-            'is_ndis' => 'nullable|boolean',
-            'is_subscribed' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        // Set company_id from authenticated user
-        $validated['company_id'] = auth()->user()->company_id;
-
-        $customer = Customer::create($validated);
-
-        // Record Audit
-        $this->recordCustomerAudit($customer, 'created');
+        $customer = $this->customerService->createCustomer($request->customerData());
 
         return (new CustomerResource($customer))->resolve();
     }
 
     /**
-     * Record a customer audit entry
+     * Display the specified customer.
      */
-    private function recordCustomerAudit(Customer $customer, string $actionType): void
+    public function show(int $id): array
     {
-        $auditData = $customer->only([
-            'first_name', 'last_name', 'email', 'other_email',
-            'phone', 'other_phone', 'address', 'street_address',
-            'suburb', 'postcode', 'state', 'company_id', 'notes',
-            'referred_by', 'is_ndis', 'is_subscribed', 'is_active',
-            'latitude', 'longitude', 'reference_id', 'is_archived'
-        ]);
-        
-        $auditData['customer_id'] = $customer->id;
-        $auditData['action_type'] = $actionType;
-        $auditData['action_at'] = now();
-        
-        CustomerAudit::create($auditData);
-    }
+        $customer = $this->customerService->getCustomer($id);
 
-    /**
-     * Display the specified resource.
-     */
-    public function show($id)
-    {
-        $customer = Customer::with('customerItems')->findOrFail($id);
         return (new CustomerResource($customer))->resolve();
     }
 
     /**
-     * Update the specified resource in storage.
+     * Update the specified customer.
      */
-    public function update(Request $request, $id)
+    public function update(UpdateCustomerRequest $request, Customer $customer): array
     {
-        $customer = Customer::findOrFail($id);
+        $customer = $this->customerService->updateCustomer($customer, $request->customerData());
 
-        $validated = $request->validate([
-            'first_name' => 'sometimes|required|string|max:255',
-            'last_name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|email|unique:customers,email,' . $id,
-            'other_email' => 'nullable|email',
-            'phone' => 'sometimes|required|string',
-            'other_phone' => 'nullable|string',
-            'address' => 'nullable|string',
-            'street_address' => 'nullable|string|max:255',
-            'suburb' => 'nullable|string|max:255',
-            'postcode' => 'nullable|string|max:20',
-            'state' => 'nullable|string|max:100',
-            'notes' => 'nullable|string',
-            'referred_by' => 'nullable|string',
-            'is_ndis' => 'nullable|boolean',
-            'is_subscribed' => 'nullable|boolean',
-            'is_active' => 'nullable|boolean',
-        ]);
-
-        $customer->update($validated);
-
-        // Record Audit
-        $this->recordCustomerAudit($customer->fresh(), 'updated');
-
-        return (new CustomerResource($customer->fresh(['customerItems'])))->resolve();
+        return (new CustomerResource($customer))->resolve();
     }
 
-    public function destroy($id)
+    /**
+     * Archive the specified customer.
+     */
+    public function destroy(Customer $customer): JsonResponse
     {
-        $customer = Customer::findOrFail($id);
-        $customer->update(['is_archived' => true]);
-
-        // Record Audit
-        $this->recordCustomerAudit($customer->fresh(), 'archived');
+        $this->customerService->archiveCustomer($customer);
 
         return response()->json(['message' => 'Customer archived successfully']);
     }
 
     /**
-     * Restore the specified resource from storage.
+     * Restore the specified customer.
      */
-    public function restore($id)
+    public function restore(int $id): JsonResponse
     {
-        $customer = Customer::where('is_archived', true)->findOrFail($id);
-        $customer->update(['is_archived' => false]);
-
-        // Record Audit
-        $this->recordCustomerAudit($customer->fresh(), 'restored');
+        $this->customerService->restoreCustomer($id);
 
         return response()->json(['message' => 'Customer restored successfully']);
     }
 
     /**
-     * Display the audit history for the specified customer.
+     * Get audit history for a customer.
      */
-    public function getHistory($id)
+    public function getHistory(int $id): JsonResponse
     {
-        $customer = Customer::findOrFail($id);
-        $history = CustomerAudit::where('customer_id', $customer->id)
-            ->orderByDesc('action_at')
-            ->orderByDesc('id')
-            ->paginate(5);
+        $history = $this->customerService->getCustomerHistory($id);
 
         return response()->json($history);
     }
