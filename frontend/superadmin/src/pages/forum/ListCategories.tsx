@@ -1,39 +1,35 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Plus, Check, X, ChevronUp, ChevronDown, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Filter, Check, X, ChevronUp, ChevronDown, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 
-interface Version {
+interface Category {
   id: number
-  version: string
-  title: string
-  logout: boolean
-  refresh: boolean
-  date: string
+  name: string
+  description: string
+  postsCount: number
+  active: boolean
+  createdAt: string
 }
 
-const mockVersions: Version[] = [
-  { id: 82, version: '#testVersion', title: 'Test Title', logout: false, refresh: false, date: 'September 20 2024, 04:35 am' },
-  { id: 81, version: '2.1.1008', title: 'v2.1.1008', logout: false, refresh: true, date: 'October 25 2021, 09:50 am' },
-  { id: 80, version: '2.1.1006', title: 'v2.1.1006', logout: false, refresh: true, date: 'October 21 2021, 03:45 pm' },
-  { id: 79, version: '2.1.1005', title: 'v2.1.1005', logout: true, refresh: true, date: 'October 21 2021, 10:05 am' },
-  { id: 78, version: '2.1.1004', title: 'v2.1.1004', logout: false, refresh: true, date: 'October 05 2021, 06:29 pm' },
-  { id: 77, version: '2.1.1003', title: 'v2.1.1003', logout: false, refresh: true, date: 'October 05 2021, 09:59 am' },
-  { id: 76, version: '2.1.1002', title: 'v2.1.1002', logout: false, refresh: true, date: 'October 04 2021, 07:49 pm' },
-  { id: 75, version: '2.1.1001', title: 'v2.1.1001', logout: true, refresh: true, date: 'October 04 2021, 05:31 pm' },
+const mockCategories: Category[] = [
+  { id: 1, name: 'General Discussion', description: 'General topics and discussions', postsCount: 145, active: true, createdAt: 'January 15 2024, 10:30 am' },
+  { id: 2, name: 'Announcements', description: 'Official announcements and updates', postsCount: 32, active: true, createdAt: 'January 10 2024, 09:00 am' },
+  { id: 3, name: 'Tips & Tricks', description: 'Share your best practices', postsCount: 89, active: true, createdAt: 'February 05 2024, 02:15 pm' },
+  { id: 4, name: 'Support', description: 'Get help from the community', postsCount: 256, active: true, createdAt: 'January 20 2024, 11:45 am' },
+  { id: 5, name: 'Feedback', description: 'Share your feedback and suggestions', postsCount: 67, active: false, createdAt: 'March 01 2024, 03:30 pm' },
 ]
 
-type SortField = 'id' | 'version' | 'title' | 'logout' | 'refresh' | 'date'
+type SortField = 'id' | 'name' | 'postsCount' | 'active' | 'createdAt'
 type SortOrder = 'asc' | 'desc'
 
-export function ListVersions() {
+export function ListCategories() {
   const navigate = useNavigate()
-  const [versions] = useState<Version[]>(mockVersions)
+  const [categories] = useState<Category[]>(mockCategories)
   const [sortField, setSortField] = useState<SortField>('id')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
 
-  // Close menu when clicking outside
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
@@ -64,11 +60,11 @@ export function ListVersions() {
 
   return (
     <div className="page-content">
-      <h1 className="page-title">List Versions</h1>
+      <h1 className="page-title">List Categories</h1>
 
       <div className="card">
         <div className="card-header">
-          <h2 className="card-title">List Versions</h2>
+          <h2 className="card-title">Forum Categories</h2>
           <div className="flex gap-2">
             <button className="btn btn-success">
               <Filter size={14} />
@@ -76,7 +72,7 @@ export function ListVersions() {
             </button>
             <button 
               className="btn btn-primary"
-              onClick={() => navigate('/versions/add')}
+              onClick={() => navigate('/forum/add-categories')}
             >
               +ADD
             </button>
@@ -91,70 +87,60 @@ export function ListVersions() {
                     ID <SortIcon field="id" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('version')}>
+                <th className="cursor-pointer" onClick={() => handleSort('name')}>
                   <span className="flex items-center">
-                    Version <SortIcon field="version" />
+                    Name <SortIcon field="name" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('title')}>
+                <th>Description</th>
+                <th className="cursor-pointer" onClick={() => handleSort('postsCount')}>
                   <span className="flex items-center">
-                    Title <SortIcon field="title" />
+                    Posts <SortIcon field="postsCount" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('logout')}>
+                <th className="cursor-pointer" onClick={() => handleSort('active')}>
                   <span className="flex items-center">
-                    Logout <SortIcon field="logout" />
+                    Active <SortIcon field="active" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('refresh')}>
+                <th className="cursor-pointer" onClick={() => handleSort('createdAt')}>
                   <span className="flex items-center">
-                    Refresh <SortIcon field="refresh" />
-                  </span>
-                </th>
-                <th className="cursor-pointer" onClick={() => handleSort('date')}>
-                  <span className="flex items-center">
-                    Date <SortIcon field="date" />
+                    Created <SortIcon field="createdAt" />
                   </span>
                 </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {versions.map((version) => (
-                <tr key={version.id}>
-                  <td>{version.id}</td>
-                  <td>{version.version}</td>
-                  <td>{version.title}</td>
+              {categories.map((category) => (
+                <tr key={category.id}>
+                  <td>{category.id}</td>
+                  <td className="font-medium">{category.name}</td>
+                  <td className="text-gray-500 text-sm">{category.description}</td>
+                  <td>{category.postsCount}</td>
                   <td>
-                    {version.logout ? (
+                    {category.active ? (
                       <Check size={20} className="icon-check" />
                     ) : (
                       <X size={20} className="icon-cross" />
                     )}
                   </td>
+                  <td>{category.createdAt}</td>
                   <td>
-                    {version.refresh ? (
-                      <Check size={20} className="icon-check" />
-                    ) : (
-                      <X size={20} className="icon-cross" />
-                    )}
-                  </td>
-                  <td>{version.date}</td>
-                  <td>
-                    <div className="relative" ref={openMenuId === version.id ? menuRef : null}>
+                    <div className="relative" ref={openMenuId === category.id ? menuRef : null}>
                       <button 
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                        onClick={() => setOpenMenuId(openMenuId === version.id ? null : version.id)}
+                        onClick={() => setOpenMenuId(openMenuId === category.id ? null : category.id)}
                       >
                         <MoreVertical size={18} />
                       </button>
-                      {openMenuId === version.id && (
+                      {openMenuId === category.id && (
                         <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
                           <button 
                             className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                             onClick={() => {
                               setOpenMenuId(null)
-                              navigate(`/versions/edit/${version.id}`)
+                              navigate(`/forum/edit-category/${category.id}`)
                             }}
                           >
                             <Pencil size={14} />
@@ -164,8 +150,7 @@ export function ListVersions() {
                             className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                             onClick={() => {
                               setOpenMenuId(null)
-                              // Handle delete action
-                              console.log('Delete version:', version.id)
+                              console.log('Delete category:', category.id)
                             }}
                           >
                             <Trash2 size={14} />

@@ -112,6 +112,11 @@ use App\Contracts\Services\NewsServiceInterface;
 use App\Contracts\Services\TrainingServiceInterface;
 use App\Contracts\Services\ForumServiceInterface;
 use App\Contracts\Services\ForumGroupServiceInterface;
+use App\Contracts\Services\UserProfileServiceInterface;
+use App\Contracts\Services\CancellationPolicyServiceInterface;
+use App\Contracts\Services\VersionUpdateServiceInterface;
+use App\Contracts\Services\WebsiteSettingsServiceInterface;
+use App\Contracts\Services\XeroIntegrationServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -159,6 +164,11 @@ use App\Services\NewsService;
 use App\Services\TrainingService;
 use App\Services\ForumService;
 use App\Services\ForumGroupService;
+use App\Services\UserProfileService;
+use App\Services\CancellationPolicyService;
+use App\Services\VersionUpdateService;
+use App\Services\WebsiteSettingsService;
+use App\Services\XeroIntegrationService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -257,6 +267,11 @@ class RepositoryServiceProvider extends ServiceProvider
         TrainingServiceInterface::class => TrainingService::class,
         ForumServiceInterface::class => ForumService::class,
         ForumGroupServiceInterface::class => ForumGroupService::class,
+        UserProfileServiceInterface::class => UserProfileService::class,
+        CancellationPolicyServiceInterface::class => CancellationPolicyService::class,
+        VersionUpdateServiceInterface::class => VersionUpdateService::class,
+        WebsiteSettingsServiceInterface::class => WebsiteSettingsService::class,
+        XeroIntegrationServiceInterface::class => XeroIntegrationService::class,
     ];
 
     /**

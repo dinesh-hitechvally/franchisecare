@@ -3,40 +3,23 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\WebsiteSetting;
+use App\Contracts\Services\WebsiteSettingsServiceInterface;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 
 class WebsiteSettingsController extends Controller
 {
-    public function show()
+    public function __construct(
+        protected WebsiteSettingsServiceInterface $websiteSettingsService
+    ) {}
+
+    public function show(Request $request): JsonResponse
     {
-        $companyId = Auth::user()->company_id;
-        
-        $settings = WebsiteSetting::where('company_id', $companyId)->first();
-        
-        if (!$settings) {
-            // Return defaults
-            return response()->json([
-                'site_title' => '',
-                'tagline' => '',
-                'contact_email' => '',
-                'enable_online_booking' => true,
-                'show_pricing' => true,
-                'website_url' => '',
-                'meta_title' => '',
-                'meta_keywords' => '',
-                'meta_description' => '',
-            ]);
-        }
-        
-        return response()->json($settings);
+        return response()->json($this->websiteSettingsService->show($request->user()));
     }
 
-    public function update(Request $request)
+    public function update(Request $request): JsonResponse
     {
-        $companyId = Auth::user()->company_id;
-        
         $validated = $request->validate([
             'site_title' => 'nullable|string|max:255',
             'tagline' => 'nullable|string|max:255',
@@ -48,15 +31,7 @@ class WebsiteSettingsController extends Controller
             'meta_keywords' => 'nullable|string|max:500',
             'meta_description' => 'nullable|string|max:1000',
         ]);
-        
-        $settings = WebsiteSetting::updateOrCreate(
-            ['company_id' => $companyId],
-            $validated
-        );
-        
-        return response()->json([
-            'message' => 'Website settings saved successfully',
-            'data' => $settings,
-        ]);
+
+        return response()->json($this->websiteSettingsService->update($request->user(), $validated));
     }
 }

@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\Models\CancellationPolicy;
-use Illuminate\Support\Facades\DB;
+use App\Contracts\Services\CancellationPolicyServiceInterface;
+use Illuminate\Http\JsonResponse;
 
 class CancellationPoliciesController extends Controller
 {
-    public function index()
+    public function __construct(
+        protected CancellationPolicyServiceInterface $cancellationPolicyService
+    ) {}
+
+    public function index(): JsonResponse
     {
-        $policies = DB::table('cancellation_policies')->get();
-        return response()->json($policies);
+        return response()->json($this->cancellationPolicyService->index());
     }
 }
