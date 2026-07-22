@@ -27,6 +27,7 @@ import {
   ChevronDown,
   ChevronUp,
   ArrowRight,
+  LifeBuoy,
 } from 'lucide-react'
 
 interface SubMenuItem {
@@ -270,6 +271,13 @@ const menuItems: MenuItem[] = [
       { name: 'Add News', href: '/news/add' },
       { name: 'List News Category', href: '/news/list-category' },
       { name: 'Add News Category', href: '/news/add-category' },
+    ],
+  },
+  {
+    name: 'Support Tickets',
+    icon: <LifeBuoy size={20} />,
+    children: [
+      { name: 'List Tickets', href: '/support-tickets/list' },
     ],
   },
   {

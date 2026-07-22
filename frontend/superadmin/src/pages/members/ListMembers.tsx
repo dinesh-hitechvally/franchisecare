@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Plus, Check, X, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react'
+import { Filter, Check, X, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react'
 
 interface Member {
   id: number

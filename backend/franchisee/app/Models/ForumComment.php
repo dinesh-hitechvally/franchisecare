@@ -21,6 +21,7 @@ class ForumComment extends Model
         'likes_count' => 'integer',
     ];
 
+
     public function thread()
     {
         return $this->belongsTo(ForumThread::class, 'thread_id');

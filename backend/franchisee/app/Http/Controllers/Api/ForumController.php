@@ -7,6 +7,7 @@ use App\Contracts\Services\ForumServiceInterface;
 use App\Models\ForumComment;
 use App\Models\ForumNotification;
 use App\Models\ForumThread;
+use App\Services\AttachmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -56,9 +57,19 @@ class ForumController extends Controller
     {
         $validated = $request->validate([
             'content' => 'required|string',
+            'images' => 'nullable|array|max:10', // Maximum 10 images
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max each
         ]);
 
-        return response()->json($this->forumService->addComment($request->user(), $forumThread, $validated['content']), 201);
+        $imagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $attachment = AttachmentService::upload($image, 'forum');
+                $imagePaths[] = $attachment->file_path;
+            }
+        }
+
+        return response()->json($this->forumService->addComment($request->user(), $forumThread, $validated['content'], $imagePaths), 201);
     }
 
     public function like(Request $request, ForumThread $forumThread): JsonResponse
@@ -75,9 +86,19 @@ class ForumController extends Controller
     {
         $validated = $request->validate([
             'content' => 'required|string',
+            'images' => 'nullable|array|max:10', // Maximum 10 images
+            'images.*' => 'image|mimes:jpeg,png,jpg,gif,webp|max:5120', // 5MB max each
         ]);
 
-        return response()->json($this->forumService->replyToComment($request->user(), $forumComment, $validated['content']), 201);
+        $imagePaths = [];
+        if ($request->hasFile('images')) {
+            foreach ($request->file('images') as $image) {
+                $attachment = AttachmentService::upload($image, 'forum');
+                $imagePaths[] = $attachment->file_path;
+            }
+        }
+
+        return response()->json($this->forumService->replyToComment($request->user(), $forumComment, $validated['content'], $imagePaths), 201);
     }
 
     public function notifications(Request $request): JsonResponse

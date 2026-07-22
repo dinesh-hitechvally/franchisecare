@@ -6,6 +6,7 @@ use App\Contracts\Repositories\PetRepositoryInterface;
 use App\Contracts\Services\PetServiceInterface;
 use App\Models\CustomerItem;
 use App\Models\CustomerItemAudit;
+use App\Models\Attachment;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
@@ -34,8 +35,8 @@ class PetService implements PetServiceInterface
     public function createPet(array $data, $imageFile = null): CustomerItem
     {
         if ($imageFile) {
-            $path = $imageFile->store('pet-images', 'public');
-            $data['image_path'] = $path;
+            $attachment = AttachmentService::upload($imageFile, 'pets');
+            $data['image_path'] = $attachment->file_path;
         }
 
         $pet = $this->petRepository->create($data);
@@ -52,11 +53,13 @@ class PetService implements PetServiceInterface
             // Delete old image if exists
             if ($pet->image_path) {
                 Storage::disk('public')->delete($pet->image_path);
+                Attachment::where('file_path', $pet->image_path)->delete();
             }
-            $path = $imageFile->store('pet-images', 'public');
-            $data['image_path'] = $path;
+            $attachment = AttachmentService::upload($imageFile, 'pets');
+            $data['image_path'] = $attachment->file_path;
         } elseif ($removeImage && $pet->image_path) {
             Storage::disk('public')->delete($pet->image_path);
+            Attachment::where('file_path', $pet->image_path)->delete();
             $data['image_path'] = null;
         }
 
@@ -73,6 +76,7 @@ class PetService implements PetServiceInterface
         // Delete image if exists
         if ($pet->image_path) {
             Storage::disk('public')->delete($pet->image_path);
+            Attachment::where('file_path', $pet->image_path)->delete();
         }
 
         // Create audit record before deletion

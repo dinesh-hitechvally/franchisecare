@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Plus, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Check, X, MoreVertical } from 'lucide-react'
+import { Filter, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
 
 interface Suburb {
   id: number

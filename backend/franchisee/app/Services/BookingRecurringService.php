@@ -53,6 +53,11 @@ class BookingRecurringService implements BookingRecurringServiceInterface
         $detailsData = $data['details'] ?? null;
         unset($data['details']);
 
+        $scheduleChanged = array_intersect(
+            array_keys($data),
+            ['start_date', 'frequency', 'repeat_day', 'repeat_time', 'repeat_until']
+        ) !== [];
+
         $bookingRecurring = $this->bookingRecurringRepository->update($bookingRecurring, $data);
 
         if ($detailsData !== null) {
@@ -63,7 +68,17 @@ class BookingRecurringService implements BookingRecurringServiceInterface
             }
         }
 
-        return $bookingRecurring->load(['customer', 'details.item', 'details.service', 'bookings']);
+        if ($scheduleChanged || $detailsData !== null) {
+            $today = now()->format('Y-m-d');
+            $bookingRecurring->bookings()
+                ->where('start_date', '>=', $today)
+                ->where('status', 'active')
+                ->delete();
+
+            $this->generateBookings($bookingRecurring->fresh(['details']));
+        }
+
+        return $bookingRecurring->fresh(['customer', 'details.item', 'details.service', 'bookings']);
     }
 
     public function updateStatus(BookingRecurring $bookingRecurring, string $status): BookingRecurring
@@ -82,37 +97,46 @@ class BookingRecurringService implements BookingRecurringServiceInterface
             return;
         }
 
-        $startDate = Carbon::parse($bookingRecurring->start_date);
-        $repeatUntil = $bookingRecurring->repeat_until 
-            ? Carbon::parse($bookingRecurring->repeat_until) 
+        $repeatUntil = $bookingRecurring->repeat_until
+            ? Carbon::parse($bookingRecurring->repeat_until)
             : now()->addMonths(3);
-        $frequency = $bookingRecurring->frequency;
-        $interval = $bookingRecurring->interval;
+        $frequency = max((int) $bookingRecurring->frequency, 1);
+
+        $currentDate = Carbon::parse($bookingRecurring->start_date);
+
+        // Align to the configured day of week, if set
+        if (!empty($bookingRecurring->repeat_day)) {
+            $dayMap = [
+                'Sunday' => 0, 'Monday' => 1, 'Tuesday' => 2, 'Wednesday' => 3,
+                'Thursday' => 4, 'Friday' => 5, 'Saturday' => 6,
+            ];
+            if (array_key_exists($bookingRecurring->repeat_day, $dayMap)) {
+                $daysUntilTarget = ($dayMap[$bookingRecurring->repeat_day] - $currentDate->dayOfWeek + 7) % 7;
+                $currentDate->addDays($daysUntilTarget);
+            }
+        }
 
         // Get list of already created booking dates
         $existingDates = $bookingRecurring->bookings()
-            ->pluck('date')
-            ->map(fn($d) => Carbon::parse($d)->format('Y-m-d'))
+            ->pluck('start_date')
+            ->map(fn ($d) => Carbon::parse($d)->format('Y-m-d'))
             ->toArray();
 
-        $currentDate = $startDate->copy();
-        
         while ($currentDate->lte($repeatUntil)) {
             $dateStr = $currentDate->format('Y-m-d');
 
-            if (!in_array($dateStr, $existingDates) && $currentDate->gte(now()->startOfDay())) {
+            if (!in_array($dateStr, $existingDates, true) && $currentDate->gte(now()->startOfDay())) {
                 $this->createBookingFromRecurring($bookingRecurring, $currentDate);
             }
 
-            // Move to next occurrence based on frequency
-            $currentDate = $this->advanceDate($currentDate, $frequency, $interval);
+            $currentDate = $currentDate->copy()->addWeeks($frequency);
         }
     }
 
     public function getHistory(BookingRecurring $bookingRecurring): LengthAwarePaginator
     {
         return $bookingRecurring->bookings()
-            ->orderByDesc('date')
+            ->orderByDesc('start_date')
             ->paginate(20);
     }
 
@@ -128,35 +152,27 @@ class BookingRecurringService implements BookingRecurringServiceInterface
         $booking = Booking::create([
             'company_id' => $recurring->company_id,
             'customer_id' => $recurring->customer_id,
-            'booking_recurring_id' => $recurring->id,
-            'date' => $date->format('Y-m-d'),
-            'start_time' => $recurring->start_time,
-            'end_time' => $recurring->end_time,
+            'recurring_id' => $recurring->id,
+            'start_date' => $date->format('Y-m-d'),
+            'start_time' => $recurring->repeat_time,
+            'calendar_color' => $recurring->color,
             'notes' => $recurring->notes,
-            'status' => 'confirmed',
+            'status' => 'active',
+            'total' => $recurring->total,
+            'duration' => $recurring->duration,
         ]);
 
         // Copy details to booking
         foreach ($recurring->details as $detail) {
             $booking->details()->create([
+                'company_id' => $recurring->company_id,
                 'item_id' => $detail->item_id,
                 'service_id' => $detail->service_id,
                 'price' => $detail->price,
+                'duration' => $detail->duration,
             ]);
         }
 
         return $booking;
-    }
-
-    private function advanceDate(Carbon $date, string $frequency, int $interval): Carbon
-    {
-        return match ($frequency) {
-            'daily' => $date->addDays($interval),
-            'weekly' => $date->addWeeks($interval),
-            'fortnightly' => $date->addWeeks($interval * 2),
-            'monthly' => $date->addMonths($interval),
-            'yearly' => $date->addYears($interval),
-            default => $date->addWeeks($interval),
-        };
     }
 }

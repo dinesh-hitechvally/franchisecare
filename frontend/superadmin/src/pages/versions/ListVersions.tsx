@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Plus, Check, X, ChevronUp, ChevronDown, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { Filter, Check, X, ChevronUp, ChevronDown, MoreVertical, Pencil, Trash2 } from 'lucide-react'
 
 interface Version {
   id: number

@@ -444,4 +444,18 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('items/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'updateItem']);
         Route::delete('items/{id}', [\App\Http\Controllers\Api\TrainingController::class, 'deleteItem']);
     });
+
+    /*
+    |--------------------------------------------------------------------------
+    | Support Tickets
+    |--------------------------------------------------------------------------
+    */
+    Route::get('support-tickets', [\App\Http\Controllers\Api\SupportTicketController::class, 'index']);
+    Route::post('support-tickets', [\App\Http\Controllers\Api\SupportTicketController::class, 'store']);
+    Route::get('support-tickets/{id}', [\App\Http\Controllers\Api\SupportTicketController::class, 'show']);
+    Route::put('support-tickets/{id}', [\App\Http\Controllers\Api\SupportTicketController::class, 'update']);
+    Route::post('support-tickets/{id}/reply', [\App\Http\Controllers\Api\SupportTicketController::class, 'addReply']);
+
+    Route::get('support-departments', [\App\Http\Controllers\Api\SupportDepartmentController::class, 'index']);
+    Route::post('support-departments', [\App\Http\Controllers\Api\SupportDepartmentController::class, 'store']);
 });

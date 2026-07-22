@@ -6,6 +6,7 @@ use App\Contracts\Services\UserProfileServiceInterface;
 use App\Models\ForumNotification;
 use App\Models\ForumThread;
 use App\Models\User;
+use App\Models\Attachment;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -112,9 +113,10 @@ class UserProfileService implements UserProfileServiceInterface
         if ($avatar) {
             if ($user->avatar && Storage::disk('public')->exists($user->avatar)) {
                 Storage::disk('public')->delete($user->avatar);
+                Attachment::where('file_path', $user->avatar)->delete();
             }
-            $path = $avatar->store('avatars', 'public');
-            $user->avatar = $path;
+            $attachment = AttachmentService::upload($avatar, 'avatars');
+            $user->avatar = $attachment->file_path;
         }
 
         $user->save();

@@ -19,7 +19,7 @@ return new class extends Migration
 
             $table->date('start_date');
             $table->string('repeat_time');
-            $table->integer('repeat_day')->nullable(); // Day of week (0-6)
+            $table->string('repeat_day'); // Day of week name, e.g. "Monday"
             $table->integer('frequency'); // Number of weeks (1-20)
             $table->enum('status', ['active', 'cancelled', 'completed'])->default('active');
             $table->boolean('auto_extend')->default(false);

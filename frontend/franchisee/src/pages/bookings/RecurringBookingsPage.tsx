@@ -194,7 +194,7 @@ export function RecurringBookingsPage() {
                     </td>
                     
                     <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
-                      {formatDisplayTime(row.endTime)}
+                      {(row as any).repeatUntil ? formatDisplayDate((row as any).repeatUntil) : '-'}
                     </td>
                     
                     <td className="px-5 py-4 text-sm font-bold text-gray-900 align-top text-right">${row.total || '0.00'}</td>

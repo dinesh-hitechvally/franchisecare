@@ -10,6 +10,7 @@ import { ListCustomers } from './pages/customers'
 import { ListSuburb, AddSuburb } from './pages/suburb'
 import { ListServices, AddService, ListGroups, AddGroup } from './pages/services'
 import { ListCategories, AddCategory, ListPosts, AddPost, ListTopics, AddTopic, ListForumGroups, AddForumGroup } from './pages/forum'
+import { ListTickets, TicketDetails } from './pages/support-tickets'
 
 function App() {
   return (
@@ -71,6 +72,11 @@ function App() {
             <Route path="list-groups" element={<ListForumGroups />} />
             <Route path="add-groups" element={<AddForumGroup />} />
             <Route path="edit-group/:id" element={<AddForumGroup />} />
+          </Route>
+          <Route path="support-tickets">
+            <Route index element={<Navigate to="list" replace />} />
+            <Route path="list" element={<ListTickets />} />
+            <Route path=":id" element={<TicketDetails />} />
           </Route>
           <Route path="inventory/*" element={<PlaceholderPage title="Inventory" />} />
           <Route path="uniform/*" element={<PlaceholderPage title="Uniform" />} />

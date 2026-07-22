@@ -84,12 +84,18 @@ class ForumService implements ForumServiceInterface
         return ['success' => true];
     }
 
-    public function addComment(Authenticatable $user, ForumThread $forumThread, string $content): ForumComment
+    public function addComment(Authenticatable $user, ForumThread $forumThread, string $content, array $imagePaths = []): ForumComment
     {
-        $comment = $forumThread->comments()->create([
+        $commentData = [
             'author_id' => $user->id,
             'content' => $content,
-        ]);
+        ];
+
+        if (!empty($imagePaths)) {
+            $commentData['images'] = $imagePaths;
+        }
+
+        $comment = $forumThread->comments()->create($commentData);
 
         $this->createForumNotifications(
             $forumThread,
@@ -159,14 +165,20 @@ class ForumService implements ForumServiceInterface
         ];
     }
 
-    public function replyToComment(Authenticatable $user, ForumComment $forumComment, string $content): ForumComment
+    public function replyToComment(Authenticatable $user, ForumComment $forumComment, string $content, array $imagePaths = []): ForumComment
     {
-        $reply = ForumComment::create([
+        $replyData = [
             'thread_id' => $forumComment->thread_id,
             'parent_id' => $forumComment->id,
             'author_id' => $user->id,
             'content' => $content,
-        ]);
+        ];
+
+        if (!empty($imagePaths)) {
+            $replyData['images'] = $imagePaths;
+        }
+
+        $reply = ForumComment::create($replyData);
 
         $thread = $forumComment->thread()->first();
         if ($thread) {

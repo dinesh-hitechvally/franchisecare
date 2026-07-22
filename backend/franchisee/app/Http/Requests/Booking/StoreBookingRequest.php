@@ -67,7 +67,7 @@ class StoreBookingRequest extends FormRequest
      */
     public function bookingData(): array
     {
-        return $this->safe()->except(['services'])->toArray();
+        return $this->safe()->except(['services']);
     }
 
     /**

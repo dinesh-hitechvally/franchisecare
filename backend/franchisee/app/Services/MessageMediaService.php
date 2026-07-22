@@ -14,9 +14,9 @@ class MessageMediaService
 
     public function __construct()
     {
-        $this->apiKey = config('services.messagemedia.api_key', '');
-        $this->apiSecret = config('services.messagemedia.api_secret', '');
-        $this->baseUrl = config('services.messagemedia.base_url', 'https://api.messagemedia.com');
+        $this->apiKey = config('services.messagemedia.api_key') ?? '';
+        $this->apiSecret = config('services.messagemedia.api_secret') ?? '';
+        $this->baseUrl = config('services.messagemedia.base_url') ?? 'https://api.messagemedia.com';
         $this->sourceNumber = config('services.messagemedia.source_number');
     }
 

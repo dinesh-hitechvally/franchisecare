@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Contracts\Repositories\DocumentRepositoryInterface;
 use App\Contracts\Services\DocumentServiceInterface;
 use App\Models\Document;
+use App\Models\Attachment;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Storage;
 
@@ -27,8 +28,8 @@ class DocumentService implements DocumentServiceInterface
     public function createDocument(array $data, $file = null): Document
     {
         if ($file) {
-            $path = $file->store('documents', 'public');
-            $data['file_url'] = '/storage/' . $path;
+            $attachment = AttachmentService::upload($file, 'documents');
+            $data['file_url'] = '/storage/' . $attachment->file_path;
             $data['file_type'] = strtolower($file->getClientOriginalExtension());
         }
 
@@ -42,9 +43,10 @@ class DocumentService implements DocumentServiceInterface
             if ($document->file_url) {
                 $oldPath = str_replace('/storage/', '', $document->file_url);
                 Storage::disk('public')->delete($oldPath);
+                Attachment::where('file_path', $oldPath)->delete();
             }
-            $path = $file->store('documents', 'public');
-            $data['file_url'] = '/storage/' . $path;
+            $attachment = AttachmentService::upload($file, 'documents');
+            $data['file_url'] = '/storage/' . $attachment->file_path;
             $data['file_type'] = strtolower($file->getClientOriginalExtension());
         }
 
@@ -57,6 +59,7 @@ class DocumentService implements DocumentServiceInterface
         if ($document->file_url) {
             $path = str_replace('/storage/', '', $document->file_url);
             Storage::disk('public')->delete($path);
+            Attachment::where('file_path', $path)->delete();
         }
 
         return $this->documentRepository->delete($document);

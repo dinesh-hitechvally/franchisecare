@@ -515,6 +515,8 @@ export interface ForumComment {
   threadId: string
   parentId?: string | null
   content: string
+  images?: string[] | null
+  image_urls?: string[] | null
   authorId: string
   author?: User
   liked?: boolean

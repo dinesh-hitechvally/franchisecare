@@ -17,13 +17,13 @@ interface ForumServiceInterface
 
     public function destroy(Authenticatable $user, ForumThread $forumThread): array;
 
-    public function addComment(Authenticatable $user, ForumThread $forumThread, string $content): ForumComment;
+    public function addComment(Authenticatable $user, ForumThread $forumThread, string $content, array $imagePaths = []): ForumComment;
 
     public function like(Authenticatable $user, ForumThread $forumThread): array;
 
     public function likeComment(Authenticatable $user, ForumComment $forumComment): array;
 
-    public function replyToComment(Authenticatable $user, ForumComment $forumComment, string $content): ForumComment;
+    public function replyToComment(Authenticatable $user, ForumComment $forumComment, string $content, array $imagePaths = []): ForumComment;
 
     public function notifications(Authenticatable $user, array $filters): array;
 

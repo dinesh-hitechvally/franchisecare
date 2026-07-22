@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
@@ -22,6 +22,8 @@ import {
   Search,
   Settings,
   ArrowRight,
+  X,
+  Plus,
 } from 'lucide-react'
 import { forumApi, usersApi } from '../../api/services'
 import { useAuthStore } from '../../store/authStore'
@@ -54,6 +56,10 @@ export function UserProfilePage() {
   const [editContent, setEditContent] = useState('')
   const [commentContents, setCommentContents] = useState<Record<string, string>>({})
   const [replyingTo, setReplyingTo] = useState<string | number | null>(null)
+  
+  // Image upload state for comments - supports multiple images
+  const [commentImages, setCommentImages] = useState<Record<string, File[]>>({})
+  const commentImageInputRefs = useRef<Record<string, HTMLInputElement | null>>({})
 
   const { data: user, isLoading } = useQuery({
     queryKey: ['user-profile', userId],
@@ -107,9 +113,10 @@ export function UserProfilePage() {
   })
 
   const addCommentMutation = useMutation({
-    mutationFn: (data: { threadId: string | number; content: string }) =>
-      forumApi.addComment(String(data.threadId), data.content),
+    mutationFn: (data: { threadId: string | number; content: string; images?: File[] | null }) =>
+      forumApi.addComment(String(data.threadId), data.content, data.images),
     onSuccess: () => {
+      setCommentImages({})
       queryClient.invalidateQueries({ queryKey: ['user-profile-posts', userId] })
     },
   })
@@ -129,10 +136,11 @@ export function UserProfilePage() {
   })
 
   const replyToCommentMutation = useMutation({
-    mutationFn: (data: { commentId: string | number; content: string }) =>
-      forumApi.replyToComment(String(data.commentId), data.content),
+    mutationFn: (data: { commentId: string | number; content: string; images?: File[] | null }) =>
+      forumApi.replyToComment(String(data.commentId), data.content, data.images),
     onSuccess: () => {
       setReplyingTo(null)
+      setCommentImages({})
       queryClient.invalidateQueries({ queryKey: ['user-profile-posts', userId] })
     },
   })
@@ -176,19 +184,41 @@ export function UserProfilePage() {
 
   const handleAddComment = (threadId: string | number) => {
     const content = commentContents[String(threadId)]?.trim()
+    const images = commentImages[String(threadId)] || []
     if (!content) return
 
-    addCommentMutation.mutate({ threadId, content })
+    addCommentMutation.mutate({ threadId, content, images: images.length > 0 ? images : null })
     setCommentContents((prev) => ({ ...prev, [String(threadId)]: '' }))
   }
 
   const handleReplyToComment = (commentId: string | number) => {
     const key = `reply-${commentId}`
     const content = commentContents[key]?.trim()
+    const images = commentImages[key] || []
     if (!content) return
 
-    replyToCommentMutation.mutate({ commentId, content })
+    replyToCommentMutation.mutate({ commentId, content, images: images.length > 0 ? images : null })
     setCommentContents((prev) => ({ ...prev, [key]: '' }))
+  }
+
+  const handleCommentImagesSelect = (key: string, files: FileList | null) => {
+    if (!files) return
+    const newFiles = Array.from(files)
+    setCommentImages(prev => ({
+      ...prev,
+      [key]: [...(prev[key] || []), ...newFiles].slice(0, 10) // Max 10 images
+    }))
+  }
+
+  const handleCommentImageRemove = (key: string, index: number) => {
+    setCommentImages(prev => ({
+      ...prev,
+      [key]: (prev[key] || []).filter((_, i) => i !== index)
+    }))
+  }
+
+  const handleCommentImagesReset = (key: string) => {
+    setCommentImages(prev => ({ ...prev, [key]: [] }))
   }
 
   if (isLoading) {
@@ -564,6 +594,20 @@ export function UserProfilePage() {
                                       </span>
                                     </div>
                                     <p className="text-sm text-gray-600 whitespace-pre-wrap">{comment.content}</p>
+                                    {/* Comment Images Gallery */}
+                                    {comment.image_urls && comment.image_urls.length > 0 && (
+                                      <div className="mt-2 flex flex-wrap gap-1">
+                                        {comment.image_urls.map((url, idx) => (
+                                          <img
+                                            key={idx}
+                                            src={url}
+                                            alt={`Attachment ${idx + 1}`}
+                                            className="h-20 w-20 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                            onClick={() => window.open(url, '_blank')}
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
                                   </div>
 
                                   <div className="flex gap-4 mt-2 text-xs">
@@ -590,6 +634,25 @@ export function UserProfilePage() {
                                         {authUser?.name?.slice(0, 2).toUpperCase() || 'U'}
                                       </div>
                                       <div className="flex-1 border border-gray-200 rounded-md bg-white">
+                                        <div className="flex items-center gap-2 p-2 border-b border-gray-100">
+                                          <button
+                                            type="button"
+                                            onClick={() => commentImageInputRefs.current[`reply-${comment.id}`]?.click()}
+                                            className="p-1 hover:bg-gray-100 rounded text-gray-500 flex items-center gap-1"
+                                            title="Add Photos/Album"
+                                          >
+                                            <ImageIcon className="w-3.5 h-3.5" />
+                                            <span className="text-xs">Add Photos</span>
+                                          </button>
+                                          <input
+                                            type="file"
+                                            accept="image/jpeg,image/png,image/gif,image/webp"
+                                            multiple
+                                            className="hidden"
+                                            ref={el => commentImageInputRefs.current[`reply-${comment.id}`] = el}
+                                            onChange={(e) => handleCommentImagesSelect(`reply-${comment.id}`, e.target.files)}
+                                          />
+                                        </div>
                                         <textarea
                                           className="w-full text-sm outline-none resize-none placeholder-gray-500 p-2 min-h-[60px]"
                                           placeholder="Type your reply..."
@@ -601,9 +664,45 @@ export function UserProfilePage() {
                                             }))
                                           }
                                         />
+                                        {/* Images Preview for Reply */}
+                                        {commentImages[`reply-${comment.id}`]?.length > 0 && (
+                                          <div className="px-2 py-2 border-t border-gray-100">
+                                            <div className="flex flex-wrap gap-2">
+                                              {commentImages[`reply-${comment.id}`].map((file, idx) => (
+                                                <div key={idx} className="relative">
+                                                  <img
+                                                    src={URL.createObjectURL(file)}
+                                                    alt={`Selected ${idx + 1}`}
+                                                    className="h-14 w-14 rounded-lg object-cover"
+                                                  />
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => handleCommentImageRemove(`reply-${comment.id}`, idx)}
+                                                    className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                                                  >
+                                                    <X className="w-3 h-3" />
+                                                  </button>
+                                                </div>
+                                              ))}
+                                              {commentImages[`reply-${comment.id}`].length < 10 && (
+                                                <button
+                                                  type="button"
+                                                  onClick={() => commentImageInputRefs.current[`reply-${comment.id}`]?.click()}
+                                                  className="h-14 w-14 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
+                                                >
+                                                  <Plus className="w-4 h-4" />
+                                                </button>
+                                              )}
+                                            </div>
+                                            <p className="text-[10px] text-gray-400 mt-1">{commentImages[`reply-${comment.id}`].length}/10 images</p>
+                                          </div>
+                                        )}
                                         <div className="p-2 flex justify-end gap-2 border-t border-gray-100">
                                           <button
-                                            onClick={() => setReplyingTo(null)}
+                                            onClick={() => {
+                                              setReplyingTo(null)
+                                              handleCommentImagesReset(`reply-${comment.id}`)
+                                            }}
                                             className="text-xs text-gray-500 hover:text-gray-700 px-3 py-1"
                                           >
                                             Cancel
@@ -650,6 +749,20 @@ export function UserProfilePage() {
                                                 </span>
                                               </div>
                                               <p className="text-xs text-gray-600 whitespace-pre-wrap">{reply.content}</p>
+                                              {/* Reply Images Gallery */}
+                                              {reply.image_urls && reply.image_urls.length > 0 && (
+                                                <div className="mt-2 flex flex-wrap gap-1">
+                                                  {reply.image_urls.map((url, idx) => (
+                                                    <img
+                                                      key={idx}
+                                                      src={url}
+                                                      alt={`Attachment ${idx + 1}`}
+                                                      className="h-16 w-16 rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                                      onClick={() => window.open(url, '_blank')}
+                                                    />
+                                                  ))}
+                                                </div>
+                                              )}
                                             </div>
                                             <div className="flex gap-3 mt-1 text-xs">
                                               <button
@@ -683,7 +796,23 @@ export function UserProfilePage() {
                             <button className="p-1 hover:bg-gray-100 rounded text-xs italic w-6 h-6 flex justify-center items-center">I</button>
                             <button className="p-1 hover:bg-gray-100 rounded text-xs underline w-6 h-6 flex justify-center items-center">U</button>
                             <div className="w-px h-4 bg-gray-200 mx-1 mt-1" />
-                            <button className="p-1 hover:bg-gray-100 rounded"><ImageIcon className="w-3.5 h-3.5" /></button>
+                            <button 
+                              type="button"
+                              onClick={() => commentImageInputRefs.current[String(thread.id)]?.click()}
+                              className="p-1 hover:bg-gray-100 rounded flex items-center gap-1"
+                              title="Add Photos/Album"
+                            >
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              <span className="text-xs">Add Photos</span>
+                            </button>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/png,image/gif,image/webp"
+                              multiple
+                              className="hidden"
+                              ref={el => commentImageInputRefs.current[String(thread.id)] = el}
+                              onChange={(e) => handleCommentImagesSelect(String(thread.id), e.target.files)}
+                            />
                           </div>
                           <textarea
                             className="w-full text-sm outline-none resize-none placeholder-gray-500 p-3 min-h-[50px] bg-white border-b border-gray-100"
@@ -696,6 +825,39 @@ export function UserProfilePage() {
                               }))
                             }
                           />
+                          {/* Images Preview */}
+                          {commentImages[String(thread.id)]?.length > 0 && (
+                            <div className="px-3 py-2 border-b border-gray-100">
+                              <div className="flex flex-wrap gap-2">
+                                {commentImages[String(thread.id)].map((file, idx) => (
+                                  <div key={idx} className="relative">
+                                    <img
+                                      src={URL.createObjectURL(file)}
+                                      alt={`Selected ${idx + 1}`}
+                                      className="h-16 w-16 rounded-lg object-cover"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => handleCommentImageRemove(String(thread.id), idx)}
+                                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center hover:bg-red-600 transition-colors"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                                {commentImages[String(thread.id)].length < 10 && (
+                                  <button
+                                    type="button"
+                                    onClick={() => commentImageInputRefs.current[String(thread.id)]?.click()}
+                                    className="h-16 w-16 border-2 border-dashed border-gray-300 rounded-lg flex items-center justify-center text-gray-400 hover:border-blue-400 hover:text-blue-400 transition-colors"
+                                  >
+                                    <Plus className="w-5 h-5" />
+                                  </button>
+                                )}
+                              </div>
+                              <p className="text-[10px] text-gray-400 mt-1">{commentImages[String(thread.id)].length}/10 images</p>
+                            </div>
+                          )}
                           <div className="p-3 flex justify-end">
                             <button
                               onClick={() => handleAddComment(thread.id)}

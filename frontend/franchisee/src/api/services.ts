@@ -908,15 +908,35 @@ export const forumApi = {
   createThread: (data: { title?: string; content: string; topic?: string; group_id?: string }) =>
     apiClient.post<ForumThread>('/forum/threads', data),
 
-  addComment: (threadId: string, content: string) =>
-    apiClient.post<ForumComment>(`/forum/threads/${threadId}/comments`, { content }),
+  addComment: (threadId: string, content: string, images?: File[] | null) => {
+    const formData = new FormData()
+    formData.append('content', content)
+    if (images && images.length > 0) {
+      images.forEach((image) => {
+        formData.append('images[]', image)
+      })
+    }
+    return apiClient.post<ForumComment>(`/forum/threads/${threadId}/comments`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
 
   likeThread: (id: string) => apiClient.post<{ likes_count: number; liked: boolean }>(`/forum/threads/${id}/like`),
 
   likeComment: (commentId: string) => apiClient.post<{ likes_count: number; liked: boolean }>(`/forum/comments/${commentId}/like`),
 
-  replyToComment: (commentId: string, content: string) =>
-    apiClient.post<ForumComment>(`/forum/comments/${commentId}/reply`, { content }),
+  replyToComment: (commentId: string, content: string, images?: File[] | null) => {
+    const formData = new FormData()
+    formData.append('content', content)
+    if (images && images.length > 0) {
+      images.forEach((image) => {
+        formData.append('images[]', image)
+      })
+    }
+    return apiClient.post<ForumComment>(`/forum/comments/${commentId}/reply`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
 
   getNotifications: (params?: { group_id?: string; no_group?: boolean; unread_only?: boolean; limit?: number }) =>
     apiClient.get<ForumNotification[]>('/forum/notifications', { params }),
@@ -1698,4 +1718,51 @@ export const trainingApi = {
   
   deleteItem: (id: number) =>
     apiClient.delete<{ success: boolean; message: string }>(`/training/items/${id}`),
+}
+
+export interface SupportTicketReply {
+  id: string
+  userName: string
+  message: string
+  created: string
+  attachmentPath?: string
+}
+
+export interface SupportTicket {
+  id: string
+  ticketId: string
+  subject: string
+  department: string
+  createdBy: string
+  lastUpdatedBy: string
+  created: string
+  status: 'open' | 'in-progress' | 'closed'
+  description?: string
+  replies?: SupportTicketReply[]
+}
+
+export const supportTicketsApi = {
+  getAll: (params?: { department?: string }) =>
+    apiClient.get<SupportTicket[]>('/support-tickets', { params }),
+  create: (data: { subject: string; department: string; description: string }) =>
+    apiClient.post<SupportTicket>('/support-tickets', data),
+  getById: (id: string) =>
+    apiClient.get<SupportTicket>(`/support-tickets/${id}`),
+  update: (id: string, data: Partial<SupportTicket>) =>
+    apiClient.put<SupportTicket>(`/support-tickets/${id}`, data),
+  addReply: (id: string, data: { message: string; close_ticket?: boolean }) =>
+    apiClient.post<any>(`/support-tickets/${id}/reply`, data),
+}
+
+export interface SupportDepartment {
+  id: string
+  name: string
+  code: string
+}
+
+export const supportDepartmentsApi = {
+  getAll: () =>
+    apiClient.get<SupportDepartment[]>('/support-departments'),
+  create: (data: { name: string }) =>
+    apiClient.post<SupportDepartment>('/support-departments', data),
 }
