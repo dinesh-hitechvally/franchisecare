@@ -190,7 +190,7 @@ export function RecurringBookingsPage() {
                     </td>
                     
                     <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
-                      {formatDisplayTime(row.startTime)}
+                      {formatDisplayTime((row as any).repeatTime)}
                     </td>
                     
                     <td className="px-5 py-4 text-sm text-gray-700 align-top text-center">
