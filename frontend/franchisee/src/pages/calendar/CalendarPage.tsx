@@ -21,7 +21,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import { BookingDetailModal } from '../../components/modals/BookingDetailModal'
 import { BlockoutDetailModal } from '../../components/modals/BlockoutDetailModal'
-import { bookingsApi, blockoutsApi, settingsApi } from '../../api/services'
+import { bookingsApi, blockoutsApi, calendarFeedApi, settingsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import type { Booking as BookingType, Blockout } from '../../types'
 import { PageHeader } from '../../components/layout/PageHeader'
@@ -254,6 +254,7 @@ function ResizableDraggableBooking({
   const resizeStartTimeMinutes = useRef(0)
   const resizeStartDuration = useRef(0)
   const bookingIdRef = useRef(booking.id)
+  const justResizedRef = useRef(false)
 
   useEffect(() => {
     if (bookingIdRef.current !== booking.id) {
@@ -301,8 +302,10 @@ function ResizableDraggableBooking({
     if (!isResizing) return
     
     const deltaY = e.clientY - resizeStartY.current
-    const slotsChanged = Math.round(deltaY / slotHeight)
-    const deltaMinutes = slotsChanged * TIME_STEP_MINUTES
+    // Scale pixel movement to minutes at 1-minute resolution instead of snapping
+    // to whole TIME_STEP_MINUTES (15-min) slots.
+    const minutesPerPixel = TIME_STEP_MINUTES / slotHeight
+    const deltaMinutes = Math.round(deltaY * minutesPerPixel)
 
     if (resizeEdge.current === 'start') {
       const maxStartMinutes = resizeStartTimeMinutes.current + resizeStartDuration.current - TIME_STEP_MINUTES
@@ -329,11 +332,24 @@ function ResizableDraggableBooking({
   const handleResizeEnd = useCallback(() => {
     if (isResizing) {
       setIsResizing(false)
+      justResizedRef.current = true
       if (onResize) {
         onResize(booking.id, currentStartTime, currentDuration)
       }
     }
   }, [isResizing, currentDuration, currentStartTime, booking.id, onResize])
+
+  const handleItemClick = useCallback((e: React.MouseEvent) => {
+    if (justResizedRef.current) {
+      justResizedRef.current = false
+      e.stopPropagation()
+      return
+    }
+    if (!isDragging && !isResizing && onClick) {
+      e.stopPropagation()
+      onClick(booking)
+    }
+  }, [isDragging, isResizing, onClick, booking])
 
   useEffect(() => {
     if (isResizing) {
@@ -375,12 +391,7 @@ function ResizableDraggableBooking({
         {...attributes}
         style={{ ...style, ...bgStyle, ...borderStyle }}
         className="relative flex-1 border-l-4 rounded hover:opacity-90 transition-colors overflow-visible group"
-        onClick={(e) => {
-          if (!isDragging && !isResizing && onClick) {
-            e.stopPropagation()
-            onClick(booking)
-          }
-        }}
+        onClick={handleItemClick}
       >
         {/* Resize handles - positioned absolutely and independent */}
         <div
@@ -488,12 +499,7 @@ function ResizableDraggableBooking({
       {...attributes}
       style={{ ...style, ...bgStyle }}
       className={`relative group text-xs ${borderRadiusClass} hover:opacity-80 transition-colors ${isBookingMultiDay || isBlockout ? 'border' : ''}`}
-      onClick={(e) => {
-        if (!isDragging && onClick) {
-          e.stopPropagation()
-          onClick(booking)
-        }
-      }}
+      onClick={handleItemClick}
     >
       {!isBookingMultiDay && (
         <div
@@ -572,7 +578,7 @@ function DroppableTimeSlot({ time, date, children, onClick, showQuarterHourLine 
   return (
     <div
       ref={setNodeRef}
-      className={`relative overflow-visible bg-white p-2 min-h-[40px] transition-colors ${
+      className={`relative overflow-visible bg-white p-2 min-h-[40px] flex-1 transition-colors ${
         showQuarterHourLine && isQuarterHourLine ? 'border-t border-gray-200' : ''
       } ${
         isOver ? 'bg-green-50 ring-2 ring-green-400 ring-inset' : ''
@@ -584,10 +590,18 @@ function DroppableTimeSlot({ time, date, children, onClick, showQuarterHourLine 
   )
 }
 
+const VIEW_MODE_STORAGE_KEY = 'calendarViewMode'
+
+const isViewMode = (value: string | null): value is ViewMode =>
+  value === 'month' || value === 'week' || value === 'day' || value === 'agenda'
+
 export function CalendarPage() {
   const navigate = useNavigate()
   const { addToast } = useToastStore()
-  const [viewMode, setViewMode] = useState<ViewMode>('week')
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    const stored = localStorage.getItem(VIEW_MODE_STORAGE_KEY)
+    return isViewMode(stored) ? stored : 'week'
+  })
   const [currentDate, setCurrentDate] = useState(new Date())
   const [searchTerm, setSearchTerm] = useState('')
   const [activeDragId, setActiveDragId] = useState<string | null>(null)
@@ -605,6 +619,10 @@ export function CalendarPage() {
     showPetBreed: true,
     showServicesName: true,
   })
+
+  useEffect(() => {
+    localStorage.setItem(VIEW_MODE_STORAGE_KEY, viewMode)
+  }, [viewMode])
 
   // Fetch calendar settings on component mount
   useEffect(() => {
@@ -651,84 +669,44 @@ export function CalendarPage() {
           dateTo = format(currentDate, 'yyyy-MM-dd')
         }
 
-        const [bookingPage, blockoutPage] = await Promise.all([
-          bookingsApi.getPaginated({ page: 1, per_page: 100, dateFrom, dateTo }),
-          blockoutsApi.getPaginated({ page: 1, per_page: 100 }),
-        ])
+        // Single optimized call: backend unions bookings + blockouts (no separate
+        // calendar table), already filtered by date range and status.
+        const events = await calendarFeedApi.getFeed({ date_from: dateFrom, date_to: dateTo })
 
-        const bookingEvents: Booking[] = (bookingPage?.data || [])
-          .filter((b) => b.status === 'active' || b.status === 'completed')
-          .map((b) => {
-          const customerName = b.customerName
-            || `${b.customer?.first_name || ''} ${b.customer?.last_name || ''}`.trim()
-            || 'Booking'
-          const petName = b.petName
-            || (b.details || []).map((d) => d.pet?.name).filter(Boolean).join(', ')
-          const serviceName = (b.details || []).map((d) => d.service?.name).filter(Boolean).join(', ')
-          const petBreed = (b.details || []).map((d) => d.pet?.breed).filter(Boolean).join(', ')
-          const address = (b.customer as any)?.street_address || (b.customer as any)?.address || ''
-          const bookingCost = (b as any)?.total || (b as any)?.cost || ''
-          const startTime = normalizeDisplayTime(b.startTime) || b.startTime
-          const endTime = normalizeDisplayTime(b.endTime)
+        const mappedEvents: Booking[] = events.map((e) => {
+          const startTime = normalizeDisplayTime(e.start_time || undefined) || e.start_time || ''
+          const endTime = normalizeDisplayTime(e.end_time || undefined)
           const duration = getDurationFromStartEnd(startTime, endTime)
-            ?? Math.max(TIME_STEP_MINUTES, (b as any).duration || TIME_STEP_MINUTES)
+            ?? Math.max(TIME_STEP_MINUTES, e.duration || TIME_STEP_MINUTES)
+          const isBlockout = e.event_type === 'blockout'
 
           return {
-            id: `booking-${b.id}`,
-            customerName,
-            petName: petName || '',
-            service: serviceName || '',
-            startDate: b.startDate,
-            endDate: b.endDate,
+            id: e.id,
+            customerName: isBlockout ? (e.title || 'Blockout') : (e.customer_name || 'Booking'),
+            petName: e.pet_name || '',
+            service: e.service_name || '',
+            title: e.title,
+            location: e.location || undefined,
+            startDate: e.start_date,
+            endDate: e.end_date || undefined,
             startTime,
             endTime,
-            status: b.status || 'active',
+            status: e.status || 'active',
             duration,
-            isMultiDay: b.isMultiDay,
-            eventType: 'booking',
-            bookingId: b.id,
-            calendarColor: b.calendarColor,
-            bookingCost,
-            address,
-            breed: petBreed,
-            pet: petName || '',
-          }
-        })
-
-        const blockoutEvents: Booking[] = (blockoutPage?.data || [])
-          .filter((b) => {
-            const bDate = new Date(b.startDate)
-            const fromDate = new Date(dateFrom)
-            const toDate = new Date(dateTo)
-            return bDate >= fromDate && bDate <= toDate
-          })
-          .map((b) => {
-          const startTime = normalizeDisplayTime(b.startTime) || b.startTime
-          const endTime = normalizeDisplayTime(b.endTime)
-          const duration = getDurationFromStartEnd(startTime, endTime)
-            ?? Math.max(TIME_STEP_MINUTES, TIME_STEP_MINUTES)
-
-          return {
-            id: `blockout-${b.id}`,
-            customerName: b.title || 'Blockout',
-            petName: '',
-            service: '',
-            title: b.title,
-            location: b.location,
-            startDate: b.startDate,
-            endDate: b.endDate,
-            startTime,
-            endTime,
-            status: b.active ? 'active' : 'cancelled',
-            duration,
-            eventType: 'blockout',
-            blockoutId: b.id,
-            calendarColor: '#9333ea',
+            isMultiDay: Boolean(e.end_date && e.end_date !== e.start_date),
+            eventType: e.event_type,
+            bookingId: e.booking_id !== undefined ? String(e.booking_id) : undefined,
+            blockoutId: e.blockout_id !== undefined ? String(e.blockout_id) : undefined,
+            calendarColor: e.calendar_color || undefined,
+            bookingCost: e.total ?? undefined,
+            address: e.customer_address || '',
+            breed: e.pet_breed || '',
+            pet: e.pet_name || '',
           }
         })
 
         if (!cancelled) {
-          setBookings([...bookingEvents, ...blockoutEvents])
+          setBookings(mappedEvents)
         }
       } catch (error) {
         console.error('Error loading calendar data:', error)
@@ -827,10 +805,15 @@ export function CalendarPage() {
       const apiStartTime = apiTime !== null ? minutesToHiS(apiTime) : newTime
       
       if (movedBooking.eventType === 'blockout' && movedBooking.blockoutId) {
+        const startMinutes = toMinutesSinceMidnight(newTime)
+        const apiEndTime = startMinutes !== null
+          ? minutesToHiS(startMinutes + movedBooking.duration)
+          : getEndTimeFromDuration(newTime, movedBooking.duration)
         await blockoutsApi.update(movedBooking.blockoutId, {
           start_date: newDateStr,
           start_time: apiStartTime,
           end_date: newEndDate,
+          end_time: apiEndTime,
         } as any)
       } else if (movedBooking.bookingId) {
         await bookingsApi.update(movedBooking.bookingId, {
@@ -881,9 +864,13 @@ export function CalendarPage() {
       const apiStartTime = apiTime !== null ? minutesToHiS(apiTime) : nextStartTime
       
       if (booking.eventType === 'blockout' && booking.blockoutId) {
+        const endMinutes = toMinutesSinceMidnight(nextStartTime)
+        const apiEndTime = endMinutes !== null
+          ? minutesToHiS(endMinutes + newDuration)
+          : getEndTimeFromDuration(nextStartTime, newDuration)
         await blockoutsApi.update(booking.blockoutId, {
           start_time: apiStartTime,
-          duration: newDuration,
+          end_time: apiEndTime,
         } as any)
       } else if (booking.bookingId) {
         await bookingsApi.update(booking.bookingId, {

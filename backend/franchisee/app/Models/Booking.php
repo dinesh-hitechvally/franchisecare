@@ -24,7 +24,7 @@ class Booking extends Model
     ];
 
     protected $casts = [
-        'start_date' => 'date',
+        'start_date' => 'date:Y-m-d',
         'total' => 'decimal:2',
     ];
 

@@ -25,9 +25,9 @@ class BlockoutRecurring extends Model
     ];
 
     protected $casts = [
-        'start_date' => 'date',
-        'end_date' => 'date',
-        'repeat_until' => 'date',
+        'start_date' => 'date:Y-m-d',
+        'end_date' => 'date:Y-m-d',
+        'repeat_until' => 'date:Y-m-d',
         'active' => 'boolean',
     ];
 

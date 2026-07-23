@@ -117,6 +117,7 @@ use App\Contracts\Services\CancellationPolicyServiceInterface;
 use App\Contracts\Services\VersionUpdateServiceInterface;
 use App\Contracts\Services\WebsiteSettingsServiceInterface;
 use App\Contracts\Services\XeroIntegrationServiceInterface;
+use App\Contracts\Services\CalendarFeedServiceInterface;
 
 // Service Implementations
 use App\Services\BookingService;
@@ -169,6 +170,7 @@ use App\Services\CancellationPolicyService;
 use App\Services\VersionUpdateService;
 use App\Services\WebsiteSettingsService;
 use App\Services\XeroIntegrationService;
+use App\Services\CalendarFeedService;
 
 /**
  * Dependency Inversion Principle (DIP):
@@ -272,6 +274,7 @@ class RepositoryServiceProvider extends ServiceProvider
         VersionUpdateServiceInterface::class => VersionUpdateService::class,
         WebsiteSettingsServiceInterface::class => WebsiteSettingsService::class,
         XeroIntegrationServiceInterface::class => XeroIntegrationService::class,
+        CalendarFeedServiceInterface::class => CalendarFeedService::class,
     ];
 
     /**

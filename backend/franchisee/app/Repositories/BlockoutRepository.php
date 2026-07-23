@@ -69,6 +69,20 @@ class BlockoutRepository implements BlockoutRepositoryInterface
             }
         }
 
+        // Filter by active status
+        if (isset($filters['active'])) {
+            $query->where('active', (bool) $filters['active']);
+        }
+
+        // Filter by date range (overlap: blockout spans any part of [dateFrom, dateTo])
+        if (!empty($filters['dateFrom'])) {
+            $query->where('end_date', '>=', $filters['dateFrom']);
+        }
+
+        if (!empty($filters['dateTo'])) {
+            $query->where('start_date', '<=', $filters['dateTo']);
+        }
+
         // Search filter
         if (!empty($filters['search'])) {
             $search = $filters['search'];

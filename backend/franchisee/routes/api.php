@@ -147,6 +147,13 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Calendar Feed (live union of bookings + blockouts, no separate table)
+    |--------------------------------------------------------------------------
+    */
+    Route::get('calendar-feed', [\App\Http\Controllers\Api\CalendarFeedController::class, 'events']);
+
+    /*
+    |--------------------------------------------------------------------------
     | Services
     |--------------------------------------------------------------------------
     */

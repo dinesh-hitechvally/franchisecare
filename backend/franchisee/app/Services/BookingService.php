@@ -18,6 +18,7 @@ use App\Models\SmsHistory;
 use App\Models\StockMovement;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use PDF;
@@ -86,6 +87,17 @@ class BookingService implements BookingServiceInterface
     public function updateBooking(Booking $booking, array $data, ?array $services = null): Booking
     {
         $previousStatus = $booking->status;
+
+        // Keep end_time in sync whenever start_time/duration change without an
+        // explicit end_time (e.g. calendar drag/resize only sends start_time+duration).
+        if (!array_key_exists('end_time', $data) && (array_key_exists('start_time', $data) || array_key_exists('duration', $data))) {
+            $startTime = $data['start_time'] ?? $booking->start_time;
+            $duration = $data['duration'] ?? $booking->duration;
+
+            if ($startTime !== null && $duration !== null) {
+                $data['end_time'] = Carbon::parse($startTime)->addMinutes((int) $duration)->format('H:i:s');
+            }
+        }
 
         $this->bookingRepository->update($booking, $data);
 

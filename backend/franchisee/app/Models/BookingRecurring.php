@@ -30,11 +30,11 @@ class BookingRecurring extends Model
     ];
 
     protected $casts = [
-        'start_date' => 'date',
+        'start_date' => 'date:Y-m-d',
         'total' => 'decimal:2',
         'auto_extend' => 'boolean',
-        'cancelled_date' => 'date',
-        'repeat_until' => 'date',
+        'cancelled_date' => 'date:Y-m-d',
+        'repeat_until' => 'date:Y-m-d',
         'frequency' => 'integer',
     ];
 

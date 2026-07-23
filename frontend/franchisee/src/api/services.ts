@@ -632,6 +632,40 @@ export const blockoutsApi = {
   delete: (id: string) => apiClient.delete(`/blockouts/${id}`),
 }
 
+export type CalendarFeedEvent = {
+  id: string
+  event_type: 'booking' | 'blockout'
+  booking_id?: number
+  blockout_id?: number
+  customer_id?: number
+  recurring_id?: number | null
+  start_date: string
+  end_date?: string | null
+  start_time?: string | null
+  end_time?: string | null
+  duration?: number | null
+  status: string
+  calendar_color?: string | null
+  total?: string | number | null
+  notes?: string | null
+  customer_name?: string
+  customer_address?: string | null
+  pet_name?: string
+  pet_breed?: string
+  service_name?: string
+  title?: string
+  location?: string | null
+}
+
+export const calendarFeedApi = {
+  // Single optimized call: backend unions bookings + blockouts (no separate calendar table)
+  // and pre-shapes fields for direct rendering.
+  getFeed: (params: { date_from: string; date_to: string }) =>
+    apiClient
+      .get<{ data: CalendarFeedEvent[] }>('/calendar-feed', { params })
+      .then((res) => res.data),
+}
+
 export const blockoutRecurringsApi = {
   getAll: async (params?: { company_id?: string; search?: string }) => {
     const rows = await apiClient.get<any[]>('/blockout-recurrings', { params })
