@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class XeroConnection extends Model
 {
@@ -12,6 +13,7 @@ class XeroConnection extends Model
         'tenant_id',
         'tenant_name',
         'tenant_type',
+        'xero_oauth_request_id',
         'access_token',
         'refresh_token',
         'expires_at',
@@ -36,6 +38,22 @@ class XeroConnection extends Model
     public function company(): BelongsTo
     {
         return $this->belongsTo(Company::class);
+    }
+
+    /**
+     * Get the OAuth authorize/callback request that established this connection
+     */
+    public function oauthRequest(): BelongsTo
+    {
+        return $this->belongsTo(XeroOauthRequest::class, 'xero_oauth_request_id');
+    }
+
+    /**
+     * Get the invoices/bills pushed to Xero for this connection's company
+     */
+    public function xeroInvoices(): HasMany
+    {
+        return $this->hasMany(XeroInvoice::class, 'company_id', 'company_id');
     }
 
     /**

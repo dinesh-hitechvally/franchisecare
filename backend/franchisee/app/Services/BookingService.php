@@ -9,6 +9,7 @@ use App\Models\Booking;
 use App\Models\BookingAudit;
 use App\Models\BookingDetailAudit;
 use App\Models\BookingInventoryAudit;
+use App\Models\CompanyServiceInventoryUsage;
 use App\Models\CurrentSoh;
 use App\Models\EmailHistory;
 use App\Models\Income;
@@ -543,6 +544,38 @@ class BookingService implements BookingServiceInterface
     }
 
     /**
+     * Resolve service inventory usage rules for a company, preferring
+     * company-specific overrides over the global defaults on a per-service basis.
+     */
+    protected function getEffectiveInventoryUsageRules(int $companyId, array $serviceIds): Collection
+    {
+        if (empty($serviceIds)) {
+            return collect();
+        }
+
+        $companyRules = CompanyServiceInventoryUsage::with(['inventoryItem', 'unit'])
+            ->where('company_id', $companyId)
+            ->where('is_active', true)
+            ->whereIn('service_id', $serviceIds)
+            ->get()
+            ->groupBy('service_id');
+
+        $remainingServiceIds = array_diff($serviceIds, $companyRules->keys()->all());
+
+        if (empty($remainingServiceIds)) {
+            return $companyRules;
+        }
+
+        $globalRules = ServiceInventoryUsage::with(['inventoryItem', 'unit'])
+            ->where('is_active', true)
+            ->whereIn('service_id', $remainingServiceIds)
+            ->get()
+            ->groupBy('service_id');
+
+        return $companyRules->merge($globalRules);
+    }
+
+    /**
      * Record inventory audit entry for booking.
      */
     protected function recordInventoryAudit(Booking $booking, string $changeType, array $meta = []): void
@@ -550,10 +583,10 @@ class BookingService implements BookingServiceInterface
         $booking->loadMissing(['details.item', 'details.service']);
 
         $customerName = trim(($booking->customer->first_name ?? '') . ' ' . ($booking->customer->last_name ?? ''));
-        $usageRules = ServiceInventoryUsage::where('is_active', true)
-            ->whereIn('service_id', $booking->details->pluck('service_id')->filter()->unique()->values()->all())
-            ->get()
-            ->groupBy('service_id');
+        $usageRules = $this->getEffectiveInventoryUsageRules(
+            $booking->company_id,
+            $booking->details->pluck('service_id')->filter()->unique()->values()->all()
+        );
 
         if ($usageRules->isEmpty()) {
             BookingInventoryAudit::create([
@@ -590,7 +623,7 @@ class BookingService implements BookingServiceInterface
                     'booking_id' => $booking->id,
                     'company_id' => $booking->company_id,
                     'inventory_id' => null,
-                    'inventory_item_name' => $rule->inventory_name,
+                    'inventory_item_name' => $rule->inventoryItem?->name,
                     'change_type' => $changeType,
                     'action_at' => now(),
                     'quantity_before' => null,
@@ -598,9 +631,9 @@ class BookingService implements BookingServiceInterface
                     'quantity_change' => -1 * $usageQuantity,
                     'notes' => sprintf(
                         '%s used %s %s for service %s on booking #%s.',
-                        $rule->inventory_name,
+                        $rule->inventoryItem?->name ?? 'Item',
                         rtrim(rtrim(number_format($usageQuantity, 2, '.', ''), '0'), '.'),
-                        $rule->unit,
+                        $rule->unit?->name ?? 'units',
                         $detail->service->name ?? 'service',
                         $booking->id
                     ),
@@ -609,7 +642,7 @@ class BookingService implements BookingServiceInterface
                         'service_name' => $detail->service->name ?? null,
                         'pet_name' => $detail->item->name ?? null,
                         'usage_rule_id' => $rule->id,
-                        'usage_unit' => $rule->unit,
+                        'usage_unit' => $rule->unit?->name,
                         'booking_detail_id' => $detail->id,
                         'status' => $booking->status,
                     ], $meta),
@@ -638,12 +671,7 @@ class BookingService implements BookingServiceInterface
             return;
         }
 
-        $usageRules = ServiceInventoryUsage::with('unit')
-            ->where('company_id', $booking->company_id)
-            ->where('is_active', true)
-            ->whereIn('service_id', $serviceIds)
-            ->get()
-            ->groupBy('service_id');
+        $usageRules = $this->getEffectiveInventoryUsageRules($booking->company_id, $serviceIds);
 
         if ($usageRules->isEmpty()) {
             return;
@@ -653,14 +681,20 @@ class BookingService implements BookingServiceInterface
             $rules = $usageRules->get($detail->service_id, collect());
 
             foreach ($rules as $rule) {
+                $usageItemName = $rule->inventoryItem?->name;
+
+                if (!$usageItemName) {
+                    continue;
+                }
+
                 $inventoryItem = InventoryItem::where('company_id', $booking->company_id)
-                    ->whereRaw('LOWER(name) = ?', [strtolower($rule->inventory_name)])
+                    ->whereRaw('LOWER(name) = ?', [strtolower($usageItemName)])
                     ->first();
 
                 if (!$inventoryItem) {
                     $inventoryItem = InventoryItem::create([
                         'company_id' => $booking->company_id,
-                        'name' => $rule->inventory_name,
+                        'name' => $usageItemName,
                         'category' => 'General',
                         'sku' => null,
                         'quantity' => 0,

@@ -13,6 +13,8 @@ class InventoryOrder extends Model
         'type',
         'status',
         'total',
+        'payment_status',
+        'paid_at',
         'notes',
         'ordered_at',
         'shipped_at',
@@ -21,6 +23,7 @@ class InventoryOrder extends Model
 
     protected $casts = [
         'total' => 'decimal:2',
+        'paid_at' => 'datetime',
         'ordered_at' => 'datetime',
         'shipped_at' => 'datetime',
         'delivered_at' => 'datetime',

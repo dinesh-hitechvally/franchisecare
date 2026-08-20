@@ -116,7 +116,6 @@ import { VersionUpdatePage } from './pages/system/VersionUpdatePage'
 import { ServicePricesPage } from './pages/settings/ServicePricesPage'
 
 // Integration Pages
-import { IntegrationsPage } from './pages/integration/IntegrationsPage'
 import { XeroIntegrationPage } from './pages/settings/XeroIntegrationPage'
 import { XeroCallbackPage } from './pages/settings/XeroCallbackPage'
 
@@ -130,6 +129,7 @@ export function AppRoutes() {
     <Routes>
       <Route path="/signin" element={<LoginPage />} />
       <Route path="/xero/callback" element={<XeroCallbackPage />} />
+      <Route path="/integration/xero/callback" element={<XeroCallbackPage />} />
       <Route
         path="/"
         element={
@@ -253,7 +253,6 @@ export function AppRoutes() {
         <Route path="settings/service-prices" element={<ServicePricesPage />} />
 
         {/* Integration Routes */}
-        <Route path="integration/api" element={<IntegrationsPage />} />
         <Route path="integration/xero" element={<XeroIntegrationPage />} />
 
         {/* Orders Routes */}

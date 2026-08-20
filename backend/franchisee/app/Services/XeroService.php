@@ -11,7 +11,7 @@ class XeroService
     protected string $clientId;
     protected string $clientSecret;
     protected string $redirectUri;
-    protected string $scopes;
+    protected array $scopes;
     protected string $authorizeUrl = 'https://login.xero.com/identity/connect/authorize';
     protected string $tokenUrl = 'https://identity.xero.com/connect/token';
     protected string $apiBaseUrl = 'https://api.xero.com/api.xro/2.0';
@@ -22,7 +22,7 @@ class XeroService
         $this->clientId = config('services.xero.client_id');
         $this->clientSecret = config('services.xero.client_secret');
         $this->redirectUri = config('services.xero.redirect_uri');
-        $this->scopes = config('services.xero.scopes');
+        $this->scopes = config('services.xero.scopes', []);
     }
 
     /**
@@ -34,9 +34,9 @@ class XeroService
             'response_type' => 'code',
             'client_id' => $this->clientId,
             'redirect_uri' => $this->redirectUri,
-            'scope' => $this->scopes,
+            'scope' => implode(' ', $this->scopes),
             'state' => $state,
-        ]);
+        ], '', '&', PHP_QUERY_RFC3986);
 
         return $this->authorizeUrl . '?' . $params;
     }
@@ -204,6 +204,57 @@ class XeroService
     }
 
     /**
+     * Find or create a contact by exact name (used when no email is available, e.g. suppliers)
+     */
+    public function findOrCreateContactByName(XeroConnection $connection, string $name, array $extraContactData = []): array
+    {
+        $accessToken = $this->ensureValidToken($connection);
+
+        $response = Http::withToken($accessToken)
+            ->withHeaders(['Xero-Tenant-Id' => $connection->tenant_id])
+            ->get($this->apiBaseUrl . '/Contacts', [
+                'where' => 'Name=="' . str_replace('"', '\"', $name) . '"',
+            ]);
+
+        if ($response->successful()) {
+            $contacts = $response->json()['Contacts'] ?? [];
+            if (!empty($contacts)) {
+                return $contacts[0];
+            }
+        }
+
+        $result = $this->createContact($connection, array_merge(['Name' => $name], $extraContactData));
+        return $result['Contacts'][0] ?? [];
+    }
+
+    /**
+     * Create or update a tracked inventory item in Xero (POST upserts when ItemID is present)
+     */
+    public function createOrUpdateItem(XeroConnection $connection, array $itemData): array
+    {
+        $accessToken = $this->ensureValidToken($connection);
+
+        $response = Http::withToken($accessToken)
+            ->withHeaders([
+                'Xero-Tenant-Id' => $connection->tenant_id,
+                'Content-Type' => 'application/json',
+            ])
+            ->post($this->apiBaseUrl . '/Items', [
+                'Items' => [$itemData],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('Xero create/update item failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \Exception('Failed to create/update item in Xero: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Create a payment in Xero
      */
     public function createPayment(XeroConnection $connection, array $paymentData): array
@@ -249,6 +300,24 @@ class XeroService
     }
 
     /**
+     * Get tax rates from Xero
+     */
+    public function getTaxRates(XeroConnection $connection): array
+    {
+        $accessToken = $this->ensureValidToken($connection);
+
+        $response = Http::withToken($accessToken)
+            ->withHeaders(['Xero-Tenant-Id' => $connection->tenant_id])
+            ->get($this->apiBaseUrl . '/TaxRates');
+
+        if ($response->failed()) {
+            throw new \Exception('Failed to get tax rates from Xero');
+        }
+
+        return $response->json()['TaxRates'] ?? [];
+    }
+
+    /**
      * Get organization info
      */
     public function getOrganization(XeroConnection $connection): array
@@ -271,19 +340,24 @@ class XeroService
      */
     public function syncBookingPayment(XeroConnection $connection, array $bookingData): array
     {
-        // Find or create contact
-        $contact = $this->findOrCreateContact($connection, [
-            'Name' => $bookingData['customer_name'],
-            'EmailAddress' => $bookingData['customer_email'] ?? null,
-            'Phones' => !empty($bookingData['customer_phone']) ? [
-                ['PhoneType' => 'DEFAULT', 'PhoneNumber' => $bookingData['customer_phone']]
-            ] : [],
-        ]);
+        // Use the pre-resolved contact if given, otherwise find/create by email
+        $contactId = $bookingData['contact_id'] ?? null;
+
+        if (!$contactId) {
+            $contact = $this->findOrCreateContact($connection, [
+                'Name' => $bookingData['customer_name'],
+                'EmailAddress' => $bookingData['customer_email'] ?? null,
+                'Phones' => !empty($bookingData['customer_phone']) ? [
+                    ['PhoneType' => 'DEFAULT', 'PhoneNumber' => $bookingData['customer_phone']]
+                ] : [],
+            ]);
+            $contactId = $contact['ContactID'];
+        }
 
         // Create invoice
         $invoice = $this->createInvoice($connection, [
             'Type' => 'ACCREC',
-            'Contact' => ['ContactID' => $contact['ContactID']],
+            'Contact' => ['ContactID' => $contactId],
             'Date' => $bookingData['date'] ?? now()->format('Y-m-d'),
             'DueDate' => $bookingData['date'] ?? now()->format('Y-m-d'),
             'LineItems' => [

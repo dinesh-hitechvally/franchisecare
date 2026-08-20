@@ -53,10 +53,18 @@ return [
     |--------------------------------------------------------------------------
     */
     'xero' => [
-        'client_id' => env('XERO_CLIENT_ID'),
-        'client_secret' => env('XERO_CLIENT_SECRET'),
-        'redirect_uri' => env('XERO_REDIRECT_URI'),
-        'scopes' => 'openid profile email accounting.transactions accounting.contacts accounting.settings offline_access',
+        'client_id' => env('XERO_CLIENT_ID', '0EE15180E2A64AC2878878C6147A6358'),
+        'client_secret' => env('XERO_CLIENT_SECRET', 'wcfnkoGlRz7OWUv4zP73ugwdX4bo9qcjX07kuQ72m2UQF35x'),
+        'redirect_uri' => env('XERO_REDIRECT_URI','https://127.0.0.1:3000/integration/xero/callback'),
+        'scopes'=> [
+            'openid',
+            'profile',
+            'email',
+            'accounting.settings',
+            'accounting.contacts',
+            'accounting.transactions',
+            'offline_access'
+        ]
     ],
 
     /*

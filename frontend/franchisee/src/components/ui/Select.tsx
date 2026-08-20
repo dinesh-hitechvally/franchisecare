@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, forwardRef } from 'react'
-import { ChevronDown, Check } from 'lucide-react'
+import { ChevronDown, Check, Search } from 'lucide-react'
 import { cn } from '../../lib/utils'
 
 export interface SelectOption {
@@ -15,12 +15,17 @@ export interface SelectProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
   onChange?: (value: string | number) => void
   disabled?: boolean
   placeholder?: string
+  /** Show a search input inside the dropdown panel to filter options by label */
+  searchable?: boolean
+  searchPlaceholder?: string
 }
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>(
-  ({ className, label, error, options = [], value, onChange, disabled, placeholder = 'Select an option', ...props }, ref) => {
+  ({ className, label, error, options = [], value, onChange, disabled, placeholder = 'Select an option', searchable = false, searchPlaceholder = 'Search...', ...props }, ref) => {
     const [isOpen, setIsOpen] = useState(false)
+    const [query, setQuery] = useState('')
     const containerRef = useRef<HTMLDivElement>(null)
+    const searchInputRef = useRef<HTMLInputElement>(null)
 
     // Close when clicking outside
     useEffect(() => {
@@ -33,7 +38,19 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
       return () => document.removeEventListener('mousedown', handleClickOutside)
     }, [])
 
+    // Reset the search query each time the dropdown opens, and focus the search input
+    useEffect(() => {
+      if (isOpen && searchable) {
+        setQuery('')
+        searchInputRef.current?.focus()
+      }
+    }, [isOpen, searchable])
+
     const selectedOption = options.find(opt => opt.value === value)
+
+    const visibleOptions = searchable && query
+      ? options.filter(opt => opt.label.toLowerCase().includes(query.toLowerCase()))
+      : options
 
     const handleSelect = (optionValue: string | number) => {
       if (disabled) return
@@ -73,30 +90,49 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
 
           {/* Dropdown Menu */}
           {isOpen && (
-            <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-100 shadow-xl rounded-lg py-1.5 overflow-auto max-h-60 animate-in fade-in zoom-in-95 duration-150">
-              {options.length === 0 ? (
-                <div className="px-3 py-10 text-center text-xs text-gray-400 italic">No options found</div>
-              ) : (
-                options.map((option) => {
-                  const isSelected = option.value === value
-                  return (
-                    <button
-                      key={option.value}
-                      type="button"
-                      onClick={() => handleSelect(option.value)}
-                      className={cn(
-                        'w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors text-left',
-                        isSelected 
-                          ? 'bg-indigo-50 text-indigo-700' 
-                          : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
-                      )}
-                    >
-                      <span className="truncate">{option.label}</span>
-                      {isSelected && <Check className="w-4 h-4" />}
-                    </button>
-                  )
-                })
+            <div className="absolute z-[100] mt-1 w-full bg-white border border-gray-100 shadow-xl rounded-lg py-1.5 animate-in fade-in zoom-in-95 duration-150">
+              {searchable && (
+                <div className="px-2 pb-1.5 mb-1 border-b border-gray-100">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                    <input
+                      ref={searchInputRef}
+                      type="text"
+                      value={query}
+                      onChange={(e) => setQuery(e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      placeholder={searchPlaceholder}
+                      className="w-full pl-8 pr-2 py-1.5 text-sm border border-gray-200 rounded-md outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    />
+                  </div>
+                </div>
               )}
+
+              <div className="overflow-auto max-h-52">
+                {visibleOptions.length === 0 ? (
+                  <div className="px-3 py-10 text-center text-xs text-gray-400 italic">No options found</div>
+                ) : (
+                  visibleOptions.map((option) => {
+                    const isSelected = option.value === value
+                    return (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => handleSelect(option.value)}
+                        className={cn(
+                          'w-full flex items-center justify-between px-3 py-2 text-sm font-medium transition-colors text-left',
+                          isSelected
+                            ? 'bg-indigo-50 text-indigo-700'
+                            : 'text-gray-700 hover:bg-gray-50 hover:text-gray-900'
+                        )}
+                      >
+                        <span className="truncate">{option.label}</span>
+                        {isSelected && <Check className="w-4 h-4" />}
+                      </button>
+                    )
+                  })
+                )}
+              </div>
             </div>
           )}
         </div>

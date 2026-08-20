@@ -2,21 +2,91 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
+import { Select, type SelectOption } from '../../components/ui/Select'
 import { PageHeader } from '../../components/layout/PageHeader'
-import { xeroApi } from '../../api/services'
+import { xeroApi, type XeroSettings, type XeroAccount, type XeroTaxRate } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import { Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Loader2 } from 'lucide-react'
+import { Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Loader2, Settings2 } from 'lucide-react'
+
+// Account-code fields: rendered as a dropdown of the connected org's real Xero accounts,
+// filtered to the Xero account Type(s) that field is actually allowed to reference.
+const ACCOUNT_CODE_FIELDS: Array<{ key: keyof XeroSettings; label: string; help: string; types: string[] }> = [
+  { key: 'bank_account_code', label: 'Bank Account Code', help: 'Account code payments are recorded against', types: ['BANK'] },
+  { key: 'inventory_asset_account_code', label: 'Inventory Asset Account Code', help: 'Must be a Xero "Inventory Asset" type account', types: ['INVENTORY'] },
+  { key: 'inventory_cogs_account_code', label: 'Inventory COGS Account Code', help: 'Cost of Goods Sold account for stock purchases', types: ['DIRECTCOSTS', 'EXPENSE'] },
+  { key: 'inventory_sales_account_code', label: 'Inventory Sales Account Code', help: 'Revenue account for inventory items sold', types: ['SALES', 'REVENUE'] },
+  { key: 'service_sales_account_code', label: 'Service Sales Account Code', help: 'Revenue account for services sold', types: ['SALES', 'REVENUE'] },
+]
+
+// Plain text fields - not Xero account codes, so no dropdown applies
+const TEXT_FIELDS: Array<{ key: keyof XeroSettings; label: string; help: string }> = [
+  { key: 'default_supplier_name', label: 'Default Supplier Name', help: 'Xero contact used for internal stock restocking bills' },
+]
+
+const EMPTY_SETTINGS: XeroSettings = {
+  default_supplier_name: '',
+  bank_account_code: '',
+  inventory_asset_account_code: '',
+  inventory_cogs_account_code: '',
+  inventory_sales_account_code: '',
+  service_sales_account_code: '',
+  default_tax_type: '',
+}
 
 export function XeroIntegrationPage() {
   const queryClient = useQueryClient()
   const addToast = useToastStore((state) => state.addToast)
   const [isConnecting, setIsConnecting] = useState(false)
+  const [settingsForm, setSettingsForm] = useState<XeroSettings>(EMPTY_SETTINGS)
 
   // Get Xero connection status
   const { data: status, isLoading } = useQuery({
     queryKey: ['xero-status'],
     queryFn: () => xeroApi.getStatus(),
   })
+
+  // Get this company's Xero account code settings (only once connected)
+  useQuery({
+    queryKey: ['xero-settings'],
+    queryFn: async () => {
+      const result = await xeroApi.getSettings()
+      setSettingsForm(result.settings)
+      return result
+    },
+    enabled: !!status?.connected,
+  })
+
+  // Get the connected org's real chart of accounts, to populate account-code dropdowns
+  const { data: accountsData, isLoading: accountsLoading } = useQuery({
+    queryKey: ['xero-accounts'],
+    queryFn: () => xeroApi.getAccounts(),
+    enabled: !!status?.connected,
+  })
+  const accounts: XeroAccount[] = accountsData?.accounts ?? []
+
+  // Get the connected org's real tax rates, to populate the tax type dropdown
+  const { data: taxRatesData, isLoading: taxRatesLoading } = useQuery({
+    queryKey: ['xero-tax-rates'],
+    queryFn: () => xeroApi.getTaxRates(),
+    enabled: !!status?.connected,
+  })
+  const taxRates: XeroTaxRate[] = taxRatesData?.tax_rates ?? []
+
+  // Save settings mutation
+  const saveSettingsMutation = useMutation({
+    mutationFn: () => xeroApi.updateSettings(settingsForm),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['xero-settings'] })
+      addToast('Xero settings saved', 'success')
+    },
+    onError: () => {
+      addToast('Failed to save Xero settings', 'error')
+    },
+  })
+
+  const handleSettingChange = (key: keyof XeroSettings, value: string) => {
+    setSettingsForm((prev) => ({ ...prev, [key]: value }))
+  }
 
   // Disconnect mutation
   const disconnectMutation = useMutation({
@@ -63,24 +133,18 @@ export function XeroIntegrationPage() {
         `width=${width},height=${height},left=${left},top=${top},scrollbars=yes`
       )
 
-      // Listen for message from popup
-      const handleMessage = async (event: MessageEvent) => {
+      // Listen for the finished result posted by the popup's callback page
+      const handleMessage = (event: MessageEvent) => {
         if (event.data?.type === 'xero_callback') {
-          const { code, state } = event.data
-          
-          try {
-            const result = await xeroApi.callback(code, state)
-            
-            if (result.success) {
-              addToast(`Connected to Xero: ${result.tenant_name}`, 'success')
-              queryClient.invalidateQueries({ queryKey: ['xero-status'] })
-            } else {
-              addToast(result.error || 'Failed to connect', 'error')
-            }
-          } catch (error) {
-            addToast('Failed to complete Xero connection', 'error')
+          const { success, error, tenant_name } = event.data
+
+          if (success) {
+            addToast(tenant_name ? `Connected to Xero: ${tenant_name}` : 'Connected to Xero', 'success')
+            queryClient.invalidateQueries({ queryKey: ['xero-status'] })
+          } else {
+            addToast(error || 'Failed to connect to Xero', 'error')
           }
-          
+
           popup?.close()
           window.removeEventListener('message', handleMessage)
           setIsConnecting(false)
@@ -200,6 +264,124 @@ export function XeroIntegrationPage() {
           </div>
         </div>
       </Card>
+
+      {/* Xero Account Settings */}
+      {status?.connected && (
+        <Card className="p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center gap-2 mb-2">
+            <Settings2 className="w-5 h-5 text-gray-700" />
+            <h3 className="font-semibold text-gray-900">Xero Account Settings</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-5">
+            These account codes must match accounts that already exist in your Xero chart of accounts,
+            or syncing will fail with a validation error from Xero.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            {ACCOUNT_CODE_FIELDS.map((field) => {
+              const currentValue = settingsForm[field.key]
+              const matches = accounts.filter((a) => field.types.includes(a.Type))
+              const pool = matches.length > 0 ? matches : accounts
+              const hasCurrent = pool.some((a) => a.Code === currentValue)
+
+              const options: SelectOption[] = [
+                ...(!hasCurrent && currentValue
+                  ? [{ value: currentValue, label: `${currentValue} (currently set, not found in Xero)` }]
+                  : []),
+                ...pool.map((account) => ({ value: account.Code, label: `${account.Code} - ${account.Name}` })),
+              ]
+
+              return (
+                <div key={field.key}>
+                  <label className="block text-sm text-gray-600 mb-1.5">{field.label}</label>
+                  {accountsLoading ? (
+                    <div className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-400 flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading Xero accounts...
+                    </div>
+                  ) : accounts.length === 0 ? (
+                    // Fall back to free text if the chart of accounts couldn't be fetched
+                    <input
+                      type="text"
+                      value={currentValue}
+                      onChange={(e) => handleSettingChange(field.key, e.target.value)}
+                      className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    />
+                  ) : (
+                    <Select
+                      searchable
+                      searchPlaceholder="Search accounts..."
+                      placeholder="Select an account..."
+                      options={options}
+                      value={currentValue}
+                      onChange={(value) => handleSettingChange(field.key, String(value))}
+                    />
+                  )}
+                  <p className="text-xs text-gray-400 mt-1">{field.help}</p>
+                </div>
+              )
+            })}
+
+            {/* Default Tax Type - dropdown of the connected org's real tax rates */}
+            <div>
+              <label className="block text-sm text-gray-600 mb-1.5">Default Tax Type</label>
+              {taxRatesLoading ? (
+                <div className="w-full px-4 py-3 border border-gray-200 rounded-lg text-sm text-gray-400 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading Xero tax rates...
+                </div>
+              ) : taxRates.length === 0 ? (
+                // Fall back to free text if tax rates couldn't be fetched
+                <input
+                  type="text"
+                  value={settingsForm.default_tax_type}
+                  onChange={(e) => handleSettingChange('default_tax_type', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+              ) : (
+                <Select
+                  searchable
+                  searchPlaceholder="Search tax types..."
+                  placeholder="Select a tax type..."
+                  options={[
+                    ...(!taxRates.some((t) => t.TaxType === settingsForm.default_tax_type) && settingsForm.default_tax_type
+                      ? [{ value: settingsForm.default_tax_type, label: `${settingsForm.default_tax_type} (currently set, not found in Xero)` }]
+                      : []),
+                    ...taxRates.map((taxRate) => ({ value: taxRate.TaxType, label: `${taxRate.Name} (${taxRate.TaxType})` })),
+                  ]}
+                  value={settingsForm.default_tax_type}
+                  onChange={(value) => handleSettingChange('default_tax_type', String(value))}
+                />
+              )}
+              <p className="text-xs text-gray-400 mt-1">Tax type applied to synced line items - must match your Xero org</p>
+            </div>
+
+            {TEXT_FIELDS.map((field) => (
+              <div key={field.key}>
+                <label className="block text-sm text-gray-600 mb-1.5">{field.label}</label>
+                <input
+                  type="text"
+                  value={settingsForm[field.key]}
+                  onChange={(e) => handleSettingChange(field.key, e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+                <p className="text-xs text-gray-400 mt-1">{field.help}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-6">
+            <Button
+              onClick={() => saveSettingsMutation.mutate()}
+              disabled={saveSettingsMutation.isPending}
+              className="flex items-center gap-2"
+            >
+              {saveSettingsMutation.isPending && <Loader2 className="w-4 h-4 animate-spin" />}
+              {saveSettingsMutation.isPending ? 'Saving...' : 'Save Settings'}
+            </Button>
+          </div>
+        </Card>
+      )}
 
       {/* How it works */}
       <Card className="p-6 border border-gray-200 shadow-sm">

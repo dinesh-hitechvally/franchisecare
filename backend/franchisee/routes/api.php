@@ -330,11 +330,23 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::prefix('xero')->group(function () {
         Route::get('status', [\App\Http\Controllers\Api\XeroController::class, 'status']);
-        Route::get('authorize', [\App\Http\Controllers\Api\XeroController::class, 'authorize']);
+        Route::get('authorize', [\App\Http\Controllers\Api\XeroController::class, 'getAuthUrl']);
         Route::post('callback', [\App\Http\Controllers\Api\XeroController::class, 'callback']);
         Route::post('disconnect', [\App\Http\Controllers\Api\XeroController::class, 'disconnect']);
         Route::get('accounts', [\App\Http\Controllers\Api\XeroController::class, 'accounts']);
+        Route::get('tax-rates', [\App\Http\Controllers\Api\XeroController::class, 'taxRates']);
+        Route::get('settings', [\App\Http\Controllers\Api\XeroController::class, 'getSettings']);
+        Route::put('settings', [\App\Http\Controllers\Api\XeroController::class, 'updateSettings']);
         Route::post('sync-booking', [\App\Http\Controllers\Api\XeroController::class, 'syncBooking']);
+        Route::post('push-pending-bookings', [\App\Http\Controllers\Api\XeroController::class, 'pushPendingBookings']);
+        Route::post('sync-customer', [\App\Http\Controllers\Api\XeroController::class, 'syncCustomer']);
+        Route::post('push-pending-customers', [\App\Http\Controllers\Api\XeroController::class, 'pushPendingCustomers']);
+        Route::post('sync-purchase', [\App\Http\Controllers\Api\XeroController::class, 'syncPurchase']);
+        Route::post('push-pending-purchases', [\App\Http\Controllers\Api\XeroController::class, 'pushPendingPurchases']);
+        Route::post('sync-inventory-item', [\App\Http\Controllers\Api\XeroController::class, 'syncInventoryItem']);
+        Route::post('push-pending-inventory-items', [\App\Http\Controllers\Api\XeroController::class, 'pushPendingInventoryItems']);
+        Route::post('sync-service', [\App\Http\Controllers\Api\XeroController::class, 'syncService']);
+        Route::post('push-pending-services', [\App\Http\Controllers\Api\XeroController::class, 'pushPendingServices']);
         Route::get('test', [\App\Http\Controllers\Api\XeroController::class, 'test']);
     });
 

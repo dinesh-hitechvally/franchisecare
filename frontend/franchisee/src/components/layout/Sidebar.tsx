@@ -212,7 +212,6 @@ const sections: NavSection[] = [
     icon: <SvgIcon type="integration" />,
     hasChildren: true,
     children: [
-      { name: 'API Settings', href: '/integration/api' },
       { name: 'Xero Accounting', href: '/integration/xero' },
     ],
   },

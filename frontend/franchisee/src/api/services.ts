@@ -1604,25 +1604,51 @@ export interface XeroAccount {
   Status: string
 }
 
+export interface XeroTaxRate {
+  Name: string
+  TaxType: string
+  Status: string
+  DisplayTaxRate: number
+}
+
+export interface XeroSettings {
+  default_supplier_name: string
+  bank_account_code: string
+  inventory_asset_account_code: string
+  inventory_cogs_account_code: string
+  inventory_sales_account_code: string
+  service_sales_account_code: string
+  default_tax_type: string
+}
+
 export const xeroApi = {
   getStatus: () => apiClient.get<XeroStatus>('/xero/status'),
-  
+
   getAuthUrl: () => apiClient.get<{ auth_url: string }>('/xero/authorize'),
-  
+
   callback: (code: string, state: string) =>
     apiClient.post<{ success: boolean; message: string; tenant_name?: string; error?: string }>('/xero/callback', { code, state }),
-  
+
   disconnect: () =>
     apiClient.post<{ success: boolean; message: string }>('/xero/disconnect'),
-  
+
   getAccounts: () =>
     apiClient.get<{ accounts: XeroAccount[] }>('/xero/accounts'),
-  
+
+  getTaxRates: () =>
+    apiClient.get<{ tax_rates: XeroTaxRate[] }>('/xero/tax-rates'),
+
   syncBooking: (bookingId: number) =>
     apiClient.post<{ success: boolean; message: string; invoice_id?: string; error?: string }>('/xero/sync-booking', { booking_id: bookingId }),
-  
+
   test: () =>
     apiClient.get<{ success: boolean; message: string; organization?: string }>('/xero/test'),
+
+  getSettings: () =>
+    apiClient.get<{ success: boolean; settings: XeroSettings }>('/xero/settings'),
+
+  updateSettings: (settings: Partial<XeroSettings>) =>
+    apiClient.put<{ success: boolean; message: string; settings: XeroSettings }>('/xero/settings', settings),
 }
 
 // Training Types
