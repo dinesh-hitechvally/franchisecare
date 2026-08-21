@@ -209,7 +209,7 @@ export function WaitlistBookingsPage() {
             ))}
           </select>
 
-          <Link to="/bookings/waitlist/new">
+          <Link to="/bookings/new-waitlist">
             <Button variant="secondary" size="sm">
               <Plus className="w-4 h-4" />
               New Waitlist

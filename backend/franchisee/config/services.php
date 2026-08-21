@@ -41,10 +41,21 @@ return [
     |--------------------------------------------------------------------------
     */
     'cybersource' => [
-        'merchant_id' => env('CYBERSOURCE_MERCHANT_ID'),
-        'api_key_id' => env('CYBERSOURCE_API_KEY_ID'),
-        'secret_key' => env('CYBERSOURCE_SECRET_KEY'),
+        'merchant_id' => env('CYBERSOURCE_MERCHANT_ID', ''),
+        'api_key_id' => env('CYBERSOURCE_API_KEY_ID', ''),
+        'secret_key' => env('CYBERSOURCE_SECRET_KEY', ''),
         'sandbox' => env('CYBERSOURCE_SANDBOX', true),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | PayPal Payment Gateway
+    |--------------------------------------------------------------------------
+    */
+    'paypal' => [
+        'client_id' => env('PAYPAL_CLIENT_ID', 'Aabc123XYZ_AbcDEF-GHiJkLMnoPQrsTUVwXYZ1234567890abcdefGhIjKlMnOpQrStUvWxYz_EXAMPLE'),
+        'client_secret' => env('PAYPAL_CLIENT_SECRET', 'EMnOpQrStUvWxYz1234567890abcdefGhIjKlMnOpQrStUvWxYz_Aabc123XYZ_AbcDEF-GHiJk_EXAMPLE'),
+        'sandbox' => env('PAYPAL_SANDBOX', true),
     ],
 
     /*
@@ -66,7 +77,7 @@ return [
             'offline_access'
         ]
     ],
-
+ 
     /*
     |--------------------------------------------------------------------------
     | MessageMedia SMS Gateway

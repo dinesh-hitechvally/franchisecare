@@ -6,6 +6,8 @@ import { smsCreditsApi, paymentsApi } from '../../api/services'
 import { useState } from 'react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { PaymentModal } from '../../components/modals/PaymentModal'
+import { PaypalPaymentButton } from '../../components/payments/PaypalPaymentButton'
+import { PaymentMethodSelector, type PaymentMethod } from '../../components/payments/PaymentMethodSelector'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
 
@@ -28,10 +30,16 @@ export function BuyCreditsPage() {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null)
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
 
   const { data, isLoading } = useQuery({
     queryKey: ['sms-credits'],
     queryFn: () => smsCreditsApi.get(),
+  })
+
+  const { data: paymentConfig } = useQuery({
+    queryKey: ['payments-config'],
+    queryFn: () => paymentsApi.getConfig(),
   })
 
   const paymentMutation = useMutation({
@@ -128,6 +136,42 @@ export function BuyCreditsPage() {
     })
   }
 
+  const handleCreatePaypalOrder = async () => {
+    if (!selectedPackage) throw new Error('No package selected')
+
+    const result = await paymentsApi.createPaypalOrder({
+      type: 'sms_credit',
+      package_id: selectedPackage.id,
+    })
+
+    if (!result.success || !result.transaction_id || !result.paypal_order_id) {
+      throw new Error(result.error || 'Failed to start PayPal payment')
+    }
+
+    return { transaction_id: result.transaction_id, paypal_order_id: result.paypal_order_id }
+  }
+
+  const handleCapturePaypalOrder = async (transactionId: number, paypalOrderId: string) => {
+    const result = await paymentsApi.capturePaypalOrder({
+      transaction_id: transactionId,
+      paypal_order_id: paypalOrderId,
+    })
+
+    if (!result.success) {
+      setPaymentError(result.error || 'PayPal payment failed. Please try again.')
+      throw new Error(result.error || 'PayPal payment failed')
+    }
+
+    queryClient.invalidateQueries({ queryKey: ['sms-credits'] })
+    setPaymentError(null)
+  }
+
+  const handlePaypalSuccess = () => {
+    setStep('select')
+    setSelectedPackage(null)
+    addToast('SMS credits purchased successfully!', 'success')
+  }
+
   const packages = data?.packages ?? []
   const balance = data?.balance ?? 0
 
@@ -167,12 +211,32 @@ export function BuyCreditsPage() {
               Mate Pay accepts Visa, Mastercard credit and Debit cards but does not accept Amex.
             </p>
 
-            <Button
-              onClick={handlePayClick}
-              className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-3"
-            >
-              PAY WITH MATE PAY
-            </Button>
+            <PaymentMethodSelector
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+              showPaypal={!!paymentConfig?.paypal_configured}
+            />
+
+            {paymentError && (
+              <p className="text-sm text-red-600 text-center">{paymentError}</p>
+            )}
+
+            {paymentMethod === 'paypal' && paymentConfig?.paypal_configured ? (
+              <PaypalPaymentButton
+                clientId={paymentConfig.paypal_client_id}
+                onCreateOrder={handleCreatePaypalOrder}
+                onCaptureOrder={handleCapturePaypalOrder}
+                onSuccess={handlePaypalSuccess}
+                onError={setPaymentError}
+              />
+            ) : (
+              <Button
+                onClick={handlePayClick}
+                className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-3"
+              >
+                PAY WITH MATE PAY
+              </Button>
+            )}
 
             <Button
               variant="secondary"

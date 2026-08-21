@@ -5,6 +5,8 @@ import { Button } from '../../components/ui/Button'
 import { ShoppingCart, Loader2, ArrowLeft } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { PaymentModal } from '../../components/modals/PaymentModal'
+import { PaypalPaymentButton } from '../../components/payments/PaypalPaymentButton'
+import { PaymentMethodSelector, type PaymentMethod } from '../../components/payments/PaymentMethodSelector'
 import { inventoryApi, paymentsApi } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
 import { useAuthStore } from '../../store/authStore'
@@ -30,11 +32,17 @@ export function ShampooOrderPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
   const [createdOrderId, setCreatedOrderId] = useState<number | null>(null)
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('card')
 
   // Fetch shampoo products from inventory_items API
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['inventory-items', 'shampoo'],
     queryFn: () => inventoryApi.getItems({ category: 'shampoo' }),
+  })
+
+  const { data: paymentConfig } = useQuery({
+    queryKey: ['payments-config'],
+    queryFn: () => paymentsApi.getConfig(),
   })
 
   const totalCost = products.reduce((total, p) => total + (quantities[p.id] || 0) * p.unitPrice, 0)
@@ -138,24 +146,32 @@ export function ShampooOrderPage() {
     setPaymentError(null)
   }
 
+  // Creates the inventory order on first use (whichever payment method gets there first -
+  // card or PayPal), then reuses the same order id for every subsequent attempt.
+  const ensureOrderCreated = async (): Promise<number> => {
+    if (createdOrderId) return createdOrderId
+
+    const items = orderItems.map(item => ({
+      product_name: item.productName,
+      product_sku: item.productSku,
+      inventory_item_id: item.productId,
+      quantity: item.quantity,
+      unit_price: item.unitPrice,
+    }))
+
+    const result = await createOrderMutation.mutateAsync(items)
+    const orderId = Number(result.data.id)
+    setCreatedOrderId(orderId)
+    return orderId
+  }
+
   const handlePayClick = async () => {
     setPaymentError(null)
 
-    if (!createdOrderId) {
-      const items = orderItems.map(item => ({
-        product_name: item.productName,
-        product_sku: item.productSku,
-        inventory_item_id: item.productId,
-        quantity: item.quantity,
-        unit_price: item.unitPrice,
-      }))
-
-      try {
-        const result = await createOrderMutation.mutateAsync(items)
-        setCreatedOrderId(Number(result.data.id))
-      } catch {
-        return
-      }
+    try {
+      await ensureOrderCreated()
+    } catch {
+      return
     }
 
     setIsPaymentModalOpen(true)
@@ -185,13 +201,50 @@ export function ShampooOrderPage() {
     })
   }
 
-  const handlePaymentSuccess = () => {
-    setIsPaymentModalOpen(false)
+  const handleCreatePaypalOrder = async () => {
+    const orderId = await ensureOrderCreated()
+
+    const result = await paymentsApi.createPaypalOrder({
+      type: 'inventory_order',
+      order_id: orderId,
+    })
+
+    if (!result.success || !result.transaction_id || !result.paypal_order_id) {
+      throw new Error(result.error || 'Failed to start PayPal payment')
+    }
+
+    return { transaction_id: result.transaction_id, paypal_order_id: result.paypal_order_id }
+  }
+
+  const handleCapturePaypalOrder = async (transactionId: number, paypalOrderId: string) => {
+    const result = await paymentsApi.capturePaypalOrder({
+      transaction_id: transactionId,
+      paypal_order_id: paypalOrderId,
+    })
+
+    if (!result.success) {
+      setPaymentError(result.error || 'PayPal payment failed. Please try again.')
+      throw new Error(result.error || 'PayPal payment failed')
+    }
+
+    setPaymentError(null)
+  }
+
+  const resetOrderState = () => {
     setStep('select')
     setQuantities({})
     setOrderItems([])
     setCreatedOrderId(null)
     addToast('Order placed successfully!', 'success')
+  }
+
+  const handlePaymentSuccess = () => {
+    setIsPaymentModalOpen(false)
+    resetOrderState()
+  }
+
+  const handlePaypalSuccess = () => {
+    resetOrderState()
   }
 
   // Review Page
@@ -256,20 +309,40 @@ export function ShampooOrderPage() {
               Mate Pay accepts Visa, Mastercard credit and Debit cards but does not accept Amex.
             </p>
 
-            <Button
-              onClick={handlePayClick}
-              disabled={createOrderMutation.isPending}
-              className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-3"
-            >
-              {createOrderMutation.isPending ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                  Creating Order...
-                </>
-              ) : (
-                'PAY WITH MATE PAY'
-              )}
-            </Button>
+            <PaymentMethodSelector
+              value={paymentMethod}
+              onChange={setPaymentMethod}
+              showPaypal={!!paymentConfig?.paypal_configured}
+            />
+
+            {paymentError && (
+              <p className="text-sm text-red-600 text-center">{paymentError}</p>
+            )}
+
+            {paymentMethod === 'paypal' && paymentConfig?.paypal_configured ? (
+              <PaypalPaymentButton
+                clientId={paymentConfig.paypal_client_id}
+                onCreateOrder={handleCreatePaypalOrder}
+                onCaptureOrder={handleCapturePaypalOrder}
+                onSuccess={handlePaypalSuccess}
+                onError={setPaymentError}
+              />
+            ) : (
+              <Button
+                onClick={handlePayClick}
+                disabled={createOrderMutation.isPending}
+                className="bg-gray-800 hover:bg-gray-900 text-white px-8 py-3"
+              >
+                {createOrderMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                    Creating Order...
+                  </>
+                ) : (
+                  'PAY WITH MATE PAY'
+                )}
+              </Button>
+            )}
 
             <Button
               variant="secondary"

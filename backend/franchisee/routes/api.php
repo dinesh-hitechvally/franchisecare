@@ -317,6 +317,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('capture-context', [\App\Http\Controllers\Api\PaymentController::class, 'generateCaptureContext']);
         Route::post('sms-credits', [\App\Http\Controllers\Api\PaymentController::class, 'purchaseSmsCredits']);
         Route::post('inventory-order', [\App\Http\Controllers\Api\PaymentController::class, 'payInventoryOrder']);
+        Route::post('paypal/create-order', [\App\Http\Controllers\Api\PaymentController::class, 'createPaypalOrder']);
+        Route::post('paypal/capture-order', [\App\Http\Controllers\Api\PaymentController::class, 'capturePaypalOrder']);
         Route::post('booking', [\App\Http\Controllers\Api\PaymentController::class, 'payBooking']);
         Route::get('history', [\App\Http\Controllers\Api\PaymentController::class, 'history']);
         Route::get('{transaction}', [\App\Http\Controllers\Api\PaymentController::class, 'show']);
@@ -334,6 +336,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('callback', [\App\Http\Controllers\Api\XeroController::class, 'callback']);
         Route::post('disconnect', [\App\Http\Controllers\Api\XeroController::class, 'disconnect']);
         Route::get('accounts', [\App\Http\Controllers\Api\XeroController::class, 'accounts']);
+        Route::post('accounts', [\App\Http\Controllers\Api\XeroController::class, 'createAccount']);
         Route::get('tax-rates', [\App\Http\Controllers\Api\XeroController::class, 'taxRates']);
         Route::get('settings', [\App\Http\Controllers\Api\XeroController::class, 'getSettings']);
         Route::put('settings', [\App\Http\Controllers\Api\XeroController::class, 'updateSettings']);

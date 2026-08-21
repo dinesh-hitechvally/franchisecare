@@ -200,6 +200,7 @@ function mapInventoryItemFromApi(row: any): InventoryItem {
   const raw = row as any
   return {
     id: String(raw.id),
+    categoryId: raw.category_id !== undefined && raw.category_id !== null ? Number(raw.category_id) : undefined,
     name: raw.name || '',
     category: raw.category || 'office',
     sku: raw.sku || '',
@@ -1512,6 +1513,15 @@ export interface PaymentConfig {
   configured: boolean
   currency: string
   supported_cards: string[]
+  paypal_configured: boolean
+  paypal_client_id: string
+}
+
+export interface PaypalOrderResult {
+  success: boolean
+  transaction_id?: number
+  paypal_order_id?: string
+  error?: string
 }
 
 export interface PaymentTransaction {
@@ -1577,6 +1587,12 @@ export const paymentsApi = {
     cvv: string
     billing: BillingInfo
   }) => apiClient.post<PaymentResult>('/payments/booking', data),
+
+  createPaypalOrder: (data: { type: 'sms_credit' | 'inventory_order'; package_id?: string; order_id?: number }) =>
+    apiClient.post<PaypalOrderResult>('/payments/paypal/create-order', data),
+
+  capturePaypalOrder: (data: { transaction_id: number; paypal_order_id: string }) =>
+    apiClient.post<PaymentResult>('/payments/paypal/capture-order', data),
   
   getHistory: (params?: { type?: string; status?: string; per_page?: number; page?: number }) =>
     apiClient.get<{ data: PaymentTransaction[]; meta: PaginationMeta }>('/payments/history', { params }),
@@ -1634,6 +1650,9 @@ export const xeroApi = {
 
   getAccounts: () =>
     apiClient.get<{ accounts: XeroAccount[] }>('/xero/accounts'),
+
+  createAccount: (data: { code: string; name: string; type: string }) =>
+    apiClient.post<{ success: boolean; message: string; account: XeroAccount; error?: string }>('/xero/accounts', data),
 
   getTaxRates: () =>
     apiClient.get<{ tax_rates: XeroTaxRate[] }>('/xero/tax-rates'),

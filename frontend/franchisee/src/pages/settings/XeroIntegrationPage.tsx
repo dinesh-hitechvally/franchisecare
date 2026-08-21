@@ -1,12 +1,57 @@
 import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { AxiosError } from 'axios'
 import { Card } from '../../components/ui/Card'
 import { Button } from '../../components/ui/Button'
 import { Select, type SelectOption } from '../../components/ui/Select'
 import { PageHeader } from '../../components/layout/PageHeader'
 import { xeroApi, type XeroSettings, type XeroAccount, type XeroTaxRate } from '../../api/services'
 import { useToastStore } from '../../store/toastStore'
-import { Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Loader2, Settings2 } from 'lucide-react'
+import { Link2, Unlink, RefreshCw, CheckCircle, AlertCircle, ExternalLink, Loader2, Settings2, Plus } from 'lucide-react'
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  const message = (error as AxiosError<{ error?: string }>)?.response?.data?.error
+  return message || fallback
+}
+
+// Inline "no results" content for an account-code dropdown: lets the user create that
+// account directly in Xero instead of having to go set it up there first.
+function CreateAccountInline({
+  name,
+  isPending,
+  onSubmit,
+}: {
+  name: string
+  isPending: boolean
+  onSubmit: (code: string) => void
+}) {
+  const [code, setCode] = useState('')
+
+  return (
+    <div className="px-3 py-3 space-y-2" onClick={(e) => e.stopPropagation()}>
+      <p className="text-xs text-gray-500">
+        No match for "<span className="font-medium text-gray-700">{name}</span>". Add it as a new Xero account:
+      </p>
+      <input
+        type="text"
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        placeholder="Account code (e.g. 610)"
+        maxLength={10}
+        className="w-full px-2.5 py-1.5 text-sm border border-gray-200 rounded-md outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+      />
+      <button
+        type="button"
+        disabled={!code.trim() || isPending}
+        onClick={() => onSubmit(code.trim())}
+        className="w-full flex items-center justify-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-white bg-indigo-600 rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+      >
+        {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+        {isPending ? 'Adding...' : `Add "${name}" to Xero`}
+      </button>
+    </div>
+  )
+}
 
 // Account-code fields: rendered as a dropdown of the connected org's real Xero accounts,
 // filtered to the Xero account Type(s) that field is actually allowed to reference.
@@ -86,6 +131,27 @@ export function XeroIntegrationPage() {
 
   const handleSettingChange = (key: keyof XeroSettings, value: string) => {
     setSettingsForm((prev) => ({ ...prev, [key]: value }))
+  }
+
+  // Create-a-new-Xero-account mutation, triggered from an account-code dropdown's "no results" state
+  const createAccountMutation = useMutation({
+    mutationFn: (data: { code: string; name: string; type: string }) => xeroApi.createAccount(data),
+  })
+
+  const handleCreateAccount = (fieldKey: keyof XeroSettings, type: string, name: string, code: string) => {
+    createAccountMutation.mutate(
+      { code, name, type },
+      {
+        onSuccess: (result) => {
+          queryClient.invalidateQueries({ queryKey: ['xero-accounts'] })
+          handleSettingChange(fieldKey, result.account.Code)
+          addToast(`Account "${result.account.Name}" created in Xero`, 'success')
+        },
+        onError: (error) => {
+          addToast(getErrorMessage(error, 'Failed to create account in Xero'), 'error')
+        },
+      }
+    )
   }
 
   // Disconnect mutation
@@ -315,6 +381,13 @@ export function XeroIntegrationPage() {
                       options={options}
                       value={currentValue}
                       onChange={(value) => handleSettingChange(field.key, String(value))}
+                      renderNoResults={(query) => (
+                        <CreateAccountInline
+                          name={query}
+                          isPending={createAccountMutation.isPending}
+                          onSubmit={(code) => handleCreateAccount(field.key, field.types[0], query, code)}
+                        />
+                      )}
                     />
                   )}
                   <p className="text-xs text-gray-400 mt-1">{field.help}</p>

@@ -8,19 +8,6 @@ import { StockTakeHistoryModal } from '../../components/modals/StockTakeHistoryM
 import { Package } from 'lucide-react'
 import { PageHeader } from '../../components/layout/PageHeader'
 
-// Static stock items - based on screenshot analysis
-const STOCK_ITEMS = [
-  { id: 'SH201', name: 'Herbal Deluxe Shampoo', code: '[SH201]' },
-  { id: 'SH202', name: 'Whitening Deluxe Shampoo', code: '[SH202]' },
-  { id: 'SH203', name: 'HydroClean Sanitiser', code: '[SH203]' },
-  { id: 'SH206', name: 'Medicated Wash', code: '[SH206]' },
-  { id: 'BWD', name: 'Blue Wheelers Detangler (5Lt)', code: '[BWD]' },
-  { id: 'BWDS', name: 'Blue Wheelers NEW Deshed', code: '[BWDS]' },
-  { id: 'Conditioner', name: 'Conditioner', code: '[Conditioner]' },
-  { id: 'SH204', name: 'Cologne (NEW)', code: '[SH204]' },
-  { id: 'BWFT', name: 'Flea & Tick rinse', code: '[BWFT]' },
-]
-
 export function StockTakePage() {
   const [quantities, setQuantities] = useState<Record<string, { qty: string; percent: string }>>({})
   const [isLocked, setIsLocked] = useState(false)
@@ -28,39 +15,40 @@ export function StockTakePage() {
   const [lastStockTakeDate, setLastStockTakeDate] = useState<Date | null>(null)
   const [showHistory, setShowHistory] = useState(false)
 
-  // Mock category ID - in production this should come from params or context
-  const categoryId = 'shampoo-order'
-
-  // Fetch inventory items for current SOH
+  // Fetch inventory items for current SOH - this page only handles the Shampoo category
   const { data: inventoryItems = [] } = useQuery({
     queryKey: ['inventory', 'shampoo'],
     queryFn: () => inventoryApi.getItems({ category: 'shampoo' }),
   })
 
+  // The real numeric category id, resolved from the fetched items rather than hardcoded,
+  // since it can differ between environments/seed data.
+  const categoryId = inventoryItems[0]?.categoryId ? String(inventoryItems[0].categoryId) : undefined
+
   // Fetch last stock take batch
   const { data: lastBatch } = useQuery({
     queryKey: ['stock-take', categoryId],
     queryFn: async () => {
-      const response = await stockTakeApi.getLast(categoryId)
+      const response = await stockTakeApi.getLast(categoryId!)
       return response
     },
+    enabled: !!categoryId,
   })
 
-  // Initialize quantities with last batch values or inventory SOH
+  // Initialize quantities with last batch values or inventory SOH - all keyed by the
+  // real inventory item id (product id), never a stock/SKU code.
   useEffect(() => {
     const defaultQuantities = { ...quantities }
     let hasChanges = false
 
-    STOCK_ITEMS.forEach((item) => {
+    inventoryItems.forEach((item) => {
       // If user has already entered a value for this item, skip it
       if (defaultQuantities[item.id] && defaultQuantities[item.id].qty) {
         return
       }
 
       // Try to find value from last batch items first
-      const batchItem = lastBatch?.items?.find(
-        (bi: any) => String(bi.inventory_id) === item.id || bi.inventory?.sku === item.id
-      )
+      const batchItem = lastBatch?.items?.find((bi) => String(bi.inventory_id) === item.id)
 
       if (batchItem) {
         defaultQuantities[item.id] = {
@@ -71,14 +59,8 @@ export function StockTakePage() {
         return
       }
 
-      // Fall back to inventory item
-      const inventoryItem = inventoryItems.find(
-        (inv) => inv.id === item.id || inv.sku === item.id || inv.sku === item.code.replace(/\[|\]/g, '')
-      )
-
-      // Set qty to current SOH or 0 if not found
-      const qty = inventoryItem ? String(inventoryItem.quantity) : '0'
-      defaultQuantities[item.id] = { qty, percent: '' }
+      // Fall back to current SOH on the inventory item itself
+      defaultQuantities[item.id] = { qty: String(item.quantity), percent: '' }
       hasChanges = true
     })
 
@@ -157,6 +139,7 @@ export function StockTakePage() {
 
   const submitMutation = useMutation({
     mutationFn: async () => {
+      if (!categoryId) return
       await stockTakeApi.submit(categoryId, quantities)
     },
     onSuccess: () => {
@@ -220,10 +203,10 @@ export function StockTakePage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {STOCK_ITEMS.map((item) => (
+              {inventoryItems.map((item) => (
                 <tr key={item.id} className="bg-white">
                   <td className="px-6 py-6 text-gray-500 font-medium">
-                    {item.name} {item.code}
+                    {item.name} {item.sku ? `[${item.sku}]` : ''}
                   </td>
                   <td className="px-6 py-6 text-center">
                     <div className="flex justify-center flex-col items-center">
@@ -266,10 +249,10 @@ export function StockTakePage() {
             </Button>
           )}
           <Button
-            disabled={isLocked || !hasFilledData || submitMutation.isPending}
+            disabled={isLocked || !hasFilledData || !categoryId || submitMutation.isPending}
             onClick={() => submitMutation.mutate()}
             className={`px-6 ${
-              isLocked || !hasFilledData
+              isLocked || !hasFilledData || !categoryId
                 ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
                 : 'bg-blue-600 text-white hover:bg-blue-700'
             }`}
@@ -282,7 +265,7 @@ export function StockTakePage() {
       <StockTakeHistoryModal
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
-        categoryId={categoryId}
+        categoryId={categoryId ?? ''}
       />
     </div>
   )

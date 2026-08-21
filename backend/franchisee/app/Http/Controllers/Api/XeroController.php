@@ -61,6 +61,23 @@ class XeroController extends Controller
         return response()->json(['accounts' => $result['accounts']]);
     }
 
+    public function createAccount(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'code' => 'required|string|max:10',
+            'name' => 'required|string|max:150',
+            'type' => 'required|string|max:50',
+        ]);
+
+        $result = $this->xeroIntegrationService->createAccount($request->user(), $validated);
+
+        if (!($result['success'] ?? true)) {
+            return response()->json(['error' => $result['error']], $result['status_code'] ?? 500);
+        }
+
+        return response()->json($result);
+    }
+
     public function taxRates(Request $request): JsonResponse
     {
         $result = $this->xeroIntegrationService->taxRates($request->user());

@@ -16,6 +16,8 @@ interface XeroIntegrationServiceInterface
 
     public function accounts(User $user): array;
 
+    public function createAccount(User $user, array $data): array;
+
     public function taxRates(User $user): array;
 
     public function getSettings(User $user): array;

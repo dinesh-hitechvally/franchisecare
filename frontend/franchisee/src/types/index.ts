@@ -302,6 +302,7 @@ export interface BlockoutRecurring {
 
 export interface InventoryItem {
   id: string
+  categoryId?: number
   name: string
   category: string
   sku: string

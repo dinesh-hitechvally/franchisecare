@@ -105,7 +105,7 @@ export function PaymentModal({
     try {
       // Convert 2-digit year to 4-digit
       const fullYear = expirationYear.length === 2 ? `20${expirationYear}` : expirationYear
-      
+
       await onSubmit({
         card_number: cardNumber,
         expiration_month: expirationMonth.padStart(2, '0'),
@@ -113,7 +113,7 @@ export function PaymentModal({
         cvv,
         billing,
       })
-      
+
       // Show success modal
       setShowSuccess(true)
     } catch (err) {

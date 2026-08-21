@@ -151,7 +151,7 @@ export function AppRoutes() {
         <Route path="bookings/new" element={<NewBookingsPage />} />
         <Route path="bookings/edit/:id" element={<NewBookingsPage />} />
         <Route path="bookings/waitlist" element={<WaitlistBookingsPage />} />
-        <Route path="bookings/waitlist/new" element={<NewWaitlistPage />} />
+        <Route path="bookings/new-waitlist" element={<NewWaitlistPage />} />
         <Route path="bookings/waitlist/edit/:id" element={<NewWaitlistPage />} />
         <Route path="bookings/recurring" element={<RecurringBookingsPage />} />
         <Route path="bookings/recurring/edit/:id" element={<NewBookingsPage />} />

@@ -56,7 +56,7 @@ const sections: NavSection[] = [
       { name: 'Active Bookings', href: '/bookings/active' },
       { name: 'Completed Bookings', href: '/bookings/completed' },
       { name: 'Waitlists', href: '/bookings/waitlist' },
-      { name: 'New Waitlist', href: '/bookings/waitlist/new' },
+      { name: 'New Waitlist', href: '/bookings/new-waitlist' },
       { name: 'Recurring Bookings', href: '/bookings/recurring' },
       { name: 'Cancelled Recurring', href: '/bookings/cancelled-recurring' },
       { name: 'Cancelled Bookings', href: '/bookings/cancelled' },

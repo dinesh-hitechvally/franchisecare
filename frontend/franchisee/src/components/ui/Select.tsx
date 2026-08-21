@@ -18,10 +18,12 @@ export interface SelectProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 
   /** Show a search input inside the dropdown panel to filter options by label */
   searchable?: boolean
   searchPlaceholder?: string
+  /** Custom content shown instead of "No options found" when the search query has no matches */
+  renderNoResults?: (query: string) => React.ReactNode
 }
 
 export const Select = forwardRef<HTMLDivElement, SelectProps>(
-  ({ className, label, error, options = [], value, onChange, disabled, placeholder = 'Select an option', searchable = false, searchPlaceholder = 'Search...', ...props }, ref) => {
+  ({ className, label, error, options = [], value, onChange, disabled, placeholder = 'Select an option', searchable = false, searchPlaceholder = 'Search...', renderNoResults, ...props }, ref) => {
     const [isOpen, setIsOpen] = useState(false)
     const [query, setQuery] = useState('')
     const containerRef = useRef<HTMLDivElement>(null)
@@ -110,7 +112,11 @@ export const Select = forwardRef<HTMLDivElement, SelectProps>(
 
               <div className="overflow-auto max-h-52">
                 {visibleOptions.length === 0 ? (
-                  <div className="px-3 py-10 text-center text-xs text-gray-400 italic">No options found</div>
+                  query && renderNoResults ? (
+                    renderNoResults(query)
+                  ) : (
+                    <div className="px-3 py-10 text-center text-xs text-gray-400 italic">No options found</div>
+                  )
                 ) : (
                   visibleOptions.map((option) => {
                     const isSelected = option.value === value

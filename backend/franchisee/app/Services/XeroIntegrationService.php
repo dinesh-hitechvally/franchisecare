@@ -223,6 +223,43 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
         }
     }
 
+    public function createAccount(User $user, array $data): array
+    {
+        $connection = XeroConnection::where('company_id', $user->company_id)
+            ->active()
+            ->first();
+
+        if (!$connection) {
+            return [
+                'success' => false,
+                'error' => 'Not connected to Xero',
+                'status_code' => 404,
+            ];
+        }
+
+        try {
+            $result = $this->xeroService->createAccount($connection, [
+                'Code' => $data['code'],
+                'Name' => $data['name'],
+                'Type' => $data['type'],
+            ]);
+
+            $connection->update(['last_synced_at' => now()]);
+
+            return [
+                'success' => true,
+                'message' => 'Account created in Xero',
+                'account' => $result['Accounts'][0] ?? null,
+            ];
+        } catch (\Exception $e) {
+            return [
+                'success' => false,
+                'error' => 'Failed to create account: ' . $e->getMessage(),
+                'status_code' => 500,
+            ];
+        }
+    }
+
     public function taxRates(User $user): array
     {
         $connection = XeroConnection::where('company_id', $user->company_id)
@@ -309,20 +346,6 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
                 'reference_id' => $booking->id,
             ]);
 
-            if (!$booking->customer) {
-                $xeroInvoice->invoice_type = 'ACCREC';
-                $xeroInvoice->amount = $booking->total;
-                $xeroInvoice->status = 'failed';
-                $xeroInvoice->error = 'Booking has no linked customer';
-                $xeroInvoice->save();
-
-                return [
-                    'success' => false,
-                    'error' => 'Booking has no linked customer, cannot sync to Xero',
-                    'status_code' => 422,
-                ];
-            }
-
             // A completed booking means the service was delivered and paid for, even when no
             // PaymentTransaction exists (e.g. cash/in-person payment recorded via status only).
             $isPaid = $booking->status === 'completed' || PaymentTransaction::where('reference_type', 'booking')
@@ -330,8 +353,45 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
                 ->where('status', 'completed')
                 ->exists();
 
-            // Invoice already exists in Xero - never recreate it, only ever add a Payment once it's paid
+            // Invoice already exists in Xero - never recreate it, only ever add a Payment or void it
             if ($xeroInvoice->exists && $xeroInvoice->xero_invoice_id) {
+                if ($booking->status === 'cancelled') {
+                    if (in_array($xeroInvoice->status, ['voided', 'needs_manual_review'])) {
+                        return [
+                            'success' => true,
+                            'message' => 'Booking cancellation already handled in Xero',
+                            'invoice_id' => $xeroInvoice->xero_invoice_id,
+                        ];
+                    }
+
+                    if ($xeroInvoice->paid_at) {
+                        // Xero refuses to void an invoice with a payment applied - this needs
+                        // a manual credit note/refund decision, not an automatic action.
+                        $xeroInvoice->update([
+                            'status' => 'needs_manual_review',
+                            'error' => 'Booking cancelled after the invoice was already paid - requires a manual credit note/refund in Xero',
+                        ]);
+
+                        return [
+                            'success' => false,
+                            'error' => 'Booking cancelled after payment - needs a manual credit note/refund in Xero',
+                            'status_code' => 422,
+                        ];
+                    }
+
+                    $this->xeroService->voidInvoice($connection, $xeroInvoice->xero_invoice_id);
+
+                    $connection->update(['last_synced_at' => now()]);
+
+                    $xeroInvoice->update(['status' => 'voided', 'error' => null]);
+
+                    return [
+                        'success' => true,
+                        'message' => 'Xero invoice voided for cancelled booking',
+                        'invoice_id' => $xeroInvoice->xero_invoice_id,
+                    ];
+                }
+
                 if ($xeroInvoice->paid_at) {
                     return [
                         'success' => true,
@@ -367,6 +427,37 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
                 ];
             }
 
+            // Never invoiced and now cancelled - nothing to create, nothing to void. Still record
+            // this in xero_invoices (status 'skipped') so its updated_at catches up past the
+            // booking's - otherwise this booking would show up as "pending" on every cron run
+            // forever, since there'd be no xero_invoices row for the eligibility check to compare against.
+            if ($booking->status === 'cancelled') {
+                $xeroInvoice->invoice_type = 'ACCREC';
+                $xeroInvoice->amount = $booking->total;
+                $xeroInvoice->status = 'skipped';
+                $xeroInvoice->error = null;
+                $xeroInvoice->save();
+
+                return [
+                    'success' => true,
+                    'message' => 'Booking cancelled before being synced to Xero, nothing to do',
+                ];
+            }
+
+            if (!$booking->customer) {
+                $xeroInvoice->invoice_type = 'ACCREC';
+                $xeroInvoice->amount = $booking->total;
+                $xeroInvoice->status = 'failed';
+                $xeroInvoice->error = 'Booking has no linked customer';
+                $xeroInvoice->save();
+
+                return [
+                    'success' => false,
+                    'error' => 'Booking has no linked customer, cannot sync to Xero',
+                    'status_code' => 422,
+                ];
+            }
+
             // No invoice yet - create it (Customer must be synced to Xero as a Contact first)
             $xeroInvoice->invoice_type = 'ACCREC';
             $xeroInvoice->amount = $booking->total;
@@ -375,6 +466,7 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
             $xeroInvoice->save();
 
             $contactId = $this->syncCustomerContact($companyId, $connection, $booking->customer);
+            $settings = $this->xeroSettings($companyId);
 
             $description = $booking->details->pluck('service.name')->filter()->implode(', ') ?: 'Service Booking';
 
@@ -386,9 +478,11 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
                 'amount' => $booking->total,
                 'description' => $description,
                 'reference' => 'Booking #' . $booking->id,
+                'account_code' => $settings['service_sales_account_code'],
                 'date' => $booking->start_date->format('Y-m-d'),
                 'paid' => $isPaid,
                 'payment_date' => $booking->updated_at->format('Y-m-d'),
+                'payment_account_code' => $settings['bank_account_code'],
                 'payment_reference' => 'Payment for Booking #' . $booking->id,
             ]);
 
@@ -463,18 +557,22 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
             ];
         }
 
-        // Includes bookings never invoiced yet, AND bookings already invoiced but not yet
-        // marked paid - so a booking that becomes 'completed' after its invoice was created
-        // gets re-checked and has a Payment recorded against that same invoice.
+        // A booking needs (re)checking if it has never been invoiced yet, or if it has changed
+        // since we last touched its xero_invoices row - that row's updated_at only moves when
+        // our own code writes to it (create, mark paid, void, flag for review, etc.), so once
+        // it catches up past the booking's updated_at, the booking is left alone until it
+        // changes again (status flip, cancellation, etc. all bump bookings.updated_at).
+        // syncBookingForCompany() itself decides the right action from the booking's current
+        // status - create, add a payment on an existing invoice, void it, or no-op.
         $pendingBookingIds = Booking::where('bookings.company_id', $companyId)
-            ->where('bookings.status', '!=', 'cancelled')
             ->leftJoin('xero_invoices', function ($join) {
                 $join->on('xero_invoices.reference_id', '=', 'bookings.id')
-                    ->where('xero_invoices.reference_type', '=', 'booking')
-                    ->where('xero_invoices.status', '=', 'synced')
-                    ->whereNotNull('xero_invoices.paid_at');
+                    ->where('xero_invoices.reference_type', '=', 'booking');
             })
-            ->whereNull('xero_invoices.id')
+            ->where(function ($query) {
+                $query->whereNull('xero_invoices.id')
+                    ->orWhereColumn('bookings.updated_at', '>', 'xero_invoices.updated_at');
+            })
             ->pluck('bookings.id');
 
         $results = $pendingBookingIds->map(function ($bookingId) use ($companyId) {

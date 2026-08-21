@@ -149,6 +149,37 @@ class XeroService
     }
 
     /**
+     * Void an existing invoice/bill in Xero. Only works while it has no payments applied -
+     * Xero rejects voiding an invoice that's already been paid.
+     */
+    public function voidInvoice(XeroConnection $connection, string $invoiceId): array
+    {
+        $accessToken = $this->ensureValidToken($connection);
+
+        $response = Http::withToken($accessToken)
+            ->withHeaders([
+                'Xero-Tenant-Id' => $connection->tenant_id,
+                'Content-Type' => 'application/json',
+            ])
+            ->post($this->apiBaseUrl . '/Invoices', [
+                'Invoices' => [[
+                    'InvoiceID' => $invoiceId,
+                    'Status' => 'VOIDED',
+                ]],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('Xero void invoice failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \Exception('Failed to void invoice in Xero: ' . $response->body());
+        }
+
+        return $response->json();
+    }
+
+    /**
      * Create a contact in Xero
      */
     public function createContact(XeroConnection $connection, array $contactData): array
@@ -297,6 +328,35 @@ class XeroService
         }
 
         return $response->json()['Accounts'] ?? [];
+    }
+
+    /**
+     * Create a new account in Xero's chart of accounts
+     */
+    public function createAccount(XeroConnection $connection, array $accountData): array
+    {
+        $accessToken = $this->ensureValidToken($connection);
+
+        // Unlike every other Xero endpoint used elsewhere in this file, /Accounts requires
+        // PUT to create a new account - POST is reserved for updating an existing one.
+        $response = Http::withToken($accessToken)
+            ->withHeaders([
+                'Xero-Tenant-Id' => $connection->tenant_id,
+                'Content-Type' => 'application/json',
+            ])
+            ->put($this->apiBaseUrl . '/Accounts', [
+                'Accounts' => [$accountData],
+            ]);
+
+        if ($response->failed()) {
+            Log::error('Xero create account failed', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \Exception('Failed to create account in Xero: ' . $response->body());
+        }
+
+        return $response->json();
     }
 
     /**
