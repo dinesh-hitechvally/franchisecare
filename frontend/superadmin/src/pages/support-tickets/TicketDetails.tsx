@@ -110,7 +110,7 @@ export function TicketDetails() {
   }
 
   const replySenderLabel = (reply: SupportTicketReply) => {
-    const isAdmin = reply.user_type === 'admin'
+    const isAdmin = reply.user_type === 'ADMIN'
     if (reply.user_id === currentUser?.id) {
       return currentUser?.name ?? 'Admin'
     }
@@ -161,10 +161,10 @@ export function TicketDetails() {
               <div className="flex items-center gap-2">
                 <span className="text-lg font-bold text-gray-800">Ticket #{ticket.id}</span>
                 <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${
-                  ticket.status === 'open' ? 'bg-red-100 text-red-800' :
-                  ticket.status === 'in_progress' ? 'bg-blue-100 text-blue-800' :
-                  ticket.status === 'waiting' ? 'bg-yellow-100 text-yellow-800' :
-                  ticket.status === 'closed' ? 'bg-gray-100 text-gray-800' :
+                  ticket.status === 'OPEN' ? 'bg-red-100 text-red-800' :
+                  ticket.status === 'IN_PROGRESS' ? 'bg-blue-100 text-blue-800' :
+                  ticket.status === 'WAITING' ? 'bg-yellow-100 text-yellow-800' :
+                  ticket.status === 'CLOSED' ? 'bg-gray-100 text-gray-800' :
                   'bg-green-100 text-green-800'
                 }`}>
                   {ticket.status.replace('_', ' ')}
@@ -184,7 +184,7 @@ export function TicketDetails() {
               <div className="text-center text-sm text-gray-400 py-8">No replies yet.</div>
             ) : (
               replies.map((reply) => {
-                const isAdmin = reply.user_type === 'admin'
+                const isAdmin = reply.user_type === 'ADMIN'
                 return (
                   <div
                     key={reply.id}
@@ -255,11 +255,11 @@ export function TicketDetails() {
                 disabled={statusMutation.isPending}
                 className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-purple-600"
               >
-                <option value="open">Open</option>
-                <option value="in_progress">In Progress</option>
-                <option value="waiting">Waiting Franchisee</option>
-                <option value="resolved">Resolved</option>
-                <option value="closed">Closed</option>
+                <option value="OPEN">Open</option>
+                <option value="IN_PROGRESS">In Progress</option>
+                <option value="WAITING">Waiting Franchisee</option>
+                <option value="RESOLVED">Resolved</option>
+                <option value="CLOSED">Closed</option>
               </select>
             </div>
 
@@ -272,10 +272,10 @@ export function TicketDetails() {
                 disabled={priorityMutation.isPending}
                 className="w-full border border-gray-300 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:border-purple-600"
               >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-                <option value="urgent">Urgent</option>
+                <option value="LOW">Low</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="HIGH">High</option>
+                <option value="URGENT">Urgent</option>
               </select>
             </div>
 

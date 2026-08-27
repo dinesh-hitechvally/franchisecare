@@ -54,7 +54,7 @@ export function AddForumGroup() {
         groupName: group.name,
         groupDescription: group.description ?? '',
         permissions: group.permissions ?? '',
-        makeGroupActive: group.status === 'active',
+        makeGroupActive: group.status === 'ACTIVE',
       })
     }
   }, [group])
@@ -98,7 +98,7 @@ export function AddForumGroup() {
           name: form.groupName,
           description: form.groupDescription,
           permissions: form.permissions,
-          status: form.makeGroupActive ? 'active' : 'inactive',
+          status: form.makeGroupActive ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Forum group updated successfully!')
       } else {

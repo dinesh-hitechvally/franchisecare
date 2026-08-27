@@ -21,7 +21,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->text('file_url')->nullable();
             $table->string('file_type', 20)->nullable();
-            $table->enum('visibility', ['global', 'franchise'])->default('global')->index();
+            $table->enum('visibility', ['GLOBAL', 'FRANCHISE'])->default('GLOBAL')->index();
             $table->string('category', 50)->default('other')->index();
             $table->timestamps();
 

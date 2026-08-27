@@ -118,10 +118,10 @@ class SettingsService implements SettingsServiceInterface
             $policy = new CancellationPolicy([
                 'company_id' => $companyId,
                 'attach_policy' => false,
-                'cancel_before_unit' => 'hours',
+                'cancel_before_unit' => 'HOURS',
                 'cancel_before_value' => 24,
                 'cancellation_fee_value' => 0,
-                'penalty_type' => 'percent',
+                'penalty_type' => 'PERCENT',
             ]);
         }
 
@@ -143,7 +143,7 @@ class SettingsService implements SettingsServiceInterface
         if (!$settings) {
             $settings = new ReminderSetting([
                 'company_id' => $companyId,
-                'reminder_method' => 'email-only',
+                'reminder_method' => 'EMAIL-ONLY',
                 'send_before_hours' => 24,
             ]);
         }

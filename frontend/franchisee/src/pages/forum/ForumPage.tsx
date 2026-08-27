@@ -78,9 +78,9 @@ export function ForumPage() {
   })
 
   // Organize groups by type
-  const topicGroups = groups.filter(g => g.type === 'topic')
-  const stateGroups = groups.filter(g => g.type === 'state')
-  const customGroups = groups.filter(g => g.type === 'custom')
+  const topicGroups = groups.filter(g => g.type === 'TOPIC')
+  const stateGroups = groups.filter(g => g.type === 'STATE')
+  const customGroups = groups.filter(g => g.type === 'CUSTOM')
 
   const { data: allNotifications = [] } = useQuery({
     queryKey: ['forum-notifications'],
@@ -164,7 +164,7 @@ export function ForumPage() {
 
   const createGroupMutation = useMutation({
     mutationFn: (data: { name: string; description?: string }) =>
-      forumApi.createGroup({ ...data, type: 'custom', is_public: true }),
+      forumApi.createGroup({ ...data, type: 'CUSTOM', is_public: true }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['forum-groups'] })
       setIsCreateGroupModalOpen(false)
@@ -1348,9 +1348,9 @@ export function ForumPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h4 className="font-semibold text-gray-900 truncate">
-                          {group.type === 'custom' || groupsViewTab === 'my' ? `#${group.name}` : group.name}
+                          {group.type === 'CUSTOM' || groupsViewTab === 'my' ? `#${group.name}` : group.name}
                         </h4>
-                        {group.type === 'topic' && (
+                        {group.type === 'TOPIC' && (
                           <Pin className="w-4 h-4 text-blue-600" />
                         )}
                       </div>

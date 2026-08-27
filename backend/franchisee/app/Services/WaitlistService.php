@@ -37,7 +37,7 @@ class WaitlistService implements WaitlistServiceInterface
     {
         $companyId = Auth::user()->company_id;
         $data['company_id'] = $companyId;
-        $data['status'] = $data['status'] ?? 'active';
+        $data['status'] = $data['status'] ?? 'ACTIVE';
 
         $waitlist = $this->waitlistRepository->create($data);
 
@@ -127,7 +127,7 @@ class WaitlistService implements WaitlistServiceInterface
                 'calendar_color' => $waitlist->calendar_color,
                 'send_sms' => $waitlist->send_sms,
                 'send_email' => $waitlist->send_email,
-                'status' => 'active',
+                'status' => 'ACTIVE',
                 'total' => $waitlist->total,
                 'duration' => $waitlist->duration,
                 'notes' => $waitlist->notes,
@@ -144,7 +144,7 @@ class WaitlistService implements WaitlistServiceInterface
             }
 
             $previousStatus = $waitlist->status;
-            $waitlist->update(['status' => 'completed']);
+            $waitlist->update(['status' => 'COMPLETED']);
 
             // Create audit record
             $this->createAuditRecord($waitlist, 'converted_to_booking', $previousStatus, [

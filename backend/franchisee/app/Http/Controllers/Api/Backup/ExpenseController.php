@@ -65,7 +65,7 @@ class ExpenseController extends Controller
             'expense_date'        => 'required|date',
             'is_active'           => 'boolean',
             'is_recurring'        => 'boolean',
-            'recurring_frequency' => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurring_frequency' => 'nullable|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend_recurring' => 'boolean',
         ]);
 
@@ -77,8 +77,8 @@ class ExpenseController extends Controller
                 'company_id'          => $company_id,
                 'expense_category_id' => $validated['expense_category_id'] ?? null,
                 'start_date'          => $validated['expense_date'],
-                'frequency'           => $request->input('recurring_frequency', 'weekly'),
-                'status'              => 'active',
+                'frequency'           => $request->input('recurring_frequency', 'WEEKLY'),
+                'status'              => 'ACTIVE',
                 'auto_extend'         => $request->boolean('auto_extend_recurring', false),
                 'total'               => $validated['amount'],
             ]);
@@ -118,7 +118,7 @@ class ExpenseController extends Controller
             'expense_date'        => 'sometimes|required|date',
             'is_active'           => 'boolean',
             'is_recurring'        => 'boolean',
-            'recurring_frequency' => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurring_frequency' => 'nullable|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend_recurring' => 'boolean',
         ]);
 
@@ -132,8 +132,8 @@ class ExpenseController extends Controller
                     'company_id'          => $company_id,
                     'expense_category_id' => $validated['expense_category_id'] ?? $expense->expense_category_id,
                     'start_date'          => $validated['expense_date'] ?? $expense->expense_date,
-                    'frequency'           => $request->input('recurring_frequency', 'weekly'),
-                    'status'              => 'active',
+                    'frequency'           => $request->input('recurring_frequency', 'WEEKLY'),
+                    'status'              => 'ACTIVE',
                     'auto_extend'         => $request->boolean('auto_extend_recurring', false),
                     'total'               => $validated['amount'] ?? $expense->amount,
                 ]);
@@ -142,7 +142,7 @@ class ExpenseController extends Controller
             } else {
                 // Update existing recurring record
                 $expense->recurringExpense->update([
-                    'frequency'   => $request->input('recurring_frequency', 'weekly'),
+                    'frequency'   => $request->input('recurring_frequency', 'WEEKLY'),
                     'auto_extend' => $request->boolean('auto_extend_recurring', false),
                     'total'       => $validated['amount'] ?? $expense->amount,
                 ]);

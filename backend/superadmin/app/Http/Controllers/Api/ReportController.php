@@ -22,11 +22,11 @@ class ReportController extends Controller
 
         $franchises = Franchise::select('franchises.*')
             ->withSum(['payments as total_revenue' => function($q) use ($startDate, $endDate) {
-                $q->where('status', 'paid')
+                $q->where('status', 'PAID')
                   ->whereBetween('payment_date', [$startDate, $endDate]);
             }], 'amount')
             ->withCount(['users as active_users' => function($q) {
-                $q->where('status', 'active');
+                $q->where('status', 'ACTIVE');
             }])
             ->orderByDesc('total_revenue')
             ->get();
@@ -54,7 +54,7 @@ class ReportController extends Controller
                 DB::raw('SUM(amount) as total'),
                 DB::raw('COUNT(*) as count')
             )
-            ->where('status', 'paid')
+            ->where('status', 'PAID')
             ->whereYear('payment_date', $year);
 
         if ($franchiseId = $request->get('franchise_id')) {
@@ -118,14 +118,14 @@ class ReportController extends Controller
         }
 
         $stats = [
-            'paid' => (clone $query)->where('status', 'paid')->sum('amount'),
-            'pending' => (clone $query)->where('status', 'pending')->sum('amount'),
-            'overdue' => (clone $query)->where('status', 'pending')
+            'paid' => (clone $query)->where('status', 'PAID')->sum('amount'),
+            'pending' => (clone $query)->where('status', 'PENDING')->sum('amount'),
+            'overdue' => (clone $query)->where('status', 'PENDING')
                 ->where('due_date', '<', now())->sum('amount'),
         ];
 
         $overduePayments = FranchisePayment::with('franchise:id,name')
-            ->where('status', 'pending')
+            ->where('status', 'PENDING')
             ->where('due_date', '<', now())
             ->orderBy('due_date')
             ->take(10)

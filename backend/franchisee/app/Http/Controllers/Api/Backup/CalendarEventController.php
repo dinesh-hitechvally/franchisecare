@@ -171,7 +171,7 @@ class CalendarEventController extends Controller
                 'customer_id' => $booking->customer_id,
                 'booking_id' => $booking->id,
                 'is_recurring' => !!$booking->recurring_id,
-                'is_active' => $booking->status !== 'cancelled',
+                'is_active' => $booking->status !== 'CANCELLED',
             ]);
         }
 

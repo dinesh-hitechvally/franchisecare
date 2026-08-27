@@ -40,12 +40,12 @@ export function ActiveBookingsPage() {
   }, [debouncedSearch])
 
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['bookings', 'active', debouncedSearch, page, perPage],
+    queryKey: ['bookings', 'ACTIVE', debouncedSearch, page, perPage],
     queryFn: () =>
       bookingsApi.getPaginated({
         page,
         per_page: perPage,
-        status: 'active',
+        status: 'ACTIVE',
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       }),
   })
@@ -54,10 +54,10 @@ export function ActiveBookingsPage() {
   const meta = listResult?.meta
 
   const markCompleteMutation = useMutation({
-    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'completed'),
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'COMPLETED'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings', 'active'] })
-      queryClient.invalidateQueries({ queryKey: ['bookings', 'completed'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'ACTIVE'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'COMPLETED'] })
       setOpenMenuId(null)
       setMenuPos(null)
     },
@@ -76,7 +76,7 @@ export function ActiveBookingsPage() {
   })
 
   const cancelBookingMutation = useMutation({
-    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'cancelled'),
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'CANCELLED'),
     onSuccess: () => {
       addToast('Booking cancelled successfully', 'success')
       queryClient.invalidateQueries({ queryKey: ['bookings'] })

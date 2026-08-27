@@ -117,7 +117,7 @@ function Section({ title, children }: SectionProps) {
   )
 }
 
-const statusOptions: Franchise['status'][] = ['active', 'inactive', 'suspended', 'terminated']
+const statusOptions: Franchise['status'][] = ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'TERMINATED']
 
 export function AddFranchise() {
   const navigate = useNavigate()
@@ -128,7 +128,7 @@ export function AddFranchise() {
 
   const [form, setForm] = useState<FranchiseFormState>(emptyForm)
   const [errors, setErrors] = useState<ValidationErrors>({})
-  const [statusValue, setStatusValue] = useState<Franchise['status']>('active')
+  const [statusValue, setStatusValue] = useState<Franchise['status']>('ACTIVE')
   const [statusReason, setStatusReason] = useState('')
   const [historyPage, setHistoryPage] = useState(1)
 
@@ -295,7 +295,7 @@ export function AddFranchise() {
                 >
                   {statusOptions.map((option) => (
                     <option key={option} value={option}>
-                      {option.charAt(0).toUpperCase() + option.slice(1)}
+                      {option.charAt(0).toUpperCase() + option.slice(1).toLowerCase()}
                     </option>
                   ))}
                 </select>

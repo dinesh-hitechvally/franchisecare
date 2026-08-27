@@ -47,7 +47,7 @@ class DocumentRepository implements DocumentRepositoryInterface
         // Filter by company visibility
         if (!empty($filters['company_id'])) {
             $query->where(function ($q) use ($filters) {
-                $q->where('visibility', 'global')
+                $q->where('visibility', 'GLOBAL')
                     ->orWhere('company_id', $filters['company_id']);
             });
         }

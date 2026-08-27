@@ -69,7 +69,7 @@ export function AddPost() {
         authorName: post.author_name ?? '',
         category: post.category_id ? String(post.category_id) : '',
         topic: post.topic_id ? String(post.topic_id) : '',
-        makePostActive: post.status === 'active',
+        makePostActive: post.status === 'ACTIVE',
       })
     }
   }, [post])
@@ -120,7 +120,7 @@ export function AddPost() {
           author_name: form.authorName || null,
           category_id: form.category ? Number(form.category) : null,
           topic_id: form.topic ? Number(form.topic) : null,
-          status: form.makePostActive ? 'active' : 'inactive',
+          status: form.makePostActive ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Post updated successfully!')
       } else {

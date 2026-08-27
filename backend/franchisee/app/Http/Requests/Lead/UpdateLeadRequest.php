@@ -28,9 +28,9 @@ class UpdateLeadRequest extends FormRequest
             'referred_by' => 'nullable|string|max:255',
             'additional_note' => 'nullable|string',
             'notes' => 'nullable|string',
-            'source' => 'nullable|in:phone,internet,walk-in,referral',
-            'leads_from' => 'nullable|in:phone,internet',
-            'status' => 'nullable|in:new,contacted,qualified,converted,lost,snoozed,completed,cancellation_request,message_for_operator',
+            'source' => 'nullable|in:PHONE,INTERNET,WALK-IN,REFERRAL',
+            'leads_from' => 'nullable|in:PHONE,INTERNET',
+            'status' => 'nullable|in:NEW,CONTACTED,QUALIFIED,CONVERTED,LOST,SNOOZED,COMPLETED,CANCELLATION_REQUEST,MESSAGE_FOR_OPERATOR',
             'snoozed_until' => 'nullable|date',
         ];
     }

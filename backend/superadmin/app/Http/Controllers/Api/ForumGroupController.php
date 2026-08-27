@@ -33,7 +33,7 @@ class ForumGroupController extends Controller
             'permissions' => 'nullable|string|max:255',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $group = ForumGroup::create($validated);
 
@@ -51,7 +51,7 @@ class ForumGroupController extends Controller
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
             'permissions' => 'nullable|string|max:255',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $forumGroup->update($validated);

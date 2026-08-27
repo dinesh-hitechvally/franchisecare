@@ -15,18 +15,18 @@ class DashboardController extends Controller
     public function metrics()
     {
         $totalFranchises = Franchise::count();
-        $activeFranchises = Franchise::where('status', 'active')->count();
+        $activeFranchises = Franchise::where('status', 'ACTIVE')->count();
         $totalUsers = FranchiseUser::count();
-        $openTickets = SupportTicket::where('status', '!=', 'resolved')->count();
+        $openTickets = SupportTicket::where('status', '!=', 'RESOLVED')->count();
 
         // Revenue this month
-        $monthlyRevenue = FranchisePayment::where('status', 'paid')
+        $monthlyRevenue = FranchisePayment::where('status', 'PAID')
             ->whereMonth('payment_date', now()->month)
             ->whereYear('payment_date', now()->year)
             ->sum('amount');
 
         // Revenue comparison with last month
-        $lastMonthRevenue = FranchisePayment::where('status', 'paid')
+        $lastMonthRevenue = FranchisePayment::where('status', 'PAID')
             ->whereMonth('payment_date', now()->subMonth()->month)
             ->whereYear('payment_date', now()->subMonth()->year)
             ->sum('amount');
@@ -53,7 +53,7 @@ class DashboardController extends Controller
                 DB::raw('DATE_FORMAT(payment_date, "%Y-%m") as month'),
                 DB::raw('SUM(amount) as total')
             )
-            ->where('status', 'paid')
+            ->where('status', 'PAID')
             ->where('payment_date', '>=', now()->subMonths($months))
             ->groupBy('month')
             ->orderBy('month')
@@ -106,7 +106,7 @@ class DashboardController extends Controller
     {
         $franchises = Franchise::select('franchises.*')
             ->withSum(['payments as total_revenue' => function($q) {
-                $q->where('status', 'paid');
+                $q->where('status', 'PAID');
             }], 'amount')
             ->orderByDesc('total_revenue')
             ->take(10)

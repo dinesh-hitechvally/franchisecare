@@ -24,11 +24,11 @@ export const StockTakeHistoryModal: React.FC<StockTakeHistoryModalProps> = ({ is
 
   const formatMovementType = (type?: string) => {
     const types: Record<string, string> = {
-      stock_take: 'Stock Take',
-      booking_usage: 'Booking Usage',
-      adjustment: 'Adjustment',
-      inward: 'Inward Goods',
-      write_off: 'Write Off',
+      STOCK_TAKE: 'Stock Take',
+      BOOKING_USAGE: 'Booking Usage',
+      ADJUSTMENT: 'Adjustment',
+      INWARD: 'Inward Goods',
+      WRITE_OFF: 'Write Off',
     }
     return types[type || ''] || type || '-'
   }
@@ -85,10 +85,10 @@ export const StockTakeHistoryModal: React.FC<StockTakeHistoryModalProps> = ({ is
                     </td>
                     <td className="px-4 py-3 text-center">
                       <span className={`inline-flex px-2 py-1 rounded text-xs font-medium ${
-                        movement.movement_type === 'stock_take' ? 'bg-blue-100 text-blue-700' :
-                        movement.movement_type === 'inward' ? 'bg-green-100 text-green-700' :
-                        movement.movement_type === 'booking_usage' ? 'bg-orange-100 text-orange-700' :
-                        movement.movement_type === 'write_off' ? 'bg-red-100 text-red-700' :
+                        movement.movement_type === 'STOCK_TAKE' ? 'bg-blue-100 text-blue-700' :
+                        movement.movement_type === 'INWARD' ? 'bg-green-100 text-green-700' :
+                        movement.movement_type === 'BOOKING_USAGE' ? 'bg-orange-100 text-orange-700' :
+                        movement.movement_type === 'WRITE_OFF' ? 'bg-red-100 text-red-700' :
                         'bg-gray-100 text-gray-700'
                       }`}>
                         {formatMovementType(movement.movement_type)}

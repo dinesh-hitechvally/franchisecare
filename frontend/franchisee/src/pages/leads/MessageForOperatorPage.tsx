@@ -31,8 +31,8 @@ export function MessageForOperatorPage() {
   const [rows, setRows] = useState<MessageRow[]>([])
 
   const { data: fetchedLeads = [] } = useQuery({
-    queryKey: ['leads', 'message_for_operator'],
-    queryFn: () => leadsApi.getAll({ status: 'message_for_operator' }),
+    queryKey: ['leads', 'MESSAGE_FOR_OPERATOR'],
+    queryFn: () => leadsApi.getAll({ status: 'MESSAGE_FOR_OPERATOR' }),
   })
 
   const updateLeadMutation = useMutation({
@@ -79,9 +79,9 @@ export function MessageForOperatorPage() {
     referredBy: 'Phone',
     additionalNote: row.message,
     notes: row.message,
-    source: 'phone',
-    leadsFrom: 'phone',
-    status: 'message_for_operator',
+    source: 'PHONE',
+    leadsFrom: 'PHONE',
+    status: 'MESSAGE_FOR_OPERATOR',
     comments: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -118,7 +118,7 @@ export function MessageForOperatorPage() {
 
   const handleSnooze = (leadId: string, snoozedUntil: string) => {
     updateLeadMutation.mutate(
-      { id: leadId, data: { status: 'snoozed', snoozedUntil } },
+      { id: leadId, data: { status: 'SNOOZED', snoozedUntil } },
       {
         onSuccess: () => {
           addToast('Lead snoozed', 'success')

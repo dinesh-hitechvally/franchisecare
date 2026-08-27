@@ -54,12 +54,12 @@ class SupportTicketController extends Controller
     public function update(Request $request, SupportTicket $supportTicket)
     {
         $validated = $request->validate([
-            'status' => 'sometimes|in:open,in_progress,waiting,resolved,closed',
-            'priority' => 'sometimes|in:low,medium,high,urgent',
+            'status' => 'sometimes|in:OPEN,IN_PROGRESS,WAITING,RESOLVED,CLOSED',
+            'priority' => 'sometimes|in:LOW,MEDIUM,HIGH,URGENT',
             'assigned_to' => 'nullable|exists:users,id',
         ]);
 
-        if (isset($validated['status']) && $validated['status'] === 'resolved') {
+        if (isset($validated['status']) && $validated['status'] === 'RESOLVED') {
             $validated['resolved_at'] = now();
         }
 
@@ -77,13 +77,13 @@ class SupportTicketController extends Controller
         $reply = SupportTicketReply::create([
             'ticket_id' => $supportTicket->id,
             'user_id' => auth()->id(),
-            'user_type' => 'admin',
+            'user_type' => 'ADMIN',
             'message' => $request->message,
         ]);
 
         // Update ticket status if it was waiting
-        if ($supportTicket->status === 'waiting') {
-            $supportTicket->update(['status' => 'in_progress']);
+        if ($supportTicket->status === 'WAITING') {
+            $supportTicket->update(['status' => 'IN_PROGRESS']);
         }
 
         return response()->json($reply, 201);
@@ -97,7 +97,7 @@ class SupportTicketController extends Controller
 
         $supportTicket->update([
             'assigned_to' => $request->assigned_to,
-            'status' => 'in_progress',
+            'status' => 'IN_PROGRESS',
         ]);
 
         return response()->json($supportTicket->load('assignedTo:id,name'));
@@ -106,7 +106,7 @@ class SupportTicketController extends Controller
     public function resolve(SupportTicket $supportTicket)
     {
         $supportTicket->update([
-            'status' => 'resolved',
+            'status' => 'RESOLVED',
             'resolved_at' => now(),
         ]);
 
@@ -117,15 +117,15 @@ class SupportTicketController extends Controller
     {
         $stats = [
             'total' => SupportTicket::count(),
-            'open' => SupportTicket::where('status', 'open')->count(),
-            'in_progress' => SupportTicket::where('status', 'in_progress')->count(),
-            'waiting' => SupportTicket::where('status', 'waiting')->count(),
-            'resolved' => SupportTicket::where('status', 'resolved')->count(),
+            'open' => SupportTicket::where('status', 'OPEN')->count(),
+            'in_progress' => SupportTicket::where('status', 'IN_PROGRESS')->count(),
+            'waiting' => SupportTicket::where('status', 'WAITING')->count(),
+            'resolved' => SupportTicket::where('status', 'RESOLVED')->count(),
             'by_priority' => [
-                'urgent' => SupportTicket::where('priority', 'urgent')->where('status', '!=', 'resolved')->count(),
-                'high' => SupportTicket::where('priority', 'high')->where('status', '!=', 'resolved')->count(),
-                'medium' => SupportTicket::where('priority', 'medium')->where('status', '!=', 'resolved')->count(),
-                'low' => SupportTicket::where('priority', 'low')->where('status', '!=', 'resolved')->count(),
+                'urgent' => SupportTicket::where('priority', 'URGENT')->where('status', '!=', 'RESOLVED')->count(),
+                'high' => SupportTicket::where('priority', 'HIGH')->where('status', '!=', 'RESOLVED')->count(),
+                'medium' => SupportTicket::where('priority', 'MEDIUM')->where('status', '!=', 'RESOLVED')->count(),
+                'low' => SupportTicket::where('priority', 'LOW')->where('status', '!=', 'RESOLVED')->count(),
             ],
         ];
 

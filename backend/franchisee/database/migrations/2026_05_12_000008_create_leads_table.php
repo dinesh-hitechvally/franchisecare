@@ -26,9 +26,9 @@ return new class extends Migration
             $table->string('referred_by')->nullable();
             $table->text('additional_note')->nullable();
             $table->text('notes')->nullable();
-            $table->enum('source', ['phone', 'internet', 'walk-in', 'referral'])->default('internet');
-            $table->enum('leads_from', ['phone', 'internet'])->default('internet');
-            $table->enum('status', ['new', 'contacted', 'qualified', 'converted', 'lost', 'snoozed', 'completed', 'cancellation_request', 'message_for_operator'])->default('new');
+            $table->enum('source', ['PHONE', 'INTERNET', 'WALK-IN', 'REFERRAL'])->default('INTERNET');
+            $table->enum('leads_from', ['PHONE', 'INTERNET'])->default('INTERNET');
+            $table->enum('status', ['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'LOST', 'SNOOZED', 'COMPLETED', 'CANCELLATION_REQUEST', 'MESSAGE_FOR_OPERATOR'])->default('NEW');
             $table->timestamp('snoozed_until')->nullable();
             $table->softDeletes();
             $table->timestamps();

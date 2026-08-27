@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('state', 50)->nullable();
             $table->string('postcode', 10)->nullable();
             $table->string('abn', 20)->nullable();
-            $table->enum('status', ['active', 'inactive', 'suspended', 'terminated'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE', 'SUSPENDED', 'TERMINATED'])->default('ACTIVE');
             $table->string('logo')->nullable();
             $table->decimal('franchise_fee', 10, 2)->nullable();
             $table->decimal('royalty_percentage', 5, 2)->nullable();
@@ -41,8 +41,8 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->string('password');
             $table->string('phone', 20)->nullable();
-            $table->enum('role', ['owner', 'manager', 'staff'])->default('staff');
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('role', ['OWNER', 'MANAGER', 'STAFF'])->default('STAFF');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->string('avatar')->nullable();
             $table->timestamps();
         });
@@ -55,7 +55,7 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->decimal('price', 10, 2);
             $table->integer('duration');
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
 
@@ -65,18 +65,18 @@ return new class extends Migration
             $table->string('suburb_name', 100);
             $table->string('postcode', 10);
             $table->string('state', 50);
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
 
         Schema::create('franchise_payments', function (Blueprint $table) {
             $table->id();
             $table->foreignId('franchise_id')->constrained()->onDelete('cascade');
-            $table->enum('payment_type', ['royalty', 'marketing', 'fee', 'other']);
+            $table->enum('payment_type', ['ROYALTY', 'MARKETING', 'FEE', 'OTHER']);
             $table->decimal('amount', 10, 2);
             $table->date('payment_date')->nullable();
             $table->date('due_date')->nullable();
-            $table->enum('status', ['pending', 'paid', 'overdue', 'cancelled'])->default('pending');
+            $table->enum('status', ['PENDING', 'PAID', 'OVERDUE', 'CANCELLED'])->default('PENDING');
             $table->string('reference')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();

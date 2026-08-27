@@ -43,8 +43,8 @@ class ExpenseService implements ExpenseServiceInterface
                 'company_id' => $companyId,
                 'expense_category_id' => $data['expense_category_id'] ?? null,
                 'start_date' => $data['expense_date'],
-                'frequency' => $data['recurring_frequency'] ?? 'weekly',
-                'status' => 'active',
+                'frequency' => $data['recurring_frequency'] ?? 'WEEKLY',
+                'status' => 'ACTIVE',
                 'auto_extend' => $data['auto_extend_recurring'] ?? false,
                 'total' => $data['amount'],
             ]);
@@ -81,8 +81,8 @@ class ExpenseService implements ExpenseServiceInterface
                     'company_id' => $companyId,
                     'expense_category_id' => $data['expense_category_id'] ?? $expense->expense_category_id,
                     'start_date' => $data['expense_date'] ?? $expense->expense_date,
-                    'frequency' => $data['recurring_frequency'] ?? 'weekly',
-                    'status' => 'active',
+                    'frequency' => $data['recurring_frequency'] ?? 'WEEKLY',
+                    'status' => 'ACTIVE',
                     'auto_extend' => $data['auto_extend_recurring'] ?? false,
                     'total' => $data['amount'] ?? $expense->amount,
                 ]);
@@ -90,7 +90,7 @@ class ExpenseService implements ExpenseServiceInterface
                 $data['recurring_expense_id'] = $recurringExpense->id;
             } else {
                 $expense->recurringExpense->update([
-                    'frequency' => $data['recurring_frequency'] ?? 'weekly',
+                    'frequency' => $data['recurring_frequency'] ?? 'WEEKLY',
                     'auto_extend' => $data['auto_extend_recurring'] ?? false,
                     'total' => $data['amount'] ?? $expense->amount,
                 ]);

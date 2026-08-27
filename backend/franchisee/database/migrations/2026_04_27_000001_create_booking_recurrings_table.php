@@ -21,7 +21,7 @@ return new class extends Migration
             $table->string('repeat_time');
             $table->string('repeat_day'); // Day of week name, e.g. "Monday"
             $table->integer('frequency'); // Number of weeks (1-20)
-            $table->enum('status', ['active', 'cancelled', 'completed'])->default('active');
+            $table->enum('status', ['ACTIVE', 'CANCELLED', 'COMPLETED'])->default('ACTIVE');
             $table->boolean('auto_extend')->default(false);
             $table->decimal('total', 10, 2);
             $table->integer('duration'); // in minutes

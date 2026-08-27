@@ -20,7 +20,7 @@ return new class extends Migration
             $table->date('start_date');
             $table->string('start_time');
             $table->string('end_time')->nullable();
-            $table->enum('status', ['active', 'cancelled', 'completed', 'archived'])->default('active');
+            $table->enum('status', ['ACTIVE', 'CANCELLED', 'COMPLETED', 'ARCHIVED'])->default('ACTIVE');
             $table->decimal('total', 10, 2);
             $table->integer('duration'); // in minutes
             $table->string('calendar_color')->nullable();

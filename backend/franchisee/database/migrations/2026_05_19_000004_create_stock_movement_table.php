@@ -18,7 +18,7 @@ return new class extends Migration
                 $table->unsignedBigInteger('category_id')->nullable()->index();
                 $table->unsignedBigInteger('inventory_id')->nullable()->index();
                 $table->unsignedBigInteger('batch_id')->nullable()->index();
-                $table->enum('movement_type', ['stock_take', 'booking_usage', 'adjustment', 'inward', 'write_off'])->default('stock_take');
+                $table->enum('movement_type', ['STOCK_TAKE', 'BOOKING_USAGE', 'ADJUSTMENT', 'INWARD', 'WRITE_OFF'])->default('STOCK_TAKE');
                 $table->integer('quantity_change')->default(0);
                 $table->decimal('percentage_change', 5, 2)->default(0);
                 $table->unsignedBigInteger('quantity_before')->default(0);

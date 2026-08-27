@@ -21,7 +21,7 @@ class UpdateIncomeRequest extends FormRequest
             'income_date' => 'sometimes|required|date',
             'is_active' => 'boolean',
             'is_recurring' => 'boolean',
-            'recurring_frequency' => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurring_frequency' => 'nullable|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend_recurring' => 'boolean',
         ];
     }

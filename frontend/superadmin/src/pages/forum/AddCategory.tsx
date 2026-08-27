@@ -44,7 +44,7 @@ export function AddCategory() {
       setForm({
         categoryName: category.name,
         categoryDescription: category.description ?? '',
-        makeCategoryActive: category.status === 'active',
+        makeCategoryActive: category.status === 'ACTIVE',
       })
     }
   }, [category])
@@ -84,7 +84,7 @@ export function AddCategory() {
         await forumCategoriesApi.update(Number(id), {
           name: form.categoryName,
           description: form.categoryDescription,
-          status: form.makeCategoryActive ? 'active' : 'inactive',
+          status: form.makeCategoryActive ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Category updated successfully!')
       } else {

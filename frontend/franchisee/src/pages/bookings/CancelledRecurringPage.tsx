@@ -55,12 +55,12 @@ export function CancelledRecurringPage() {
   }
 
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['booking-recurrings', user?.companyId, 'cancelled', debouncedSearch, page, perPage],
+    queryKey: ['booking-recurrings', user?.companyId, 'CANCELLED', debouncedSearch, page, perPage],
     queryFn: () =>
       recurringBookingsApi.getPaginated({
         page,
         per_page: perPage,
-        status: 'cancelled',
+        status: 'CANCELLED',
         companyId: user?.companyId,
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       }),
@@ -165,8 +165,8 @@ export function CancelledRecurringPage() {
                     
                     <td className="px-5 py-4 align-top text-center">
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        row.status === 'active' ? 'bg-green-100 text-green-700' :
-                        row.status === 'cancelled' ? 'bg-red-100 text-red-700' :
+                        row.status === 'ACTIVE' ? 'bg-green-100 text-green-700' :
+                        row.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
                         'bg-yellow-100 text-yellow-700'
                       }`}>
                         {row.status || '-'}

@@ -34,8 +34,8 @@ export function SnoozeLeadsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const { data: fetchedLeads = [] } = useQuery({
-    queryKey: ['leads', 'snoozed'],
-    queryFn: () => leadsApi.getAll({ status: 'snoozed' }),
+    queryKey: ['leads', 'SNOOZED'],
+    queryFn: () => leadsApi.getAll({ status: 'SNOOZED' }),
   })
 
   const updateLeadMutation = useMutation({
@@ -83,9 +83,9 @@ export function SnoozeLeadsPage() {
     referredBy: 'Internet',
     additionalNote: row.snoozeNotes,
     notes: row.notes,
-    source: 'internet',
-    leadsFrom: 'internet',
-    status: 'snoozed',
+    source: 'INTERNET',
+    leadsFrom: 'INTERNET',
+    status: 'SNOOZED',
     comments: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -124,7 +124,7 @@ export function SnoozeLeadsPage() {
 
   const handleSnoozeFromModal = (leadId: string, snoozedUntil: string) => {
     updateLeadMutation.mutate(
-      { id: leadId, data: { status: 'snoozed', snoozedUntil } },
+      { id: leadId, data: { status: 'SNOOZED', snoozedUntil } },
       {
         onSuccess: () => addToast('Snooze time updated', 'success'),
         onError: () => addToast('Failed to update snooze time', 'error'),
@@ -136,7 +136,7 @@ export function SnoozeLeadsPage() {
     const row = rows.find((item) => item.id === rowId)
     if (!row) return
     try {
-      await leadsApi.update(rowId, { status: 'new' })
+      await leadsApi.update(rowId, { status: 'NEW' })
       setRows((prev) => prev.filter((item) => item.id !== rowId))
       addToast(`Lead ${row.customer} re-activated`, 'success')
     } catch {

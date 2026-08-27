@@ -35,7 +35,7 @@ class RecurringIncomeService implements RecurringIncomeServiceInterface
     public function create(array $data): RecurringIncome
     {
         $data['company_id'] = Auth::user()->company_id;
-        $data['status'] = 'active';
+        $data['status'] = 'ACTIVE';
 
         $recurringIncome = $this->repository->create($data);
 

@@ -16,7 +16,7 @@ class StoreRecurringIncomeRequest extends FormRequest
         return [
             'income_category_id' => 'nullable|exists:income_categories,id',
             'start_date'         => 'required|date',
-            'frequency'          => 'required|in:daily,weekly,monthly,yearly',
+            'frequency'          => 'required|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend'        => 'boolean',
             'total'              => 'required|numeric|min:0',
             'notes'              => 'nullable|string',

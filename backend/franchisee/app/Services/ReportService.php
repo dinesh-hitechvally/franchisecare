@@ -24,10 +24,10 @@ class ReportService implements ReportServiceInterface
                 ->whereBetween('start_date', [$startDate, $endDate])
                 ->get();
 
-            $completedBookings = $bookings->where('status', 'completed')->count();
-            $cancelledBookings = $bookings->where('status', 'cancelled')->count();
+            $completedBookings = $bookings->where('status', 'COMPLETED')->count();
+            $cancelledBookings = $bookings->where('status', 'CANCELLED')->count();
             $totalBookings = $bookings->count();
-            $revenue = $bookings->where('status', 'completed')->sum('total');
+            $revenue = $bookings->where('status', 'COMPLETED')->sum('total');
 
             $monthlyData[] = [
                 'month' => $startDate->format('M'),

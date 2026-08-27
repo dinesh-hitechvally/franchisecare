@@ -152,7 +152,7 @@ class PaymentController extends Controller
                 'package_id' => $validated['package_id'],
                 'quantity' => $package['quantity'],
                 'amount' => $package['price'],
-                'status' => 'completed',
+                'status' => 'COMPLETED',
                 'purchased_at' => now(),
             ]);
 

@@ -43,7 +43,7 @@ class ForumPostController extends Controller
             'author_name' => 'nullable|string|max:255',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
         $validated['views'] = 0;
         $validated['author_name'] = $validated['author_name'] ?? $request->user()->name;
 
@@ -67,7 +67,7 @@ class ForumPostController extends Controller
             'title' => 'sometimes|string|max:255',
             'content' => 'nullable|string',
             'author_name' => 'nullable|string|max:255',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $forumPost->update($validated);

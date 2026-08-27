@@ -34,7 +34,7 @@ class StoreBookingRequest extends FormRequest
             'calendar_color' => 'nullable|string',
             'send_sms' => 'boolean',
             'send_email' => 'boolean',
-            'status' => 'required|in:active,cancelled,completed,archived',
+            'status' => 'required|in:ACTIVE,CANCELLED,COMPLETED,ARCHIVED',
             'total' => 'required|numeric',
             'duration' => 'required|integer',
             'notes' => 'nullable|string',

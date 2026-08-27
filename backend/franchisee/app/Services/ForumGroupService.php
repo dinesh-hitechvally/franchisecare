@@ -31,7 +31,7 @@ class ForumGroupService implements ForumGroupServiceInterface
         $data['created_by'] = $user->id;
         $group = ForumGroup::create($data);
 
-        $group->members()->attach($user->id, ['role' => 'admin']);
+        $group->members()->attach($user->id, ['role' => 'ADMIN']);
 
         return $group->load(['members', 'creator']);
     }
@@ -69,7 +69,7 @@ class ForumGroupService implements ForumGroupServiceInterface
             return ['success' => false, 'error' => 'Already a member', 'status_code' => 400];
         }
 
-        $forumGroup->members()->attach($user->id, ['role' => 'member']);
+        $forumGroup->members()->attach($user->id, ['role' => 'MEMBER']);
 
         return ['success' => true, 'message' => 'Joined successfully'];
     }

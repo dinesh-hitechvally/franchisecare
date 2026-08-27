@@ -154,7 +154,7 @@ export function AddCustomerPage() {
   })
 
   const futureBookings = useMemo(() => bookings?.filter(b => ['requested', 'confirmed'].includes(b.status)) || [], [bookings])
-  const completedBookings = useMemo(() => bookings?.filter(b => b.status === 'completed') || [], [bookings])
+  const completedBookings = useMemo(() => bookings?.filter(b => b.status === 'COMPLETED') || [], [bookings])
 
 
   const saveMutation = useMutation({

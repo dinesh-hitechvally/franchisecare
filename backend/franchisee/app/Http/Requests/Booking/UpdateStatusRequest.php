@@ -26,7 +26,7 @@ class UpdateStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => 'required|in:active,cancelled,completed,archived',
+            'status' => 'required|in:ACTIVE,CANCELLED,COMPLETED,ARCHIVED',
         ];
     }
 
@@ -37,7 +37,7 @@ class UpdateStatusRequest extends FormRequest
     {
         return [
             'status.required' => 'Status is required.',
-            'status.in' => 'Invalid status. Must be one of: active, cancelled, completed, archived.',
+            'status.in' => 'Invalid status. Must be one of: ACTIVE, CANCELLED, COMPLETED, ARCHIVED.',
         ];
     }
 }

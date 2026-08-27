@@ -42,7 +42,7 @@ class FranchiseSuburbController extends Controller
             'state' => 'required|string|max:50',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $suburb = FranchiseSuburb::create($validated);
 
@@ -61,7 +61,7 @@ class FranchiseSuburbController extends Controller
             'suburb_name' => 'sometimes|string|max:100',
             'postcode' => 'sometimes|string|max:10',
             'state' => 'sometimes|string|max:50',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $franchiseSuburb->update($validated);

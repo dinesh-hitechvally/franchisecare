@@ -22,10 +22,10 @@ return new class extends Migration
 
         // 2. Insert default departments
         DB::table('support_departments')->insert([
-            ['name' => 'Bugs', 'code' => 'bugs', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Enhancement Requests', 'code' => 'enhancement', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Admin Tickets', 'code' => 'admin', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Urgent Tickets', 'code' => 'urgent', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Bugs', 'code' => 'BUGS', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Enhancement Requests', 'code' => 'ENHANCEMENT', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Admin Tickets', 'code' => 'ADMIN', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Urgent Tickets', 'code' => 'URGENT', 'created_at' => now(), 'updated_at' => now()],
         ]);
 
         // 3. Recreate department column on support_tickets as string
@@ -34,7 +34,7 @@ return new class extends Migration
         });
 
         Schema::table('support_tickets', function (Blueprint $table) {
-            $table->string('department')->default('bugs')->after('subject');
+            $table->string('department')->default('BUGS')->after('subject');
         });
     }
 
@@ -48,7 +48,7 @@ return new class extends Migration
         });
 
         Schema::table('support_tickets', function (Blueprint $table) {
-            $table->enum('department', ['bugs', 'enhancement', 'admin', 'urgent'])->default('bugs')->after('subject');
+            $table->enum('department', ['BUGS', 'ENHANCEMENT', 'ADMIN', 'URGENT'])->default('BUGS')->after('subject');
         });
 
         Schema::dropIfExists('support_departments');

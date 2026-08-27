@@ -19,14 +19,14 @@ const initialFilters: FilterState = {
 }
 
 const statusBadgeStyle: Record<Franchise['status'], { bg: string; color: string }> = {
-  active: { bg: '#dcfce7', color: '#166534' },
-  inactive: { bg: '#f3f4f6', color: '#4b5563' },
-  suspended: { bg: '#ffedd5', color: '#c2410c' },
-  terminated: { bg: '#fee2e2', color: '#b91c1c' },
+  ACTIVE: { bg: '#dcfce7', color: '#166534' },
+  INACTIVE: { bg: '#f3f4f6', color: '#4b5563' },
+  SUSPENDED: { bg: '#ffedd5', color: '#c2410c' },
+  TERMINATED: { bg: '#fee2e2', color: '#b91c1c' },
 }
 
 function StatusBadge({ status }: { status: Franchise['status'] }) {
-  const style = statusBadgeStyle[status] ?? statusBadgeStyle.inactive
+  const style = statusBadgeStyle[status] ?? statusBadgeStyle.INACTIVE
   return (
     <span
       style={{
@@ -158,10 +158,10 @@ export function ListFranchises() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="terminated">Terminated</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="TERMINATED">Terminated</option>
                 </select>
               </div>
             </div>

@@ -81,7 +81,7 @@ class BookingRecurringController extends Controller
             'repeat_day' => $request->input('recurring.repeat_day'),
             'repeat_until' => $request->input('recurring.repeat_until'),
             'auto_extend' => $request->input('recurring.auto_extend', false),
-            'status' => 'active',
+            'status' => 'ACTIVE',
             'total' => collect($validated['services'])->sum('service_price'),
             'duration' => collect($validated['services'])->sum('duration'),
             'details' => array_map(function ($service) use ($validated) {
@@ -174,7 +174,7 @@ class BookingRecurringController extends Controller
         ]);
 
         $bookingRecurring->update([
-            'status' => 'cancelled',
+            'status' => 'CANCELLED',
             'cancelled_date' => now(),
             'cancellation_reason' => $validated['cancellation_reason'] ?? null,
         ]);

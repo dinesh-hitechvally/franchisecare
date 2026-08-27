@@ -31,8 +31,8 @@ export function CancellationRequestPage() {
   const [rows, setRows] = useState<CancellationRow[]>([])
 
   const { data: fetchedLeads = [] } = useQuery({
-    queryKey: ['leads', 'cancellation_request'],
-    queryFn: () => leadsApi.getAll({ status: 'cancellation_request' }),
+    queryKey: ['leads', 'CANCELLATION_REQUEST'],
+    queryFn: () => leadsApi.getAll({ status: 'CANCELLATION_REQUEST' }),
   })
 
   const updateLeadMutation = useMutation({
@@ -79,9 +79,9 @@ export function CancellationRequestPage() {
     referredBy: 'Phone',
     additionalNote: row.message,
     notes: row.message,
-    source: 'phone',
-    leadsFrom: 'phone',
-    status: 'cancellation_request',
+    source: 'PHONE',
+    leadsFrom: 'PHONE',
+    status: 'CANCELLATION_REQUEST',
     comments: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -118,7 +118,7 @@ export function CancellationRequestPage() {
 
   const handleSnooze = (leadId: string, snoozedUntil: string) => {
     updateLeadMutation.mutate(
-      { id: leadId, data: { status: 'snoozed', snoozedUntil } },
+      { id: leadId, data: { status: 'SNOOZED', snoozedUntil } },
       {
         onSuccess: () => {
           addToast('Lead snoozed', 'success')

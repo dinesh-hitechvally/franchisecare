@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->enum('type', ['topic', 'state', 'custom'])->default('custom');
+            $table->enum('type', ['TOPIC', 'STATE', 'CUSTOM'])->default('CUSTOM');
             $table->string('icon')->nullable();
             $table->string('color')->nullable();
             $table->unsignedBigInteger('created_by')->nullable();

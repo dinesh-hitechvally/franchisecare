@@ -54,7 +54,7 @@ export function DailyDiaryPage() {
   })
 
   const eligibleBookings = bookings.filter(
-    (booking: Booking) => booking.status === 'active' || booking.status === 'completed'
+    (booking: Booking) => booking.status === 'ACTIVE' || booking.status === 'COMPLETED'
   )
 
   const to12Hour = (time?: string) => {

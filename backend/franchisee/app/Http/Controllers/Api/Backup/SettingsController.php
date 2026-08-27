@@ -163,10 +163,10 @@ class SettingsController extends Controller
             $policy = new CancellationPolicy([
                 'company_id' => $companyId,
                 'attach_policy' => false,
-                'cancel_before_unit' => 'hours',
+                'cancel_before_unit' => 'HOURS',
                 'cancel_before_value' => 24,
                 'cancellation_fee_value' => 0,
-                'penalty_type' => 'percent',
+                'penalty_type' => 'PERCENT',
             ]);
         }
 
@@ -179,11 +179,11 @@ class SettingsController extends Controller
 
         $validated = $request->validate([
             'attach_policy' => 'boolean',
-            'cancel_before_unit' => 'in:hours,cutoff',
+            'cancel_before_unit' => 'in:HOURS,CUTOFF',
             'cancel_before_value' => 'integer',
             'cancel_cutoff_time' => 'nullable|date_format:H:i',
             'cancellation_fee_value' => 'numeric',
-            'penalty_type' => 'in:percent,fixed',
+            'penalty_type' => 'in:PERCENT,FIXED',
             'policy_id' => 'nullable|integer',
             'policy_text' => 'nullable|string',
         ]);
@@ -205,7 +205,7 @@ class SettingsController extends Controller
         if (!$settings) {
             $settings = new ReminderSetting([
                 'company_id' => $companyId,
-                'reminder_method' => 'email-only',
+                'reminder_method' => 'EMAIL-ONLY',
                 'send_before_hours' => 24,
             ]);
         }
@@ -218,7 +218,7 @@ class SettingsController extends Controller
         $companyId = $this->getCompanyId();
 
         $validated = $request->validate([
-            'reminder_method' => 'in:no-send,email-sms,email-only,sms-only,email-if-found,sms-if-no-mobile',
+            'reminder_method' => 'in:NO-SEND,EMAIL-SMS,EMAIL-ONLY,SMS-ONLY,EMAIL-IF-NO-MOBILE,SMS-IF-NO-EMAIL',
             'send_before_hours' => 'integer',
         ]);
 

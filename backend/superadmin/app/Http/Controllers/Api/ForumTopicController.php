@@ -37,7 +37,7 @@ class ForumTopicController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $topic = ForumTopic::create($validated);
 
@@ -55,7 +55,7 @@ class ForumTopicController extends Controller
             'category_id' => 'nullable|exists:forum_categories,id',
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $forumTopic->update($validated);

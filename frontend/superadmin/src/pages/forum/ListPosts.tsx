@@ -184,8 +184,8 @@ export function ListPosts() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
             </div>
@@ -271,7 +271,7 @@ export function ListPosts() {
                   </td>
                   <td>{post.views}</td>
                   <td>
-                    {post.status === 'active' ? (
+                    {post.status === 'ACTIVE' ? (
                       <Check size={20} className="icon-check" />
                     ) : (
                       <X size={20} className="icon-cross" />

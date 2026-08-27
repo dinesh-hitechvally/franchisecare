@@ -27,7 +27,7 @@ class ForumGroupController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => 'required|in:topic,state,custom',
+            'type' => 'required|in:TOPIC,STATE,CUSTOM',
             'icon' => 'nullable|string',
             'color' => 'nullable|string',
             'is_public' => 'boolean',

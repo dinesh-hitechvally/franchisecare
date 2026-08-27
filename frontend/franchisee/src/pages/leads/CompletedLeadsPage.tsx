@@ -32,8 +32,8 @@ export function CompletedLeadsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const { data: fetchedLeads = [] } = useQuery({
-    queryKey: ['leads', 'completed'],
-    queryFn: () => leadsApi.getAll({ status: 'completed' }),
+    queryKey: ['leads', 'COMPLETED'],
+    queryFn: () => leadsApi.getAll({ status: 'COMPLETED' }),
   })
 
   const updateLeadMutation = useMutation({
@@ -78,12 +78,12 @@ export function CompletedLeadsPage() {
     address: row.address,
     suburb: '',
     petBreed: '',
-    referredBy: row.from === 'phone' ? 'Phone' : 'Internet',
+    referredBy: row.from === 'PHONE' ? 'Phone' : 'Internet',
     additionalNote: row.notes,
     notes: row.notes,
-    source: row.from === 'phone' ? 'phone' : 'internet',
-    leadsFrom: row.from === 'phone' ? 'phone' : 'internet',
-    status: 'completed',
+    source: row.from === 'PHONE' ? 'PHONE' : 'INTERNET',
+    leadsFrom: row.from === 'PHONE' ? 'PHONE' : 'INTERNET',
+    status: 'COMPLETED',
     comments: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
@@ -129,7 +129,7 @@ export function CompletedLeadsPage() {
     const row = rows.find((item) => item.id === rowId)
     if (!row) return
     try {
-      await leadsApi.update(rowId, { status: 'snoozed' })
+      await leadsApi.update(rowId, { status: 'SNOOZED' })
       setRows((prev) => prev.filter((item) => item.id !== rowId))
       addToast(`Lead ${row.customer} moved to snooze`, 'success')
     } catch {
@@ -197,7 +197,7 @@ export function CompletedLeadsPage() {
                     {row.notes}
                   </td>
                   <td className="px-3 py-4 align-top text-center text-blue-700">
-                    {row.from === 'phone' ? (
+                    {row.from === 'PHONE' ? (
                        <Phone className="w-4 h-4 mx-auto rotate-90" />
                     ) : (
                        <Globe className="w-4 h-4 mx-auto" />

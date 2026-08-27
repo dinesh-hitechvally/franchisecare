@@ -29,7 +29,7 @@ export function DocumentsPage() {
   const [uploadFile, setUploadFile] = useState<File | null>(null)
   const [uploadTitle, setUploadTitle] = useState('')
   const [uploadDescription, setUploadDescription] = useState('')
-  const [uploadVisibility, setUploadVisibility] = useState<'global' | 'franchise'>('franchise')
+  const [uploadVisibility, setUploadVisibility] = useState<'GLOBAL' | 'FRANCHISE'>('FRANCHISE')
 
   const { data: documents, isLoading } = useQuery({
     queryKey: ['documents', filterVisibility],
@@ -75,7 +75,7 @@ export function DocumentsPage() {
     setUploadFile(null)
     setUploadTitle('')
     setUploadDescription('')
-    setUploadVisibility('franchise')
+    setUploadVisibility('FRANCHISE')
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -133,8 +133,8 @@ export function DocumentsPage() {
   }
 
   const visibilityColors = {
-    global: 'bg-blue-100 text-blue-700',
-    franchise: 'bg-green-100 text-green-700',
+    GLOBAL: 'bg-blue-100 text-blue-700',
+    FRANCHISE: 'bg-green-100 text-green-700',
   }
 
   const filteredDocuments = documents ?? []
@@ -161,8 +161,8 @@ export function DocumentsPage() {
             className="input w-48"
           >
             <option value="">All Visibility</option>
-            <option value="global">Global</option>
-            <option value="franchise">Franchise Only</option>
+            <option value="GLOBAL">Global</option>
+            <option value="FRANCHISE">Franchise Only</option>
           </select>
         </div>
 
@@ -310,8 +310,8 @@ export function DocumentsPage() {
               value={uploadVisibility}
               onChange={(e) => setUploadVisibility(e.target.value as any)}
             >
-              <option value="global">Global - All Franchises</option>
-              <option value="franchise">Franchise Only</option>
+              <option value="GLOBAL">Global - All Franchises</option>
+              <option value="FRANCHISE">Franchise Only</option>
             </select>
           </div>
         </div>

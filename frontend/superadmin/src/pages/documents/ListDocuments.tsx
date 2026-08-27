@@ -25,13 +25,13 @@ const initialFilters: FilterState = {
 }
 
 const categoryBadgeStyle: Record<DocumentItem['category'], { bg: string; color: string }> = {
-  manuals: { bg: '#dbeafe', color: '#1d4ed8' },
-  templates: { bg: '#ede9fe', color: '#6d28d9' },
-  other: { bg: '#f3f4f6', color: '#4b5563' },
+  MANUALS: { bg: '#dbeafe', color: '#1d4ed8' },
+  TEMPLATES: { bg: '#ede9fe', color: '#6d28d9' },
+  OTHER: { bg: '#f3f4f6', color: '#4b5563' },
 }
 
 function CategoryBadge({ category }: { category: DocumentItem['category'] }) {
-  const style = categoryBadgeStyle[category] ?? categoryBadgeStyle.other
+  const style = categoryBadgeStyle[category] ?? categoryBadgeStyle.OTHER
   return (
     <span
       style={{
@@ -51,7 +51,7 @@ function CategoryBadge({ category }: { category: DocumentItem['category'] }) {
 }
 
 function StatusBadge({ status }: { status: DocumentItem['status'] }) {
-  const active = status === 'active'
+  const active = status === 'ACTIVE'
   return (
     <span
       style={{
@@ -196,9 +196,9 @@ export function ListDocuments() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="manuals">Manuals</option>
-                  <option value="templates">Templates</option>
-                  <option value="other">Other</option>
+                  <option value="MANUALS">Manuals</option>
+                  <option value="TEMPLATES">Templates</option>
+                  <option value="OTHER">Other</option>
                 </select>
               </div>
             </div>

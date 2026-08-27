@@ -14,14 +14,14 @@ import { formatDisplayDate, formatDisplayTime } from '../../lib/timeFormatUtils'
 import { Calendar, CalendarDays, Check, Edit3, Eye, History, Mail, MoreVertical, Plus, Trash2 } from 'lucide-react'
 import type { Booking } from '../../types'
 
-type WaitlistStatusFilter = 'all' | 'active' | 'cancelled' | 'completed' | 'expired'
+type WaitlistStatusFilter = 'all' | 'ACTIVE' | 'CANCELLED' | 'COMPLETED' | 'EXPIRED'
 
 const STATUS_OPTIONS: { label: string; value: WaitlistStatusFilter }[] = [
   { label: 'All', value: 'all' },
-  { label: 'Active', value: 'active' },
-  { label: 'Cancelled', value: 'cancelled' },
-  { label: 'Completed', value: 'completed' },
-  { label: 'Expired', value: 'expired' },
+  { label: 'Active', value: 'ACTIVE' },
+  { label: 'Cancelled', value: 'CANCELLED' },
+  { label: 'Completed', value: 'COMPLETED' },
+  { label: 'Expired', value: 'EXPIRED' },
 ]
 
 function mapWaitlistFilterToApiStatus(value: WaitlistStatusFilter): string | undefined {
@@ -34,20 +34,21 @@ function getCustomerName(booking: Booking) {
 }
 
 function getStatusBadgeClass(status: string) {
-  if (status === 'active') return 'bg-green-100 text-green-700'
-  if (status === 'completed') return 'bg-blue-100 text-blue-700'
-  if (status === 'cancelled') return 'bg-red-100 text-red-700'
-  if (status === 'expired') return 'bg-amber-100 text-amber-700'
+  if (status === 'ACTIVE') return 'bg-green-100 text-green-700'
+  if (status === 'COMPLETED') return 'bg-blue-100 text-blue-700'
+  if (status === 'CANCELLED') return 'bg-red-100 text-red-700'
+  if (status === 'EXPIRED') return 'bg-amber-100 text-amber-700'
   return 'bg-gray-100 text-gray-700'
 }
 
 function getStatusLabel(status: string) {
-  return status.charAt(0).toUpperCase() + status.slice(1)
+  const lower = status.toLowerCase()
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
 }
 
 function getMenuAccessLevel(status: string): 'all' | 'view-edit' | 'view-only' {
-  if (status === 'cancelled') return 'view-edit'
-  if (status === 'completed' || status === 'expired') return 'view-only'
+  if (status === 'CANCELLED') return 'view-edit'
+  if (status === 'COMPLETED' || status === 'EXPIRED') return 'view-only'
   return 'all'
 }
 
@@ -104,7 +105,7 @@ export function WaitlistBookingsPage() {
   })
 
   const cancelBookingMutation = useMutation({
-    mutationFn: (bookingId: string) => waitlistApi.updateStatus(bookingId, 'cancelled'),
+    mutationFn: (bookingId: string) => waitlistApi.updateStatus(bookingId, 'CANCELLED'),
     onSuccess: () => {
       addToast('Waitlist booking cancelled successfully.', 'success')
       queryClient.invalidateQueries({ queryKey: ['waitlists'] })

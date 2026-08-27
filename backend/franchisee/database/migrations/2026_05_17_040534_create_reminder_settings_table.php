@@ -16,13 +16,13 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('company_id');
             $table->enum('reminder_method', [
-                'no-send',
-                'email-sms',
-                'email-only',
-                'sms-only',
-                'email-if-found',
-                'sms-if-no-mobile'
-            ])->default('email-only');
+                'NO-SEND',
+                'EMAIL-SMS',
+                'EMAIL-ONLY',
+                'SMS-ONLY',
+                'EMAIL-IF-NO-MOBILE',
+                'SMS-IF-NO-EMAIL'
+            ])->default('EMAIL-ONLY');
             $table->integer('send_before_hours')->default(24);
             $table->timestamps();
 

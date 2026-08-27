@@ -19,7 +19,7 @@ const initialForm: FormState = {
   title: '',
   description: '',
   category: '',
-  status: 'active',
+  status: 'ACTIVE',
 }
 
 function formatFileSize(bytes: number): string {
@@ -194,9 +194,9 @@ export function AddDocument() {
                   required
                 >
                   <option value="">Select a category</option>
-                  <option value="manuals">Manuals</option>
-                  <option value="templates">Templates</option>
-                  <option value="other">Other</option>
+                  <option value="MANUALS">Manuals</option>
+                  <option value="TEMPLATES">Templates</option>
+                  <option value="OTHER">Other</option>
                 </select>
                 {errors.category && <p className="text-red-500 text-xs mt-1.5">{errors.category}</p>}
               </div>
@@ -209,8 +209,8 @@ export function AddDocument() {
                     value={form.status}
                     onChange={(e) => handleChange('status', e.target.value)}
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
                   </select>
                   {errors.status && <p className="text-red-500 text-xs mt-1.5">{errors.status}</p>}
                 </div>

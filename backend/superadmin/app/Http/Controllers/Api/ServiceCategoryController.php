@@ -31,7 +31,7 @@ class ServiceCategoryController extends Controller
             'icon' => 'nullable|string|max:50',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
         $validated['sort_order'] = ServiceCategory::max('sort_order') + 1;
 
         $category = ServiceCategory::create($validated);
@@ -49,7 +49,7 @@ class ServiceCategoryController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
             'icon' => 'nullable|string|max:50',
             'sort_order' => 'sometimes|integer|min:0',
         ]);

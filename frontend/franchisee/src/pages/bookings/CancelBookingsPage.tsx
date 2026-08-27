@@ -27,10 +27,10 @@ export function CancelBookingsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const restoreBookingMutation = useMutation({
-    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'active'),
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'ACTIVE'),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookings', 'cancelled'] })
-      queryClient.invalidateQueries({ queryKey: ['bookings', 'active'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'CANCELLED'] })
+      queryClient.invalidateQueries({ queryKey: ['bookings', 'ACTIVE'] })
       setOpenMenuId(null)
       setMenuPos(null)
     },
@@ -46,12 +46,12 @@ export function CancelBookingsPage() {
   }, [debouncedSearch])
 
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['bookings', 'cancelled', debouncedSearch, page, perPage],
+    queryKey: ['bookings', 'CANCELLED', debouncedSearch, page, perPage],
     queryFn: () =>
       bookingsApi.getPaginated({
         page,
         per_page: perPage,
-        status: 'cancelled',
+        status: 'CANCELLED',
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       }),
   })

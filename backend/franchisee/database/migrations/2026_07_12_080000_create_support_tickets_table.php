@@ -15,11 +15,11 @@ return new class extends Migration
             $table->id();
             $table->string('ticket_id', 50)->unique();
             $table->string('subject');
-            $table->enum('department', ['bugs', 'enhancement', 'admin', 'urgent'])->default('bugs');
+            $table->enum('department', ['BUGS', 'ENHANCEMENT', 'ADMIN', 'URGENT'])->default('BUGS');
             $table->unsignedBigInteger('user_id');
             $table->string('created_by_name');
             $table->string('last_updated_by_name');
-            $table->enum('status', ['open', 'in-progress', 'closed'])->default('open');
+            $table->enum('status', ['OPEN', 'IN-PROGRESS', 'CLOSED'])->default('OPEN');
             $table->text('description')->nullable();
             $table->timestamps();
         });

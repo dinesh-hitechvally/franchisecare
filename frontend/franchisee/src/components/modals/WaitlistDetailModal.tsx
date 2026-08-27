@@ -16,18 +16,19 @@ interface WaitlistDetailModalProps {
 }
 
 function getStatusLabel(status: string) {
-  return status.charAt(0).toUpperCase() + status.slice(1)
+  const lower = status.toLowerCase()
+  return lower.charAt(0).toUpperCase() + lower.slice(1)
 }
 
 function getStatusTone(status: string) {
-  if (status === 'completed') return 'bg-emerald-100 text-emerald-700'
-  if (status === 'cancelled') return 'bg-red-100 text-red-700'
-  if (status === 'expired') return 'bg-amber-100 text-amber-700'
+  if (status === 'COMPLETED') return 'bg-emerald-100 text-emerald-700'
+  if (status === 'CANCELLED') return 'bg-red-100 text-red-700'
+  if (status === 'EXPIRED') return 'bg-amber-100 text-amber-700'
   return 'bg-blue-100 text-blue-700'
 }
 
 function isActionableStatus(status: string) {
-  return status === 'active'
+  return status === 'ACTIVE'
 }
 
 function ActionButton({
@@ -90,7 +91,7 @@ export function WaitlistDetailModal({
     .join(', ')
   const serviceLocation = booking.customer?.address || booking.customer?.street_address || '-'
   const canManage = isActionableStatus(booking.status)
-  const showManageActions = booking.status !== 'completed' && booking.status !== 'archived'
+  const showManageActions = booking.status !== 'COMPLETED' && booking.status !== 'ARCHIVED'
   const customerName = `${booking.customer?.first_name || ''} ${booking.customer?.last_name || ''}`.trim() || 'Unknown customer'
 
   const handleEdit = () => {
@@ -128,7 +129,7 @@ export function WaitlistDetailModal({
                 <div className="border-b border-gray-100 bg-gray-50 px-6 py-3">
                   <span className="text-sm font-bold text-gray-700">Waitlist Detail</span>
                 </div>
-                <div className={cn('h-2 w-full', booking.status === 'cancelled' ? 'bg-red-300' : booking.status === 'archived' ? 'bg-amber-300' : 'bg-[#6df19e]')} />
+                <div className={cn('h-2 w-full', booking.status === 'CANCELLED' ? 'bg-red-300' : booking.status === 'ARCHIVED' ? 'bg-amber-300' : 'bg-[#6df19e]')} />
 
                 <div className="space-y-6 p-6">
                   <div>

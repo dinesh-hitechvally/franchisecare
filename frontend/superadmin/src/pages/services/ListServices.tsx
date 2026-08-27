@@ -43,7 +43,7 @@ export function ListServices() {
     queryFn: () =>
       servicesApi.list({
         search: appliedFilters.search || undefined,
-        status: appliedFilters.activeService === 'yes' ? 'active' : appliedFilters.activeService === 'no' ? 'inactive' : undefined,
+        status: appliedFilters.activeService === 'yes' ? 'ACTIVE' : appliedFilters.activeService === 'no' ? 'INACTIVE' : undefined,
         category_id: appliedFilters.categoryId ? Number(appliedFilters.categoryId) : undefined,
       }),
   })
@@ -310,7 +310,7 @@ export function ListServices() {
                   <td>${service.base_price}</td>
                   <td>{service.duration} mins</td>
                   <td className="text-center">
-                    {service.status === 'active' ? (
+                    {service.status === 'ACTIVE' ? (
                       <Check size={18} className="inline text-purple-600" />
                     ) : (
                       <X size={18} className="inline text-red-500" />

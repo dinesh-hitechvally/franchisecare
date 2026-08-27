@@ -22,7 +22,7 @@ export function AddIncomePage() {
     description: '',
     isRecurring: false,
     recurringStartDate: new Date().toISOString().split('T')[0],
-    recurringEvery: 'weekly',
+    recurringEvery: 'WEEKLY',
     autoExtendRecurring: false,
   })
 
@@ -49,7 +49,7 @@ export function AddIncomePage() {
         description: incomeData.description || '',
         isRecurring: !!incomeData.recurring_income_id,
         recurringStartDate: incomeData.income_date,
-        recurringEvery: 'weekly',
+        recurringEvery: 'WEEKLY',
         autoExtendRecurring: false,
       })
     }
@@ -254,10 +254,10 @@ export function AddIncomePage() {
                       disabled={isViewMode}
                       className="w-full bg-transparent border-b border-gray-300 py-2 outline-none focus:border-blue-500 transition-colors text-gray-800 appearance-none disabled:text-gray-400 disabled:cursor-not-allowed"
                     >
-                      <option value="daily">Daily</option>
-                      <option value="weekly">Weekly</option>
-                      <option value="monthly">Monthly</option>
-                      <option value="yearly">Yearly</option>
+                      <option value="DAILY">Daily</option>
+                      <option value="WEEKLY">Weekly</option>
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="YEARLY">Yearly</option>
                     </select>
                     <div className="absolute right-0 bottom-3 pointer-events-none text-gray-400">
                       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>

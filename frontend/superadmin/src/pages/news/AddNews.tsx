@@ -17,7 +17,7 @@ const initialForm: FormState = {
   title: '',
   content: '',
   category: '',
-  status: 'draft',
+  status: 'DRAFT',
 }
 
 type FormErrors = Partial<Record<keyof FormState | 'image', string>>
@@ -217,8 +217,8 @@ export function AddNews() {
                   onChange={(e) => handleChange('status', e.target.value)}
                   className="form-input"
                 >
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
                 </select>
                 {errors.status && <p className="text-red-500 text-xs mt-1.5">{errors.status}</p>}
               </div>

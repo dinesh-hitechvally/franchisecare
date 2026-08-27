@@ -11,7 +11,7 @@ use App\Models\Booking;
 class CalendarFeedService implements CalendarFeedServiceInterface
 {
     private const BLOCKOUT_COLOR = '#9333ea';
-    private const VISIBLE_BOOKING_STATUSES = ['active', 'completed'];
+    private const VISIBLE_BOOKING_STATUSES = ['ACTIVE', 'COMPLETED'];
 
     public function __construct(
         private BookingRepositoryInterface $bookingRepository,
@@ -98,7 +98,7 @@ class CalendarFeedService implements CalendarFeedServiceInterface
             'end_date' => optional($blockout->end_date)->format('Y-m-d'),
             'start_time' => $blockout->start_time,
             'end_time' => $blockout->end_time,
-            'status' => $blockout->active ? 'active' : 'cancelled',
+            'status' => $blockout->active ? 'ACTIVE' : 'CANCELLED',
             'calendar_color' => self::BLOCKOUT_COLOR,
             'notes' => $blockout->notes,
         ];

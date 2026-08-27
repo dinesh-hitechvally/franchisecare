@@ -47,7 +47,7 @@ export function AddGroup() {
         name: group.name,
         description: group.description ?? '',
         icon: group.icon ?? '',
-        active: group.status === 'active'
+        active: group.status === 'ACTIVE'
       })
     }
   }, [group])
@@ -85,7 +85,7 @@ export function AddGroup() {
           name: form.name,
           description: form.description || null,
           icon: form.icon || null,
-          status: form.active ? 'active' : 'inactive',
+          status: form.active ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Group updated successfully!')
       } else {

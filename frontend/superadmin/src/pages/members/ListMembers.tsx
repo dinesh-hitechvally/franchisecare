@@ -21,9 +21,9 @@ const initialFilters: FilterState = {
 }
 
 const typeLabels: Record<string, string> = {
-  master_franchisee: 'Master Franchisee',
-  franchisee: 'Franchisee',
-  franchisor: 'Franchisor',
+  MASTER_FRANCHISEE: 'Master Franchisee',
+  FRANCHISEE: 'Franchisee',
+  FRANCHISOR: 'Franchisor',
 }
 
 function formatType(type: Franchise['franchisee_type']) {
@@ -145,10 +145,10 @@ export function ListMembers() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="terminated">Terminated</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="TERMINATED">Terminated</option>
                 </select>
               </div>
               <div>
@@ -159,9 +159,9 @@ export function ListMembers() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="master_franchisee">Master Franchisee</option>
-                  <option value="franchisee">Franchisee</option>
-                  <option value="franchisor">Franchisor</option>
+                  <option value="MASTER_FRANCHISEE">Master Franchisee</option>
+                  <option value="FRANCHISEE">Franchisee</option>
+                  <option value="FRANCHISOR">Franchisor</option>
                 </select>
               </div>
             </div>
@@ -292,7 +292,7 @@ export function ListMembers() {
                       )}
                     </td>
                     <td className="text-center">
-                      {member.status === 'active' ? (
+                      {member.status === 'ACTIVE' ? (
                         <Check size={18} className="inline text-purple-600" />
                       ) : (
                         <X size={18} className="inline text-red-500" />

@@ -16,11 +16,11 @@ class UpdateRecurringIncomeRequest extends FormRequest
         return [
             'income_category_id' => 'nullable|exists:income_categories,id',
             'start_date'         => 'sometimes|required|date',
-            'frequency'          => 'sometimes|required|in:daily,weekly,monthly,yearly',
+            'frequency'          => 'sometimes|required|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend'        => 'boolean',
             'total'              => 'sometimes|required|numeric|min:0',
             'notes'              => 'nullable|string',
-            'status'             => 'sometimes|in:active,cancelled,completed',
+            'status'             => 'sometimes|in:ACTIVE,CANCELLED,COMPLETED',
         ];
     }
 }

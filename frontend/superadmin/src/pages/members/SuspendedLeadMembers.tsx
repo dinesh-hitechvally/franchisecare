@@ -8,9 +8,9 @@ type SortField = 'owner_name' | 'name' | 'territory' | 'franchisee_type' | 'has_
 type SortOrder = 'asc' | 'desc'
 
 const typeLabels: Record<string, string> = {
-  master_franchisee: 'Master Franchisee',
-  franchisee: 'Franchisee',
-  franchisor: 'Franchisor',
+  MASTER_FRANCHISEE: 'Master Franchisee',
+  FRANCHISEE: 'Franchisee',
+  FRANCHISOR: 'Franchisor',
 }
 
 function formatType(type: Franchise['franchisee_type']) {
@@ -147,7 +147,7 @@ export function SuspendedLeadMembers() {
                       )}
                     </td>
                     <td className="text-center">
-                      {member.status === 'active' ? (
+                      {member.status === 'ACTIVE' ? (
                         <Check size={18} className="inline text-purple-600" />
                       ) : (
                         <X size={18} className="inline text-red-500" />

@@ -15,11 +15,11 @@ class SaveCancellationPolicyRequest extends FormRequest
     {
         return [
             'attach_policy' => 'boolean',
-            'cancel_before_unit' => 'in:hours,cutoff',
+            'cancel_before_unit' => 'in:HOURS,CUTOFF',
             'cancel_before_value' => 'integer',
             'cancel_cutoff_time' => 'nullable|date_format:H:i',
             'cancellation_fee_value' => 'numeric',
-            'penalty_type' => 'in:percent,fixed',
+            'penalty_type' => 'in:PERCENT,FIXED',
             'policy_id' => 'nullable|integer',
             'policy_text' => 'nullable|string',
         ];

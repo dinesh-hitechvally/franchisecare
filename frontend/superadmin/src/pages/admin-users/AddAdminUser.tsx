@@ -20,7 +20,7 @@ const initialForm: FormState = {
   password: '',
   phone: '',
   role: '',
-  status: 'active',
+  status: 'ACTIVE',
 }
 
 export function AddAdminUser() {
@@ -216,9 +216,9 @@ export function AddAdminUser() {
                   className="form-input"
                 >
                   <option value="">Select a role</option>
-                  <option value="admin">Admin</option>
-                  <option value="support">Support</option>
-                  <option value="viewer">Viewer</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="SUPPORT">Support</option>
+                  <option value="VIEWER">Viewer</option>
                 </select>
                 <FieldError name="role" />
               </div>
@@ -251,8 +251,8 @@ export function AddAdminUser() {
                     onChange={(e) => handleChange('status', e.target.value)}
                     className="form-input"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
                   </select>
                   <FieldError name="status" />
                 </div>

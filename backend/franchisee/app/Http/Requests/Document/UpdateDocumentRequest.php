@@ -16,7 +16,7 @@ class UpdateDocumentRequest extends FormRequest
         return [
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
-            'visibility' => 'nullable|in:global,franchise',
+            'visibility' => 'nullable|in:GLOBAL,FRANCHISE',
             'category' => 'nullable|in:manual,template,other,general',
             'file' => 'nullable|file|max:10240',
         ];

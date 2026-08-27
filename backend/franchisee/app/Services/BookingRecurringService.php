@@ -93,7 +93,7 @@ class BookingRecurringService implements BookingRecurringServiceInterface
 
     public function generateBookings(BookingRecurring $bookingRecurring): void
     {
-        if ($bookingRecurring->status !== 'active') {
+        if ($bookingRecurring->status !== 'ACTIVE') {
             return;
         }
 

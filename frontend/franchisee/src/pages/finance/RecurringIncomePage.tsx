@@ -36,9 +36,9 @@ export function RecurringIncomePage() {
   }
 
   const getRecurRule = (income: RecurringIncome) => {
-    const freq = income.frequency || 'weekly'
+    const freq = income.frequency || 'WEEKLY'
     const endDate = income.end_date ? formatDate(income.end_date) : 'ongoing'
-    return `${freq.charAt(0).toUpperCase() + freq.slice(1)} until ${endDate}`
+    return `${freq.charAt(0).toUpperCase() + freq.slice(1).toLowerCase()} until ${endDate}`
   }
 
   return (

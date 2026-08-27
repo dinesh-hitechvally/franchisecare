@@ -41,11 +41,11 @@ class AdminUserController extends Controller
             'email' => 'required|email|unique:users',
             'password' => 'required|min:8',
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|in:admin,support,viewer',
+            'role' => 'required|in:ADMIN,SUPPORT,VIEWER',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $user = User::create($validated);
 
@@ -63,8 +63,8 @@ class AdminUserController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:users,email,' . $user->id,
             'phone' => 'nullable|string|max:20',
-            'role' => 'sometimes|in:admin,support,viewer',
-            'status' => 'sometimes|in:active,inactive',
+            'role' => 'sometimes|in:ADMIN,SUPPORT,VIEWER',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $user->update($validated);

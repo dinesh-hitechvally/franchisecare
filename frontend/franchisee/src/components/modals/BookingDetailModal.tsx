@@ -39,11 +39,11 @@ interface BookingDetailModalProps {
 
 function getStatusTone(status: Booking['status']) {
   switch (status) {
-    case 'completed':
+    case 'COMPLETED':
       return 'bg-emerald-100 text-emerald-700'
-    case 'cancelled':
+    case 'CANCELLED':
       return 'bg-red-100 text-red-700'
-    case 'archived':
+    case 'ARCHIVED':
       return 'bg-slate-200 text-slate-700'
     default:
       return 'bg-blue-100 text-blue-700'
@@ -112,7 +112,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
     mutationFn: ({ bookingId, status }: { bookingId: string; status: Booking['status'] }) => bookingsApi.updateStatus(bookingId, status),
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['bookings'] })
-      addToast(`Booking ${variables.status === 'active' ? 'restored' : variables.status} successfully`, 'success')
+      addToast(`Booking ${variables.status === 'ACTIVE' ? 'restored' : variables.status} successfully`, 'success')
       onClose()
     },
     onError: (error: any) => {
@@ -178,12 +178,12 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
   }
 
   const statusActions = {
-    active: [
+    ACTIVE: [
       { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
       {
         label: 'Mark Complete',
         icon: CheckCircle2,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'completed' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'COMPLETED' }),
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
@@ -191,7 +191,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
       {
         label: 'Cancel',
         icon: XCircle,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'CANCELLED' }),
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
@@ -218,18 +218,18 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
         loading: sendEmailMutation.isPending,
       },
     ],
-    completed: [
+    COMPLETED: [
       {
         label: 'Restore',
         icon: RotateCcw,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'active' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'ACTIVE' }),
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
       {
         label: 'Cancel',
         icon: XCircle,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'CANCELLED' }),
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
@@ -243,66 +243,66 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
         loading: sendReceiptMutation.isPending,
       },
     ],
-    cancelled: [
+    CANCELLED: [
       {
         label: 'Restore',
         icon: RotateCcw,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'active' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'ACTIVE' }),
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
       { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const, loading: undefined },
     ],
-    archived: [
+    ARCHIVED: [
       { label: 'Rebook', icon: RotateCcw, onClick: () => onRebook?.(booking), variant: 'primary' as const, loading: undefined },
     ],
-    requested: [
+    REQUESTED: [
       { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
       {
         label: 'Confirm',
         icon: CheckCircle2,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'confirmed' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'CONFIRMED' }),
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
       {
         label: 'Cancel',
         icon: XCircle,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'CANCELLED' }),
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
     ],
-    confirmed: [
+    CONFIRMED: [
       { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
       {
         label: 'Start',
         icon: CheckCircle2,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'in_progress' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'IN_PROGRESS' }),
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
       {
         label: 'Cancel',
         icon: XCircle,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'CANCELLED' }),
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
     ],
-    in_progress: [
+    IN_PROGRESS: [
       { label: 'Edit', icon: Edit2, onClick: handleEdit, variant: 'primary' as const, loading: undefined },
       {
         label: 'Mark Complete',
         icon: CheckCircle2,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'completed' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'COMPLETED' }),
         variant: 'secondary' as const,
         loading: statusMutation.isPending,
       },
       {
         label: 'Cancel',
         icon: XCircle,
-        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'cancelled' }),
+        onClick: () => statusMutation.mutate({ bookingId: booking.id, status: 'CANCELLED' }),
         variant: 'danger' as const,
         loading: statusMutation.isPending,
       },
@@ -336,7 +336,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                     <h3 className="text-xl font-medium capitalize text-[#4a5ebc]">
                       {booking.customer?.first_name} {booking.customer?.last_name} - {booking.customer?.phone}
                     </h3>
-                    {booking.status === 'active' ? (
+                    {booking.status === 'ACTIVE' ? (
                       <button onClick={handleEdit} className="text-gray-400 transition-colors hover:text-[#4a5ebc]">
                         <Edit2 className="h-4 w-4" />
                       </button>
@@ -353,7 +353,7 @@ export const BookingDetailModal: React.FC<BookingDetailModalProps> = ({ isOpen, 
                   <div className="border-b border-gray-100 bg-gray-50 px-6 py-3">
                     <span className="text-sm font-bold text-gray-700">Booking Detail</span>
                   </div>
-                  <div className={cn('h-2 w-full', booking.status === 'cancelled' ? 'bg-red-300' : booking.status === 'archived' ? 'bg-slate-300' : 'bg-[#6df19e]')} />
+                  <div className={cn('h-2 w-full', booking.status === 'CANCELLED' ? 'bg-red-300' : booking.status === 'ARCHIVED' ? 'bg-slate-300' : 'bg-[#6df19e]')} />
 
                   <div className="space-y-8 p-6">
                     {groupedArray.map((group, idx) => (

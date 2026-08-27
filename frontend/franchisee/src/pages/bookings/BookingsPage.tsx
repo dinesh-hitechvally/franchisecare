@@ -53,7 +53,7 @@ export function BookingsPage() {
     startDate: format(new Date(), 'yyyy-MM-dd'),
     startTime: '09:00',
     isRecurring: false,
-    recurringFrequency: 'weekly' as const,
+    recurringFrequency: 'WEEKLY' as const,
     notes: '',
   })
 
@@ -198,11 +198,11 @@ export function BookingsPage() {
     requested: { label: 'Requested', color: 'bg-yellow-100 text-yellow-700 border-yellow-200', icon: Clock },
     confirmed: { label: 'Confirmed', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle },
     in_progress: { label: 'In Progress', color: 'bg-purple-100 text-purple-700 border-purple-200', icon: Play },
-    active: { label: 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle },
-    completed: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
-    cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
+    ACTIVE: { label: 'Active', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: CheckCircle },
+    COMPLETED: { label: 'Completed', color: 'bg-green-100 text-green-700 border-green-200', icon: CheckCircle },
+    CANCELLED: { label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
     canceled: { label: 'Cancelled', color: 'bg-red-100 text-red-700 border-red-200', icon: XCircle },
-    archived: { label: 'Archived', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: XCircle },
+    ARCHIVED: { label: 'Archived', color: 'bg-gray-100 text-gray-700 border-gray-200', icon: XCircle },
   }
 
   const weekDays = [...Array(7)].map((_, i) => addDays(weekStart, i))
@@ -272,7 +272,7 @@ export function BookingsPage() {
             <option value="requested">Requested</option>
             <option value="confirmed">Confirmed</option>
             <option value="in_progress">In Progress</option>
-            <option value="completed">Completed</option>
+            <option value="COMPLETED">Completed</option>
             <option value="canceled">Canceled</option>
           </select>
         </div>
@@ -304,29 +304,29 @@ export function BookingsPage() {
                 title: 'Actions',
                 render: (row: Booking) => (
                   <div className="flex gap-1">
-                    {row.status === 'requested' && (
+                    {row.status === 'REQUESTED' && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => statusMutation.mutate({ id: row.id, status: 'confirmed' })}
+                        onClick={() => statusMutation.mutate({ id: row.id, status: 'CONFIRMED' })}
                       >
                         Confirm
                       </Button>
                     )}
-                    {row.status === 'confirmed' && (
+                    {row.status === 'CONFIRMED' && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => statusMutation.mutate({ id: row.id, status: 'in_progress' })}
+                        onClick={() => statusMutation.mutate({ id: row.id, status: 'IN_PROGRESS' })}
                       >
                         Start
                       </Button>
                     )}
-                    {row.status === 'in_progress' && (
+                    {row.status === 'IN_PROGRESS' && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => statusMutation.mutate({ id: row.id, status: 'completed' })}
+                        onClick={() => statusMutation.mutate({ id: row.id, status: 'COMPLETED' })}
                       >
                         Complete
                       </Button>
@@ -591,9 +591,9 @@ export function BookingsPage() {
                   value={newBooking.recurringFrequency}
                   onChange={(e) => setNewBooking({ ...newBooking, recurringFrequency: e.target.value as any })}
                 >
-                  <option value="weekly">Weekly</option>
+                  <option value="WEEKLY">Weekly</option>
                   <option value="fortnightly">Fortnightly</option>
-                  <option value="monthly">Monthly</option>
+                  <option value="MONTHLY">Monthly</option>
                 </select>
               </div>
             )}

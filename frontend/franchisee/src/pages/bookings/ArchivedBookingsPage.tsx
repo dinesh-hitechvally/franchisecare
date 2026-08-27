@@ -35,12 +35,12 @@ export function ArchivedBookingsPage() {
   }, [debouncedSearch])
 
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['bookings', 'archived', debouncedSearch, page, perPage],
+    queryKey: ['bookings', 'ARCHIVED', debouncedSearch, page, perPage],
     queryFn: () =>
       bookingsApi.getPaginated({
         page,
         per_page: perPage,
-        status: 'archived',
+        status: 'ARCHIVED',
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
       }),
   })

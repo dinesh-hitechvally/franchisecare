@@ -61,7 +61,7 @@ export function AddService() {
         basePrice: String(service.base_price),
         duration: String(service.duration),
         icon: service.icon ?? '',
-        active: service.status === 'active'
+        active: service.status === 'ACTIVE'
       })
     }
   }, [service])
@@ -108,7 +108,7 @@ export function AddService() {
           base_price: Number(form.basePrice),
           duration: Number(form.duration),
           icon: form.icon || null,
-          status: form.active ? 'active' : 'inactive',
+          status: form.active ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Service updated successfully!')
       } else {

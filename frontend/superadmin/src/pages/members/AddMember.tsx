@@ -157,7 +157,7 @@ export function AddMember() {
 
   useEffect(() => {
     if (!franchise) return
-    const ownerUser = franchiseUsers?.find((u) => u.role === 'owner') ?? franchiseUsers?.[0] ?? null
+    const ownerUser = franchiseUsers?.find((u) => u.role === 'OWNER') ?? franchiseUsers?.[0] ?? null
     setExistingUserId(ownerUser?.id ?? null)
 
     const nameParts = (franchise.owner_name || '').trim().split(/\s+/)
@@ -241,7 +241,7 @@ export function AddMember() {
           email: form.emailAddress,
           password: form.password,
           phone: form.personalPhone || undefined,
-          role: 'owner',
+          role: 'OWNER',
         })
       } catch (err) {
         throw new OwnerAccountError(newFranchise.id, err)
@@ -280,7 +280,7 @@ export function AddMember() {
           email: form.emailAddress,
           password: form.password,
           phone: form.personalPhone || undefined,
-          role: 'owner',
+          role: 'OWNER',
         })
       }
       return updated
@@ -339,9 +339,9 @@ export function AddMember() {
                   className={`form-input ${errors.franchisee_type ? 'border-red-500' : ''}`}
                 >
                   <option value=""></option>
-                  <option value="master_franchisee">Master Franchisee</option>
-                  <option value="franchisee">Franchisee</option>
-                  <option value="franchisor">Franchisor</option>
+                  <option value="MASTER_FRANCHISEE">Master Franchisee</option>
+                  <option value="FRANCHISEE">Franchisee</option>
+                  <option value="FRANCHISOR">Franchisor</option>
                 </select>
                 {errors.franchisee_type && <p className="text-red-500 text-xs mt-1">{errors.franchisee_type.join(', ')}</p>}
               </div>

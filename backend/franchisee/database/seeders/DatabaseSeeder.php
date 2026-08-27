@@ -29,7 +29,7 @@ class DatabaseSeeder extends Seeder
                 'name' => 'Mate Support',
                 'email' => 'support@franchisecare.com',
                 'password' => bcrypt('password'),
-                'role' => 'franchise_admin',
+                'role' => 'ADMIN',
                 'company_id' => $company->id,
             ]);
         }

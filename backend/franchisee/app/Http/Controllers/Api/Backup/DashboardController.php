@@ -29,18 +29,18 @@ class DashboardController extends Controller
         $activeBookingsCY = Booking::query()
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->whereYear('start_date', $year)
-            ->where('status', 'active')
+            ->where('status', 'ACTIVE')
             ->count();
 
         $cancellationsCY = Booking::query()
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->whereYear('start_date', $year)
-            ->where('status', 'cancelled')
+            ->where('status', 'CANCELLED')
             ->count();
 
         $attentionCount = Booking::query()
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
-            ->where('status', 'active')
+            ->where('status', 'ACTIVE')
             ->whereDate('start_date', '<=', now()->toDateString())
             ->count();
 
@@ -84,14 +84,14 @@ class DashboardController extends Controller
         $totalRevenue = Booking::query()
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->whereYear('start_date', $year)
-            ->whereIn('status', ['active', 'completed', 'archived'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED', 'ARCHIVED'])
             ->sum('total');
 
         $thisMonthRevenue = Booking::query()
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->whereYear('start_date', $year)
             ->whereMonth('start_date', $month)
-            ->whereIn('status', ['active', 'completed', 'archived'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED', 'ARCHIVED'])
             ->sum('total');
 
         return response()->json([
@@ -198,7 +198,7 @@ class DashboardController extends Controller
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->with('customer:id,first_name,last_name')
             ->whereBetween('start_date', [now()->toDateString(), $endDate])
-            ->whereIn('status', ['active', 'completed'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED'])
             ->orderBy('start_date')
             ->orderBy('start_time')
             ->limit(100)
@@ -229,7 +229,7 @@ class DashboardController extends Controller
         $bookingSummary = DB::table('bookings')
             ->when($companyId, fn ($q) => $q->where('company_id', $companyId))
             ->whereBetween('start_date', [$start->toDateString(), $end->toDateString()])
-            ->whereIn('status', ['active', 'completed'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED'])
             ->selectRaw('YEARWEEK(start_date, 3) as yw, COUNT(*) as bookings, COALESCE(SUM(total), 0) as income')
             ->groupBy('yw')
             ->get()
@@ -239,7 +239,7 @@ class DashboardController extends Controller
             ->join('booking_details', 'booking_details.booking_id', '=', 'bookings.id')
             ->when($companyId, fn ($q) => $q->where('bookings.company_id', $companyId))
             ->whereBetween('bookings.start_date', [$start->toDateString(), $end->toDateString()])
-            ->whereIn('bookings.status', ['active', 'completed'])
+            ->whereIn('bookings.status', ['ACTIVE', 'COMPLETED'])
             ->selectRaw('YEARWEEK(bookings.start_date, 3) as yw, COUNT(booking_details.id) as services')
             ->groupBy('yw')
             ->get()

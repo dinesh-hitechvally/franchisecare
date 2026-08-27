@@ -53,7 +53,7 @@ class FranchiseController extends Controller
             'state' => 'nullable|string|max:50',
             'postcode' => 'nullable|string|max:10',
             'abn' => 'nullable|string|max:20',
-            'franchisee_type' => 'nullable|in:master_franchisee,franchisee,franchisor',
+            'franchisee_type' => 'nullable|in:MASTER_FRANCHISEE,FRANCHISEE,FRANCHISOR',
             'has_ipad' => 'nullable|boolean',
             'franchise_fee' => 'nullable|numeric|min:0',
             'royalty_percentage' => 'nullable|numeric|min:0|max:100',
@@ -65,7 +65,7 @@ class FranchiseController extends Controller
             'notes' => 'nullable|string',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
         $franchise = Franchise::create($validated);
 
         $this->createAudit($franchise, 'created', $validated);
@@ -94,8 +94,8 @@ class FranchiseController extends Controller
             'state' => 'nullable|string|max:50',
             'postcode' => 'nullable|string|max:10',
             'abn' => 'nullable|string|max:20',
-            'status' => 'sometimes|in:active,inactive,suspended,terminated',
-            'franchisee_type' => 'nullable|in:master_franchisee,franchisee,franchisor',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE,SUSPENDED,TERMINATED',
+            'franchisee_type' => 'nullable|in:MASTER_FRANCHISEE,FRANCHISEE,FRANCHISOR',
             'has_ipad' => 'nullable|boolean',
             'tscs_accepted' => 'nullable|boolean',
             'franchise_fee' => 'nullable|numeric|min:0',
@@ -145,7 +145,7 @@ class FranchiseController extends Controller
     public function updateStatus(Request $request, Franchise $franchise)
     {
         $request->validate([
-            'status' => 'required|in:active,inactive,suspended,terminated',
+            'status' => 'required|in:ACTIVE,INACTIVE,SUSPENDED,TERMINATED',
             'reason' => 'nullable|string',
         ]);
 

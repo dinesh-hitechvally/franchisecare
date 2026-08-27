@@ -53,7 +53,7 @@ export function AddTopic() {
         topicName: topic.name,
         topicDescription: topic.description ?? '',
         category: topic.category_id ? String(topic.category_id) : '',
-        makeTopicActive: topic.status === 'active',
+        makeTopicActive: topic.status === 'ACTIVE',
       })
     }
   }, [topic])
@@ -97,7 +97,7 @@ export function AddTopic() {
           name: form.topicName,
           description: form.topicDescription,
           category_id: form.category ? Number(form.category) : null,
-          status: form.makeTopicActive ? 'active' : 'inactive',
+          status: form.makeTopicActive ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Topic updated successfully!')
       } else {

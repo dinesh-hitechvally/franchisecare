@@ -46,11 +46,11 @@ class FranchiseUserController extends Controller
             'email' => 'required|email|unique:franchise_users',
             'password' => 'required|min:8',
             'phone' => 'nullable|string|max:20',
-            'role' => 'required|in:owner,manager,staff',
+            'role' => 'required|in:OWNER,MANAGER,STAFF',
         ]);
 
         $validated['password'] = Hash::make($validated['password']);
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $user = FranchiseUser::create($validated);
 
@@ -68,8 +68,8 @@ class FranchiseUserController extends Controller
             'name' => 'sometimes|string|max:255',
             'email' => 'sometimes|email|unique:franchise_users,email,' . $franchiseUser->id,
             'phone' => 'nullable|string|max:20',
-            'role' => 'sometimes|in:owner,manager,staff',
-            'status' => 'sometimes|in:active,inactive',
+            'role' => 'sometimes|in:OWNER,MANAGER,STAFF',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $franchiseUser->update($validated);

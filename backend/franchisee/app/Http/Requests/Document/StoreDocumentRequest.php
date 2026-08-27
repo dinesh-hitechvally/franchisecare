@@ -16,7 +16,7 @@ class StoreDocumentRequest extends FormRequest
         return [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'visibility' => 'required|in:global,franchise',
+            'visibility' => 'required|in:GLOBAL,FRANCHISE',
             'category' => 'required|in:manual,template,other,general',
             'file' => 'nullable|file|max:10240',
         ];
@@ -33,7 +33,7 @@ class StoreDocumentRequest extends FormRequest
         $this->merge([
             'title' => $this->input('title', $metadata['title'] ?? null),
             'description' => $this->input('description', $metadata['description'] ?? null),
-            'visibility' => $this->input('visibility', $metadata['visibility'] ?? 'global'),
+            'visibility' => $this->input('visibility', $metadata['visibility'] ?? 'GLOBAL'),
             'category' => $this->input('category', $metadata['category'] ?? 'other'),
         ]);
     }

@@ -18,10 +18,10 @@ class SupportTicketController extends Controller
         $query = SupportTicket::query();
 
         if ($department = $request->input('department')) {
-            if ($department === 'closed') {
-                $query->where('status', 'closed');
+            if ($department === 'CLOSED') {
+                $query->where('status', 'CLOSED');
             } else {
-                $query->where('department', $department)->where('status', '!=', 'closed');
+                $query->where('department', $department)->where('status', '!=', 'CLOSED');
             }
         }
 
@@ -51,7 +51,7 @@ class SupportTicketController extends Controller
     {
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
-            'department' => 'required|in:bugs,enhancement,admin,urgent',
+            'department' => 'required|in:BUGS,ENHANCEMENT,ADMIN,URGENT',
             'description' => 'required|string',
         ]);
 
@@ -65,7 +65,7 @@ class SupportTicketController extends Controller
             'user_id' => $user ? $user->id : 1,
             'created_by_name' => $userName,
             'last_updated_by_name' => $userName,
-            'status' => 'open',
+            'status' => 'OPEN',
             'description' => $validated['description'],
         ]);
 
@@ -103,8 +103,8 @@ class SupportTicketController extends Controller
         $validated = $request->validate([
             'subject' => 'sometimes|string|max:255',
             'description' => 'sometimes|string',
-            'status' => 'sometimes|in:open,in-progress,closed',
-            'department' => 'sometimes|in:bugs,enhancement,admin,urgent',
+            'status' => 'sometimes|in:OPEN,IN-PROGRESS,CLOSED',
+            'department' => 'sometimes|in:BUGS,ENHANCEMENT,ADMIN,URGENT',
         ]);
 
         $user = $request->user();
@@ -141,9 +141,9 @@ class SupportTicketController extends Controller
 
         // If the user checked "Check to Close Ticket"
         if ($request->input('close_ticket')) {
-            $ticket->status = 'closed';
+            $ticket->status = 'CLOSED';
         } else {
-            $ticket->status = 'in-progress';
+            $ticket->status = 'IN-PROGRESS';
         }
         $ticket->last_updated_by_name = $userName;
         $ticket->save();

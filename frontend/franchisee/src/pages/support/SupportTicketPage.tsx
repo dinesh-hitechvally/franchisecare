@@ -15,7 +15,7 @@ import { PageHeader } from '../../components/layout/PageHeader'
 import { supportTicketsApi, supportDepartmentsApi, SupportTicket, SupportDepartment } from '../../api/services'
 
 export function SupportTicketPage() {
-  const [activeTab, setActiveTab] = useState<string>('bugs')
+  const [activeTab, setActiveTab] = useState<string>('BUGS')
   const [searchTerm, setSearchTerm] = useState('')
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
   const [isCreateDeptModalOpen, setIsCreateDeptModalOpen] = useState(false)
@@ -30,12 +30,12 @@ export function SupportTicketPage() {
 
   // Form States (Create Ticket)
   const [subject, setSubject] = useState('')
-  const [department, setDepartment] = useState<string>('bugs')
+  const [department, setDepartment] = useState<string>('BUGS')
   const [description, setDescription] = useState('')
 
   // Form States (Edit Ticket)
   const [editSubject, setEditSubject] = useState('')
-  const [editDepartment, setEditDepartment] = useState<string>('bugs')
+  const [editDepartment, setEditDepartment] = useState<string>('BUGS')
   const [editDescription, setEditDescription] = useState('')
 
   // Form States (Create Department)
@@ -130,7 +130,7 @@ export function SupportTicketPage() {
       addToast('Reply sent successfully', 'success')
       setReplyMessage('')
       setCloseTicketOnReply(false)
-      if (res?.ticketStatus === 'closed') {
+      if (res?.ticketStatus === 'CLOSED') {
         setSelectedTicketId(null)
       }
     },
@@ -188,17 +188,17 @@ export function SupportTicketPage() {
     ticket.createdBy.toLowerCase().includes(searchTerm.toLowerCase())
   ) || []
 
-  const dynamicTabs = departments 
+  const dynamicTabs = departments
     ? [
         ...departments.map((d: SupportDepartment) => ({ key: d.code, label: d.name })),
-        { key: 'closed', label: 'Closed Tickets' }
+        { key: 'CLOSED', label: 'Closed Tickets' }
       ]
     : [
-        { key: 'bugs', label: 'Bugs' },
-        { key: 'enhancement', label: 'Enhancement Requests' },
-        { key: 'admin', label: 'Admin Tickets' },
-        { key: 'urgent', label: 'Urgent Tickets' },
-        { key: 'closed', label: 'Closed Tickets' }
+        { key: 'BUGS', label: 'Bugs' },
+        { key: 'ENHANCEMENT', label: 'Enhancement Requests' },
+        { key: 'ADMIN', label: 'Admin Tickets' },
+        { key: 'URGENT', label: 'Urgent Tickets' },
+        { key: 'CLOSED', label: 'Closed Tickets' }
       ]
 
   const columns = [
@@ -221,7 +221,7 @@ export function SupportTicketPage() {
       key: 'department',
       title: 'Department',
       render: (ticket: SupportTicket) => (
-        <span className="capitalize">{ticket.department}</span>
+        <span className="capitalize">{ticket.department?.toLowerCase()}</span>
       ),
     },
     {
@@ -251,11 +251,11 @@ export function SupportTicketPage() {
       title: 'Status',
       render: (ticket: SupportTicket) => (
         <span className={`px-3 py-1 rounded-full text-xs font-medium capitalize ${
-          ticket.status === 'open' ? 'bg-green-100 text-green-700' :
-          ticket.status === 'in-progress' ? 'bg-yellow-100 text-yellow-700' :
+          ticket.status === 'OPEN' ? 'bg-green-100 text-green-700' :
+          ticket.status === 'IN-PROGRESS' ? 'bg-yellow-100 text-yellow-700' :
           'bg-gray-100 text-gray-700'
         }`}>
-          {ticket.status.replace('-', ' ')}
+          {ticket.status.replace('-', ' ').toLowerCase()}
         </span>
       ),
     },
@@ -311,9 +311,9 @@ export function SupportTicketPage() {
               onClick={() => {
                 setOpenMenuId(null)
                 setMenuPos(null)
-                updateTicketMutation.mutate({ id: ticket.id, data: { status: 'closed' } })
+                updateTicketMutation.mutate({ id: ticket.id, data: { status: 'CLOSED' } })
               }}
-              disabled={ticket.status === 'closed'}
+              disabled={ticket.status === 'CLOSED'}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <CheckCircle className="w-4 h-4 text-green-500" />
@@ -323,9 +323,9 @@ export function SupportTicketPage() {
               onClick={() => {
                 setOpenMenuId(null)
                 setMenuPos(null)
-                updateTicketMutation.mutate({ id: ticket.id, data: { department: 'urgent' } })
+                updateTicketMutation.mutate({ id: ticket.id, data: { department: 'URGENT' } })
               }}
-              disabled={ticket.department === 'urgent' || ticket.status === 'closed'}
+              disabled={ticket.department === 'URGENT' || ticket.status === 'CLOSED'}
               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors text-left disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <AlertTriangle className="w-4 h-4 text-orange-500" />
@@ -385,8 +385,8 @@ export function SupportTicketPage() {
                 <div className="flex items-center justify-between bg-gray-50 px-4 py-3 rounded border border-gray-200">
                   <div className="flex items-center gap-3">
                     <span className={`px-2.5 py-1 rounded text-xs font-semibold uppercase ${
-                      ticketDetail.status === 'open' ? 'bg-green-600 text-white' :
-                      ticketDetail.status === 'in-progress' ? 'bg-yellow-500 text-white' :
+                      ticketDetail.status === 'OPEN' ? 'bg-green-600 text-white' :
+                      ticketDetail.status === 'IN-PROGRESS' ? 'bg-yellow-500 text-white' :
                       'bg-gray-600 text-white'
                     }`}>
                       {ticketDetail.status}
@@ -430,7 +430,7 @@ export function SupportTicketPage() {
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Tag className="w-4 h-4 text-gray-400" />
-                      <span className="capitalize">{ticketDetail.department}</span>
+                      <span className="capitalize">{ticketDetail.department?.toLowerCase()}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Smartphone className="w-4 h-4 text-gray-400" />
@@ -596,10 +596,10 @@ export function SupportTicketPage() {
                 <option key={d.id} value={d.code}>{d.name}</option>
               )) ?? (
                 <>
-                  <option value="bugs">Bugs</option>
-                  <option value="enhancement">Enhancement Request</option>
-                  <option value="admin">Admin Ticket</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="BUGS">Bugs</option>
+                  <option value="ENHANCEMENT">Enhancement Request</option>
+                  <option value="ADMIN">Admin Ticket</option>
+                  <option value="URGENT">Urgent</option>
                 </>
               )}
             </select>
@@ -653,10 +653,10 @@ export function SupportTicketPage() {
                 <option key={d.id} value={d.code}>{d.name}</option>
               )) ?? (
                 <>
-                  <option value="bugs">Bugs</option>
-                  <option value="enhancement">Enhancement Request</option>
-                  <option value="admin">Admin Ticket</option>
-                  <option value="urgent">Urgent</option>
+                  <option value="BUGS">Bugs</option>
+                  <option value="ENHANCEMENT">Enhancement Request</option>
+                  <option value="ADMIN">Admin Ticket</option>
+                  <option value="URGENT">Urgent</option>
                 </>
               )}
             </select>

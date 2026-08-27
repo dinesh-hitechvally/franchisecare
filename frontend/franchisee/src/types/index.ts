@@ -4,7 +4,7 @@ export interface User {
   id: string
   email: string
   name: string
-  role: 'owner' | 'franchise_admin' | 'staff'
+  role: 'OWNER' | 'ADMIN' | 'STAFF'
   companyId?: string
   company_id?: string
   franchise_id?: string
@@ -31,18 +31,18 @@ export interface Lead {
   referredBy?: string
   additionalNote?: string
   notes?: string
-  source: 'phone' | 'internet' | 'walk-in' | 'referral'
-  leadsFrom: 'phone' | 'internet'
+  source: 'PHONE' | 'INTERNET' | 'WALK-IN' | 'REFERRAL'
+  leadsFrom: 'PHONE' | 'INTERNET'
   status:
-    | 'new'
-    | 'contacted'
-    | 'qualified'
-    | 'converted'
-    | 'lost'
-    | 'snoozed'
-    | 'completed'
-    | 'cancellation_request'
-    | 'message_for_operator'
+    | 'NEW'
+    | 'CONTACTED'
+    | 'QUALIFIED'
+    | 'CONVERTED'
+    | 'LOST'
+    | 'SNOOZED'
+    | 'COMPLETED'
+    | 'CANCELLATION_REQUEST'
+    | 'MESSAGE_FOR_OPERATOR'
   companyId?: string
   snoozedUntil?: string
   comments?: LeadComment[]
@@ -143,7 +143,7 @@ export interface Booking {
   calendarColor?: string
   sendSms?: boolean
   sendEmail?: boolean
-  status: 'active' | 'cancelled' | 'completed' | 'archived' | 'requested' | 'confirmed' | 'in_progress'
+  status: 'ACTIVE' | 'CANCELLED' | 'COMPLETED' | 'ARCHIVED' | 'REQUESTED' | 'CONFIRMED' | 'IN_PROGRESS'
   total: number
   recurringId?: string
   isRecurring?: boolean // Derived from recurringId
@@ -419,7 +419,7 @@ export interface Document {
   fileUrl: string
   fileType: string
   companyId?: string
-  visibility: 'global' | 'franchise'
+  visibility: 'GLOBAL' | 'FRANCHISE'
   category?: 'manual' | 'template' | 'other' | 'general' | string
   uploadedBy: string
   createdAt: string
@@ -494,7 +494,7 @@ export interface ForumGroup {
   id: string
   name: string
   description?: string
-  type: 'topic' | 'state' | 'custom'
+  type: 'TOPIC' | 'STATE' | 'CUSTOM'
   icon?: string
   color?: string
   createdBy?: string
@@ -648,7 +648,7 @@ export interface StockMovement {
   category_id?: string | number
   inventory_id?: string | number
   batch_id?: string | number
-  movement_type?: 'stock_take' | 'booking_usage' | 'adjustment' | 'inward' | 'write_off'
+  movement_type?: 'STOCK_TAKE' | 'BOOKING_USAGE' | 'ADJUSTMENT' | 'INWARD' | 'WRITE_OFF'
   quantity_change?: number
   percentage_change?: number
   quantity_before?: number

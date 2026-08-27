@@ -116,21 +116,21 @@ export function ListTickets() {
 
   const getStatusBadgeClass = (status: SupportTicket['status']) => {
     switch (status) {
-      case 'open': return 'bg-red-100 text-red-800'
-      case 'in_progress': return 'bg-blue-100 text-blue-800'
-      case 'waiting': return 'bg-yellow-100 text-yellow-800'
-      case 'resolved': return 'bg-green-100 text-green-800'
-      case 'closed': return 'bg-gray-100 text-gray-800'
+      case 'OPEN': return 'bg-red-100 text-red-800'
+      case 'IN_PROGRESS': return 'bg-blue-100 text-blue-800'
+      case 'WAITING': return 'bg-yellow-100 text-yellow-800'
+      case 'RESOLVED': return 'bg-green-100 text-green-800'
+      case 'CLOSED': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
   const getPriorityBadgeClass = (priority: SupportTicket['priority']) => {
     switch (priority) {
-      case 'urgent': return 'bg-rose-600 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
-      case 'high': return 'bg-orange-500 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
-      case 'medium': return 'bg-amber-400 text-gray-900 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
-      case 'low': return 'bg-slate-300 text-gray-800 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
+      case 'URGENT': return 'bg-rose-600 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
+      case 'HIGH': return 'bg-orange-500 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
+      case 'MEDIUM': return 'bg-amber-400 text-gray-900 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
+      case 'LOW': return 'bg-slate-300 text-gray-800 text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
@@ -230,11 +230,11 @@ export function ListTickets() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All Statuses</option>
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="waiting">Waiting</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
+                  <option value="OPEN">Open</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="WAITING">Waiting</option>
+                  <option value="RESOLVED">Resolved</option>
+                  <option value="CLOSED">Closed</option>
                 </select>
               </div>
               <div>
@@ -245,10 +245,10 @@ export function ListTickets() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All Priorities</option>
-                  <option value="urgent">Urgent</option>
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
+                  <option value="URGENT">Urgent</option>
+                  <option value="HIGH">High</option>
+                  <option value="MEDIUM">Medium</option>
+                  <option value="LOW">Low</option>
                 </select>
               </div>
             </div>

@@ -59,7 +59,7 @@ export function ManageBookingsPage() {
     queryKey: ['bookings', 'manage', 'past-active'],
     queryFn: () =>
       bookingsApi.getAll({
-        status: 'active',
+        status: 'ACTIVE',
         dateTo: format(new Date(), 'yyyy-MM-dd'),
       }),
   })
@@ -68,7 +68,7 @@ export function ManageBookingsPage() {
     const source = bookingsData ?? []
 
     return source
-      .filter((booking) => booking.status === 'active')
+      .filter((booking) => booking.status === 'ACTIVE')
       .sort((a, b) => {
         const aKey = `${a.startDate} ${a.startTime}`
         const bKey = `${b.startDate} ${b.startTime}`
@@ -98,7 +98,7 @@ export function ManageBookingsPage() {
 
   const markCompletedMutation = useMutation({
     mutationFn: async (bookingIds: string[]) => {
-      await Promise.all(bookingIds.map((id) => bookingsApi.updateStatus(id, 'completed')))
+      await Promise.all(bookingIds.map((id) => bookingsApi.updateStatus(id, 'COMPLETED')))
     },
     onSuccess: () => {
       setSelectedIds([])
@@ -118,7 +118,7 @@ export function ManageBookingsPage() {
   })
 
   const cancelBookingMutation = useMutation({
-    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'cancelled'),
+    mutationFn: (bookingId: string) => bookingsApi.updateStatus(bookingId, 'CANCELLED'),
     onSuccess: () => {
       addToast('Booking cancelled successfully', 'success')
       queryClient.invalidateQueries({ queryKey: ['bookings'] })

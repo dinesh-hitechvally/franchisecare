@@ -691,7 +691,7 @@ export function CalendarPage() {
             endDate: e.end_date || undefined,
             startTime,
             endTime,
-            status: e.status || 'active',
+            status: e.status || 'ACTIVE',
             duration,
             isMultiDay: Boolean(e.end_date && e.end_date !== e.start_date),
             eventType: e.event_type,

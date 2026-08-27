@@ -50,7 +50,7 @@ class IncomeReportService implements IncomeReportServiceInterface
         $customerBookings = Booking::query()
             ->with('customer:id,first_name,last_name')
             ->whereBetween('start_date', [$from, $to])
-            ->whereIn('status', ['active', 'completed'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED'])
             ->whereNotNull('customer_id')
             ->when($companyId, fn($query) => $query->where('company_id', $companyId))
             ->when(isset($filters['min']), fn($query) => $query->where('total', '>=', (float) $filters['min']))

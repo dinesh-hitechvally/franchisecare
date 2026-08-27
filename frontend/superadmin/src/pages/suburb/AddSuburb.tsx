@@ -58,7 +58,7 @@ export function AddSuburb() {
         postCode: suburb.postcode,
         state: suburb.state ?? '',
         franchiseId: suburb.franchise_id != null ? String(suburb.franchise_id) : '',
-        makeSuburbActive: suburb.status === 'active'
+        makeSuburbActive: suburb.status === 'ACTIVE'
       })
     }
   }, [suburb])
@@ -106,7 +106,7 @@ export function AddSuburb() {
           suburb_name: form.suburbName,
           postcode: form.postCode,
           state: form.state,
-          status: form.makeSuburbActive ? 'active' : 'inactive',
+          status: form.makeSuburbActive ? 'ACTIVE' : 'INACTIVE',
         })
         toast.success('Suburb updated successfully!')
       } else {

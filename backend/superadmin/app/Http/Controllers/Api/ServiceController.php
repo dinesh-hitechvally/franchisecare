@@ -38,7 +38,7 @@ class ServiceController extends Controller
             'icon' => 'nullable|string|max:50',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
         $validated['sort_order'] = Service::max('sort_order') + 1;
 
         $service = Service::create($validated);
@@ -59,7 +59,7 @@ class ServiceController extends Controller
             'category_id' => 'nullable|exists:service_categories,id',
             'base_price' => 'sometimes|numeric|min:0',
             'duration' => 'sometimes|integer|min:1',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
             'icon' => 'nullable|string|max:50',
             'sort_order' => 'sometimes|integer|min:0',
         ]);

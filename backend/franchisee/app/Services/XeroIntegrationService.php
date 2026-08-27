@@ -348,14 +348,14 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
 
             // A completed booking means the service was delivered and paid for, even when no
             // PaymentTransaction exists (e.g. cash/in-person payment recorded via status only).
-            $isPaid = $booking->status === 'completed' || PaymentTransaction::where('reference_type', 'booking')
+            $isPaid = $booking->status === 'COMPLETED' || PaymentTransaction::where('reference_type', 'booking')
                 ->where('reference_id', $booking->id)
                 ->where('status', 'completed')
                 ->exists();
 
             // Invoice already exists in Xero - never recreate it, only ever add a Payment or void it
             if ($xeroInvoice->exists && $xeroInvoice->xero_invoice_id) {
-                if ($booking->status === 'cancelled') {
+                if ($booking->status === 'CANCELLED') {
                     if (in_array($xeroInvoice->status, ['voided', 'needs_manual_review'])) {
                         return [
                             'success' => true,
@@ -431,7 +431,7 @@ class XeroIntegrationService implements XeroIntegrationServiceInterface
             // this in xero_invoices (status 'skipped') so its updated_at catches up past the
             // booking's - otherwise this booking would show up as "pending" on every cron run
             // forever, since there'd be no xero_invoices row for the eligibility check to compare against.
-            if ($booking->status === 'cancelled') {
+            if ($booking->status === 'CANCELLED') {
                 $xeroInvoice->invoice_type = 'ACCREC';
                 $xeroInvoice->amount = $booking->total;
                 $xeroInvoice->status = 'skipped';

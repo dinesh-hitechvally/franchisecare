@@ -17,12 +17,12 @@ const initialFilters: FilterState = {
 }
 
 const statusBadgeStyle: Record<NewsItem['status'], { bg: string; color: string }> = {
-  draft: { bg: '#f3f4f6', color: '#4b5563' },
-  published: { bg: '#dcfce7', color: '#166534' },
+  DRAFT: { bg: '#f3f4f6', color: '#4b5563' },
+  PUBLISHED: { bg: '#dcfce7', color: '#166534' },
 }
 
 function StatusBadge({ status }: { status: NewsItem['status'] }) {
-  const style = statusBadgeStyle[status] ?? statusBadgeStyle.draft
+  const style = statusBadgeStyle[status] ?? statusBadgeStyle.DRAFT
   return (
     <span
       style={{
@@ -161,8 +161,8 @@ export function ListNews() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="draft">Draft</option>
-                  <option value="published">Published</option>
+                  <option value="DRAFT">Draft</option>
+                  <option value="PUBLISHED">Published</option>
                 </select>
               </div>
             </div>
@@ -264,7 +264,7 @@ export function ListNews() {
                     </td>
                     <td className="text-center">
                       <div className="flex items-center justify-center gap-1">
-                        {item.status === 'draft' && (
+                        {item.status === 'DRAFT' && (
                           <button
                             className="btn btn-success text-xs py-1 px-2"
                             onClick={() => publishMutation.mutate(item.id)}

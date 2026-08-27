@@ -51,7 +51,7 @@ class BookingRecurringController extends Controller
         }
 
         // Only for active (or unscoped) lists — do not strip cancelled rows by repeat_until
-        if ($request->boolean('hide_expired') && $request->get('status') !== 'cancelled') {
+        if ($request->boolean('hide_expired') && $request->get('status') !== 'CANCELLED') {
             $query->whereNotNull('repeat_until')
                 ->whereDate('repeat_until', '>=', now()->toDateString());
         }
@@ -111,7 +111,7 @@ class BookingRecurringController extends Controller
         $validated['repeat_day'] = $request->input('recurring.repeat_day');
         $validated['repeat_until'] = $request->input('recurring.repeat_until');
         $validated['auto_extend'] = $request->input('recurring.auto_extend', false);
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
         $validated['total'] = $total;
         $validated['duration'] = $duration;
 
@@ -227,7 +227,7 @@ class BookingRecurringController extends Controller
         ]);
 
         $bookingRecurring->update([
-            'status' => 'cancelled',
+            'status' => 'CANCELLED',
             'cancelled_date' => now(),
             'cancellation_reason' => $validated['cancellation_reason'] ?? null,
         ]);

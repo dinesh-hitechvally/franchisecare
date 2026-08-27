@@ -56,7 +56,7 @@ class SmsCreditService implements SmsCreditServiceInterface
             'package_id' => $data['package_id'],
             'quantity' => $package['quantity'],
             'amount' => $package['price'],
-            'status' => 'completed',
+            'status' => 'COMPLETED',
             'purchased_at' => now(),
         ]);
 

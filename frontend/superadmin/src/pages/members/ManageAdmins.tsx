@@ -19,9 +19,9 @@ const initialFilters: FilterState = {
 }
 
 const typeLabels: Record<string, string> = {
-  master_franchisee: 'Master Franchisee',
-  franchisee: 'Franchisee',
-  franchisor: 'Franchisor',
+  MASTER_FRANCHISEE: 'Master Franchisee',
+  FRANCHISEE: 'Franchisee',
+  FRANCHISOR: 'Franchisor',
 }
 
 function formatType(type: Franchise['franchisee_type']) {
@@ -30,7 +30,7 @@ function formatType(type: Franchise['franchisee_type']) {
 
 // "Admin" members are the admin-tier franchise records (master franchisees / franchisors),
 // as opposed to plain franchisee rows shown on the regular members list.
-const ADMIN_TIER_TYPES: Franchise['franchisee_type'][] = ['master_franchisee', 'franchisor']
+const ADMIN_TIER_TYPES: Franchise['franchisee_type'][] = ['MASTER_FRANCHISEE', 'FRANCHISOR']
 
 export function ManageAdmins() {
   const navigate = useNavigate()
@@ -129,10 +129,10 @@ export function ManageAdmins() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                  <option value="suspended">Suspended</option>
-                  <option value="terminated">Terminated</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
+                  <option value="SUSPENDED">Suspended</option>
+                  <option value="TERMINATED">Terminated</option>
                 </select>
               </div>
             </div>
@@ -218,7 +218,7 @@ export function ManageAdmins() {
                       )}
                     </td>
                     <td className="text-center">
-                      {member.status === 'active' ? (
+                      {member.status === 'ACTIVE' ? (
                         <Check size={18} className="inline text-purple-600" />
                       ) : (
                         <X size={18} className="inline text-red-500" />

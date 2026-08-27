@@ -30,7 +30,7 @@ export function ListGroups() {
     queryFn: () =>
       serviceCategoriesApi.list({
         search: appliedFilters.search || undefined,
-        status: appliedFilters.activeServiceGroup === 'yes' ? 'active' : appliedFilters.activeServiceGroup === 'no' ? 'inactive' : undefined,
+        status: appliedFilters.activeServiceGroup === 'yes' ? 'ACTIVE' : appliedFilters.activeServiceGroup === 'no' ? 'INACTIVE' : undefined,
       }),
   })
 
@@ -199,7 +199,7 @@ export function ListGroups() {
                   <td>{group.description}</td>
                   <td>{group.sort_order}</td>
                   <td className="text-center">
-                    {group.status === 'active' ? (
+                    {group.status === 'ACTIVE' ? (
                       <Check size={18} className="inline text-purple-600" />
                     ) : (
                       <X size={18} className="inline text-red-500" />

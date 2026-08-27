@@ -74,7 +74,7 @@ export function CalendarDayViewPage() {
         ])
 
         const bookingItems: CalendarItem[] = (bookingPage?.data || [])
-          .filter((b) => b.status === 'active' || b.status === 'completed')
+          .filter((b) => b.status === 'ACTIVE' || b.status === 'COMPLETED')
           .map((b) => {
             const customerName = b.customerName
               || `${b.customer?.first_name || ''} ${b.customer?.last_name || ''}`.trim()
@@ -90,7 +90,7 @@ export function CalendarDayViewPage() {
               startDate: b.startDate,
               startTime: b.startTime,
               endTime: b.endTime,
-              status: b.status || 'active',
+              status: b.status || 'ACTIVE',
               duration: calculateDuration(b.startTime, b.endTime),
               eventType: 'booking' as const,
               calendarColor: b.calendarColor,
@@ -107,7 +107,7 @@ export function CalendarDayViewPage() {
             startDate: b.startDate,
             startTime: b.startTime,
             endTime: b.endTime,
-            status: b.active ? 'active' : 'cancelled',
+            status: b.active ? 'ACTIVE' : 'CANCELLED',
             duration: calculateDuration(b.startTime, b.endTime),
             eventType: 'blockout' as const,
             calendarColor: '#9333ea',

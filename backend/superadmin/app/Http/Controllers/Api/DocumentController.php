@@ -31,7 +31,7 @@ class DocumentController extends Controller
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'category' => 'required|in:manuals,templates,other',
+            'category' => 'required|in:MANUALS,TEMPLATES,OTHER',
             'file' => 'required|file|max:10240',
         ]);
 
@@ -47,7 +47,7 @@ class DocumentController extends Controller
             'file_name' => $file->getClientOriginalName(),
             'file_size' => $file->getSize(),
             'file_type' => $file->getMimeType(),
-            'status' => 'active',
+            'status' => 'ACTIVE',
         ]);
 
         return response()->json($document->load('uploadedBy:id,name'), 201);
@@ -63,8 +63,8 @@ class DocumentController extends Controller
         $validated = $request->validate([
             'title' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'category' => 'sometimes|in:manuals,templates,other',
-            'status' => 'sometimes|in:active,inactive',
+            'category' => 'sometimes|in:MANUALS,TEMPLATES,OTHER',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $document->update($validated);

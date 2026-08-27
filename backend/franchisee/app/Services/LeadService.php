@@ -56,6 +56,6 @@ class LeadService implements LeadServiceInterface
 
     public function convertLead(Lead $lead): Lead
     {
-        return $this->leadRepository->update($lead, ['status' => 'converted']);
+        return $this->leadRepository->update($lead, ['status' => 'CONVERTED']);
     }
 }

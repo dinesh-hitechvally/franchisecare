@@ -184,8 +184,8 @@ export function ListTopics() {
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All</option>
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="ACTIVE">Active</option>
+                  <option value="INACTIVE">Inactive</option>
                 </select>
               </div>
             </div>
@@ -271,7 +271,7 @@ export function ListTopics() {
                   </td>
                   <td>{topic.posts_count ?? 0}</td>
                   <td>
-                    {topic.status === 'active' ? (
+                    {topic.status === 'ACTIVE' ? (
                       <Check size={20} className="icon-check" />
                     ) : (
                       <X size={20} className="icon-cross" />

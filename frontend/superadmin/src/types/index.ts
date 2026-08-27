@@ -37,8 +37,8 @@ export interface Franchise {
   contract_length: number | null
   territory: string | null
   notes: string | null
-  status: 'active' | 'inactive' | 'suspended' | 'terminated'
-  franchisee_type: 'master_franchisee' | 'franchisee' | 'franchisor' | null
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED' | 'TERMINATED'
+  franchisee_type: 'MASTER_FRANCHISEE' | 'FRANCHISEE' | 'FRANCHISOR' | null
   has_ipad: boolean
   tscs_accepted: boolean
   tscs_accepted_at: string | null
@@ -53,8 +53,8 @@ export interface FranchiseUser {
   name: string
   email: string
   phone: string | null
-  role: 'owner' | 'manager' | 'staff'
-  status: 'active' | 'inactive'
+  role: 'OWNER' | 'MANAGER' | 'STAFF'
+  status: 'ACTIVE' | 'INACTIVE'
   avatar: string | null
   created_at: string
   updated_at: string
@@ -67,7 +67,7 @@ export interface FranchiseSuburb {
   suburb_name: string
   postcode: string
   state: string
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   created_at: string
   updated_at: string
   franchise?: { id: number; name: string; code: string } | null
@@ -81,7 +81,7 @@ export interface FranchiseService {
   description: string | null
   price: number
   duration: number
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   created_at: string
   updated_at: string
   franchise?: { id: number; name: string; code: string }
@@ -92,7 +92,7 @@ export interface ForumCategory {
   id: number
   name: string
   description: string | null
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   created_at: string
   updated_at: string
   posts_count?: number
@@ -103,7 +103,7 @@ export interface ForumTopic {
   category_id: number | null
   name: string
   description: string | null
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   created_at: string
   updated_at: string
   category?: { id: number; name: string } | null
@@ -118,7 +118,7 @@ export interface ForumPost {
   content: string | null
   author_name: string | null
   views: number
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   created_at: string
   updated_at: string
   category?: { id: number; name: string } | null
@@ -130,7 +130,7 @@ export interface ForumGroup {
   name: string
   description: string | null
   permissions: string | null
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   created_at: string
   updated_at: string
 }
@@ -161,8 +161,8 @@ export interface AdminUser {
   name: string
   email: string
   phone: string | null
-  role: 'admin' | 'support' | 'viewer'
-  status: 'active' | 'inactive'
+  role: 'ADMIN' | 'SUPPORT' | 'VIEWER'
+  status: 'ACTIVE' | 'INACTIVE'
   avatar: string | null
   created_at: string
   updated_at: string
@@ -173,7 +173,7 @@ export interface NewsItem {
   title: string
   content: string
   category: string | null
-  status: 'draft' | 'published'
+  status: 'DRAFT' | 'PUBLISHED'
   image: string | null
   user_id: number
   published_at: string | null
@@ -186,12 +186,12 @@ export interface DocumentItem {
   id: number
   title: string
   description: string | null
-  category: 'manuals' | 'templates' | 'other'
+  category: 'MANUALS' | 'TEMPLATES' | 'OTHER'
   file_path: string
   file_name: string
   file_size: number
   file_type: string
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   user_id: number
   created_at: string
   updated_at: string
@@ -205,7 +205,7 @@ export interface Service {
   category_id: number | null
   base_price: number
   duration: number
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   icon: string | null
   sort_order: number
   category?: ServiceCategory | null
@@ -216,7 +216,7 @@ export interface ServiceCategory {
   name: string
   description: string | null
   icon: string | null
-  status: 'active' | 'inactive'
+  status: 'ACTIVE' | 'INACTIVE'
   sort_order: number
 }
 
@@ -227,8 +227,8 @@ export interface SupportTicket {
   assigned_to: number | null
   title: string
   description: string | null
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  status: 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed'
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT'
+  status: 'OPEN' | 'IN_PROGRESS' | 'WAITING' | 'RESOLVED' | 'CLOSED'
   category: string | null
   resolved_at: string | null
   created_at: string

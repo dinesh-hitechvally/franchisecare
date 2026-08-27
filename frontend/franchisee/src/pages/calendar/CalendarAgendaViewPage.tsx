@@ -66,7 +66,7 @@ export function CalendarAgendaViewPage() {
         ])
 
         const bookingItems: AgendaItem[] = (bookingPage?.data || [])
-          .filter((b) => b.status === 'active' || b.status === 'completed')
+          .filter((b) => b.status === 'ACTIVE' || b.status === 'COMPLETED')
           .map((b) => {
             const customerName = b.customerName
               || `${b.customer?.first_name || ''} ${b.customer?.last_name || ''}`.trim()
@@ -82,7 +82,7 @@ export function CalendarAgendaViewPage() {
               customer: customerName,
               pet: petName || '-',
               service: serviceName || '-',
-              status: b.status || 'active',
+              status: b.status || 'ACTIVE',
               eventType: 'booking' as const,
             }
           })
@@ -134,9 +134,9 @@ export function CalendarAgendaViewPage() {
       )
     }
     const statusColors: Record<string, string> = {
-      active: 'bg-green-100 text-green-800',
-      completed: 'bg-blue-100 text-blue-800',
-      cancelled: 'bg-red-100 text-red-800',
+      ACTIVE: 'bg-green-100 text-green-800',
+      COMPLETED: 'bg-blue-100 text-blue-800',
+      CANCELLED: 'bg-red-100 text-red-800',
       pending: 'bg-yellow-100 text-yellow-800',
     }
     return (

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('group_id');
             $table->unsignedBigInteger('user_id');
-            $table->enum('role', ['member', 'moderator', 'admin'])->default('member');
+            $table->enum('role', ['MEMBER', 'MODERATOR', 'ADMIN'])->default('MEMBER');
             $table->timestamps();
 
             $table->index('group_id');

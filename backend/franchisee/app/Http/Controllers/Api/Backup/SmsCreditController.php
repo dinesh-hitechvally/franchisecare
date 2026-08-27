@@ -74,7 +74,7 @@ class SmsCreditController extends Controller
             'package_id' => $validated['package_id'],
             'quantity' => $package['quantity'],
             'amount' => $package['price'],
-            'status' => 'completed', // In real app, this would be 'pending' until payment confirmed
+            'status' => 'COMPLETED', // In real app, this would be 'PENDING' until payment confirmed
             'purchased_at' => now(),
         ]);
         

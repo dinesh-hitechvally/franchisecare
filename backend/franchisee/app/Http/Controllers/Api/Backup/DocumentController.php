@@ -17,7 +17,7 @@ class DocumentController extends Controller
 
         if ($user && $user->company_id) {
             $query->where(function ($q) use ($user) {
-                $q->where('visibility', 'global')
+                $q->where('visibility', 'GLOBAL')
                   ->orWhere('company_id', $user->company_id);
             });
         }
@@ -50,7 +50,7 @@ class DocumentController extends Controller
 
         $title = $request->input('title', $metadata['title'] ?? null);
         $description = $request->input('description', $metadata['description'] ?? null);
-        $visibility = $request->input('visibility', $metadata['visibility'] ?? 'global');
+        $visibility = $request->input('visibility', $metadata['visibility'] ?? 'GLOBAL');
         $category = $request->input('category', $metadata['category'] ?? 'other');
 
         $validated = validator([
@@ -62,7 +62,7 @@ class DocumentController extends Controller
         ], [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'visibility' => 'required|in:global,franchise',
+            'visibility' => 'required|in:GLOBAL,FRANCHISE',
             'category' => 'required|in:manual,template,other,general',
             'file' => 'nullable|file|max:10240',
         ])->validate();
@@ -102,7 +102,7 @@ class DocumentController extends Controller
             'description' => 'nullable|string',
             'file_url' => 'nullable|string|max:2048',
             'file_type' => 'nullable|string|max:20',
-            'visibility' => 'sometimes|required|in:global,franchise',
+            'visibility' => 'sometimes|required|in:GLOBAL,FRANCHISE',
             'category' => 'sometimes|required|in:manual,template,other,general',
         ]);
 

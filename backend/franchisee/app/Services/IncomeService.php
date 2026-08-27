@@ -43,8 +43,8 @@ class IncomeService implements IncomeServiceInterface
                 'company_id' => $companyId,
                 'income_category_id' => $data['income_category_id'] ?? null,
                 'start_date' => $data['income_date'],
-                'frequency' => $data['recurring_frequency'] ?? 'weekly',
-                'status' => 'active',
+                'frequency' => $data['recurring_frequency'] ?? 'WEEKLY',
+                'status' => 'ACTIVE',
                 'auto_extend' => $data['auto_extend_recurring'] ?? false,
                 'total' => $data['amount'],
             ]);
@@ -87,8 +87,8 @@ class IncomeService implements IncomeServiceInterface
                     'company_id' => $companyId,
                     'income_category_id' => $data['income_category_id'] ?? $income->income_category_id,
                     'start_date' => $data['income_date'] ?? $income->income_date,
-                    'frequency' => $data['recurring_frequency'] ?? 'weekly',
-                    'status' => 'active',
+                    'frequency' => $data['recurring_frequency'] ?? 'WEEKLY',
+                    'status' => 'ACTIVE',
                     'auto_extend' => $data['auto_extend_recurring'] ?? false,
                     'total' => $data['amount'] ?? $income->amount,
                 ]);
@@ -96,7 +96,7 @@ class IncomeService implements IncomeServiceInterface
                 $data['recurring_income_id'] = $recurringIncome->id;
             } else {
                 $income->recurringIncome->update([
-                    'frequency' => $data['recurring_frequency'] ?? 'weekly',
+                    'frequency' => $data['recurring_frequency'] ?? 'WEEKLY',
                     'auto_extend' => $data['auto_extend_recurring'] ?? false,
                     'total' => $data['amount'] ?? $income->amount,
                 ]);

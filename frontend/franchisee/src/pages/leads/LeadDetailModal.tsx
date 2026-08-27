@@ -48,7 +48,7 @@ export function LeadDetailModal({
     }
   }
 
-  const isConverted = lead.status === 'converted'
+  const isConverted = lead.status === 'CONVERTED'
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
@@ -61,7 +61,7 @@ export function LeadDetailModal({
           </button>
 
           {/* NEW LEAD Badge */}
-          {lead.status === 'new' && (
+          {lead.status === 'NEW' && (
             <div className="absolute top-0 right-0 w-32 h-32 overflow-hidden pointer-events-none">
               <div className="absolute top-6 right-[-40px] bg-red-600 text-white text-xs font-bold py-1 px-12 rotate-45 shadow-md uppercase tracking-wide">
                 New Lead

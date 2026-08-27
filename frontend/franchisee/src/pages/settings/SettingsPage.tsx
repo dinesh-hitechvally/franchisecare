@@ -137,7 +137,7 @@ export function SettingsPage() {
   })
 
   // Send booking reminder state
-  const [reminderOption, setReminderOption] = useState('email-only')
+  const [reminderOption, setReminderOption] = useState('EMAIL-ONLY')
   const [confirmationHours, setConfirmationHours] = useState('24')
 
   // Calendar settings state
@@ -256,12 +256,12 @@ export function SettingsPage() {
 
         setCancellationPolicy({
           attachPolicy: cancellation.attach_policy ?? false,
-          cancelBefore: cancellation.cancel_before_unit === 'hours' ? 'Hours' : 'Cutoff Time',
+          cancelBefore: cancellation.cancel_before_unit === 'HOURS' ? 'Hours' : 'Cutoff Time',
           hours: String(cancellation.cancel_before_value),
           cutoffTime: convertTo12Hour(cancellation.cancel_cutoff_time),
           cancellationFeeType: '%',
           cancellationFeeValue: String(cancellation.cancellation_fee_value),
-          penalty: cancellation.penalty_type === 'percent' ? '% (Percent)' : '$ (Fixed)',
+          penalty: cancellation.penalty_type === 'PERCENT' ? '% (Percent)' : '$ (Fixed)',
           policyId: cancellation.policy_id,
         })
 
@@ -400,11 +400,11 @@ export function SettingsPage() {
 
       await settingsApi.saveCancellationPolicy({
         attach_policy: cancellationPolicy.attachPolicy,
-        cancel_before_unit: cancellationPolicy.cancelBefore === 'Hours' ? 'hours' : 'cutoff',
+        cancel_before_unit: cancellationPolicy.cancelBefore === 'Hours' ? 'HOURS' : 'CUTOFF',
         cancel_before_value: parseInt(cancellationPolicy.hours),
         cancel_cutoff_time: cancellationPolicy.cancelBefore === 'Cutoff Time' ? convertTo24Hour(cancellationPolicy.cutoffTime) : undefined,
         cancellation_fee_value: parseFloat(cancellationPolicy.cancellationFeeValue),
-        penalty_type: cancellationPolicy.penalty === '% (Percent)' ? 'percent' : 'fixed',
+        penalty_type: cancellationPolicy.penalty === '% (Percent)' ? 'PERCENT' : 'FIXED',
         policy_id: cancellationPolicy.policyId,
       })
       toast.success('Cancellation policy saved successfully')
@@ -841,12 +841,12 @@ export function SettingsPage() {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Send booking reminder</h3>
               <div className="space-y-3">
                 {[
-                  { value: 'no-send', label: 'Do not send booking reminder' },
-                  { value: 'email-sms', label: 'Send email and SMS for all customers' },
-                  { value: 'email-only', label: 'Send email only, do not send SMS' },
-                  { value: 'sms-only', label: 'Send SMS only, do not send email' },
-                  { value: 'email-if-found', label: 'Send by email but if not found, send SMS' },
-                  { value: 'sms-if-no-mobile', label: 'Send by SMS but if no mobile number, send email' },
+                  { value: 'NO-SEND', label: 'Do not send booking reminder' },
+                  { value: 'EMAIL-SMS', label: 'Send email and SMS for all customers' },
+                  { value: 'EMAIL-ONLY', label: 'Send email only, do not send SMS' },
+                  { value: 'SMS-ONLY', label: 'Send SMS only, do not send email' },
+                  { value: 'EMAIL-IF-NO-MOBILE', label: 'Send by email but if not found, send SMS' },
+                  { value: 'SMS-IF-NO-EMAIL', label: 'Send by SMS but if no mobile number, send email' },
                 ].map(({ value, label }) => (
                   <div key={value} className="flex items-center justify-between py-2">
                     <span className="text-sm text-gray-700">{label}</span>

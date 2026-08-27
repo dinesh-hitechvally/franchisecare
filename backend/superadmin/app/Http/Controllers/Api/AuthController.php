@@ -26,7 +26,7 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($user->status !== 'active') {
+        if ($user->status !== 'ACTIVE') {
             throw ValidationException::withMessages([
                 'email' => ['Your account is not active.'],
             ]);

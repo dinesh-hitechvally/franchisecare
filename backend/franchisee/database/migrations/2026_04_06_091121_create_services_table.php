@@ -17,7 +17,7 @@ return new class extends Migration
             $table->unsignedBigInteger('category_id')->nullable();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->enum('size', ['tiny', 'small', 'medium', 'large'])->nullable();
+            $table->enum('size', ['TINY', 'SMALL', 'MEDIUM', 'LARGE'])->nullable();
             $table->decimal('price', 10, 2);
             $table->integer('duration'); // in minutes
             $table->tinyInteger('status')->default(1)->comment('1: active, 0: inactive');

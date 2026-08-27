@@ -213,9 +213,9 @@ export function RecurringBookingDetailModal({
                         <td className="px-4 py-3 text-sm text-gray-700">{formatDisplayTime(booking.startTime)}</td>
                         <td className="px-4 py-3 text-sm">
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            booking.status === 'completed' ? 'bg-green-100 text-green-700' :
-                            booking.status === 'cancelled' ? 'bg-red-100 text-red-700' :
-                            booking.status === 'active' ? 'bg-blue-100 text-blue-700' :
+                            booking.status === 'COMPLETED' ? 'bg-green-100 text-green-700' :
+                            booking.status === 'CANCELLED' ? 'bg-red-100 text-red-700' :
+                            booking.status === 'ACTIVE' ? 'bg-blue-100 text-blue-700' :
                             'bg-yellow-100 text-yellow-700'
                           }`}>
                             {booking.status || 'pending'}

@@ -37,9 +37,9 @@ export function RecurringExpensesPage() {
   }
 
   const getRecurRule = (exp: RecurringExpense) => {
-    const freq = exp.frequency || 'weekly'
+    const freq = exp.frequency || 'WEEKLY'
     const endDate = exp.end_date ? formatDate(exp.end_date) : 'ongoing'
-    return `${freq.charAt(0).toUpperCase() + freq.slice(1)} until ${endDate}`
+    return `${freq.charAt(0).toUpperCase() + freq.slice(1).toLowerCase()} until ${endDate}`
   }
 
   return (

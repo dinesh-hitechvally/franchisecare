@@ -131,7 +131,7 @@ class WaitlistController extends Controller
             'calendar_color'           => 'nullable|string',
             'send_sms'                 => 'boolean',
             'send_email'               => 'boolean',
-            'status'                   => 'in:active,cancelled,completed,expired',
+            'status'                   => 'in:ACTIVE,CANCELLED,COMPLETED,EXPIRED',
             'total'                    => 'required|numeric',
             'duration'                 => 'required|integer',
             'notes'                    => 'nullable|string',
@@ -142,7 +142,7 @@ class WaitlistController extends Controller
         ]);
 
         $validated['company_id'] = auth()->user()->company_id;
-        $validated['status']     = $validated['status'] ?? 'active';
+        $validated['status']     = $validated['status'] ?? 'ACTIVE';
 
         $waitlist = Waitlist::create($validated);
 
@@ -188,7 +188,7 @@ class WaitlistController extends Controller
             'calendar_color'           => 'nullable|string',
             'send_sms'                 => 'boolean',
             'send_email'               => 'boolean',
-            'status'                   => 'in:active,cancelled,completed,expired',
+            'status'                   => 'in:ACTIVE,CANCELLED,COMPLETED,EXPIRED',
             'total'                    => 'sometimes|numeric',
             'duration'                 => 'sometimes|integer',
             'notes'                    => 'nullable|string',
@@ -231,7 +231,7 @@ class WaitlistController extends Controller
     public function updateStatus(Request $request, Waitlist $waitlist)
     {
         $request->validate([
-            'status' => 'required|in:active,cancelled,completed,expired',
+            'status' => 'required|in:ACTIVE,CANCELLED,COMPLETED,EXPIRED',
         ]);
 
         $previousStatus = $waitlist->status;
@@ -260,7 +260,7 @@ class WaitlistController extends Controller
                 'calendar_color' => $waitlist->calendar_color,
                 'send_sms'       => $waitlist->send_sms,
                 'send_email'     => $waitlist->send_email,
-                'status'         => 'active',
+                'status'         => 'ACTIVE',
                 'total'          => $waitlist->total,
                 'duration'       => $waitlist->duration,
                 'notes'          => $waitlist->notes,
@@ -277,7 +277,7 @@ class WaitlistController extends Controller
             }
 
             $previousStatus = $waitlist->status;
-            $waitlist->update(['status' => 'completed']);
+            $waitlist->update(['status' => 'COMPLETED']);
 
             // Create audit record for conversion
             $this->createAuditRecord($waitlist, 'converted_to_booking', $previousStatus, [

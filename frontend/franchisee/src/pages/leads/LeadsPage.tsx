@@ -30,7 +30,7 @@ export function LeadsPage() {
     lastName: '',
     email: '',
     phone: '',
-    source: 'internet' as Lead['source'],
+    source: 'INTERNET' as Lead['source'],
     notes: '',
   })
 
@@ -102,7 +102,7 @@ export function LeadsPage() {
       {
         id: leadId,
         data: {
-          status: 'snoozed',
+          status: 'SNOOZED',
           snoozedUntil: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         },
       },
@@ -124,15 +124,15 @@ export function LeadsPage() {
   )
 
   const statusColors = {
-    new: 'bg-blue-100 text-blue-700',
-    contacted: 'bg-yellow-100 text-yellow-700',
-    qualified: 'bg-green-100 text-green-700',
-    converted: 'bg-purple-100 text-purple-700',
-    lost: 'bg-red-100 text-red-700',
-    snoozed: 'bg-gray-100 text-gray-700',
-    completed: 'bg-green-100 text-green-700',
-    cancellation_request: 'bg-orange-100 text-orange-700',
-    message_for_operator: 'bg-indigo-100 text-indigo-700',
+    NEW: 'bg-blue-100 text-blue-700',
+    CONTACTED: 'bg-yellow-100 text-yellow-700',
+    QUALIFIED: 'bg-green-100 text-green-700',
+    CONVERTED: 'bg-purple-100 text-purple-700',
+    LOST: 'bg-red-100 text-red-700',
+    SNOOZED: 'bg-gray-100 text-gray-700',
+    COMPLETED: 'bg-green-100 text-green-700',
+    CANCELLATION_REQUEST: 'bg-orange-100 text-orange-700',
+    MESSAGE_FOR_OPERATOR: 'bg-indigo-100 text-indigo-700',
   }
 
   return (
@@ -172,11 +172,11 @@ export function LeadsPage() {
             className="input w-40"
           >
             <option value="">All Status</option>
-            <option value="new">New</option>
-            <option value="contacted">Contacted</option>
-            <option value="qualified">Qualified</option>
-            <option value="converted">Converted</option>
-            <option value="lost">Lost</option>
+            <option value="NEW">New</option>
+            <option value="CONTACTED">Contacted</option>
+            <option value="QUALIFIED">Qualified</option>
+            <option value="CONVERTED">Converted</option>
+            <option value="LOST">Lost</option>
           </select>
         </div>
 
@@ -240,7 +240,7 @@ export function LeadsPage() {
                       >
                         Edit
                       </button>
-                      {row.status !== 'converted' && (
+                      {row.status !== 'CONVERTED' && (
                         <button
                           type="button"
                           onClick={() => {
@@ -286,8 +286,8 @@ export function LeadsPage() {
                   interestedServices: '',
                   address: '',
                   source: formData.source,
-                  leadsFrom: formData.source === 'phone' ? 'phone' : 'internet',
-                  status: 'new',
+                  leadsFrom: formData.source === 'PHONE' ? 'PHONE' : 'INTERNET',
+                  status: 'NEW',
                   notes: formData.notes,
                 } as Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>)
               }
@@ -329,10 +329,10 @@ export function LeadsPage() {
               value={formData.source}
               onChange={(e) => setFormData((prev) => ({ ...prev, source: e.target.value as Lead['source'] }))}
             >
-              <option value="internet">Internet</option>
-              <option value="phone">Phone</option>
-              <option value="walk-in">Walk In</option>
-              <option value="referral">Referral</option>
+              <option value="INTERNET">Internet</option>
+              <option value="PHONE">Phone</option>
+              <option value="WALK-IN">Walk In</option>
+              <option value="REFERRAL">Referral</option>
             </select>
           </div>
           <div>

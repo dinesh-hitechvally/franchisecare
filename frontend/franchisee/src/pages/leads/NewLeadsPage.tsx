@@ -19,8 +19,8 @@ export function NewLeadsPage() {
   const [menuPos, setMenuPos] = useState<{ top: number; left: number } | null>(null)
 
   const { data: fetchedLeads = [] } = useQuery({
-    queryKey: ['leads', 'new'],
-    queryFn: () => leadsApi.getAll({ status: 'new' }),
+    queryKey: ['leads', 'NEW'],
+    queryFn: () => leadsApi.getAll({ status: 'NEW' }),
   })
 
   const updateLeadMutation = useMutation({
@@ -82,7 +82,7 @@ export function NewLeadsPage() {
       {
         id: leadId,
         data: {
-          status: 'snoozed',
+          status: 'SNOOZED',
           snoozedUntil: snoozeUntil,
         },
       },
@@ -177,7 +177,7 @@ export function NewLeadsPage() {
                     {lead.notes}
                   </td>
                   <td className="px-3 py-4 align-top text-center text-blue-700">
-                    {lead.leadsFrom === 'phone' ? (
+                    {lead.leadsFrom === 'PHONE' ? (
                        <Phone className="w-4 h-4 mx-auto rotate-90" />
                     ) : (
                        <Globe className="w-4 h-4 mx-auto" />

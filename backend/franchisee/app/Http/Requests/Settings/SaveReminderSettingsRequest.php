@@ -14,7 +14,7 @@ class SaveReminderSettingsRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'reminder_method' => 'in:no-send,email-sms,email-only,sms-only,email-if-found,sms-if-no-mobile',
+            'reminder_method' => 'in:NO-SEND,EMAIL-SMS,EMAIL-ONLY,SMS-ONLY,EMAIL-IF-NO-MOBILE,SMS-IF-NO-EMAIL',
             'send_before_hours' => 'integer',
         ];
     }

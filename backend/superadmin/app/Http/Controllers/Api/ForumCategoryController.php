@@ -32,7 +32,7 @@ class ForumCategoryController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $category = ForumCategory::create($validated);
 
@@ -49,7 +49,7 @@ class ForumCategoryController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|string|max:255',
             'description' => 'nullable|string',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $forumCategory->update($validated);

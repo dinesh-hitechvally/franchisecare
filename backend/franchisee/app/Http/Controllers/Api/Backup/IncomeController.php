@@ -66,7 +66,7 @@ class IncomeController extends Controller
             'income_date'        => 'required|date',
             'is_active'          => 'boolean',
             'is_recurring'       => 'boolean',
-            'recurring_frequency' => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurring_frequency' => 'nullable|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend_recurring' => 'boolean',
         ]);
 
@@ -78,8 +78,8 @@ class IncomeController extends Controller
                 'company_id'         => $company_id,
                 'income_category_id' => $validated['income_category_id'] ?? null,
                 'start_date'         => $validated['income_date'],
-                'frequency'          => $request->input('recurring_frequency', 'weekly'),
-                'status'             => 'active',
+                'frequency'          => $request->input('recurring_frequency', 'WEEKLY'),
+                'status'             => 'ACTIVE',
                 'auto_extend'        => $request->boolean('auto_extend_recurring', false),
                 'total'              => $validated['amount'],
             ]);
@@ -122,7 +122,7 @@ class IncomeController extends Controller
             'income_date'        => 'sometimes|required|date',
             'is_active'          => 'boolean',
             'is_recurring'       => 'boolean',
-            'recurring_frequency' => 'nullable|in:daily,weekly,monthly,yearly',
+            'recurring_frequency' => 'nullable|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend_recurring' => 'boolean',
         ]);
 
@@ -136,8 +136,8 @@ class IncomeController extends Controller
                     'company_id'         => $company_id,
                     'income_category_id' => $validated['income_category_id'] ?? $income->income_category_id,
                     'start_date'         => $validated['income_date'] ?? $income->income_date,
-                    'frequency'          => $request->input('recurring_frequency', 'weekly'),
-                    'status'             => 'active',
+                    'frequency'          => $request->input('recurring_frequency', 'WEEKLY'),
+                    'status'             => 'ACTIVE',
                     'auto_extend'        => $request->boolean('auto_extend_recurring', false),
                     'total'              => $validated['amount'] ?? $income->amount,
                 ]);
@@ -146,7 +146,7 @@ class IncomeController extends Controller
             } else {
                 // Update existing recurring record
                 $income->recurringIncome->update([
-                    'frequency'   => $request->input('recurring_frequency', 'weekly'),
+                    'frequency'   => $request->input('recurring_frequency', 'WEEKLY'),
                     'auto_extend' => $request->boolean('auto_extend_recurring', false),
                     'total'       => $validated['amount'] ?? $income->amount,
                 ]);

@@ -10,14 +10,14 @@ import { useAuthStore } from '../../store/authStore'
 const badgePillClass = 'px-2.5 py-0.5 rounded-full text-[11px] font-semibold capitalize'
 
 const roleBadgeClass: Record<AdminUser['role'], string> = {
-  admin: 'bg-purple-100 text-purple-700',
-  support: 'bg-blue-100 text-blue-700',
-  viewer: 'bg-gray-100 text-gray-700',
+  ADMIN: 'bg-purple-100 text-purple-700',
+  SUPPORT: 'bg-blue-100 text-blue-700',
+  VIEWER: 'bg-gray-100 text-gray-700',
 }
 
 const statusBadgeClass: Record<AdminUser['status'], string> = {
-  active: 'bg-green-100 text-green-700',
-  inactive: 'bg-red-100 text-red-600',
+  ACTIVE: 'bg-green-100 text-green-700',
+  INACTIVE: 'bg-red-100 text-red-600',
 }
 
 function formatDate(value: string) {
@@ -120,9 +120,9 @@ export function ListAdminUsers() {
               className="form-input"
             >
               <option value="">All Roles</option>
-              <option value="admin">Admin</option>
-              <option value="support">Support</option>
-              <option value="viewer">Viewer</option>
+              <option value="ADMIN">Admin</option>
+              <option value="SUPPORT">Support</option>
+              <option value="VIEWER">Viewer</option>
             </select>
           </div>
           <div>
@@ -132,8 +132,8 @@ export function ListAdminUsers() {
               className="form-input"
             >
               <option value="">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
+              <option value="ACTIVE">Active</option>
+              <option value="INACTIVE">Inactive</option>
             </select>
           </div>
         </div>

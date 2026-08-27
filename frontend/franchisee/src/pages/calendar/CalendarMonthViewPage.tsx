@@ -47,7 +47,7 @@ export function CalendarMonthViewPage() {
         ])
 
         const bookingItems: CalendarItem[] = (bookingPage?.data || [])
-          .filter((b) => b.status === 'active' || b.status === 'completed')
+          .filter((b) => b.status === 'ACTIVE' || b.status === 'COMPLETED')
           .map((b) => {
             const customerName = b.customerName
               || `${b.customer?.first_name || ''} ${b.customer?.last_name || ''}`.trim()
@@ -63,7 +63,7 @@ export function CalendarMonthViewPage() {
               startDate: b.startDate,
               endDate: b.endDate,
               startTime: b.startTime,
-              status: b.status || 'active',
+              status: b.status || 'ACTIVE',
               eventType: 'booking' as const,
               calendarColor: b.calendarColor,
             }
@@ -84,7 +84,7 @@ export function CalendarMonthViewPage() {
             startDate: b.startDate,
             endDate: b.endDate,
             startTime: b.startTime,
-            status: b.active ? 'active' : 'cancelled',
+            status: b.active ? 'ACTIVE' : 'CANCELLED',
             eventType: 'blockout' as const,
             calendarColor: '#9333ea',
           }))

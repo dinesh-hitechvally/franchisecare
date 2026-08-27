@@ -359,12 +359,12 @@ class CommunicationHistoryController extends Controller
             }
 
             // Filter by status
-            $statuses = ['active'];
+            $statuses = ['ACTIVE'];
             if (!empty($validated['include_completed'])) {
-                $statuses[] = 'completed';
+                $statuses[] = 'COMPLETED';
             }
             if (!empty($validated['include_cancelled'])) {
-                $statuses[] = 'cancelled';
+                $statuses[] = 'CANCELLED';
             }
             $bookingsQuery->whereIn('status', $statuses);
 
@@ -461,9 +461,9 @@ class CommunicationHistoryController extends Controller
             $services = $booking->details->map(fn($d) => $d->service?->name)->filter()->implode(', ') ?: 'N/A';
             $pets = $booking->details->map(fn($d) => $d->item?->name)->filter()->unique()->implode(', ') ?: 'N/A';
             $statusColor = match($booking->status) {
-                'active' => '#10b981',
-                'completed' => '#3b82f6',
-                'cancelled' => '#ef4444',
+                'ACTIVE' => '#10b981',
+                'COMPLETED' => '#3b82f6',
+                'CANCELLED' => '#ef4444',
                 default => '#6b7280'
             };
             $date = \Carbon\Carbon::parse($booking->start_date)->format('M j, Y');

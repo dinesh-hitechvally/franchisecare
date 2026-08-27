@@ -74,7 +74,7 @@ class IncomeReportController extends Controller
         $customerBookings = Booking::query()
             ->with('customer:id,first_name,last_name')
             ->whereBetween('start_date', [$from, $to])
-            ->whereIn('status', ['active', 'completed'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED'])
             ->whereNotNull('customer_id')
             ->when($companyId, function ($query) use ($companyId) {
                 $query->where('company_id', $companyId);

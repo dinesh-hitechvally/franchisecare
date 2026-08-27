@@ -24,8 +24,8 @@ class BookingReportService implements BookingReportServiceInterface
 
         $summary = [
             'total_bookings' => $bookings->count(),
-            'completed' => $bookings->where('status', 'completed')->count(),
-            'cancelled' => $bookings->where('status', 'cancelled')->count(),
+            'completed' => $bookings->where('status', 'COMPLETED')->count(),
+            'cancelled' => $bookings->where('status', 'CANCELLED')->count(),
             'no_show' => $bookings->where('status', 'no_show')->count(),
             'revenue' => $bookings->sum('total'),
         ];
@@ -79,8 +79,8 @@ class BookingReportService implements BookingReportServiceInterface
                 'endDate' => $weekEnd->format('Y-m-d'),
                 'myBookings' => $myBookings->count(),
                 'maxBookings' => max($myBookings->count(), $maxBookingsCount),
-                'completed' => $myBookings->where('status', 'completed')->count(),
-                'cancelled' => $myBookings->where('status', 'cancelled')->count(),
+                'completed' => $myBookings->where('status', 'COMPLETED')->count(),
+                'cancelled' => $myBookings->where('status', 'CANCELLED')->count(),
                 'pending' => $myBookings->where('status', 'pending')->count(),
                 'noShow' => $myBookings->where('status', 'no_show')->count(),
                 'revenue' => $myBookings->sum('total'),

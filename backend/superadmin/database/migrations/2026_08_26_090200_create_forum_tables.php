@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
 
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->foreignId('category_id')->nullable()->constrained('forum_categories')->onDelete('set null');
             $table->string('name');
             $table->text('description')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
 
@@ -33,7 +33,7 @@ return new class extends Migration
             $table->text('content')->nullable();
             $table->string('author_name')->nullable();
             $table->unsignedInteger('views')->default(0);
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
 
@@ -42,7 +42,7 @@ return new class extends Migration
             $table->string('name');
             $table->text('description')->nullable();
             $table->string('permissions')->nullable();
-            $table->enum('status', ['active', 'inactive'])->default('active');
+            $table->enum('status', ['ACTIVE', 'INACTIVE'])->default('ACTIVE');
             $table->timestamps();
         });
     }

@@ -40,7 +40,7 @@ class FranchiseServiceController extends Controller
             'duration' => 'required|integer|min:1',
         ]);
 
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $franchiseService = FranchiseService::create($validated);
 
@@ -61,7 +61,7 @@ class FranchiseServiceController extends Controller
             'description' => 'nullable|string',
             'price' => 'sometimes|numeric|min:0',
             'duration' => 'sometimes|integer|min:1',
-            'status' => 'sometimes|in:active,inactive',
+            'status' => 'sometimes|in:ACTIVE,INACTIVE',
         ]);
 
         $franchiseService->update($validated);

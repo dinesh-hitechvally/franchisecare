@@ -17,7 +17,7 @@ return new class extends Migration
             $table->date('end_date')->nullable();
             $table->string('start_time');
             $table->string('end_time')->nullable();
-            $table->enum('status', ['active', 'cancelled', 'completed', 'expired'])->default('active');
+            $table->enum('status', ['ACTIVE', 'CANCELLED', 'COMPLETED', 'EXPIRED'])->default('ACTIVE');
             $table->decimal('total', 10, 2)->default(0);
             $table->integer('duration')->default(0); // in minutes
             $table->string('calendar_color')->nullable();

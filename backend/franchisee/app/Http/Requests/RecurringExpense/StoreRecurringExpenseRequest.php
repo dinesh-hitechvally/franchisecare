@@ -16,7 +16,7 @@ class StoreRecurringExpenseRequest extends FormRequest
         return [
             'expense_category_id' => 'nullable|exists:expense_categories,id',
             'start_date'          => 'required|date',
-            'frequency'           => 'required|in:daily,weekly,monthly,yearly',
+            'frequency'           => 'required|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend'         => 'boolean',
             'total'               => 'required|numeric|min:0',
             'notes'               => 'nullable|string',

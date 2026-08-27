@@ -41,12 +41,12 @@ export function RecurringBookingsPage() {
   }, [debouncedSearch, hideExpired])
 
   const { data: listResult, isLoading } = useQuery({
-    queryKey: ['booking-recurrings', user?.companyId, 'active', debouncedSearch, hideExpired, page, perPage],
+    queryKey: ['booking-recurrings', user?.companyId, 'ACTIVE', debouncedSearch, hideExpired, page, perPage],
     queryFn: () =>
       recurringBookingsApi.getPaginated({
         page,
         per_page: perPage,
-        status: 'active',
+        status: 'ACTIVE',
         companyId: user?.companyId,
         ...(debouncedSearch.trim() ? { search: debouncedSearch.trim() } : {}),
         hide_expired: hideExpired,
@@ -202,9 +202,9 @@ export function RecurringBookingsPage() {
                     <td className="px-5 py-4 align-top text-center">
                       <span
                           className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            row.status === 'completed'
+                            row.status === 'COMPLETED'
                               ? 'bg-green-100 text-green-700'
-                              : row.status === 'cancelled'
+                              : row.status === 'CANCELLED'
                               ? 'bg-red-100 text-red-700'
                               : 'bg-gray-100 text-gray-700'
                           }`}
@@ -286,7 +286,7 @@ export function RecurringBookingsPage() {
                             {(row as any).autoExtend ? 'Disable' : 'Enable'} Auto Extend
                           </button>
 
-                          {row.status === 'active' && (
+                          {row.status === 'ACTIVE' && (
                             <button
                               className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100 mt-1"
                               onClick={() => handleCancel(row.id)}

@@ -41,14 +41,14 @@ class RecurringIncomeController extends Controller
         $validated = $request->validate([
             'income_category_id' => 'nullable|exists:income_categories,id',
             'start_date'         => 'required|date',
-            'frequency'          => 'required|in:daily,weekly,monthly,yearly',
+            'frequency'          => 'required|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend'        => 'boolean',
             'total'              => 'required|numeric|min:0',
             'notes'              => 'nullable|string',
         ]);
 
         $validated['company_id'] = auth()->user()->company_id;
-        $validated['status'] = 'active';
+        $validated['status'] = 'ACTIVE';
 
         $recurringIncome = RecurringIncome::create($validated);
 
@@ -65,11 +65,11 @@ class RecurringIncomeController extends Controller
         $validated = $request->validate([
             'income_category_id' => 'nullable|exists:income_categories,id',
             'start_date'         => 'sometimes|required|date',
-            'frequency'          => 'sometimes|required|in:daily,weekly,monthly,yearly',
+            'frequency'          => 'sometimes|required|in:DAILY,WEEKLY,MONTHLY,YEARLY',
             'auto_extend'        => 'boolean',
             'total'              => 'sometimes|required|numeric|min:0',
             'notes'              => 'nullable|string',
-            'status'             => 'sometimes|in:active,cancelled,completed',
+            'status'             => 'sometimes|in:ACTIVE,CANCELLED,COMPLETED',
         ]);
 
         $recurringIncome->update($validated);

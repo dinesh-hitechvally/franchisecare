@@ -15,8 +15,8 @@ return new class extends Migration
             $table->unsignedBigInteger('expense_category_id')->nullable();
             
             $table->date('start_date');
-            $table->enum('frequency', ['daily', 'weekly', 'monthly', 'yearly'])->default('weekly');
-            $table->enum('status', ['active', 'cancelled', 'completed'])->default('active');
+            $table->enum('frequency', ['DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'])->default('WEEKLY');
+            $table->enum('status', ['ACTIVE', 'CANCELLED', 'COMPLETED'])->default('ACTIVE');
             $table->boolean('auto_extend')->default(false);
             $table->decimal('total', 10, 2);
             $table->text('notes')->nullable();

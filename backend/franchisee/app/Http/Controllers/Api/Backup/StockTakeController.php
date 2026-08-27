@@ -122,7 +122,7 @@ class StockTakeController extends Controller
                     'category_id' => $categoryId,
                     'inventory_id' => $inventoryId,
                     'batch_id' => $batch->id,
-                    'movement_type' => 'stock_take',
+                    'movement_type' => 'STOCK_TAKE',
                     'quantity_change' => $quantity - $quantityBefore,
                     'percentage_change' => $percentage - $percentageBefore,
                     'quantity_before' => $quantityBefore,

@@ -16,7 +16,7 @@ return new class extends Migration
             $table->string('package_id');
             $table->integer('quantity');
             $table->decimal('amount', 10, 2);
-            $table->enum('status', ['pending', 'completed', 'failed', 'refunded'])->default('pending');
+            $table->enum('status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED'])->default('PENDING');
             $table->timestamp('purchased_at')->nullable();
             $table->timestamps();
 

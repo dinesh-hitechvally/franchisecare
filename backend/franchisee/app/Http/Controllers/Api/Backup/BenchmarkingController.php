@@ -163,7 +163,7 @@ class BenchmarkingController extends Controller
         $incomeQuery = Income::query()->whereBetween('income_date', [$start, $end]);
         $bookingQuery = Booking::query()
             ->with(['details.service'])
-            ->whereIn('status', ['active', 'completed'])
+            ->whereIn('status', ['ACTIVE', 'COMPLETED'])
             ->whereBetween('start_date', [$start, $end]);
 
         if ($scope) {

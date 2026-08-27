@@ -31,22 +31,22 @@ const currencyFormatter = new Intl.NumberFormat('en-AU', {
 
 // Matches the badge convention used in ListFranchises.tsx
 const statusBadgeStyle: Record<Franchise['status'], { bg: string; color: string }> = {
-  active: { bg: '#dcfce7', color: '#166534' },
-  inactive: { bg: '#f3f4f6', color: '#4b5563' },
-  suspended: { bg: '#ffedd5', color: '#c2410c' },
-  terminated: { bg: '#fee2e2', color: '#b91c1c' },
+  ACTIVE: { bg: '#dcfce7', color: '#166534' },
+  INACTIVE: { bg: '#f3f4f6', color: '#4b5563' },
+  SUSPENDED: { bg: '#ffedd5', color: '#c2410c' },
+  TERMINATED: { bg: '#fee2e2', color: '#b91c1c' },
 }
 
 // Fixed status palette (never repurposed for series color) — mirrors the badge hues
 const statusBarColor: Record<string, string> = {
-  active: '#0ca30c',
-  inactive: '#9ca3af',
-  suspended: '#fab219',
-  terminated: '#d03b3b',
+  ACTIVE: '#0ca30c',
+  INACTIVE: '#9ca3af',
+  SUSPENDED: '#fab219',
+  TERMINATED: '#d03b3b',
 }
 
 function StatusBadge({ status }: { status: Franchise['status'] }) {
-  const style = statusBadgeStyle[status] ?? statusBadgeStyle.inactive
+  const style = statusBadgeStyle[status] ?? statusBadgeStyle.INACTIVE
   return (
     <span
       style={{

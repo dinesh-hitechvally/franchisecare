@@ -237,9 +237,9 @@ function mapLeadFromApi(l: any): Lead {
     referredBy: raw.referred_by || raw.referredBy || '',
     additionalNote: raw.additional_note || raw.additionalNote || '',
     notes: raw.notes || '',
-    source: raw.source || 'internet',
-    leadsFrom: raw.leads_from || raw.leadsFrom || 'internet',
-    status: raw.status || 'new',
+    source: raw.source || 'INTERNET',
+    leadsFrom: raw.leads_from || raw.leadsFrom || 'INTERNET',
+    status: raw.status || 'NEW',
     companyId: raw.company_id || raw.companyId,
     snoozedUntil: raw.snoozed_until || raw.snoozedUntil,
     comments: raw.comments || [],
@@ -802,7 +802,7 @@ function mapDocumentFromApi(row: any): Document {
     fileUrl: raw.file_url || raw.fileUrl || '',
     fileType: raw.file_type || raw.fileType || 'file',
     companyId: raw.company_id ? String(raw.company_id) : raw.companyId,
-    visibility: (raw.visibility || 'global') as Document['visibility'],
+    visibility: (raw.visibility || 'GLOBAL') as Document['visibility'],
     category: raw.category || 'other',
     uploadedBy: String(raw.user_id || raw.uploaded_by || raw.uploadedBy || ''),
     createdAt: raw.created_at || raw.createdAt || new Date().toISOString(),
@@ -815,7 +815,7 @@ function mapDocumentsFromApi(rows: unknown): Document[] {
 }
 
 export const documentsApi = {
-  getAll: async (params?: { franchiseId?: string; visibility?: 'global' | 'franchise'; category?: string; search?: string }) => {
+  getAll: async (params?: { franchiseId?: string; visibility?: 'GLOBAL' | 'FRANCHISE'; category?: string; search?: string }) => {
     const rows = await apiClient.get<any[]>('/documents', {
       params: {
         company_id: params?.franchiseId,
@@ -985,12 +985,12 @@ export const forumApi = {
   deleteThread: (id: string | number) => apiClient.delete(`/forum/threads/${id}`),
 
   // Groups
-  getGroups: (params?: { type?: 'topic' | 'state' | 'custom'; my_groups?: boolean }) =>
+  getGroups: (params?: { type?: 'TOPIC' | 'STATE' | 'CUSTOM'; my_groups?: boolean }) =>
     apiClient.get<ForumGroup[]>('/forum/groups', { params }),
 
   getGroup: (id: string) => apiClient.get<ForumGroup>(`/forum/groups/${id}`),
 
-  createGroup: (data: { name: string; description?: string; type: 'topic' | 'state' | 'custom'; icon?: string; color?: string; is_public?: boolean }) =>
+  createGroup: (data: { name: string; description?: string; type: 'TOPIC' | 'STATE' | 'CUSTOM'; icon?: string; color?: string; is_public?: boolean }) =>
     apiClient.post<ForumGroup>('/forum/groups', data),
 
   updateGroup: (id: string, data: Partial<ForumGroup>) =>
@@ -1376,11 +1376,11 @@ export interface CancellationPolicy {
   id?: number
   company_id?: number
   attach_policy?: boolean
-  cancel_before_unit: 'hours' | 'cutoff'
+  cancel_before_unit: 'HOURS' | 'CUTOFF'
   cancel_before_value: number
   cancel_cutoff_time?: string
   cancellation_fee_value: number
-  penalty_type: 'percent' | 'fixed'
+  penalty_type: 'PERCENT' | 'FIXED'
   policy_id?: number
   policy_text?: string
 }
@@ -1388,7 +1388,7 @@ export interface CancellationPolicy {
 export interface ReminderSettings {
   id?: number
   company_id?: number
-  reminder_method: 'no-send' | 'email-sms' | 'email-only' | 'sms-only' | 'email-if-found' | 'sms-if-no-mobile'
+  reminder_method: 'NO-SEND' | 'EMAIL-SMS' | 'EMAIL-ONLY' | 'SMS-ONLY' | 'EMAIL-IF-NO-MOBILE' | 'SMS-IF-NO-EMAIL'
   send_before_hours: number
 }
 
@@ -1815,7 +1815,7 @@ export interface SupportTicket {
   createdBy: string
   lastUpdatedBy: string
   created: string
-  status: 'open' | 'in-progress' | 'closed'
+  status: 'OPEN' | 'IN-PROGRESS' | 'CLOSED'
   description?: string
   replies?: SupportTicketReply[]
 }

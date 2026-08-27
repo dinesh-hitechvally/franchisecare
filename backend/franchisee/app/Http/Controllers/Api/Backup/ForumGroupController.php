@@ -32,7 +32,7 @@ class ForumGroupController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'description' => 'nullable|string',
-            'type' => 'required|in:topic,state,custom',
+            'type' => 'required|in:TOPIC,STATE,CUSTOM',
             'icon' => 'nullable|string',
             'color' => 'nullable|string',
             'is_public' => 'boolean',
@@ -42,7 +42,7 @@ class ForumGroupController extends Controller
         $group = ForumGroup::create($validated);
 
         // Automatically add creator as admin member
-        $group->members()->attach(auth()->id(), ['role' => 'admin']);
+        $group->members()->attach(auth()->id(), ['role' => 'ADMIN']);
 
         return response()->json($group->load(['members', 'creator']), 201);
     }
@@ -58,7 +58,7 @@ class ForumGroupController extends Controller
             return response()->json(['message' => 'Already a member'], 400);
         }
 
-        $forumGroup->members()->attach(auth()->id(), ['role' => 'member']);
+        $forumGroup->members()->attach(auth()->id(), ['role' => 'MEMBER']);
 
         return response()->json(['message' => 'Joined successfully']);
     }

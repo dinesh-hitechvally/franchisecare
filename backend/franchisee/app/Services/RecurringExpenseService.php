@@ -35,7 +35,7 @@ class RecurringExpenseService implements RecurringExpenseServiceInterface
     public function create(array $data): RecurringExpense
     {
         $data['company_id'] = Auth::user()->company_id;
-        $data['status'] = 'active';
+        $data['status'] = 'ACTIVE';
 
         $recurringExpense = $this->repository->create($data);
 

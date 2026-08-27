@@ -61,14 +61,17 @@ export function SmsPurchaseLogPage() {
       render: (purchase: SmsCreditPurchase) => (
         <span
           className={`px-3 py-1 rounded-full text-xs font-medium ${
-            purchase.status === 'completed'
+            purchase.status === 'COMPLETED'
               ? 'bg-green-100 text-green-700'
-              : purchase.status === 'pending'
+              : purchase.status === 'PENDING'
               ? 'bg-yellow-100 text-yellow-700'
               : 'bg-red-100 text-red-700'
           }`}
         >
-          {(purchase.status || 'completed').charAt(0).toUpperCase() + (purchase.status || 'completed').slice(1)}
+          {(() => {
+            const label = (purchase.status || 'COMPLETED').toLowerCase()
+            return label.charAt(0).toUpperCase() + label.slice(1)
+          })()}
         </span>
       ),
     },

@@ -38,7 +38,7 @@ export function ListSuburb() {
       franchiseSuburbsApi.list({
         search: appliedFilters.search || undefined,
         state: appliedFilters.state || undefined,
-        status: appliedFilters.activeSuburb === 'yes' ? 'active' : appliedFilters.activeSuburb === 'no' ? 'inactive' : undefined,
+        status: appliedFilters.activeSuburb === 'yes' ? 'ACTIVE' : appliedFilters.activeSuburb === 'no' ? 'INACTIVE' : undefined,
         per_page: rowsPerPage,
         page: currentPage,
       }),
@@ -308,7 +308,7 @@ export function ListSuburb() {
                     <td>{suburb.postcode}</td>
                     <td>{suburb.state}</td>
                     <td className="text-center">
-                      {suburb.status === 'active' ? (
+                      {suburb.status === 'ACTIVE' ? (
                         <Check size={18} className="inline text-purple-600" />
                       ) : (
                         <X size={18} className="inline text-red-500" />

@@ -97,7 +97,7 @@ class BookingRecurringRepository implements BookingRecurringRepositoryInterface
         }
 
         // Hide expired filter
-        if (!empty($filters['hide_expired']) && ($filters['status'] ?? null) !== 'cancelled') {
+        if (!empty($filters['hide_expired']) && ($filters['status'] ?? null) !== 'CANCELLED') {
             $query->whereNotNull('repeat_until')
                 ->whereDate('repeat_until', '>=', now()->toDateString());
         }

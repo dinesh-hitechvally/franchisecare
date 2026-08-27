@@ -109,7 +109,7 @@ class BookingController extends Controller
             'calendar_color' => 'nullable|string',
             'send_sms' => 'boolean',
             'send_email' => 'boolean',
-            'status' => 'required|in:active,cancelled,completed,archived',
+            'status' => 'required|in:ACTIVE,CANCELLED,COMPLETED,ARCHIVED',
             'total' => 'required|numeric',
             'duration' => 'required|integer',
             'notes' => 'nullable|string',
@@ -145,8 +145,8 @@ class BookingController extends Controller
 
         $this->recordAudit($freshBooking, 'created');
         $this->recordInventoryAudit($freshBooking, 'booking_created');
-        if ($freshBooking->status === 'completed') {
-            $this->syncInventoryForStatusChange($freshBooking, 'active', 'completed');
+        if ($freshBooking->status === 'COMPLETED') {
+            $this->syncInventoryForStatusChange($freshBooking, 'ACTIVE', 'COMPLETED');
         }
 
         return response()->json($freshBooking, 201);
@@ -200,7 +200,7 @@ class BookingController extends Controller
                 'calendar_color' => $booking->calendar_color,
                 'send_sms' => $booking->send_sms,
                 'send_email' => $booking->send_email,
-                'status' => 'active',
+                'status' => 'ACTIVE',
                 'total' => $booking->total,
                 'duration' => $booking->duration,
                 'notes' => $booking->notes,
@@ -280,7 +280,7 @@ class BookingController extends Controller
             'calendar_color'         => 'nullable|string',
             'send_sms'               => 'boolean',
             'send_email'             => 'boolean',
-            'status'                 => 'sometimes|in:active,cancelled,completed,archived',
+            'status'                 => 'sometimes|in:ACTIVE,CANCELLED,COMPLETED,ARCHIVED',
             'total'                  => 'sometimes|numeric',
             'duration'               => 'sometimes|integer',
             'notes'                  => 'nullable|string',
@@ -327,7 +327,7 @@ class BookingController extends Controller
     public function updateStatus(Request $request, Booking $booking)
     {
         $validated = $request->validate([
-            'status' => 'required|in:active,cancelled,completed,archived',
+            'status' => 'required|in:ACTIVE,CANCELLED,COMPLETED,ARCHIVED',
         ]);
 
         $previousStatus = $booking->status;
@@ -337,7 +337,7 @@ class BookingController extends Controller
         $this->syncInventoryForStatusChange($booking, $previousStatus, $validated['status']);
 
         // Auto-generate income when booking is marked completed for the first time
-        if ($validated['status'] === 'completed' && $previousStatus !== 'completed') {
+        if ($validated['status'] === 'COMPLETED' && $previousStatus !== 'COMPLETED') {
             $alreadyExists = Income::where('booking_id', $booking->id)->exists();
 
             if (!$alreadyExists) {
@@ -647,19 +647,19 @@ class BookingController extends Controller
 
     private function resolveStatusActionType(string $previousStatus, string $newStatus): string
     {
-        if ($newStatus === 'completed') {
+        if ($newStatus === 'COMPLETED') {
             return 'completed';
         }
 
-        if ($newStatus === 'cancelled') {
+        if ($newStatus === 'CANCELLED') {
             return 'cancelled';
         }
 
-        if ($newStatus === 'archived') {
+        if ($newStatus === 'ARCHIVED') {
             return 'archived';
         }
 
-        if ($newStatus === 'active' && $previousStatus !== 'active') {
+        if ($newStatus === 'ACTIVE' && $previousStatus !== 'ACTIVE') {
             return 'restored';
         }
 
@@ -776,8 +776,8 @@ class BookingController extends Controller
 
     private function syncInventoryForStatusChange(Booking $booking, string $previousStatus, string $newStatus): void
     {
-        $shouldDeduct = $newStatus === 'completed' && $previousStatus !== 'completed';
-        $shouldRestore = $previousStatus === 'completed' && $newStatus !== 'completed';
+        $shouldDeduct = $newStatus === 'COMPLETED' && $previousStatus !== 'COMPLETED';
+        $shouldRestore = $previousStatus === 'COMPLETED' && $newStatus !== 'COMPLETED';
 
         if (! $shouldDeduct && ! $shouldRestore) {
             return;
@@ -862,7 +862,7 @@ class BookingController extends Controller
                     'category_id' => $currentSoh->category_id ?? null,
                     'inventory_id' => $inventoryItem->id,
                     'batch_id' => null,
-                    'movement_type' => 'booking_usage',
+                    'movement_type' => 'BOOKING_USAGE',
                     'quantity_change' => (int) $signedChange,
                     'percentage_change' => 0,
                     'quantity_before' => (int) $before,

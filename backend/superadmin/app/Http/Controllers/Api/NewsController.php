@@ -36,7 +36,7 @@ class NewsController extends Controller
             'title' => 'required|string|max:255',
             'content' => 'required|string',
             'category' => 'nullable|string|max:50',
-            'status' => 'required|in:draft,published',
+            'status' => 'required|in:DRAFT,PUBLISHED',
             'image' => 'nullable|image|max:2048',
         ]);
 
@@ -45,8 +45,8 @@ class NewsController extends Controller
         }
 
         $validated['user_id'] = auth()->id();
-        
-        if ($validated['status'] === 'published') {
+
+        if ($validated['status'] === 'PUBLISHED') {
             $validated['published_at'] = now();
         }
 
@@ -67,7 +67,7 @@ class NewsController extends Controller
             'title' => 'sometimes|string|max:255',
             'content' => 'sometimes|string',
             'category' => 'nullable|string|max:50',
-            'status' => 'sometimes|in:draft,published',
+            'status' => 'sometimes|in:DRAFT,PUBLISHED',
             'image' => 'nullable|image|max:2048',
         ]);
 
@@ -78,7 +78,7 @@ class NewsController extends Controller
             $validated['image'] = $request->file('image')->store('news', 'public');
         }
 
-        if (isset($validated['status']) && $validated['status'] === 'published' && !$news->published_at) {
+        if (isset($validated['status']) && $validated['status'] === 'PUBLISHED' && !$news->published_at) {
             $validated['published_at'] = now();
         }
 
@@ -101,7 +101,7 @@ class NewsController extends Controller
     public function publish(News $news)
     {
         $news->update([
-            'status' => 'published',
+            'status' => 'PUBLISHED',
             'published_at' => now(),
         ]);
 

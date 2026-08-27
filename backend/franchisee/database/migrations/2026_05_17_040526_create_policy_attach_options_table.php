@@ -16,11 +16,11 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('company_id');
             $table->boolean('attach_policy')->default(false);
-            $table->enum('cancel_before_unit', ['hours', 'days'])->default('hours');
+            $table->enum('cancel_before_unit', ['HOURS', 'CUTOFF'])->default('HOURS');
             $table->integer('cancel_before_value')->default(24);
             $table->time('cancel_cutoff_time')->nullable();
             $table->decimal('cancellation_fee_value', 10, 2)->default(0);
-            $table->enum('penalty_type', ['percent', 'fixed'])->default('percent');
+            $table->enum('penalty_type', ['PERCENT', 'FIXED'])->default('PERCENT');
             $table->unsignedBigInteger('policy_id')->nullable();
             $table->foreign('policy_id')->references('id')->on('cancellation_policies')->onDelete('cascade');
             $table->text('policy_text')->nullable();

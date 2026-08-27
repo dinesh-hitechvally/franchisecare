@@ -334,10 +334,10 @@ class CommunicationHistoryController extends Controller
                 $bookingsQuery->whereDate('start_date', '<=', $validated['date_to']);
             }
             if (empty($validated['include_completed'])) {
-                $bookingsQuery->where('status', '!=', 'completed');
+                $bookingsQuery->where('status', '!=', 'COMPLETED');
             }
             if (empty($validated['include_cancelled'])) {
-                $bookingsQuery->where('status', '!=', 'cancelled');
+                $bookingsQuery->where('status', '!=', 'CANCELLED');
             }
 
             $bookings = $bookingsQuery->orderBy('start_date')->get();

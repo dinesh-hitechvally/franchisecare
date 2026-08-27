@@ -62,7 +62,7 @@ class UpdateBookingRequest extends FormRequest
             'calendar_color' => 'nullable|string',
             'send_sms' => 'boolean',
             'send_email' => 'boolean',
-            'status' => 'sometimes|in:active,cancelled,completed,archived',
+            'status' => 'sometimes|in:ACTIVE,CANCELLED,COMPLETED,ARCHIVED',
             'total' => 'sometimes|numeric',
             'duration' => 'sometimes|integer',
             'notes' => 'nullable|string',

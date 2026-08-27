@@ -14,19 +14,19 @@ interface StockUsagesModalProps {
 
 function prettifyMovementType(movementType: string) {
   const types: Record<string, string> = {
-    'booking_usage': 'Booking Usage',
-    'stock_take': 'Stock Take',
-    'adjustment': 'Adjustment',
-    'inward': 'Inward',
-    'write_off': 'Write Off',
+    'BOOKING_USAGE': 'Booking Usage',
+    'STOCK_TAKE': 'Stock Take',
+    'ADJUSTMENT': 'Adjustment',
+    'INWARD': 'Inward',
+    'WRITE_OFF': 'Write Off',
   }
   return types[movementType] || movementType.replace(/_/g, ' ')
 }
 
 function getMovementTypeColor(movementType: string) {
-  if (movementType === 'booking_usage') return 'bg-amber-100 text-amber-700'
-  if (movementType === 'inward') return 'bg-green-100 text-green-700'
-  if (movementType === 'write_off') return 'bg-red-100 text-red-700'
+  if (movementType === 'BOOKING_USAGE') return 'bg-amber-100 text-amber-700'
+  if (movementType === 'INWARD') return 'bg-green-100 text-green-700'
+  if (movementType === 'WRITE_OFF') return 'bg-red-100 text-red-700'
   return 'bg-gray-100 text-gray-700'
 }
 

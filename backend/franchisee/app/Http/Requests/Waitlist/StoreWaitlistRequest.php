@@ -22,7 +22,7 @@ class StoreWaitlistRequest extends FormRequest
             'calendar_color' => 'nullable|string',
             'send_sms' => 'boolean',
             'send_email' => 'boolean',
-            'status' => 'in:active,cancelled,completed,expired',
+            'status' => 'in:ACTIVE,CANCELLED,COMPLETED,EXPIRED',
             'total' => 'required|numeric',
             'duration' => 'required|integer',
             'notes' => 'nullable|string',
