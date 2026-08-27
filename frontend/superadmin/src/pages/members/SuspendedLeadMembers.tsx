@@ -1,47 +1,44 @@
 import { useState } from 'react'
-import { Filter, Plus, Check, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Filter, Check, X, ChevronUp, ChevronDown } from 'lucide-react'
+import { franchisesApi } from '../../api/services'
+import type { Franchise } from '../../types'
 
-interface SuspendedMember {
-  id: number
-  name: string
-  companyName: string
-  serviceLocation: string
-  type: 'Master Franchisee' | 'Franchisee' | 'Franchisor'
-  lastActive: string
-  ipad: boolean
-  memberActive: boolean
-  tscsAccepted: boolean
-}
-
-const mockSuspendedMembers: SuspendedMember[] = [
-  { id: 1, name: 'Rob James', companyName: 'Blue Wheelers Upper Coomera', serviceLocation: 'Upper Coomera', type: 'Franchisee', lastActive: 'September 23 2024, 01:50 pm', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 2, name: 'Martin Rose', companyName: 'Blue Wheelers Australia', serviceLocation: 'National Support', type: 'Franchisor', lastActive: 'August 07 2024, 04:59 pm', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 3, name: 'Jason Gordon', companyName: 'Blue Wheelers Seaford', serviceLocation: 'Seaford', type: 'Franchisee', lastActive: 'September 27 2022, 10:24 am', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 4, name: 'Kristy McHenry', companyName: 'Blue Wheelers Ormeau', serviceLocation: 'Ormeau', type: 'Franchisee', lastActive: 'September 27 2022, 07:37 am', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 5, name: 'Paula Third', companyName: 'Dash DogWash Wallsend', serviceLocation: 'Wallsend', type: 'Franchisee', lastActive: 'September 27 2022, 06:47 am', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 6, name: 'Rachel Pullen', companyName: 'Dash DogWash Lismore', serviceLocation: 'lismore', type: 'Franchisee', lastActive: 'September 26 2022, 06:58 pm', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 7, name: 'Donna Timms', companyName: 'Blue Wheelers Thornlie', serviceLocation: 'Thornlie', type: 'Franchisee', lastActive: 'September 26 2022, 06:22 pm', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 8, name: 'Toni Read', companyName: 'Blue Wheelers Jindalee', serviceLocation: 'Jindalee', type: 'Franchisee', lastActive: 'September 26 2022, 05:40 pm', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 9, name: 'Julie & Kris Farr', companyName: 'Blue Wheelers Parkdale', serviceLocation: 'Parkdale', type: 'Franchisee', lastActive: 'September 26 2022, 10:38 am', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 10, name: 'Kym Baker', companyName: 'Blue Wheelers Berwick', serviceLocation: 'Berwick', type: 'Franchisee', lastActive: 'September 20 2022, 06:43 pm', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 11, name: 'Mate S', companyName: 'Bluewheelers', serviceLocation: '', type: 'Master Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 12, name: 'Melinda Thorpe', companyName: 'Dash DogWash Golden Beach', serviceLocation: 'Golden Beach', type: 'Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 13, name: 'Tim Rule', companyName: 'Blue Wheelers Ringwood North', serviceLocation: 'Ringwood North', type: 'Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 14, name: 'Esther Noah', companyName: 'Blue Wheelers Bentleigh East', serviceLocation: 'Bentleigh East', type: 'Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 15, name: 'Mate Admin', companyName: 'Bluewheelers Admin', serviceLocation: '', type: 'Master Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 16, name: 'Paul Deane', companyName: 'Blue Wheelers Dapto', serviceLocation: 'Dapto', type: 'Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 17, name: 'Margie Stanton', companyName: 'Blue Wheelers Port Sorell', serviceLocation: 'Port Sorell', type: 'Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-  { id: 18, name: 'Steven Kirk', companyName: 'Savannah Cox', serviceLocation: 'Quod est ipsa adipi', type: 'Master Franchisee', lastActive: '-', ipad: true, memberActive: true, tscsAccepted: false },
-]
-
-type SortField = 'name' | 'companyName' | 'serviceLocation' | 'type' | 'lastActive' | 'ipad' | 'memberActive' | 'tscsAccepted'
+type SortField = 'owner_name' | 'name' | 'territory' | 'franchisee_type' | 'has_ipad' | 'status'
 type SortOrder = 'asc' | 'desc'
 
+const typeLabels: Record<string, string> = {
+  master_franchisee: 'Master Franchisee',
+  franchisee: 'Franchisee',
+  franchisor: 'Franchisor',
+}
+
+function formatType(type: Franchise['franchisee_type']) {
+  return type ? typeLabels[type] ?? type : '-'
+}
+
 export function SuspendedLeadMembers() {
-  const [members] = useState<SuspendedMember[]>(mockSuspendedMembers)
-  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortField, setSortField] = useState<SortField>('owner_name')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
-  const [rowsPerPage, setRowsPerPage] = useState(20)
+
+  // This view is the "needs attention" queue of franchises that haven't accepted the T&Cs yet.
+  // There's no server-side filter for tscs_accepted, so we fetch a large page and filter client-side.
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['franchises', 'suspended-leads'],
+    queryFn: () => franchisesApi.list({ per_page: 100, sort_by: 'owner_name', sort_order: 'asc' }),
+  })
+
+  const members = (data?.data ?? []).filter((f) => f.tscs_accepted === false)
+
+  const sortedMembers = [...members].sort((a, b) => {
+    const av = a[sortField]
+    const bv = b[sortField]
+    const aStr = typeof av === 'boolean' ? String(av) : av ?? ''
+    const bStr = typeof bv === 'boolean' ? String(bv) : bv ?? ''
+    if (aStr < bStr) return sortOrder === 'asc' ? -1 : 1
+    if (aStr > bStr) return sortOrder === 'asc' ? 1 : -1
+    return 0
+  })
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -74,7 +71,6 @@ export function SuspendedLeadMembers() {
               FILTER
             </button>
             <button className="btn btn-primary">
-              <Plus size={14} />
               EXPORT
             </button>
           </div>
@@ -84,106 +80,91 @@ export function SuspendedLeadMembers() {
           <table className="table">
             <thead>
               <tr>
+                <th className="cursor-pointer" onClick={() => handleSort('owner_name')}>
+                  <span className="flex items-center">
+                    Name <SortIcon field="owner_name" />
+                  </span>
+                </th>
                 <th className="cursor-pointer" onClick={() => handleSort('name')}>
                   <span className="flex items-center">
-                    Name <SortIcon field="name" />
+                    Company Name <SortIcon field="name" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('companyName')}>
+                <th className="cursor-pointer" onClick={() => handleSort('territory')}>
                   <span className="flex items-center">
-                    Company Name <SortIcon field="companyName" />
+                    Service Location <SortIcon field="territory" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('serviceLocation')}>
+                <th className="cursor-pointer" onClick={() => handleSort('franchisee_type')}>
                   <span className="flex items-center">
-                    Service Location <SortIcon field="serviceLocation" />
+                    Type <SortIcon field="franchisee_type" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('type')}>
-                  <span className="flex items-center">
-                    Type <SortIcon field="type" />
-                  </span>
-                </th>
-                <th className="cursor-pointer" onClick={() => handleSort('lastActive')}>
-                  <span className="flex items-center">
-                    Last Active <SortIcon field="lastActive" />
-                  </span>
-                </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('ipad')}>
+                <th className="cursor-pointer text-center" onClick={() => handleSort('has_ipad')}>
                   <span className="flex items-center justify-center">
-                    iPAD <SortIcon field="ipad" />
+                    iPad <SortIcon field="has_ipad" />
                   </span>
                 </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('memberActive')}>
+                <th className="cursor-pointer text-center" onClick={() => handleSort('status')}>
                   <span className="flex items-center justify-center">
-                    Member Active <SortIcon field="memberActive" />
+                    Member Active <SortIcon field="status" />
                   </span>
                 </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('tscsAccepted')}>
-                  <span className="flex items-center justify-center">
-                    Ts & Cs Accepted <SortIcon field="tscsAccepted" />
-                  </span>
-                </th>
+                <th className="text-center">Ts & Cs Accepted</th>
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
-                <tr key={member.id}>
-                  <td className="font-medium">{member.name}</td>
-                  <td>{member.companyName}</td>
-                  <td>{member.serviceLocation}</td>
-                  <td>{member.type}</td>
-                  <td className="whitespace-nowrap">{member.lastActive}</td>
-                  <td className="text-center">
-                    {member.ipad ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
-                  </td>
-                  <td className="text-center">
-                    {member.memberActive ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
-                  </td>
-                  <td className="text-center">
-                    {member.tscsAccepted ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
+              {isLoading ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-gray-400">
+                    Loading members...
                   </td>
                 </tr>
-              ))}
+              ) : isError ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-red-500">
+                    Failed to load members.
+                  </td>
+                </tr>
+              ) : sortedMembers.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="text-center py-8 text-gray-400">
+                    No members with outstanding Ts &amp; Cs.
+                  </td>
+                </tr>
+              ) : (
+                sortedMembers.map((member) => (
+                  <tr key={member.id}>
+                    <td className="font-medium">{member.owner_name}</td>
+                    <td>{member.name}</td>
+                    <td>{member.territory || '-'}</td>
+                    <td>{formatType(member.franchisee_type)}</td>
+                    <td className="text-center">
+                      {member.has_ipad ? (
+                        <Check size={18} className="inline text-purple-600" />
+                      ) : (
+                        <X size={18} className="inline text-red-500" />
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {member.status === 'active' ? (
+                        <Check size={18} className="inline text-purple-600" />
+                      ) : (
+                        <X size={18} className="inline text-red-500" />
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <X size={18} className="inline text-red-500" />
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
 
         <div className="card-footer flex items-center justify-end gap-4 py-3 px-6">
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <span>Rows per page:</span>
-            <select 
-              value={rowsPerPage}
-              onChange={(e) => setRowsPerPage(Number(e.target.value))}
-              className="border-none bg-transparent"
-            >
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-          <span className="text-sm text-gray-600">1 - {members.length} to {members.length}</span>
-          <div className="flex gap-1">
-            <button className="p-1 text-gray-400 hover:text-gray-600">
-              <ChevronUp size={18} className="rotate-[-90deg]" />
-            </button>
-            <button className="p-1 text-gray-400 hover:text-gray-600">
-              <ChevronUp size={18} className="rotate-90" />
-            </button>
-          </div>
+          <span className="text-sm text-gray-600">{sortedMembers.length} member(s) with outstanding Ts &amp; Cs</span>
         </div>
       </div>
     </div>

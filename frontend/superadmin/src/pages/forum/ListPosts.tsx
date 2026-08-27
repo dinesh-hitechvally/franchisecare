@@ -1,36 +1,34 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Check, X, ChevronUp, ChevronDown, MoreVertical, Pencil, Trash2, Eye } from 'lucide-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
+import { Filter, Check, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, MoreVertical, Pencil, Trash2 } from 'lucide-react'
+import { forumPostsApi, forumCategoriesApi } from '../../api/services'
+import type { ForumPost } from '../../types'
 
-interface Post {
-  id: number
-  title: string
-  author: string
-  category: string
-  views: number
-  replies: number
-  active: boolean
-  createdAt: string
+type SortField = 'id' | 'title' | 'author_name' | 'views' | 'status' | 'created_at'
+type SortOrder = 'asc' | 'desc'
+
+interface FilterState {
+  search: string
+  category_id: string
+  status: string
 }
 
-const mockPosts: Post[] = [
-  { id: 1, title: 'Welcome to our community!', author: 'Admin', category: 'Announcements', views: 1250, replies: 45, active: true, createdAt: 'January 15 2024, 10:30 am' },
-  { id: 2, title: 'Best practices for pet grooming', author: 'Dave Laming', category: 'Tips & Tricks', views: 856, replies: 23, active: true, createdAt: 'January 18 2024, 02:15 pm' },
-  { id: 3, title: 'How to handle difficult pets', author: 'John Smith', category: 'Support', views: 432, replies: 18, active: true, createdAt: 'February 05 2024, 11:00 am' },
-  { id: 4, title: 'New features coming soon', author: 'Admin', category: 'Announcements', views: 678, replies: 12, active: true, createdAt: 'February 10 2024, 09:45 am' },
-  { id: 5, title: 'Share your success stories', author: 'Sarah Wilson', category: 'General Discussion', views: 345, replies: 34, active: false, createdAt: 'March 01 2024, 03:30 pm' },
-]
-
-type SortField = 'id' | 'title' | 'author' | 'views' | 'replies' | 'active' | 'createdAt'
-type SortOrder = 'asc' | 'desc'
+const initialFilters: FilterState = { search: '', category_id: '', status: '' }
 
 export function ListPosts() {
   const navigate = useNavigate()
-  const [posts] = useState<Post[]>(mockPosts)
+  const queryClient = useQueryClient()
   const [sortField, setSortField] = useState<SortField>('id')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [openMenuId, setOpenMenuId] = useState<number | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+  const [showFilter, setShowFilter] = useState(false)
+  const [filters, setFilters] = useState<FilterState>(initialFilters)
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters)
+  const [rowsPerPage, setRowsPerPage] = useState(10)
+  const [currentPage, setCurrentPage] = useState(1)
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -41,6 +39,42 @@ export function ListPosts() {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['forum-categories', 'all'],
+    queryFn: () => forumCategoriesApi.list({ per_page: 200 }),
+  })
+  const categories = categoriesData?.data ?? []
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['forum-posts', appliedFilters, rowsPerPage, currentPage],
+    queryFn: () =>
+      forumPostsApi.list({
+        search: appliedFilters.search || undefined,
+        category_id: appliedFilters.category_id ? Number(appliedFilters.category_id) : undefined,
+        status: appliedFilters.status || undefined,
+        per_page: rowsPerPage,
+        page: currentPage,
+      }),
+    placeholderData: (prev) => prev,
+  })
+
+  const posts = data?.data ?? []
+  const totalPosts = data?.total ?? 0
+  const lastPage = data?.last_page ?? 1
+  const startIndex = totalPosts === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const endIndex = Math.min(currentPage * rowsPerPage, totalPosts)
+
+  const sortedPosts = [...posts].sort((a, b) => {
+    let cmp = 0
+    if (sortField === 'author_name') cmp = (a.author_name ?? '').localeCompare(b.author_name ?? '')
+    else if (sortField === 'views') cmp = a.views - b.views
+    else if (sortField === 'status') cmp = a.status.localeCompare(b.status)
+    else if (sortField === 'created_at') cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    else if (sortField === 'id') cmp = a.id - b.id
+    else cmp = a.title.localeCompare(b.title)
+    return sortOrder === 'asc' ? cmp : -cmp
+  })
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -53,11 +87,46 @@ export function ListPosts() {
 
   const SortIcon = ({ field }: { field: SortField }) => {
     return (
-      <span className="inline-flex flex-col ml-1 opacity-50">
-        <ChevronUp size={10} className={sortField === field && sortOrder === 'asc' ? 'opacity-100' : 'opacity-40'} />
-        <ChevronDown size={10} className={`-mt-1 ${sortField === field && sortOrder === 'desc' ? 'opacity-100' : 'opacity-40'}`} />
+      <span className="inline-flex flex-col ml-1">
+        <ChevronUp size={10} className={sortField === field && sortOrder === 'asc' ? 'text-purple-600' : 'text-gray-400'} />
+        <ChevronDown size={10} className={`-mt-1 ${sortField === field && sortOrder === 'desc' ? 'text-purple-600' : 'text-gray-400'}`} />
       </span>
     )
+  }
+
+  const handleFilterChange = (field: keyof FilterState, value: string) => {
+    setFilters(prev => ({ ...prev, [field]: value }))
+  }
+
+  const applyFilters = () => {
+    setAppliedFilters(filters)
+    setCurrentPage(1)
+    setShowFilter(false)
+  }
+
+  const cancelFilters = () => {
+    setFilters(appliedFilters)
+    setShowFilter(false)
+  }
+
+  const removeFilter = (field: keyof FilterState) => {
+    const newFilters = { ...appliedFilters, [field]: '' }
+    setAppliedFilters(newFilters)
+    setFilters(newFilters)
+    setCurrentPage(1)
+  }
+
+  const hasActiveFilters = Object.values(appliedFilters).some(v => v !== '')
+
+  const handleDelete = async (post: ForumPost) => {
+    if (!window.confirm(`Delete post "${post.title}"?`)) return
+    try {
+      await forumPostsApi.remove(post.id)
+      toast.success('Post deleted successfully!')
+      queryClient.invalidateQueries({ queryKey: ['forum-posts'] })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Failed to delete post')
+    }
   }
 
   return (
@@ -68,11 +137,11 @@ export function ListPosts() {
         <div className="card-header">
           <h2 className="card-title">Forum Posts</h2>
           <div className="flex gap-2">
-            <button className="btn btn-success">
+            <button className={`btn ${showFilter ? 'btn-primary' : 'btn-success'}`} onClick={() => setShowFilter(!showFilter)}>
               <Filter size={14} />
               FILTER
             </button>
-            <button 
+            <button
               className="btn btn-primary"
               onClick={() => navigate('/forum/add-posts')}
             >
@@ -80,55 +149,129 @@ export function ListPosts() {
             </button>
           </div>
         </div>
-        <div className="card-body">
+
+        {showFilter && (
+          <div className="p-6 border-b bg-white">
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Search</label>
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  placeholder="Title or content..."
+                />
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Category</label>
+                <select
+                  value={filters.category_id}
+                  onChange={(e) => handleFilterChange('category_id', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="">All</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm text-gray-600 mb-1">Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  <option value="">All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={cancelFilters} className="text-red-500 hover:text-red-600 font-medium">
+                CANCEL
+              </button>
+              <button onClick={applyFilters} className="btn btn-primary">
+                FILTER DATA
+              </button>
+            </div>
+          </div>
+        )}
+
+        {hasActiveFilters && (
+          <div className="px-6 py-3 border-b bg-gray-50 flex items-center gap-2 flex-wrap">
+            <span className="text-sm text-gray-600">Filtered:</span>
+            {appliedFilters.search && (
+              <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
+                Search: {appliedFilters.search}
+                <button onClick={() => removeFilter('search')} className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs">×</button>
+              </span>
+            )}
+            {appliedFilters.category_id && (
+              <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
+                Category: {categories.find(c => String(c.id) === appliedFilters.category_id)?.name ?? appliedFilters.category_id}
+                <button onClick={() => removeFilter('category_id')} className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs">×</button>
+              </span>
+            )}
+            {appliedFilters.status && (
+              <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
+                Status: {appliedFilters.status}
+                <button onClick={() => removeFilter('status')} className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs">×</button>
+              </span>
+            )}
+          </div>
+        )}
+
+        <div className="card-body p-0">
           <table className="table">
             <thead>
               <tr>
                 <th className="cursor-pointer" onClick={() => handleSort('id')}>
-                  <span className="flex items-center">
-                    ID <SortIcon field="id" />
-                  </span>
+                  <span className="flex items-center">ID <SortIcon field="id" /></span>
                 </th>
                 <th className="cursor-pointer" onClick={() => handleSort('title')}>
-                  <span className="flex items-center">
-                    Title <SortIcon field="title" />
-                  </span>
+                  <span className="flex items-center">Title <SortIcon field="title" /></span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('author')}>
-                  <span className="flex items-center">
-                    Author <SortIcon field="author" />
-                  </span>
+                <th className="cursor-pointer" onClick={() => handleSort('author_name')}>
+                  <span className="flex items-center">Author <SortIcon field="author_name" /></span>
                 </th>
                 <th>Category</th>
                 <th className="cursor-pointer" onClick={() => handleSort('views')}>
-                  <span className="flex items-center">
-                    Views <SortIcon field="views" />
-                  </span>
+                  <span className="flex items-center">Views <SortIcon field="views" /></span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('replies')}>
-                  <span className="flex items-center">
-                    Replies <SortIcon field="replies" />
-                  </span>
-                </th>
-                <th className="cursor-pointer" onClick={() => handleSort('active')}>
-                  <span className="flex items-center">
-                    Active <SortIcon field="active" />
-                  </span>
+                <th className="cursor-pointer" onClick={() => handleSort('status')}>
+                  <span className="flex items-center">Active <SortIcon field="status" /></span>
                 </th>
                 <th>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {posts.map((post) => (
+              {isLoading && (
+                <tr><td colSpan={7} className="text-center py-6 text-gray-500">Loading...</td></tr>
+              )}
+              {isError && (
+                <tr><td colSpan={7} className="text-center py-6 text-red-500">Failed to load posts.</td></tr>
+              )}
+              {!isLoading && !isError && sortedPosts.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-6 text-gray-500">No posts found</td></tr>
+              )}
+              {sortedPosts.map((post) => (
                 <tr key={post.id}>
                   <td>{post.id}</td>
                   <td className="font-medium">{post.title}</td>
-                  <td>{post.author}</td>
-                  <td><span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">{post.category}</span></td>
-                  <td>{post.views}</td>
-                  <td>{post.replies}</td>
+                  <td>{post.author_name ?? '-'}</td>
                   <td>
-                    {post.active ? (
+                    {post.category?.name ? (
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs">{post.category.name}</span>
+                    ) : (
+                      <span className="text-gray-400 text-xs">-</span>
+                    )}
+                  </td>
+                  <td>{post.views}</td>
+                  <td>
+                    {post.status === 'active' ? (
                       <Check size={20} className="icon-check" />
                     ) : (
                       <X size={20} className="icon-cross" />
@@ -136,7 +279,7 @@ export function ListPosts() {
                   </td>
                   <td>
                     <div className="relative" ref={openMenuId === post.id ? menuRef : null}>
-                      <button 
+                      <button
                         className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                         onClick={() => setOpenMenuId(openMenuId === post.id ? null : post.id)}
                       >
@@ -144,17 +287,7 @@ export function ListPosts() {
                       </button>
                       {openMenuId === post.id && (
                         <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-10 min-w-[120px]">
-                          <button 
-                            className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                            onClick={() => {
-                              setOpenMenuId(null)
-                              navigate(`/forum/view-post/${post.id}`)
-                            }}
-                          >
-                            <Eye size={14} />
-                            View
-                          </button>
-                          <button 
+                          <button
                             className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
                             onClick={() => {
                               setOpenMenuId(null)
@@ -164,11 +297,11 @@ export function ListPosts() {
                             <Pencil size={14} />
                             Edit
                           </button>
-                          <button 
+                          <button
                             className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
                             onClick={() => {
                               setOpenMenuId(null)
-                              console.log('Delete post:', post.id)
+                              handleDelete(post)
                             }}
                           >
                             <Trash2 size={14} />
@@ -182,6 +315,39 @@ export function ListPosts() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        <div className="card-footer flex items-center justify-end gap-4 py-3 px-6">
+          <div className="flex items-center gap-2 text-sm text-gray-600">
+            <span>Rows per page:</span>
+            <select
+              value={rowsPerPage}
+              onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1) }}
+              className="border-none bg-transparent"
+            >
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+          <span className="text-sm text-gray-600">{startIndex}-{endIndex} of {totalPosts}</span>
+          <div className="flex gap-1">
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage(p => Math.min(lastPage, p + 1))}
+              disabled={currentPage >= lastPage}
+            >
+              <ChevronRight size={18} />
+            </button>
+          </div>
         </div>
       </div>
     </div>

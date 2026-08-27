@@ -7,10 +7,18 @@ use App\Http\Controllers\Api\FranchiseUserController;
 use App\Http\Controllers\Api\NewsController;
 use App\Http\Controllers\Api\DocumentController;
 use App\Http\Controllers\Api\ServiceController;
+use App\Http\Controllers\Api\ServiceCategoryController;
 use App\Http\Controllers\Api\SupportTicketController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\AdminUserController;
+use App\Http\Controllers\Api\FranchiseSuburbController;
+use App\Http\Controllers\Api\FranchiseServiceController;
+use App\Http\Controllers\Api\ForumCategoryController;
+use App\Http\Controllers\Api\ForumTopicController;
+use App\Http\Controllers\Api\ForumPostController;
+use App\Http\Controllers\Api\ForumGroupController;
+use App\Http\Controllers\Api\AppVersionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
@@ -73,6 +81,14 @@ Route::middleware('auth:sanctum')->group(function () {
 
     /*
     |--------------------------------------------------------------------------
+    | Franchise Suburbs & Franchise Services
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('franchise-suburbs', FranchiseSuburbController::class);
+    Route::apiResource('franchise-services', FranchiseServiceController::class);
+
+    /*
+    |--------------------------------------------------------------------------
     | Admin Users
     |--------------------------------------------------------------------------
     */
@@ -101,6 +117,7 @@ Route::middleware('auth:sanctum')->group(function () {
     */
     Route::apiResource('services', ServiceController::class);
     Route::post('services/reorder', [ServiceController::class, 'reorder']);
+    Route::apiResource('service-categories', ServiceCategoryController::class);
 
     /*
     |--------------------------------------------------------------------------
@@ -137,4 +154,21 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('settings/{key}', [SettingsController::class, 'show']);
     Route::put('settings/{key}', [SettingsController::class, 'update']);
     Route::post('settings/bulk', [SettingsController::class, 'updateBulk']);
+
+    /*
+    |--------------------------------------------------------------------------
+    | Forum
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('forum-categories', ForumCategoryController::class);
+    Route::apiResource('forum-topics', ForumTopicController::class);
+    Route::apiResource('forum-posts', ForumPostController::class);
+    Route::apiResource('forum-groups', ForumGroupController::class);
+
+    /*
+    |--------------------------------------------------------------------------
+    | App Versions
+    |--------------------------------------------------------------------------
+    */
+    Route::apiResource('app-versions', AppVersionController::class);
 });

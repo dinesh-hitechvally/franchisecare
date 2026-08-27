@@ -1,22 +1,10 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { Filter, ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
-
-interface ServiceGroup {
-  id: number
-  groupName: string
-  groupDescription: string
-  active: boolean
-}
-
-const mockGroups: ServiceGroup[] = [
-  { id: 1, groupName: 'Accessories', groupDescription: 'Accessories such as brushes, ribbons, leads etc', active: true },
-  { id: 2, groupName: 'Flea Treatments', groupDescription: 'Provision of flea treatment to clients', active: true },
-  { id: 3, groupName: 'Other', groupDescription: 'other services', active: true },
-  { id: 4, groupName: 'Treats', groupDescription: 'Treat sales', active: true },
-  { id: 5, groupName: 'Washing', groupDescription: 'Wash services', active: true },
-  { id: 6, groupName: 'Grooming', groupDescription: 'Grooming Services', active: true },
-]
+import { serviceCategoriesApi } from '../../api/services'
+import type { ServiceCategory } from '../../types'
 
 interface FilterState {
   search: string
@@ -30,14 +18,26 @@ const initialFilters: FilterState = {
 
 export function ListGroups() {
   const navigate = useNavigate()
-  const [groups] = useState<ServiceGroup[]>(mockGroups)
+  const queryClient = useQueryClient()
   const [showFilter, setShowFilter] = useState(false)
   const [filters, setFilters] = useState<FilterState>(initialFilters)
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters)
   const [rowsPerPage, setRowsPerPage] = useState(10)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const totalGroups = 6
+  const { data: groups = [], isLoading } = useQuery({
+    queryKey: ['service-categories', appliedFilters],
+    queryFn: () =>
+      serviceCategoriesApi.list({
+        search: appliedFilters.search || undefined,
+        status: appliedFilters.activeServiceGroup === 'yes' ? 'active' : appliedFilters.activeServiceGroup === 'no' ? 'inactive' : undefined,
+      }),
+  })
+
+  const totalGroups = groups.length
+  const startIndex = totalGroups === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const endIndex = Math.min(currentPage * rowsPerPage, totalGroups)
+  const pagedGroups = groups.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage)
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
     setFilters(prev => ({ ...prev, [field]: value }))
@@ -45,6 +45,7 @@ export function ListGroups() {
 
   const applyFilters = () => {
     setAppliedFilters(filters)
+    setCurrentPage(1)
     setShowFilter(false)
   }
 
@@ -57,12 +58,21 @@ export function ListGroups() {
     const newFilters = { ...appliedFilters, [field]: '' }
     setAppliedFilters(newFilters)
     setFilters(newFilters)
+    setCurrentPage(1)
   }
 
   const hasActiveFilters = Object.values(appliedFilters).some(v => v !== '')
 
-  const startIndex = (currentPage - 1) * rowsPerPage + 1
-  const endIndex = Math.min(currentPage * rowsPerPage, totalGroups)
+  const handleDelete = async (group: ServiceCategory) => {
+    if (!window.confirm(`Delete group "${group.name}"?`)) return
+    try {
+      await serviceCategoriesApi.remove(group.id)
+      toast.success('Group deleted successfully!')
+      queryClient.invalidateQueries({ queryKey: ['service-categories'] })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Failed to delete group')
+    }
+  }
 
   return (
     <div className="page-content">
@@ -72,14 +82,14 @@ export function ListGroups() {
         <div className="card-header">
           <h2 className="card-title">List Groups</h2>
           <div className="flex gap-2">
-            <button 
+            <button
               className="btn btn-success"
               onClick={() => setShowFilter(!showFilter)}
             >
               <Filter size={14} />
               FILTER
             </button>
-            <button 
+            <button
               className="btn btn-primary"
               onClick={() => navigate('/services/add-groups')}
             >
@@ -94,8 +104,8 @@ export function ListGroups() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Search</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -104,7 +114,7 @@ export function ListGroups() {
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Active Service Group</label>
-                <select 
+                <select
                   value={filters.activeServiceGroup}
                   onChange={(e) => handleFilterChange('activeServiceGroup', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -116,13 +126,13 @@ export function ListGroups() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button 
+              <button
                 onClick={cancelFilters}
                 className="text-red-500 hover:text-red-600 font-medium"
               >
                 CANCEL
               </button>
-              <button 
+              <button
                 onClick={applyFilters}
                 className="btn btn-primary"
               >
@@ -139,7 +149,7 @@ export function ListGroups() {
             {appliedFilters.search && (
               <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
                 Search: {appliedFilters.search}
-                <button 
+                <button
                   onClick={() => removeFilter('search')}
                   className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
                 >
@@ -150,7 +160,7 @@ export function ListGroups() {
             {appliedFilters.activeServiceGroup && (
               <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
                 Active: {appliedFilters.activeServiceGroup}
-                <button 
+                <button
                   onClick={() => removeFilter('activeServiceGroup')}
                   className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
                 >
@@ -167,26 +177,49 @@ export function ListGroups() {
               <tr>
                 <th>Group Name</th>
                 <th>Group Description</th>
+                <th>Sort Order</th>
                 <th className="text-center">Active</th>
                 <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {groups.map((group) => (
+              {isLoading && (
+                <tr>
+                  <td colSpan={5} className="text-center py-6 text-gray-500">Loading...</td>
+                </tr>
+              )}
+              {!isLoading && pagedGroups.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="text-center py-6 text-gray-500">No groups found</td>
+                </tr>
+              )}
+              {pagedGroups.map((group) => (
                 <tr key={group.id}>
-                  <td className="font-medium">{group.groupName}</td>
-                  <td>{group.groupDescription}</td>
+                  <td className="font-medium">{group.name}</td>
+                  <td>{group.description}</td>
+                  <td>{group.sort_order}</td>
                   <td className="text-center">
-                    {group.active ? (
+                    {group.status === 'active' ? (
                       <Check size={18} className="inline text-purple-600" />
                     ) : (
                       <X size={18} className="inline text-red-500" />
                     )}
                   </td>
                   <td className="text-center">
-                    <button className="btn btn-primary text-xs py-1 px-3">
-                      EDIT
-                    </button>
+                    <div className="inline-flex gap-2">
+                      <button
+                        className="btn btn-primary text-xs py-1 px-3"
+                        onClick={() => navigate(`/services/edit-groups/${group.id}`)}
+                      >
+                        EDIT
+                      </button>
+                      <button
+                        className="btn btn-danger text-xs py-1 px-3"
+                        onClick={() => handleDelete(group)}
+                      >
+                        DELETE
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -197,9 +230,9 @@ export function ListGroups() {
         <div className="card-footer flex items-center justify-end gap-4 py-3 px-6">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span>Rows per page:</span>
-            <select 
+            <select
               value={rowsPerPage}
-              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1) }}
               className="border-none bg-transparent"
             >
               <option value={10}>10</option>
@@ -208,16 +241,16 @@ export function ListGroups() {
               <option value={100}>100</option>
             </select>
           </div>
-          <span className="text-sm text-gray-600">{startIndex}-{endIndex} of {totalGroups}</span>
+          <span className="text-sm text-gray-600">{startIndex} - {endIndex} of {totalGroups}</span>
           <div className="flex gap-1">
-            <button 
+            <button
               className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
               <ChevronLeft size={18} />
             </button>
-            <button 
+            <button
               className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
               onClick={() => setCurrentPage(p => p + 1)}
               disabled={endIndex >= totalGroups}

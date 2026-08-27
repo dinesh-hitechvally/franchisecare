@@ -22,4 +22,9 @@ class Service extends Model
         'duration' => 'integer',
         'sort_order' => 'integer',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(ServiceCategory::class, 'category_id');
+    }
 }

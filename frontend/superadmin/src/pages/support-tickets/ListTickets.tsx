@@ -1,75 +1,72 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { 
-  Filter, 
-  ChevronUp, 
-  ChevronDown, 
-  ChevronLeft, 
-  ChevronRight, 
-  CheckCircle, 
-  Clock, 
-  AlertCircle, 
+import { useQuery } from '@tanstack/react-query'
+import {
+  Filter,
+  ChevronUp,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  CheckCircle,
+  Clock,
+  AlertCircle,
   Eye,
   Inbox,
-  UserCheck
+  UserCheck,
 } from 'lucide-react'
+import { supportTicketsApi } from '../../api/services'
+import type { SupportTicket } from '../../types'
 
-export interface Ticket {
-  id: number
-  title: string
-  franchiseName: string
-  franchiseCode: string
-  status: 'open' | 'in_progress' | 'waiting' | 'resolved' | 'closed'
-  priority: 'low' | 'medium' | 'high' | 'urgent'
-  created_at: string
-  assignedToName: string
+type SortField = 'id' | 'title' | 'franchise' | 'status' | 'priority' | 'created_at' | 'assignedTo'
+type SortOrder = 'asc' | 'desc'
+
+interface FilterState {
+  search: string
+  status: string
+  priority: string
 }
 
-// We export the mock tickets list so it can be shared or retrieved by ID
-export const initialTickets: Ticket[] = [
-  { id: 1024, title: 'Unable to sync Xero integration on franchisee dashboard', franchiseName: 'Sydney West', franchiseCode: 'SW-02', status: 'open', priority: 'urgent', created_at: '2026-07-12 09:30 am', assignedToName: 'Unassigned' },
-  { id: 1023, title: 'Payment gateway returned error 402 on checkout page', franchiseName: 'Melbourne CBD', franchiseCode: 'MC-01', status: 'in_progress', priority: 'high', created_at: '2026-07-11 04:15 pm', assignedToName: 'John Admin' },
-  { id: 1022, title: 'Requesting update to product list and pricing template', franchiseName: 'Brisbane East', franchiseCode: 'BE-04', status: 'waiting', priority: 'medium', created_at: '2026-07-10 11:20 am', assignedToName: 'Sarah Support' },
-  { id: 1021, title: 'Franchisee mobile app crashed during booking update', franchiseName: 'Perth Hills', franchiseCode: 'PH-09', status: 'resolved', priority: 'high', created_at: '2026-07-09 03:45 pm', assignedToName: 'John Admin' },
-  { id: 1020, title: 'Uniform shipment order tracking number is missing', franchiseName: 'Adelaide South', franchiseCode: 'AS-03', status: 'closed', priority: 'low', created_at: '2026-07-08 10:05 am', assignedToName: 'Unassigned' },
-  { id: 1019, title: 'Customer registration API returning 500 error code', franchiseName: 'Gold Coast North', franchiseCode: 'GC-11', status: 'open', priority: 'high', created_at: '2026-07-07 01:10 pm', assignedToName: 'Sarah Support' },
-]
-
-type SortField = 'id' | 'title' | 'franchiseName' | 'status' | 'priority' | 'created_at' | 'assignedToName'
-type SortOrder = 'asc' | 'desc'
+const initialFilters: FilterState = {
+  search: '',
+  status: '',
+  priority: '',
+}
 
 export function ListTickets() {
   const navigate = useNavigate()
-  
-  // We'll read from localStorage or default to initialTickets so that updates in details persist
-  const [tickets] = useState<Ticket[]>(() => {
-    const saved = localStorage.getItem('superadmin_support_tickets')
-    if (saved) {
-      try {
-        return JSON.parse(saved)
-      } catch (e) {
-        // Fallback
-      }
-    }
-    return initialTickets
-  })
 
   const [sortField, setSortField] = useState<SortField>('id')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
   const [showFilter, setShowFilter] = useState(false)
-  const [search, setSearch] = useState('')
-  const [statusFilter, setStatusFilter] = useState('')
-  const [priorityFilter, setPriorityFilter] = useState('')
-  
+  const [filters, setFilters] = useState<FilterState>(initialFilters)
+  const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters)
+
   const [currentPage, setCurrentPage] = useState(1)
   const rowsPerPage = 10
 
-  // Calculate statistics
-  const totalCount = tickets.length
-  const openCount = tickets.filter(t => t.status === 'open').length
-  const inProgressCount = tickets.filter(t => t.status === 'in_progress').length
-  const waitingCount = tickets.filter(t => t.status === 'waiting').length
-  const resolvedCount = tickets.filter(t => t.status === 'resolved').length
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['tickets', appliedFilters, currentPage],
+    queryFn: () =>
+      supportTicketsApi.list({
+        search: appliedFilters.search || undefined,
+        status: appliedFilters.status || undefined,
+        priority: appliedFilters.priority || undefined,
+        per_page: rowsPerPage,
+        page: currentPage,
+      }),
+    placeholderData: (prev) => prev,
+  })
+
+  const { data: stats } = useQuery({
+    queryKey: ['ticket-stats'],
+    queryFn: () => supportTicketsApi.stats(),
+  })
+
+  const tickets = data?.data ?? []
+  const totalTickets = data?.total ?? 0
+  const lastPage = data?.last_page ?? 1
+  const startIndex = totalTickets === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const endIndex = Math.min(currentPage * rowsPerPage, totalTickets)
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -89,43 +86,46 @@ export function ListTickets() {
     )
   }
 
-  // Filtered and Sorted Tickets
-  const filteredTickets = tickets.filter(ticket => {
-    const matchesSearch = ticket.title.toLowerCase().includes(search.toLowerCase()) ||
-                          ticket.franchiseName.toLowerCase().includes(search.toLowerCase()) ||
-                          ticket.franchiseCode.toLowerCase().includes(search.toLowerCase())
-    const matchesStatus = statusFilter === '' || ticket.status === statusFilter
-    const matchesPriority = priorityFilter === '' || ticket.priority === priorityFilter
-    return matchesSearch && matchesStatus && matchesPriority
-  })
-
-  const sortedTickets = [...filteredTickets].sort((a, b) => {
-    let comparison = 0
-    if (sortField === 'id') {
-      comparison = a.id - b.id
-    } else {
-      comparison = String(a[sortField]).localeCompare(String(b[sortField]))
+  const sortValue = (ticket: SupportTicket, field: SortField): string | number => {
+    switch (field) {
+      case 'id':
+        return ticket.id
+      case 'title':
+        return ticket.title
+      case 'franchise':
+        return ticket.franchise?.name ?? ''
+      case 'status':
+        return ticket.status
+      case 'priority':
+        return ticket.priority
+      case 'assignedTo':
+        return ticket.assignedTo?.name ?? ''
+      case 'created_at':
+        return ticket.created_at
+      default:
+        return ''
     }
+  }
+
+  const sortedTickets = [...tickets].sort((a, b) => {
+    const av = sortValue(a, sortField)
+    const bv = sortValue(b, sortField)
+    const comparison = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv))
     return sortOrder === 'asc' ? comparison : -comparison
   })
 
-  // Pagination
-  const startIndex = (currentPage - 1) * rowsPerPage
-  const paginatedTickets = sortedTickets.slice(startIndex, startIndex + rowsPerPage)
-  const totalPages = Math.ceil(sortedTickets.length / rowsPerPage) || 1
-
-  const getStatusBadgeClass = (status: Ticket['status']) => {
+  const getStatusBadgeClass = (status: SupportTicket['status']) => {
     switch (status) {
-      case 'open': return 'bg-red-100 text-red-800 border border-red-200'
-      case 'in_progress': return 'bg-blue-100 text-blue-800 border border-blue-200'
-      case 'waiting': return 'bg-yellow-100 text-yellow-800 border border-yellow-200'
-      case 'resolved': return 'bg-green-100 text-green-800 border border-green-200'
-      case 'closed': return 'bg-gray-100 text-gray-800 border border-gray-200'
+      case 'open': return 'bg-red-100 text-red-800'
+      case 'in_progress': return 'bg-blue-100 text-blue-800'
+      case 'waiting': return 'bg-yellow-100 text-yellow-800'
+      case 'resolved': return 'bg-green-100 text-green-800'
+      case 'closed': return 'bg-gray-100 text-gray-800'
       default: return 'bg-gray-100 text-gray-800'
     }
   }
 
-  const getPriorityBadgeClass = (priority: Ticket['priority']) => {
+  const getPriorityBadgeClass = (priority: SupportTicket['priority']) => {
     switch (priority) {
       case 'urgent': return 'bg-rose-600 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
       case 'high': return 'bg-orange-500 text-white text-[10px] font-bold uppercase px-1.5 py-0.5 rounded'
@@ -135,69 +135,70 @@ export function ListTickets() {
     }
   }
 
+  const handleFilterChange = (field: keyof FilterState, value: string) => {
+    setFilters((prev) => ({ ...prev, [field]: value }))
+  }
+
+  const applyFilters = () => {
+    setAppliedFilters(filters)
+    setCurrentPage(1)
+    setShowFilter(false)
+  }
+
+  const cancelFilters = () => {
+    setFilters(appliedFilters)
+    setShowFilter(false)
+  }
+
   return (
     <div className="page-content">
       <h1 className="page-title">Support Tickets</h1>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
-        <div className="card p-4 flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-          <div className="p-3 bg-purple-100 text-purple-600 rounded-lg">
-            <Inbox size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-800">{totalCount}</div>
-            <div className="text-xs text-gray-500 font-medium">Total Tickets</div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-          <div className="p-3 bg-red-100 text-red-600 rounded-lg">
-            <AlertCircle size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-800">{openCount}</div>
-            <div className="text-xs text-gray-500 font-medium">Open</div>
+      <div className="stats-grid">
+        <div className="stat-card purple">
+          <div className="stat-label">Total Tickets</div>
+          <div className="stat-value">{stats?.total ?? 0}</div>
+          <div className="stat-description">
+            <Inbox size={14} className="inline mr-1" />
+            All support tickets
           </div>
         </div>
 
-        <div className="card p-4 flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-          <div className="p-3 bg-blue-100 text-blue-600 rounded-lg">
-            <Clock size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-800">{inProgressCount}</div>
-            <div className="text-xs text-gray-500 font-medium">In Progress</div>
-          </div>
-        </div>
-
-        <div className="card p-4 flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-          <div className="p-3 bg-yellow-100 text-yellow-600 rounded-lg">
-            <Clock size={24} />
-          </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-800">{waitingCount}</div>
-            <div className="text-xs text-gray-500 font-medium">Waiting</div>
+        <div className="stat-card red">
+          <div className="stat-label">Open</div>
+          <div className="stat-value">{stats?.open ?? 0}</div>
+          <div className="stat-description">
+            <AlertCircle size={14} className="inline mr-1" />
+            Awaiting response
           </div>
         </div>
 
-        <div className="card p-4 flex items-center gap-4 bg-white border border-gray-100 shadow-sm">
-          <div className="p-3 bg-green-100 text-green-600 rounded-lg">
-            <CheckCircle size={24} />
+        <div className="stat-card blue">
+          <div className="stat-label">In Progress</div>
+          <div className="stat-value">{stats?.in_progress ?? 0}</div>
+          <div className="stat-description">
+            <Clock size={14} className="inline mr-1" />
+            Being worked on
           </div>
-          <div>
-            <div className="text-2xl font-bold text-gray-800">{resolvedCount}</div>
-            <div className="text-xs text-gray-500 font-medium">Resolved</div>
+        </div>
+
+        <div className="stat-card cyan">
+          <div className="stat-label">Resolved</div>
+          <div className="stat-value">{stats?.resolved ?? 0}</div>
+          <div className="stat-description">
+            <CheckCircle size={14} className="inline mr-1" />
+            Completed tickets
           </div>
         </div>
       </div>
 
       {/* Ticket List Card */}
-      <div className="card shadow-sm border border-gray-100">
-        <div className="card-header flex justify-between items-center bg-white py-4 border-b">
-          <h2 className="card-title font-semibold text-gray-700">Ticket Queue</h2>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Ticket Queue</h2>
           <div className="flex gap-2">
-            <button 
+            <button
               className={`btn ${showFilter ? 'btn-primary' : 'btn-success'}`}
               onClick={() => setShowFilter(!showFilter)}
             >
@@ -209,24 +210,24 @@ export function ListTickets() {
 
         {/* Filter Panel */}
         {showFilter && (
-          <div className="p-6 border-b bg-gray-50/50">
+          <div className="p-6 border-b bg-white">
             <div className="grid grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Search Subject / Franchise</label>
-                <input 
-                  type="text" 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+                <label className="block text-sm text-gray-600 mb-1">Search Subject</label>
+                <input
+                  type="text"
+                  value={filters.search}
+                  onChange={(e) => handleFilterChange('search', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                   placeholder="Search..."
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Status</label>
-                <select 
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+                <label className="block text-sm text-gray-600 mb-1">Status</label>
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All Statuses</option>
                   <option value="open">Open</option>
@@ -237,11 +238,11 @@ export function ListTickets() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-semibold text-gray-500 mb-1 uppercase tracking-wider">Priority</label>
-                <select 
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-purple-500"
+                <label className="block text-sm text-gray-600 mb-1">Priority</label>
+                <select
+                  value={filters.priority}
+                  onChange={(e) => handleFilterChange('priority', e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
                   <option value="">All Priorities</option>
                   <option value="urgent">Urgent</option>
@@ -251,81 +252,105 @@ export function ListTickets() {
                 </select>
               </div>
             </div>
+            <div className="flex justify-end gap-3 mt-4">
+              <button onClick={cancelFilters} className="text-red-500 hover:text-red-600 font-medium">
+                CANCEL
+              </button>
+              <button onClick={applyFilters} className="btn btn-primary">
+                FILTER DATA
+              </button>
+            </div>
           </div>
         )}
 
         {/* Table */}
-        <div className="card-body p-0 bg-white">
-          <table className="table w-full text-left">
+        <div className="card-body p-0">
+          <table className="table">
             <thead>
-              <tr className="bg-gray-50 text-gray-500 text-xs font-semibold border-b">
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('id')}>
+              <tr>
+                <th className="cursor-pointer" onClick={() => handleSort('id')}>
                   <span className="flex items-center">
                     ID <SortIcon field="id" />
                   </span>
                 </th>
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('title')}>
+                <th className="cursor-pointer" onClick={() => handleSort('title')}>
                   <span className="flex items-center">
                     Subject <SortIcon field="title" />
                   </span>
                 </th>
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('franchiseName')}>
+                <th className="cursor-pointer" onClick={() => handleSort('franchise')}>
                   <span className="flex items-center">
-                    Franchise <SortIcon field="franchiseName" />
+                    Franchise <SortIcon field="franchise" />
                   </span>
                 </th>
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('priority')}>
+                <th className="cursor-pointer" onClick={() => handleSort('priority')}>
                   <span className="flex items-center">
                     Priority <SortIcon field="priority" />
                   </span>
                 </th>
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('status')}>
+                <th className="cursor-pointer" onClick={() => handleSort('status')}>
                   <span className="flex items-center">
                     Status <SortIcon field="status" />
                   </span>
                 </th>
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('assignedToName')}>
+                <th className="cursor-pointer" onClick={() => handleSort('assignedTo')}>
                   <span className="flex items-center">
-                    Assignee <SortIcon field="assignedToName" />
+                    Assignee <SortIcon field="assignedTo" />
                   </span>
                 </th>
-                <th className="py-3 px-4 cursor-pointer" onClick={() => handleSort('created_at')}>
+                <th className="cursor-pointer" onClick={() => handleSort('created_at')}>
                   <span className="flex items-center">
                     Date Created <SortIcon field="created_at" />
                   </span>
                 </th>
-                <th className="py-3 px-4 text-center">Actions</th>
+                <th className="text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
-              {paginatedTickets.length > 0 ? (
-                paginatedTickets.map((ticket) => (
-                  <tr key={ticket.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="py-3 px-4 font-semibold text-gray-600 text-sm">#{ticket.id}</td>
-                    <td className="py-3 px-4 text-sm font-medium text-gray-800 max-w-sm truncate">{ticket.title}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
-                      <div>{ticket.franchiseName}</div>
-                      <span className="text-[10px] bg-slate-100 text-slate-500 font-semibold px-1 rounded">{ticket.franchiseCode}</span>
+            <tbody>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                    Loading tickets...
+                  </td>
+                </tr>
+              ) : isError ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-red-500">
+                    Failed to load tickets.
+                  </td>
+                </tr>
+              ) : sortedTickets.length > 0 ? (
+                sortedTickets.map((ticket) => (
+                  <tr key={ticket.id}>
+                    <td className="font-medium">#{ticket.id}</td>
+                    <td className="max-w-sm truncate">{ticket.title}</td>
+                    <td>
+                      <div>{ticket.franchise?.name ?? '—'}</div>
+                      {ticket.franchise?.code && (
+                        <span className="text-[10px] bg-slate-100 text-slate-500 font-semibold px-1 rounded">{ticket.franchise.code}</span>
+                      )}
                     </td>
-                    <td className="py-3 px-4">
+                    <td>
                       <span className={getPriorityBadgeClass(ticket.priority)}>
                         {ticket.priority}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${getStatusBadgeClass(ticket.status)}`}>
+                    <td>
+                      <span className={`px-2 py-0.5 rounded-full text-xs font-semibold capitalize ${getStatusBadgeClass(ticket.status)}`}>
                         {ticket.status.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600 flex items-center gap-1.5 mt-2.5">
-                      <UserCheck size={14} className="text-gray-400" />
-                      {ticket.assignedToName}
+                    <td>
+                      <span className="inline-flex items-center gap-1.5">
+                        <UserCheck size={14} className="text-gray-400" />
+                        {ticket.assignedTo?.name ?? 'Unassigned'}
+                      </span>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-500">{ticket.created_at}</td>
-                    <td className="py-3 px-4 text-center">
-                      <button 
+                    <td>{new Date(ticket.created_at).toLocaleString()}</td>
+                    <td className="text-center">
+                      <button
                         onClick={() => navigate(`/support-tickets/${ticket.id}`)}
-                        className="btn btn-sm btn-outline-primary inline-flex items-center gap-1 text-xs"
+                        className="btn btn-outline text-xs py-1 px-2"
                       >
                         <Eye size={12} />
                         View
@@ -335,7 +360,7 @@ export function ListTickets() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="py-8 text-center text-gray-400 text-sm">
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
                     No tickets found matching current criteria.
                   </td>
                 </tr>
@@ -345,24 +370,24 @@ export function ListTickets() {
         </div>
 
         {/* Footer / Pagination */}
-        <div className="card-footer bg-white border-t py-4 px-6 flex justify-between items-center">
-          <span className="text-sm text-gray-500">
-            Showing {filteredTickets.length > 0 ? startIndex + 1 : 0} to {Math.min(startIndex + rowsPerPage, filteredTickets.length)} of {filteredTickets.length} tickets
+        <div className="card-footer flex items-center justify-end gap-4 py-3 px-6">
+          <span className="text-sm text-gray-600">
+            {startIndex} - {endIndex} of {totalTickets}
           </span>
           <div className="flex gap-1">
-            <button 
-              className="p-1.5 border border-gray-200 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent"
-              onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
-              <ChevronLeft size={16} />
+              <ChevronLeft size={18} />
             </button>
-            <button 
-              className="p-1.5 border border-gray-200 rounded text-gray-400 hover:text-gray-600 hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent"
-              onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+              disabled={currentPage >= lastPage}
             >
-              <ChevronRight size={16} />
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>

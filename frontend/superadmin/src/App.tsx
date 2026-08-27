@@ -1,7 +1,14 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { MainLayout } from './components/layout/MainLayout'
+import { PrivateRoute } from './components/auth/PrivateRoute'
+import { LoginPage } from './pages/auth/LoginPage'
 import { Dashboard } from './pages/Dashboard'
+import { ListFranchises, AddFranchise } from './pages/franchises'
+import { ListAdminUsers, AddAdminUser } from './pages/admin-users'
+import { ListNews, AddNews } from './pages/news'
+import { ListDocuments, AddDocument } from './pages/documents'
+import { SettingsPage } from './pages/settings'
 import { ListVersions } from './pages/versions/ListVersions'
 import { AddVersion } from './pages/versions/AddVersion'
 import { ListMembers, AddMember, ManageAdmins, SuspendedLeadMembers } from './pages/members'
@@ -17,13 +24,45 @@ function App() {
     <>
       <Toaster position="top-right" />
       <Routes>
+        <Route path="/signin" element={<LoginPage />} />
+        <Route element={<PrivateRoute />}>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<Dashboard />} />
+          <Route path="franchises">
+            <Route index element={<Navigate to="list" replace />} />
+            <Route path="list" element={<ListFranchises />} />
+            <Route path="add" element={<AddFranchise />} />
+            <Route path="edit/:id" element={<AddFranchise />} />
+          </Route>
+          <Route path="admin-users">
+            <Route index element={<Navigate to="list" replace />} />
+            <Route path="list" element={<ListAdminUsers />} />
+            <Route path="add" element={<AddAdminUser />} />
+            <Route path="edit/:id" element={<AddAdminUser />} />
+          </Route>
+          <Route path="news">
+            <Route index element={<Navigate to="list" replace />} />
+            <Route path="list" element={<ListNews />} />
+            <Route path="add" element={<AddNews />} />
+            <Route path="edit/:id" element={<AddNews />} />
+            <Route path="list-category" element={<PlaceholderPage title="News Categories" />} />
+            <Route path="add-category" element={<PlaceholderPage title="News Categories" />} />
+          </Route>
+          <Route path="documents">
+            <Route index element={<Navigate to="list" replace />} />
+            <Route path="list" element={<ListDocuments />} />
+            <Route path="add" element={<AddDocument />} />
+            <Route path="edit/:id" element={<AddDocument />} />
+            <Route path="list-type" element={<PlaceholderPage title="Document Types" />} />
+            <Route path="add-type" element={<PlaceholderPage title="Document Types" />} />
+          </Route>
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="versions">
             <Route index element={<Navigate to="list" replace />} />
             <Route path="list" element={<ListVersions />} />
             <Route path="add" element={<AddVersion />} />
+            <Route path="edit/:id" element={<AddVersion />} />
           </Route>
           <Route path="members">
             <Route index element={<Navigate to="list" replace />} />
@@ -84,6 +123,7 @@ function App() {
           <Route path="leads/*" element={<PlaceholderPage title="Leads" />} />
           <Route path="orders/*" element={<PlaceholderPage title="Orders" />} />
           <Route path="financial/*" element={<PlaceholderPage title="Financial" />} />
+        </Route>
         </Route>
       </Routes>
     </>

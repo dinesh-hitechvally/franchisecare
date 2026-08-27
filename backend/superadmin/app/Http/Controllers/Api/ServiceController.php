@@ -24,7 +24,7 @@ class ServiceController extends Controller
             $query->where('category_id', $categoryId);
         }
 
-        return response()->json($query->orderBy('sort_order')->get());
+        return response()->json($query->with('category')->orderBy('sort_order')->get());
     }
 
     public function store(Request $request)

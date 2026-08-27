@@ -1,5 +1,7 @@
 import { useState } from 'react'
-import { NavLink, useLocation } from 'react-router-dom'
+import { NavLink, useLocation, useNavigate } from 'react-router-dom'
+import { useAuthStore } from '../../store/authStore'
+import { authApi } from '../../api/services'
 import {
   LayoutDashboard,
   Flame,
@@ -47,6 +49,22 @@ const menuItems: MenuItem[] = [
     name: 'Dashboard',
     icon: <LayoutDashboard size={20} />,
     href: '/dashboard',
+  },
+  {
+    name: 'Franchises',
+    icon: <Flag size={20} />,
+    children: [
+      { name: 'List Franchises', href: '/franchises/list' },
+      { name: 'Add Franchise', href: '/franchises/add' },
+    ],
+  },
+  {
+    name: 'Admin Users',
+    icon: <Users size={20} />,
+    children: [
+      { name: 'List Admin Users', href: '/admin-users/list' },
+      { name: 'Add Admin User', href: '/admin-users/add' },
+    ],
   },
   {
     name: 'Versions',
@@ -302,11 +320,26 @@ const menuItems: MenuItem[] = [
       { name: 'Benchmarking Figures', href: '/reports/benchmarking' },
     ],
   },
+  {
+    name: 'Settings',
+    icon: <FileText size={20} />,
+    href: '/settings',
+  },
 ]
 
 export function Sidebar() {
   const location = useLocation()
+  const navigate = useNavigate()
+  const user = useAuthStore((state) => state.user)
+  const logout = useAuthStore((state) => state.logout)
   const [expandedItems, setExpandedItems] = useState<string[]>(['Versions'])
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false)
+
+  const handleLogout = () => {
+    authApi.logout().catch(() => {})
+    logout()
+    navigate('/signin')
+  }
 
   const toggleExpanded = (name: string) => {
     setExpandedItems((prev) =>
@@ -327,15 +360,33 @@ export function Sidebar() {
   return (
     <aside className="sidebar">
       {/* Profile Section */}
-      <div className="sidebar-profile">
-        <div className="sidebar-avatar">B</div>
-        <div className="flex-1">
-          <div className="font-semibold text-gray-800 text-sm">Blue Wheelers</div>
-          <div className="flex items-center gap-1 text-xs text-gray-500">
-            demosuperadmin
-            <ChevronDown size={14} />
+      <div style={{ position: 'relative' }}>
+        <div
+          className="sidebar-profile"
+          style={{ cursor: 'pointer' }}
+          onClick={() => setProfileMenuOpen((prev) => !prev)}
+        >
+          <div className="sidebar-avatar">{(user?.name || '?').charAt(0).toUpperCase()}</div>
+          <div className="flex-1">
+            <div className="font-semibold text-gray-800 text-sm">{user?.name || 'Super Admin'}</div>
+            <div className="flex items-center gap-1 text-xs text-gray-500">
+              {user?.email || ''}
+              <ChevronDown size={14} />
+            </div>
           </div>
         </div>
+        {profileMenuOpen && (
+          <div
+            className="absolute top-full left-4 right-4 mt-1 bg-white border border-gray-200 rounded shadow-md overflow-hidden z-10"
+          >
+            <div
+              onClick={handleLogout}
+              className="px-4 py-2.5 text-sm text-red-600 cursor-pointer hover:bg-gray-50"
+            >
+              Logout
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Dashboard Label */}
@@ -345,6 +396,9 @@ export function Sidebar() {
       <nav className="pb-4">
         {menuItems.map((item) => (
           <div key={item.name}>
+            {item.name === 'Settings' && (
+              <div className="border-t border-gray-200 my-2" />
+            )}
             {item.href ? (
               <NavLink
                 to={item.href}

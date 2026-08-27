@@ -1,24 +1,56 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { Layers, FileText } from 'lucide-react'
+import { serviceCategoriesApi } from '../../api/services'
 
 interface GroupForm {
-  serviceGroupName: string
-  serviceGroupDescription: string
-  makeGroupActive: boolean
+  name: string
+  description: string
+  icon: string
+  active: boolean
 }
 
 const initialForm: GroupForm = {
-  serviceGroupName: '',
-  serviceGroupDescription: '',
-  makeGroupActive: false
+  name: '',
+  description: '',
+  icon: '',
+  active: true
+}
+
+function extractErrorMessage(err: any, fallback: string): string {
+  const errors = err?.response?.data?.errors
+  if (errors) {
+    const first = Object.values(errors)[0]
+    if (Array.isArray(first) && first.length > 0) return String(first[0])
+  }
+  return err?.response?.data?.message ?? fallback
 }
 
 export function AddGroup() {
   const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
+  const isEdit = Boolean(id)
   const [form, setForm] = useState<GroupForm>(initialForm)
-  const [errors, setErrors] = useState<Partial<GroupForm>>({})
+  const [errors, setErrors] = useState<Partial<Record<keyof GroupForm, string>>>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const { data: group, isLoading } = useQuery({
+    queryKey: ['service-categories', id],
+    queryFn: () => serviceCategoriesApi.get(Number(id)),
+    enabled: isEdit,
+  })
+
+  useEffect(() => {
+    if (group) {
+      setForm({
+        name: group.name,
+        description: group.description ?? '',
+        icon: group.icon ?? '',
+        active: group.status === 'active'
+      })
+    }
+  }, [group])
 
   const handleChange = (field: keyof GroupForm, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -28,148 +60,132 @@ export function AddGroup() {
   }
 
   const validate = (): boolean => {
-    const newErrors: Partial<GroupForm> = {}
-    
-    if (!form.serviceGroupName.trim()) {
-      newErrors.serviceGroupName = 'Service Group Name is required'
-    }
-    if (!form.serviceGroupDescription.trim()) {
-      newErrors.serviceGroupDescription = 'Service Group Description is required'
+    const newErrors: Partial<Record<keyof GroupForm, string>> = {}
+
+    if (!form.name.trim()) {
+      newErrors.name = 'Service Group Name is required'
     }
 
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validate()) {
       toast.error('Please fill in all required fields')
       return
     }
 
-    // Mock API call
-    toast.success('Group added successfully!')
-    navigate('/services/list-groups')
+    setSubmitting(true)
+    try {
+      if (isEdit) {
+        await serviceCategoriesApi.update(Number(id), {
+          name: form.name,
+          description: form.description || null,
+          icon: form.icon || null,
+          status: form.active ? 'active' : 'inactive',
+        })
+        toast.success('Group updated successfully!')
+      } else {
+        await serviceCategoriesApi.create({
+          name: form.name,
+          description: form.description || undefined,
+          icon: form.icon || undefined,
+        })
+        toast.success('Group added successfully!')
+      }
+      navigate('/services/list-groups')
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err, isEdit ? 'Failed to update group' : 'Failed to add group'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
     navigate('/services/list-groups')
   }
 
+  if (isEdit && isLoading) {
+    return (
+      <div className="page-content">
+        <h1 className="page-title">Edit Group</h1>
+        <div className="card p-8 text-center text-gray-400">Loading...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-content">
-      <h1 className="page-title">Add Group</h1>
+      <h1 className="page-title">{isEdit ? 'Edit Group' : 'Add Group'}</h1>
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-5">
-            {/* Service Group Name Field */}
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <Layers size={18} />
-              </div>
-              <input
-                type="text"
-                id="serviceGroupName"
-                value={form.serviceGroupName}
-                onChange={(e) => handleChange('serviceGroupName', e.target.value)}
-                className={`peer w-full pl-10 pr-4 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
-                  errors.serviceGroupName ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                placeholder=" "
-              />
-              <label 
-                htmlFor="serviceGroupName"
-                className={`absolute left-10 transition-all duration-200 pointer-events-none
-                  ${form.serviceGroupName ? 'top-1.5 text-xs text-purple-600' : 'top-1/2 -translate-y-1/2 text-sm text-gray-500'}
-                  peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-purple-600 peer-focus:translate-y-0`}
-              >
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Group Details</h2>
+        </div>
+        <div className="card-body">
+          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+            <div>
+              <label className="form-label">
                 Service Group Name <span className="text-red-500">*</span>
               </label>
-              {errors.serviceGroupName && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.serviceGroupName}</p>
-              )}
-            </div>
-
-            {/* Service Group Description Field */}
-            <div className="relative">
-              <div className="absolute left-3 top-4 text-gray-400">
-                <FileText size={18} />
-              </div>
-              <textarea
-                id="serviceGroupDescription"
-                value={form.serviceGroupDescription}
-                onChange={(e) => handleChange('serviceGroupDescription', e.target.value)}
-                rows={4}
-                className={`peer w-full pl-10 pr-4 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none ${
-                  errors.serviceGroupDescription ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                placeholder=" "
+              <input
+                type="text"
+                value={form.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                className={`form-input ${errors.name ? 'border-red-500' : ''}`}
+                placeholder="Service group name"
               />
-              <label 
-                htmlFor="serviceGroupDescription"
-                className={`absolute left-10 transition-all duration-200 pointer-events-none
-                  ${form.serviceGroupDescription ? 'top-1.5 text-xs text-purple-600' : 'top-4 text-sm text-gray-500'}
-                  peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-purple-600`}
-              >
-                Service Group Description <span className="text-red-500">*</span>
-              </label>
-              {errors.serviceGroupDescription && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.serviceGroupDescription}</p>
-              )}
+              {errors.name && <p className="text-red-500 text-xs mt-1.5">{errors.name}</p>}
             </div>
 
-            {/* Checkbox */}
-            <div className="pt-2">
-              <label 
-                htmlFor="makeGroupActive" 
-                className="flex items-center gap-3 cursor-pointer group"
-              >
-                <div className="relative">
-                  <input
-                    type="checkbox"
-                    id="makeGroupActive"
-                    checked={form.makeGroupActive}
-                    onChange={(e) => handleChange('makeGroupActive', e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-5 h-5 border-2 border-gray-300 rounded transition-all peer-checked:border-purple-600 peer-checked:bg-purple-600 group-hover:border-purple-400">
-                    <svg 
-                      className={`w-full h-full text-white p-0.5 transition-transform ${form.makeGroupActive ? 'scale-100' : 'scale-0'}`}
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                  Make Group Active
-                </span>
-              </label>
+            <div>
+              <label className="form-label">Service Group Description</label>
+              <textarea
+                value={form.description}
+                onChange={(e) => handleChange('description', e.target.value)}
+                rows={4}
+                className="form-input form-textarea"
+                placeholder="Service group description"
+              />
+              {errors.description && <p className="text-red-500 text-xs mt-1.5">{errors.description}</p>}
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all"
-            >
-              CANCEL
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all"
-            >
-              ADD GROUP
-            </button>
-          </div>
-        </form>
+            <div>
+              <label className="form-label">Icon</label>
+              <input
+                type="text"
+                value={form.icon}
+                onChange={(e) => handleChange('icon', e.target.value)}
+                className="form-input"
+                placeholder="Icon"
+              />
+            </div>
+
+            {/* Checkbox - only meaningful once the group exists */}
+            {isEdit && (
+              <label className="form-checkbox">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(e) => handleChange('active', e.target.checked)}
+                />
+                <span>Group Active</span>
+              </label>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button type="button" onClick={handleCancel} className="btn btn-outline">
+                CANCEL
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'SAVING...' : isEdit ? 'SAVE GROUP' : 'ADD GROUP'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

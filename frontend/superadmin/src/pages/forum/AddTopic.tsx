@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { MessageSquare, FileText, FolderOpen } from 'lucide-react'
+import { forumTopicsApi, forumCategoriesApi } from '../../api/services'
 
 interface TopicForm {
   topicName: string
@@ -17,18 +18,45 @@ const initialForm: TopicForm = {
   makeTopicActive: false
 }
 
-const mockCategories = [
-  { id: 1, name: 'General Discussion' },
-  { id: 2, name: 'Announcements' },
-  { id: 3, name: 'Tips & Tricks' },
-  { id: 4, name: 'Support' },
-  { id: 5, name: 'Feedback' },
-]
+function extractErrorMessage(err: any, fallback: string): string {
+  const errors = err?.response?.data?.errors
+  if (errors) {
+    const first = Object.values(errors)[0]
+    if (Array.isArray(first) && first.length > 0) return String(first[0])
+  }
+  return err?.response?.data?.message ?? fallback
+}
 
 export function AddTopic() {
   const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
+  const isEdit = Boolean(id)
   const [form, setForm] = useState<TopicForm>(initialForm)
   const [errors, setErrors] = useState<Partial<Record<keyof TopicForm, string>>>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const { data: categoriesData } = useQuery({
+    queryKey: ['forum-categories', 'all'],
+    queryFn: () => forumCategoriesApi.list({ per_page: 200 }),
+  })
+  const categories = categoriesData?.data ?? []
+
+  const { data: topic, isLoading } = useQuery({
+    queryKey: ['forum-topics', id],
+    queryFn: () => forumTopicsApi.get(Number(id)),
+    enabled: isEdit,
+  })
+
+  useEffect(() => {
+    if (topic) {
+      setForm({
+        topicName: topic.name,
+        topicDescription: topic.description ?? '',
+        category: topic.category_id ? String(topic.category_id) : '',
+        makeTopicActive: topic.status === 'active',
+      })
+    }
+  }, [topic])
 
   const handleChange = (field: keyof TopicForm, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -39,7 +67,7 @@ export function AddTopic() {
 
   const validate = (): boolean => {
     const newErrors: Partial<Record<keyof TopicForm, string>> = {}
-    
+
     if (!form.topicName.trim()) {
       newErrors.topicName = 'Topic Name is required'
     }
@@ -54,168 +82,132 @@ export function AddTopic() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validate()) {
       toast.error('Please fill in all required fields')
       return
     }
 
-    toast.success('Topic added successfully!')
-    navigate('/forum/list-topics')
+    setSubmitting(true)
+    try {
+      if (isEdit) {
+        await forumTopicsApi.update(Number(id), {
+          name: form.topicName,
+          description: form.topicDescription,
+          category_id: form.category ? Number(form.category) : null,
+          status: form.makeTopicActive ? 'active' : 'inactive',
+        })
+        toast.success('Topic updated successfully!')
+      } else {
+        await forumTopicsApi.create({
+          name: form.topicName,
+          description: form.topicDescription,
+          category_id: form.category ? Number(form.category) : null,
+        })
+        toast.success('Topic added successfully!')
+      }
+      navigate('/forum/list-topics')
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err, isEdit ? 'Failed to update topic' : 'Failed to add topic'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
     navigate('/forum/list-topics')
   }
 
+  if (isEdit && isLoading) {
+    return (
+      <div className="page-content">
+        <h1 className="page-title">Edit Topic</h1>
+        <div className="card p-8 text-center text-gray-400">Loading topic...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-content">
-      <h1 className="page-title">Add Topic</h1>
+      <h1 className="page-title">{isEdit ? 'Edit Topic' : 'Add Topic'}</h1>
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-5">
-            {/* Topic Name Field */}
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <MessageSquare size={18} />
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Topic Details</h2>
+        </div>
+        <div className="card-body p-6">
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="form-label">
+                  Topic Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.topicName}
+                  onChange={(e) => handleChange('topicName', e.target.value)}
+                  className={`form-input ${errors.topicName ? 'border-red-500' : ''}`}
+                  placeholder="Enter topic name"
+                />
+                {errors.topicName && <p className="text-red-500 text-xs mt-1">{errors.topicName}</p>}
               </div>
-              <input
-                type="text"
-                id="topicName"
-                value={form.topicName}
-                onChange={(e) => handleChange('topicName', e.target.value)}
-                className={`peer w-full pl-10 pr-4 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
-                  errors.topicName ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                placeholder=" "
-              />
-              <label 
-                htmlFor="topicName"
-                className={`absolute left-10 transition-all duration-200 pointer-events-none
-                  ${form.topicName ? 'top-1.5 text-xs text-purple-600' : 'top-1/2 -translate-y-1/2 text-sm text-gray-500'}
-                  peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-purple-600 peer-focus:translate-y-0`}
-              >
-                Topic Name <span className="text-red-500">*</span>
-              </label>
-              {errors.topicName && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.topicName}</p>
-              )}
-            </div>
 
-            {/* Topic Description Field */}
-            <div className="relative">
-              <div className="absolute left-3 top-4 text-gray-400">
-                <FileText size={18} />
+              <div>
+                <label className="form-label">
+                  Topic Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={form.topicDescription}
+                  onChange={(e) => handleChange('topicDescription', e.target.value)}
+                  rows={4}
+                  className={`form-input form-textarea ${errors.topicDescription ? 'border-red-500' : ''}`}
+                  placeholder="Enter topic description"
+                />
+                {errors.topicDescription && <p className="text-red-500 text-xs mt-1">{errors.topicDescription}</p>}
               </div>
-              <textarea
-                id="topicDescription"
-                value={form.topicDescription}
-                onChange={(e) => handleChange('topicDescription', e.target.value)}
-                rows={4}
-                className={`peer w-full pl-10 pr-4 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none ${
-                  errors.topicDescription ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                placeholder=" "
-              />
-              <label 
-                htmlFor="topicDescription"
-                className={`absolute left-10 transition-all duration-200 pointer-events-none
-                  ${form.topicDescription ? 'top-1.5 text-xs text-purple-600' : 'top-4 text-sm text-gray-500'}
-                  peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-purple-600`}
-              >
-                Topic Description <span className="text-red-500">*</span>
-              </label>
-              {errors.topicDescription && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.topicDescription}</p>
-              )}
-            </div>
 
-            {/* Category Select */}
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 z-10">
-                <FolderOpen size={18} />
+              <div>
+                <label className="form-label">
+                  Category <span className="text-red-500">*</span>
+                </label>
+                <select
+                  value={form.category}
+                  onChange={(e) => handleChange('category', e.target.value)}
+                  className={`form-input ${errors.category ? 'border-red-500' : ''}`}
+                >
+                  <option value="">Select a category</option>
+                  {categories.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.name}</option>
+                  ))}
+                </select>
+                {errors.category && <p className="text-red-500 text-xs mt-1">{errors.category}</p>}
               </div>
-              <select
-                id="category"
-                value={form.category}
-                onChange={(e) => handleChange('category', e.target.value)}
-                className={`peer w-full pl-10 pr-10 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all hover:border-gray-400 appearance-none bg-white cursor-pointer ${
-                  form.category ? 'text-gray-900' : 'text-gray-500'
-                } ${errors.category ? 'border-red-500 bg-red-50' : 'border-gray-300'}`}
-              >
-                <option value="">Select a category</option>
-                {mockCategories.map(cat => (
-                  <option key={cat.id} value={cat.id}>{cat.name}</option>
-                ))}
-              </select>
-              <label 
-                htmlFor="category"
-                className="absolute left-10 top-1.5 text-xs text-gray-500 transition-all duration-200 pointer-events-none peer-focus:text-purple-600"
-              >
-                Category <span className="text-red-500">*</span>
-              </label>
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
-              {errors.category && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.category}</p>
-              )}
-            </div>
 
-            {/* Checkbox */}
-            <div className="pt-2">
-              <label 
-                htmlFor="makeTopicActive" 
-                className="flex items-center gap-3 cursor-pointer group"
-              >
-                <div className="relative">
+              {/* Checkbox - only meaningful once the topic exists */}
+              {isEdit && (
+                <label className="form-checkbox">
                   <input
                     type="checkbox"
-                    id="makeTopicActive"
                     checked={form.makeTopicActive}
                     onChange={(e) => handleChange('makeTopicActive', e.target.checked)}
-                    className="sr-only peer"
                   />
-                  <div className="w-5 h-5 border-2 border-gray-300 rounded transition-all peer-checked:border-purple-600 peer-checked:bg-purple-600 group-hover:border-purple-400">
-                    <svg 
-                      className={`w-full h-full text-white p-0.5 transition-transform ${form.makeTopicActive ? 'scale-100' : 'scale-0'}`}
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                  Make Topic Active
-                </span>
-              </label>
+                  <span>Make Topic Active</span>
+                </label>
+              )}
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all"
-            >
-              CANCEL
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all"
-            >
-              ADD TOPIC
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 mt-6">
+              <button type="button" className="btn btn-outline" onClick={handleCancel}>
+                CANCEL
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'SAVING...' : isEdit ? 'SAVE TOPIC' : 'ADD TOPIC'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

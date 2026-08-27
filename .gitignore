@@ -95,6 +95,53 @@ Thumbs.db
 /frontend/franchisee/.stylelintcache
 
 # =========================
+# BACKEND (Laravel - /backend/superadmin)
+# =========================
+/backend/superadmin/vendor/
+/backend/superadmin/node_modules/
+
+# Env (IMPORTANT - never commit)
+/backend/superadmin/.env
+/backend/superadmin/.env.*
+!/backend/superadmin/.env.example
+
+# Logs
+/backend/superadmin/*.log
+
+# Laravel cache
+/backend/superadmin/bootstrap/cache/*.php
+
+# Storage
+/backend/superadmin/storage/*.key
+/backend/superadmin/storage/pail
+/backend/superadmin/storage/debugbar
+
+# Public build/temp
+/backend/superadmin/public/build
+/backend/superadmin/public/hot
+/backend/superadmin/public/storage
+
+# Composer auth (secrets)
+/backend/superadmin/auth.json
+
+# Testing
+/backend/superadmin/.phpunit.result.cache
+/backend/superadmin/.phpunit.cache
+/backend/superadmin/coverage/
+
+# IDE / Editors
+/backend/superadmin/.idea/
+/backend/superadmin/.vscode/
+/backend/superadmin/.fleet/
+/backend/superadmin/.zed/
+
+# Misc
+/backend/superadmin/_ide_helper.php
+/backend/superadmin/Homestead.json
+/backend/superadmin/Homestead.yaml
+/backend/superadmin/.phpactor.json
+
+# =========================
 # FRONTEND (React/Vite - /frontend/superadmin)
 # =========================
 /frontend/superadmin/node_modules/

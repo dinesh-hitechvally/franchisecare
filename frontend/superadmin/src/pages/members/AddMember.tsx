@@ -1,675 +1,435 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { ChevronDown, ChevronUp, Upload } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { AxiosError } from 'axios'
+import toast from 'react-hot-toast'
+import { franchisesApi, franchiseUsersApi } from '../../api/services'
+import type { Franchise } from '../../types'
 
-interface FormData {
+interface FormState {
   companyName: string
+  code: string
   abnNumber: string
-  affiliatedToBusiness: string
+  franchiseeType: '' | Exclude<Franchise['franchisee_type'], null>
   firstName: string
   lastName: string
   emailAddress: string
   password: string
   personalPhone: string
   mobile: string
-  country: string
   state: string
   address1: string
-  address2: string
   suburb: string
-  timeZone: string
-  shippingZone: string
   postCode: string
   serviceLocation: string
-  dateOfBirth: string
-  warningSuspension: string
-  appLevelAdmin: string
+  hasIpad: boolean
 }
 
-const initialFormData: FormData = {
+const initialFormState: FormState = {
   companyName: '',
+  code: '',
   abnNumber: '',
-  affiliatedToBusiness: '',
+  franchiseeType: '',
   firstName: '',
   lastName: '',
   emailAddress: '',
   password: '',
   personalPhone: '',
   mobile: '',
-  country: '',
   state: '',
   address1: '',
-  address2: '',
   suburb: '',
-  timeZone: '',
-  shippingZone: '',
   postCode: '',
   serviceLocation: '',
-  dateOfBirth: '',
-  warningSuspension: '',
-  appLevelAdmin: ''
+  hasIpad: false,
 }
 
-const franchiseOptions = [
-  'Bek Collins (Queensland)',
-  'Binita Support (Victoria)',
-  'Col Burrow (New South Wales)',
-  'Dave Laming (South Australia)',
-  'Frontend Support (Victoria)',
-  'Lexi Bowles (Victoria)',
-  'Mark Phenna (Western Australia)',
-  'Mate Support (New South Wales)',
-  'Mate Admin (Victoria)',
-  'Mate S (Victoria)',
-  'May Wilson (Victoria)',
-  'May Wilson (Victoria)',
-  'Rehanna Halfyard (South Australia)',
-  'Serena - Marketing Support (Victoria)',
-  'Steven Kirk (New South Wales)'
-]
+type ValidationErrors = Record<string, string[]>
 
-const stateGroups = [
-  'Australian Capital Territory',
-  'Tasmania',
-  'Victoria',
-  'South Australia',
-  'Western Australia',
-  'Northern Territory',
-  'Queensland',
-  'New South Wales',
-  'All States'
-]
+interface ApiErrorResponse {
+  message?: string
+  errors?: Record<string, string[]>
+}
 
-const serviceFields = [
-  { label: 'Washing Only Small - Long Hair', key: 'washSmallLong', default: '20' },
-  { label: 'Washing Only Large - Long Hair', key: 'washLargeLong', default: '0' },
-  { label: 'Washing Only Toy - Long Hair', key: 'washToyLong', default: '10' },
-  { label: 'Washing Only Medium - Long Hair', key: 'washMediumLong', default: '70' },
-  { label: 'Accessories', key: 'accessories', default: '0' },
-  { label: 'Other', key: 'other', default: '0' },
-  { label: 'Card Surcharge', key: 'cardSurcharge', default: '0' },
-  { label: 'Deshed', key: 'deshed', default: '10' },
-  { label: 'Nail Clipping', key: 'nailClipping', default: '20' },
-  { label: 'Flea Treatments', key: 'fleaTreatments', default: '15' },
-  { label: 'Blue Wheelers Treats', key: 'treats', default: '10' },
-  { label: 'Medicated Wash (90min)', key: 'medicatedWash90', default: '92' },
-  { label: 'Flea Wash (90min)', key: 'fleaWash90', default: '90' },
-  { label: 'Full Groom Large', key: 'fullGroomLarge', default: '90' },
-  { label: 'Medicated Wash (45min)', key: 'medicatedWash45', default: '67' },
-  { label: 'Flea Wash (45min)', key: 'fleaWash45', default: '65' },
-  { label: 'Hygiene Clip Large', key: 'hygieneClipLarge', default: '45' },
-  { label: 'Medicated Wash (35-45min)', key: 'medicatedWash35', default: '57' },
-  { label: 'Flea Wash (35-50min)', key: 'fleaWash35', default: '55' },
-  { label: 'Washing Only Large', key: 'washOnlyLarge', default: '55' },
+function getApiErrorMessage(err: unknown): string {
+  const axiosErr = err as AxiosError<ApiErrorResponse>
+  return axiosErr.response?.data?.message || 'Something went wrong. Please try again.'
+}
+
+function getValidationErrors(err: unknown): ValidationErrors | null {
+  const axiosErr = err as AxiosError<ApiErrorResponse>
+  if (axiosErr.response?.status === 422 && axiosErr.response.data?.errors) {
+    return axiosErr.response.data.errors
+  }
+  return null
+}
+
+// Thrown when the franchise (company) was created/updated successfully but the
+// owner login (FranchiseUser) step failed — the two are separate API calls, so
+// we need to tell the admin the company record did save even though this failed.
+class OwnerAccountError extends Error {
+  franchiseId: number
+  cause: unknown
+  constructor(franchiseId: number, cause: unknown) {
+    super('Franchise saved, but the owner login could not be saved')
+    this.franchiseId = franchiseId
+    this.cause = cause
+  }
+}
+
+interface FieldProps {
+  label: string
+  value: string
+  onChange: (value: string) => void
+  type?: string
+  required?: boolean
+  placeholder?: string
+  error?: string[]
+}
+
+function FormField({ label, value, onChange, type = 'text', required, placeholder, error }: FieldProps) {
+  return (
+    <div>
+      <label className="form-label">
+        {label} {required && <span className="text-red-500">*</span>}
+      </label>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`form-input ${error ? 'border-red-500' : ''}`}
+      />
+      {error && <p className="text-red-500 text-xs mt-1">{error.join(', ')}</p>}
+    </div>
+  )
+}
+
+interface SectionProps {
+  title: string
+  children: React.ReactNode
+}
+
+function Section({ title, children }: SectionProps) {
+  return (
+    <div className="mb-8">
+      <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+        {title}
+      </h3>
+      <div className="grid grid-cols-2 gap-4">{children}</div>
+    </div>
+  )
+}
+
+const stateOptions = [
+  { value: 'NSW', label: 'New South Wales' },
+  { value: 'VIC', label: 'Victoria' },
+  { value: 'QLD', label: 'Queensland' },
+  { value: 'SA', label: 'South Australia' },
+  { value: 'WA', label: 'Western Australia' },
+  { value: 'TAS', label: 'Tasmania' },
+  { value: 'NT', label: 'Northern Territory' },
+  { value: 'ACT', label: 'Australian Capital Territory' },
 ]
 
 export function AddMember() {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState<FormData>(initialFormData)
-  const [expandedSections, setExpandedSections] = useState({
-    companyAccount: true,
-    franchiseOwnedBy: true,
-    socialSystemGroups: true,
-    reactivateStockTake: false,
-    services: true
-  })
-  const [selectedFranchises, setSelectedFranchises] = useState<string[]>([])
-  const [selectedStateGroups, setSelectedStateGroups] = useState<string[]>([])
-  const [serviceValues, setServiceValues] = useState<Record<string, string>>(
-    Object.fromEntries(serviceFields.map(f => [f.key, f.default]))
-  )
-  const [checkboxes, setCheckboxes] = useState({
-    warningSet: false,
-    registerForTax: false,
-    deregisterForTax: false,
-    companyIsActive: false,
-    ticketAdmin: false,
-    loginToAdmin: false,
-    memberSocialActive: false,
-    memberLeadsActive: false
+  const queryClient = useQueryClient()
+  const { id } = useParams<{ id: string }>()
+  const isEditMode = !!id
+  const franchiseId = Number(id)
+
+  const [form, setForm] = useState<FormState>(initialFormState)
+  const [errors, setErrors] = useState<ValidationErrors>({})
+  const [existingUserId, setExistingUserId] = useState<number | null>(null)
+
+  const { data: franchise, isLoading: isFranchiseLoading } = useQuery({
+    queryKey: ['franchise', franchiseId],
+    queryFn: () => franchisesApi.get(franchiseId),
+    enabled: isEditMode,
   })
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
+  const { data: franchiseUsers } = useQuery({
+    queryKey: ['franchise-users', franchiseId],
+    queryFn: () => franchiseUsersApi.getByFranchise(franchiseId),
+    enabled: isEditMode,
+  })
+
+  useEffect(() => {
+    if (!franchise) return
+    const ownerUser = franchiseUsers?.find((u) => u.role === 'owner') ?? franchiseUsers?.[0] ?? null
+    setExistingUserId(ownerUser?.id ?? null)
+
+    const nameParts = (franchise.owner_name || '').trim().split(/\s+/)
+    const firstName = nameParts[0] ?? ''
+    const lastName = nameParts.slice(1).join(' ')
+
+    setForm({
+      companyName: franchise.name ?? '',
+      code: franchise.code ?? '',
+      abnNumber: franchise.abn ?? '',
+      franchiseeType: (franchise.franchisee_type as FormState['franchiseeType']) ?? '',
+      firstName,
+      lastName,
+      emailAddress: ownerUser?.email ?? franchise.email ?? '',
+      password: '',
+      personalPhone: ownerUser?.phone ?? franchise.phone ?? '',
+      mobile: franchise.mobile ?? '',
+      state: franchise.state ?? '',
+      address1: franchise.address ?? '',
+      suburb: franchise.suburb ?? '',
+      postCode: franchise.postcode ?? '',
+      serviceLocation: franchise.territory ?? '',
+      hasIpad: franchise.has_ipad ?? false,
+    })
+  }, [franchise, franchiseUsers])
+
+  const handleChange = (field: keyof FormState, value: string) => {
+    setForm((prev) => ({ ...prev, [field]: value }))
+    if (errors[field]) {
+      setErrors((prev) => ({ ...prev, [field]: [] }))
+    }
   }
 
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
+  const needsOwnerCreation = isEditMode && existingUserId === null
+
+  const buildFranchisePayload = (): Partial<Franchise> => {
+    const str = (v: string) => (v === '' ? undefined : v)
+    return {
+      name: form.companyName,
+      code: form.code,
+      owner_name: `${form.firstName} ${form.lastName}`.trim(),
+      email: form.emailAddress,
+      phone: str(form.personalPhone),
+      mobile: str(form.mobile),
+      address: str(form.address1),
+      suburb: str(form.suburb),
+      state: str(form.state),
+      postcode: str(form.postCode),
+      abn: str(form.abnNumber),
+      territory: str(form.serviceLocation),
+      franchisee_type: form.franchiseeType ? form.franchiseeType : null,
+      has_ipad: form.hasIpad,
+    }
   }
 
-  const toggleFranchise = (franchise: string) => {
-    setSelectedFranchises(prev => 
-      prev.includes(franchise) 
-        ? prev.filter(f => f !== franchise)
-        : [...prev, franchise]
-    )
+  const applyErrors = (err: unknown) => {
+    if (err instanceof OwnerAccountError) {
+      toast.error(
+        'The company account was saved, but the owner login could not be saved. Fix the details below and save again.'
+      )
+      const validation = getValidationErrors(err.cause)
+      if (validation) setErrors(validation)
+      return
+    }
+    const validation = getValidationErrors(err)
+    if (validation) {
+      setErrors(validation)
+      toast.error('Please fix the highlighted errors')
+    } else {
+      toast.error(getApiErrorMessage(err))
+    }
   }
 
-  const toggleStateGroup = (group: string) => {
-    setSelectedStateGroups(prev => 
-      prev.includes(group) 
-        ? prev.filter(g => g !== group)
-        : [...prev, group]
-    )
-  }
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const newFranchise = await franchisesApi.create(buildFranchisePayload())
+      try {
+        await franchiseUsersApi.create({
+          franchise_id: newFranchise.id,
+          name: `${form.firstName} ${form.lastName}`.trim(),
+          email: form.emailAddress,
+          password: form.password,
+          phone: form.personalPhone || undefined,
+          role: 'owner',
+        })
+      } catch (err) {
+        throw new OwnerAccountError(newFranchise.id, err)
+      }
+      return newFranchise
+    },
+    onSuccess: () => {
+      toast.success('Member added successfully')
+      queryClient.invalidateQueries({ queryKey: ['franchises'] })
+      navigate('/members/list')
+    },
+    onError: (err) => {
+      if (err instanceof OwnerAccountError) {
+        queryClient.invalidateQueries({ queryKey: ['franchises'] })
+        applyErrors(err)
+        navigate(`/members/edit/${err.franchiseId}`)
+        return
+      }
+      applyErrors(err)
+    },
+  })
 
-  const toggleCheckbox = (key: keyof typeof checkboxes) => {
-    setCheckboxes(prev => ({ ...prev, [key]: !prev[key] }))
-  }
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      const updated = await franchisesApi.update(franchiseId, buildFranchisePayload())
+      if (existingUserId) {
+        await franchiseUsersApi.update(existingUserId, {
+          name: `${form.firstName} ${form.lastName}`.trim(),
+          email: form.emailAddress,
+          phone: form.personalPhone || undefined,
+        })
+      } else if (needsOwnerCreation && form.password) {
+        await franchiseUsersApi.create({
+          franchise_id: franchiseId,
+          name: `${form.firstName} ${form.lastName}`.trim(),
+          email: form.emailAddress,
+          password: form.password,
+          phone: form.personalPhone || undefined,
+          role: 'owner',
+        })
+      }
+      return updated
+    },
+    onSuccess: () => {
+      toast.success('Member updated successfully')
+      queryClient.invalidateQueries({ queryKey: ['franchises'] })
+      queryClient.invalidateQueries({ queryKey: ['franchise', franchiseId] })
+      queryClient.invalidateQueries({ queryKey: ['franchise-users', franchiseId] })
+      setForm((prev) => ({ ...prev, password: '' }))
+    },
+    onError: applyErrors,
+  })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    console.log('Form submitted:', { formData, selectedFranchises, selectedStateGroups, serviceValues, checkboxes })
-    navigate('/members/list')
+    setErrors({})
+    if (isEditMode) {
+      updateMutation.mutate()
+    } else {
+      createMutation.mutate()
+    }
   }
 
-  const SectionHeader = ({ title, section, expanded }: { title: string; section: keyof typeof expandedSections; expanded: boolean }) => (
-    <div 
-      className="flex items-center justify-between p-4 cursor-pointer hover:bg-gray-50 border-b"
-      onClick={() => toggleSection(section)}
-    >
-      <h3 className="text-sm font-medium text-gray-700">{title}</h3>
-      {expanded ? <ChevronUp size={20} className="text-gray-400" /> : <ChevronDown size={20} className="text-gray-400" />}
-    </div>
-  )
+  const isSaving = createMutation.isPending || updateMutation.isPending
+  const showPasswordField = !isEditMode || needsOwnerCreation
+
+  if (isEditMode && isFranchiseLoading) {
+    return (
+      <div className="page-content">
+        <h1 className="page-title">Edit Member</h1>
+        <div className="card p-8 text-center text-gray-400">Loading member...</div>
+      </div>
+    )
+  }
 
   return (
     <div className="page-content">
-      <h1 className="page-title">Add Member Company</h1>
+      <h1 className="page-title">{isEditMode ? 'Edit Member Company' : 'Add Member Company'}</h1>
 
-      <form onSubmit={handleSubmit}>
-        {/* Create New Company Account */}
-        <div className="card mb-4">
-          <SectionHeader title="Create New Company Account" section="companyAccount" expanded={expandedSections.companyAccount} />
-          
-          {expandedSections.companyAccount && (
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Company Name *</label>
-                  <input
-                    type="text"
-                    name="companyName"
-                    value={formData.companyName}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">ABN Number *</label>
-                  <input
-                    type="text"
-                    name="abnNumber"
-                    value={formData.abnNumber}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Affiliated To Business *</label>
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">{isEditMode ? 'Member Details' : 'New Member Details'}</h2>
+        </div>
+        <div className="card-body p-6">
+          <form onSubmit={handleSubmit}>
+            <Section title="Company Details">
+              <FormField label="Company Name" required value={form.companyName} onChange={(v) => handleChange('companyName', v)} error={errors.name} />
+              <FormField label="Franchise Code" required value={form.code} onChange={(v) => handleChange('code', v)} error={errors.code} />
+              <FormField label="ABN Number" value={form.abnNumber} onChange={(v) => handleChange('abnNumber', v)} error={errors.abn} />
+              <div>
+                <label className="form-label">Member Type</label>
                 <select
-                  name="affiliatedToBusiness"
-                  value={formData.affiliatedToBusiness}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  value={form.franchiseeType}
+                  onChange={(e) => handleChange('franchiseeType', e.target.value)}
+                  className={`form-input ${errors.franchisee_type ? 'border-red-500' : ''}`}
                 >
                   <option value=""></option>
-                  <option value="Blue Wheelers">Blue Wheelers</option>
-                  <option value="Dash DogWash">Dash DogWash</option>
+                  <option value="master_franchisee">Master Franchisee</option>
+                  <option value="franchisee">Franchisee</option>
+                  <option value="franchisor">Franchisor</option>
                 </select>
+                {errors.franchisee_type && <p className="text-red-500 text-xs mt-1">{errors.franchisee_type.join(', ')}</p>}
               </div>
+            </Section>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">First Name *</label>
-                  <input
-                    type="text"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Last Name *</label>
-                  <input
-                    type="text"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Email Address *</label>
-                  <input
-                    type="email"
-                    name="emailAddress"
-                    value={formData.emailAddress}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                  <span className="text-xs text-gray-400">Please enter a valid Email</span>
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Password *</label>
-                  <input
-                    type="password"
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Personal Phone</label>
-                  <input
-                    type="tel"
-                    name="personalPhone"
-                    value={formData.personalPhone}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Mobile *</label>
-                  <input
-                    type="tel"
-                    name="mobile"
-                    value={formData.mobile}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Country *</label>
-                <select
-                  name="country"
-                  value={formData.country}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="Australia">Australia</option>
-                  <option value="New Zealand">New Zealand</option>
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">State *</label>
-                <select
-                  name="state"
-                  value={formData.state}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="NSW">New South Wales</option>
-                  <option value="VIC">Victoria</option>
-                  <option value="QLD">Queensland</option>
-                  <option value="SA">South Australia</option>
-                  <option value="WA">Western Australia</option>
-                  <option value="TAS">Tasmania</option>
-                  <option value="NT">Northern Territory</option>
-                  <option value="ACT">Australian Capital Territory</option>
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Address 1 *</label>
-                <input
-                  type="text"
-                  name="address1"
-                  value={formData.address1}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+            <Section title="Owner / Login Details">
+              <FormField label="First Name" required value={form.firstName} onChange={(v) => handleChange('firstName', v)} error={errors.owner_name} />
+              <FormField label="Last Name" required value={form.lastName} onChange={(v) => handleChange('lastName', v)} />
+              <FormField label="Email Address" required type="email" value={form.emailAddress} onChange={(v) => handleChange('emailAddress', v)} error={errors.email} />
+              {showPasswordField && (
+                <FormField
+                  label="Password"
+                  required={!isEditMode}
+                  type="password"
+                  value={form.password}
+                  onChange={(v) => handleChange('password', v)}
+                  placeholder="Minimum 8 characters"
+                  error={errors.password}
                 />
-              </div>
+              )}
+            </Section>
 
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Address 2</label>
-                <input
-                  type="text"
-                  name="address2"
-                  value={formData.address2}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                />
-              </div>
+            {isEditMode && !showPasswordField && (
+              <p className="text-sm text-gray-500 -mt-6 mb-8">
+                Password can only be changed by the owner themselves, from their own account settings.
+              </p>
+            )}
+            {isEditMode && needsOwnerCreation && (
+              <p className="text-sm text-gray-500 -mt-6 mb-8">
+                No owner login exists for this franchise yet. Enter a password above to create one when you save.
+              </p>
+            )}
 
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Suburb *</label>
-                <input
-                  type="text"
-                  name="suburb"
-                  value={formData.suburb}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                />
-              </div>
+            <Section title="Contact">
+              <FormField label="Personal Phone" value={form.personalPhone} onChange={(v) => handleChange('personalPhone', v)} error={errors.phone} />
+              <FormField label="Mobile" value={form.mobile} onChange={(v) => handleChange('mobile', v)} error={errors.mobile} />
+            </Section>
 
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">TimeZone *</label>
+            <Section title="Address">
+              <div className="col-span-2">
+                <FormField label="Address" value={form.address1} onChange={(v) => handleChange('address1', v)} error={errors.address} />
+              </div>
+              <FormField label="Suburb" value={form.suburb} onChange={(v) => handleChange('suburb', v)} error={errors.suburb} />
+              <FormField label="Post Code" value={form.postCode} onChange={(v) => handleChange('postCode', v)} error={errors.postcode} />
+              <div>
+                <label className="form-label">State</label>
                 <select
-                  name="timeZone"
-                  value={formData.timeZone}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  value={form.state}
+                  onChange={(e) => handleChange('state', e.target.value)}
+                  className={`form-input ${errors.state ? 'border-red-500' : ''}`}
                 >
                   <option value=""></option>
-                  <option value="Australia/Sydney">Australia/Sydney</option>
-                  <option value="Australia/Melbourne">Australia/Melbourne</option>
-                  <option value="Australia/Brisbane">Australia/Brisbane</option>
-                  <option value="Australia/Perth">Australia/Perth</option>
-                  <option value="Australia/Adelaide">Australia/Adelaide</option>
+                  {stateOptions.map((s) => (
+                    <option key={s.value} value={s.value}>
+                      {s.label}
+                    </option>
+                  ))}
                 </select>
+                {errors.state && <p className="text-red-500 text-xs mt-1">{errors.state.join(', ')}</p>}
               </div>
+              <FormField label="Service Location" value={form.serviceLocation} onChange={(v) => handleChange('serviceLocation', v)} error={errors.territory} />
+            </Section>
 
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Shipping Zone *</label>
-                <select
-                  name="shippingZone"
-                  value={formData.shippingZone}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="Zone 1">Zone 1</option>
-                  <option value="Zone 2">Zone 2</option>
-                  <option value="Zone 3">Zone 3</option>
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Post Code *</label>
+            <div className="mb-8">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+                Options
+              </h3>
+              <label className="form-checkbox">
                 <input
-                  type="text"
-                  name="postCode"
-                  value={formData.postCode}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  type="checkbox"
+                  checked={form.hasIpad}
+                  onChange={(e) => setForm((prev) => ({ ...prev, hasIpad: e.target.checked }))}
                 />
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">Service Location</label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    name="serviceLocation"
-                    value={formData.serviceLocation}
-                    onChange={handleChange}
-                    className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm"
-                  />
-                  <button type="button" className="btn btn-primary whitespace-nowrap">
-                    ADD ADDITIONAL SUBURB
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Date of Birth</label>
-                  <input
-                    type="date"
-                    name="dateOfBirth"
-                    value={formData.dateOfBirth}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                    placeholder="mm / dd / yyyy"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 mb-1">Warning Suspension</label>
-                  <input
-                    type="date"
-                    name="warningSuspension"
-                    value={formData.warningSuspension}
-                    onChange={handleChange}
-                    className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                    placeholder="mm / dd / yyyy"
-                  />
-                </div>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-1">App Level Admin *</label>
-                <select
-                  name="appLevelAdmin"
-                  value={formData.appLevelAdmin}
-                  onChange={handleChange}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="Super Admin">Super Admin</option>
-                  <option value="Admin">Admin</option>
-                  <option value="Manager">Manager</option>
-                  <option value="Support">Support</option>
-                </select>
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm text-gray-600 mb-2">Upload Image here *</label>
-                <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                  <Upload size={32} className="mx-auto text-gray-400 mb-2" />
-                  <p className="text-sm text-gray-500">Upload Image here *</p>
-                </div>
-                <button type="button" className="mt-2 text-sm text-gray-600 border border-gray-300 px-4 py-2 rounded">
-                  RESET IMAGE
-                </button>
-              </div>
+                <span>Has iPad</span>
+              </label>
             </div>
-          )}
-        </div>
 
-        {/* Franchise Owned By */}
-        <div className="card mb-4">
-          <SectionHeader title="Franchise Owned By" section="franchiseOwnedBy" expanded={expandedSections.franchiseOwnedBy} />
-          
-          {expandedSections.franchiseOwnedBy && (
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                {franchiseOptions.map((franchise) => (
-                  <label key={franchise} className="flex items-center gap-2 py-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedFranchises.includes(franchise)}
-                      onChange={() => toggleFranchise(franchise)}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-                    <span className="text-sm text-gray-700">{franchise}</span>
-                  </label>
-                ))}
-              </div>
+            <div className="flex justify-end gap-3 mt-6">
+              <button type="button" onClick={() => navigate('/members/list')} className="btn btn-outline">
+                CANCEL
+              </button>
+              <button type="submit" className="btn btn-primary px-6" disabled={isSaving}>
+                {isSaving ? 'SAVING...' : isEditMode ? 'SAVE CHANGES' : 'SUBMIT'}
+              </button>
             </div>
-          )}
+          </form>
         </div>
-
-        {/* Add User to Social System Groups */}
-        <div className="card mb-4">
-          <SectionHeader title="Add User to Social System Groups" section="socialSystemGroups" expanded={expandedSections.socialSystemGroups} />
-          
-          {expandedSections.socialSystemGroups && (
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                {stateGroups.map((group) => (
-                  <label key={group} className="flex items-center gap-2 py-1 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={selectedStateGroups.includes(group)}
-                      onChange={() => toggleStateGroup(group)}
-                      className="w-4 h-4 rounded border-gray-300"
-                    />
-                    <span className="text-sm text-gray-700">{group}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Reactivate Stock Take */}
-        <div className="card mb-4">
-          <SectionHeader title="Reactivate Stock Take" section="reactivateStockTake" expanded={expandedSections.reactivateStockTake} />
-          
-          {expandedSections.reactivateStockTake && (
-            <div className="p-6">
-              <p className="text-sm text-gray-500">Stock take reactivation options will appear here.</p>
-            </div>
-          )}
-        </div>
-
-        {/* Services */}
-        <div className="card mb-4">
-          <SectionHeader title="Services" section="services" expanded={expandedSections.services} />
-          
-          {expandedSections.services && (
-            <div className="p-6">
-              <div className="grid grid-cols-2 gap-4">
-                {serviceFields.map((field) => (
-                  <div key={field.key}>
-                    <label className="block text-sm text-gray-600 mb-1">{field.label}</label>
-                    <input
-                      type="number"
-                      value={serviceValues[field.key]}
-                      onChange={(e) => setServiceValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                      className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                    />
-                  </div>
-                ))}
-              </div>
-
-              <div className="mt-6">
-                <label className="block text-sm text-gray-600 mb-1">Service Type</label>
-                <select className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                  <option value="Wash Only">Wash Only</option>
-                  <option value="Full Groom">Full Groom</option>
-                </select>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm text-gray-600 mb-1">Suspend Leads *</label>
-                <select className="w-full border border-gray-300 rounded px-3 py-2 text-sm">
-                  <option value=""></option>
-                  <option value="Yes">Yes</option>
-                  <option value="No">No</option>
-                </select>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-sm text-gray-600 mb-1">Forward Lead SMS to</label>
-                <input
-                  type="text"
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                />
-              </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-x-8 gap-y-2">
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.warningSet}
-                    onChange={() => toggleCheckbox('warningSet')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Warning Set</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.registerForTax}
-                    onChange={() => toggleCheckbox('registerForTax')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Register for Tax</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.deregisterForTax}
-                    onChange={() => toggleCheckbox('deregisterForTax')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Deregister for Tax</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.companyIsActive}
-                    onChange={() => toggleCheckbox('companyIsActive')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Company is Active</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.ticketAdmin}
-                    onChange={() => toggleCheckbox('ticketAdmin')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Ticket Admin</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.loginToAdmin}
-                    onChange={() => toggleCheckbox('loginToAdmin')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Login to Admin</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.memberSocialActive}
-                    onChange={() => toggleCheckbox('memberSocialActive')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Member Social Active</span>
-                </label>
-                <label className="flex items-center gap-2 py-1 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={checkboxes.memberLeadsActive}
-                    onChange={() => toggleCheckbox('memberLeadsActive')}
-                    className="w-4 h-4 rounded border-gray-300"
-                  />
-                  <span className="text-sm text-gray-700">Member Leads Active</span>
-                </label>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Action Buttons */}
-        <div className="flex justify-end gap-3 mt-6">
-          <button
-            type="button"
-            onClick={() => navigate('/members/list')}
-            className="px-6 py-2 border border-purple-600 text-purple-600 rounded font-medium hover:bg-purple-50"
-          >
-            CANCEL
-          </button>
-          <button
-            type="submit"
-            className="btn btn-primary px-6"
-          >
-            SUBMIT
-          </button>
-        </div>
-      </form>
+      </div>
     </div>
   )
 }

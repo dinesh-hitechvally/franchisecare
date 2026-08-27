@@ -12,8 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('calendar_settings', function (Blueprint $table) {
-            $table->boolean('show_time')->default(true)->after('show_services_name');
-            $table->json('display_order')->nullable()->after('show_cancellation_policy');
+            if (! Schema::hasColumn('calendar_settings', 'show_time')) {
+                $table->boolean('show_time')->default(true)->after('show_pet_name');
+            }
+            if (! Schema::hasColumn('calendar_settings', 'display_order')) {
+                $table->json('display_order')->nullable()->after('show_cancellation_policy');
+            }
         });
     }
 

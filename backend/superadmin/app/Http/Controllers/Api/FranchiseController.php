@@ -53,6 +53,8 @@ class FranchiseController extends Controller
             'state' => 'nullable|string|max:50',
             'postcode' => 'nullable|string|max:10',
             'abn' => 'nullable|string|max:20',
+            'franchisee_type' => 'nullable|in:master_franchisee,franchisee,franchisor',
+            'has_ipad' => 'nullable|boolean',
             'franchise_fee' => 'nullable|numeric|min:0',
             'royalty_percentage' => 'nullable|numeric|min:0|max:100',
             'marketing_fee' => 'nullable|numeric|min:0',
@@ -93,6 +95,9 @@ class FranchiseController extends Controller
             'postcode' => 'nullable|string|max:10',
             'abn' => 'nullable|string|max:20',
             'status' => 'sometimes|in:active,inactive,suspended,terminated',
+            'franchisee_type' => 'nullable|in:master_franchisee,franchisee,franchisor',
+            'has_ipad' => 'nullable|boolean',
+            'tscs_accepted' => 'nullable|boolean',
             'franchise_fee' => 'nullable|numeric|min:0',
             'royalty_percentage' => 'nullable|numeric|min:0|max:100',
             'marketing_fee' => 'nullable|numeric|min:0',
@@ -102,6 +107,10 @@ class FranchiseController extends Controller
             'territory' => 'nullable|string',
             'notes' => 'nullable|string',
         ]);
+
+        if (array_key_exists('tscs_accepted', $validated) && $validated['tscs_accepted'] && ! $franchise->tscs_accepted) {
+            $validated['tscs_accepted_at'] = now();
+        }
 
         $oldData = $franchise->toArray();
         $franchise->update($validated);

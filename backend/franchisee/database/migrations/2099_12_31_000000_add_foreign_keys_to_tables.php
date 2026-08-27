@@ -180,11 +180,6 @@ return new class extends Migration
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
         });
 
-        // 2026_05_17_040543_create_app_calendar_settings_table.php
-        Schema::table('app_calendar_settings', function (Blueprint $table) {
-            $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');
-        });
-
         // 2026_05_17_044317_create_service_prices_table.php
         Schema::table('service_prices', function (Blueprint $table) {
             $table->foreign('company_id')->references('id')->on('companies')->onDelete('cascade');

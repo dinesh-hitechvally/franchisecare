@@ -1,68 +1,66 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Filter, Check, X, ChevronUp, ChevronDown, MoreVertical } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import { Filter, Check, X, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Pencil } from 'lucide-react'
+import { franchisesApi } from '../../api/services'
+import type { Franchise } from '../../types'
 
-interface Member {
-  id: number
-  name: string
-  companyName: string
-  serviceLocation: string
-  type: 'Master Franchisee' | 'Franchisee' | 'Franchisor'
-  lastActive: string
-  ipad: boolean
-  memberActive: boolean
-  tscsAccepted: boolean
-}
-
-const mockMembers: Member[] = [
-  { id: 1, name: 'Mate Support', companyName: 'RetailCare Pty Ltd', serviceLocation: 'Jindalee, Mt Ommaney, Riverhills, Westlake, Middle Park & Jamboree Heights', type: 'Master Franchisee', lastActive: 'May 27 2026, 06:29 pm', ipad: true, memberActive: true, tscsAccepted: true },
-  { id: 2, name: 'Dave Laming', companyName: 'Blue Wheelers Mate Support', serviceLocation: 'Mate Support', type: 'Master Franchisee', lastActive: 'March 25 2026, 12:53 pm', ipad: true, memberActive: true, tscsAccepted: false },
-]
-
-type SortField = 'name' | 'companyName' | 'serviceLocation' | 'type' | 'lastActive' | 'ipad' | 'memberActive' | 'tscsAccepted'
+type SortField = 'owner_name' | 'name' | 'territory' | 'franchisee_type' | 'status' | 'has_ipad' | 'tscs_accepted'
 type SortOrder = 'asc' | 'desc'
 
 interface FilterState {
   search: string
-  outstandingBookings: string
-  activeMembers: string
-  leadsSuspension: string
-  migratedMembers: string
-  socialMembers: string
-  adminMembers: string
-  state: string
-  memberType: string
-  ipad: string
-  stockTake: string
-  twoFactorAuth: string
-  tscsAccepted: string
+  status: string
+  franchisee_type: string
 }
 
 const initialFilters: FilterState = {
   search: '',
-  outstandingBookings: '',
-  activeMembers: '',
-  leadsSuspension: '',
-  migratedMembers: '',
-  socialMembers: '',
-  adminMembers: '',
-  state: '',
-  memberType: '',
-  ipad: '',
-  stockTake: '',
-  twoFactorAuth: '',
-  tscsAccepted: ''
+  status: '',
+  franchisee_type: '',
+}
+
+const typeLabels: Record<string, string> = {
+  master_franchisee: 'Master Franchisee',
+  franchisee: 'Franchisee',
+  franchisor: 'Franchisor',
+}
+
+function formatType(type: Franchise['franchisee_type']) {
+  return type ? typeLabels[type] ?? type : '-'
 }
 
 export function ListMembers() {
   const navigate = useNavigate()
-  const [members] = useState<Member[]>(mockMembers)
-  const [sortField, setSortField] = useState<SortField>('name')
+  const [sortField, setSortField] = useState<SortField>('owner_name')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [showFilter, setShowFilter] = useState(false)
   const [filters, setFilters] = useState<FilterState>(initialFilters)
   const [appliedFilters, setAppliedFilters] = useState<FilterState>(initialFilters)
-  const [rowsPerPage, setRowsPerPage] = useState(100)
+  const [rowsPerPage, setRowsPerPage] = useState(20)
+  const [currentPage, setCurrentPage] = useState(1)
+
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['franchises', appliedFilters.search, appliedFilters.status, sortField, sortOrder, rowsPerPage, currentPage],
+    queryFn: () =>
+      franchisesApi.list({
+        search: appliedFilters.search || undefined,
+        status: appliedFilters.status || undefined,
+        sort_by: sortField,
+        sort_order: sortOrder,
+        per_page: rowsPerPage,
+        page: currentPage,
+      }),
+    placeholderData: (prev) => prev,
+  })
+
+  const members = (data?.data ?? []).filter((f) =>
+    appliedFilters.franchisee_type ? f.franchisee_type === appliedFilters.franchisee_type : true
+  )
+  const totalMembers = data?.total ?? 0
+  const lastPage = data?.last_page ?? 1
+  const startIndex = totalMembers === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const endIndex = Math.min(currentPage * rowsPerPage, totalMembers)
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -71,6 +69,7 @@ export function ListMembers() {
       setSortField(field)
       setSortOrder('asc')
     }
+    setCurrentPage(1)
   }
 
   const SortIcon = ({ field }: { field: SortField }) => {
@@ -83,11 +82,12 @@ export function ListMembers() {
   }
 
   const handleFilterChange = (field: keyof FilterState, value: string) => {
-    setFilters(prev => ({ ...prev, [field]: value }))
+    setFilters((prev) => ({ ...prev, [field]: value }))
   }
 
   const applyFilters = () => {
     setAppliedFilters(filters)
+    setCurrentPage(1)
     setShowFilter(false)
   }
 
@@ -100,9 +100,10 @@ export function ListMembers() {
     const newFilters = { ...appliedFilters, [field]: '' }
     setAppliedFilters(newFilters)
     setFilters(newFilters)
+    setCurrentPage(1)
   }
 
-  const hasActiveFilters = Object.values(appliedFilters).some(v => v !== '')
+  const hasActiveFilters = Object.values(appliedFilters).some((v) => v !== '')
 
   return (
     <div className="page-content">
@@ -112,17 +113,11 @@ export function ListMembers() {
         <div className="card-header">
           <h2 className="card-title">List Members</h2>
           <div className="flex gap-2">
-            <button 
-              className="btn btn-success"
-              onClick={() => setShowFilter(!showFilter)}
-            >
+            <button className={`btn ${showFilter ? 'btn-primary' : 'btn-success'}`} onClick={() => setShowFilter(!showFilter)}>
               <Filter size={14} />
               FILTER
             </button>
-            <button 
-              className="btn btn-primary"
-              onClick={() => navigate('/members/add')}
-            >
+            <button className="btn btn-primary" onClick={() => navigate('/members/add')}>
               +ADD
             </button>
           </div>
@@ -134,177 +129,47 @@ export function ListMembers() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Search</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                  placeholder=""
+                  placeholder="Owner, company, email..."
                 />
               </div>
               <div>
-                <label className="block text-sm text-gray-600 mb-1">Outstanding Bookings</label>
-                <select 
-                  value={filters.outstandingBookings}
-                  onChange={(e) => handleFilterChange('outstandingBookings', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
                 <label className="block text-sm text-gray-600 mb-1">Active Members</label>
-                <select 
-                  value={filters.activeMembers}
-                  onChange={(e) => handleFilterChange('activeMembers', e.target.value)}
+                <select
+                  value={filters.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Leads Suspension</label>
-                <select 
-                  value={filters.leadsSuspension}
-                  onChange={(e) => handleFilterChange('leadsSuspension', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Migrated Members</label>
-                <select 
-                  value={filters.migratedMembers}
-                  onChange={(e) => handleFilterChange('migratedMembers', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Social Members</label>
-                <select 
-                  value={filters.socialMembers}
-                  onChange={(e) => handleFilterChange('socialMembers', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Admin Members</label>
-                <select 
-                  value={filters.adminMembers}
-                  onChange={(e) => handleFilterChange('adminMembers', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">State</label>
-                <select 
-                  value={filters.state}
-                  onChange={(e) => handleFilterChange('state', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="NSW">NSW</option>
-                  <option value="VIC">VIC</option>
-                  <option value="QLD">QLD</option>
-                  <option value="SA">SA</option>
-                  <option value="WA">WA</option>
-                  <option value="TAS">TAS</option>
-                  <option value="NT">NT</option>
-                  <option value="ACT">ACT</option>
+                  <option value="">All</option>
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="terminated">Terminated</option>
                 </select>
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Member Type</label>
-                <select 
-                  value={filters.memberType}
-                  onChange={(e) => handleFilterChange('memberType', e.target.value)}
+                <select
+                  value={filters.franchisee_type}
+                  onChange={(e) => handleFilterChange('franchisee_type', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
                 >
-                  <option value=""></option>
-                  <option value="Master Franchisee">Master Franchisee</option>
-                  <option value="Franchisee">Franchisee</option>
-                  <option value="Franchisor">Franchisor</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">iPad</label>
-                <select 
-                  value={filters.ipad}
-                  onChange={(e) => handleFilterChange('ipad', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Stock Take</label>
-                <select 
-                  value={filters.stockTake}
-                  onChange={(e) => handleFilterChange('stockTake', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Two Factor Auth</label>
-                <select 
-                  value={filters.twoFactorAuth}
-                  onChange={(e) => handleFilterChange('twoFactorAuth', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 mb-1">Ts & Cs Accepted</label>
-                <select 
-                  value={filters.tscsAccepted}
-                  onChange={(e) => handleFilterChange('tscsAccepted', e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
-                >
-                  <option value=""></option>
-                  <option value="yes">Yes</option>
-                  <option value="no">No</option>
+                  <option value="">All</option>
+                  <option value="master_franchisee">Master Franchisee</option>
+                  <option value="franchisee">Franchisee</option>
+                  <option value="franchisor">Franchisor</option>
                 </select>
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button 
-                onClick={cancelFilters}
-                className="text-red-500 hover:text-red-600 font-medium"
-              >
+              <button onClick={cancelFilters} className="text-red-500 hover:text-red-600 font-medium">
                 CANCEL
               </button>
-              <button 
-                onClick={applyFilters}
-                className="btn btn-primary"
-              >
+              <button onClick={applyFilters} className="btn btn-primary">
                 FILTER DATA
               </button>
             </div>
@@ -313,13 +178,35 @@ export function ListMembers() {
 
         {/* Applied Filters */}
         {hasActiveFilters && (
-          <div className="px-6 py-3 border-b bg-gray-50 flex items-center gap-2">
+          <div className="px-6 py-3 border-b bg-gray-50 flex items-center gap-2 flex-wrap">
             <span className="text-sm text-gray-600">Filtered:</span>
             {appliedFilters.search && (
-              <span className="inline-flex items-center gap-1 text-sm">
+              <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
                 Search: {appliedFilters.search}
-                <button 
+                <button
                   onClick={() => removeFilter('search')}
+                  className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {appliedFilters.status && (
+              <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
+                Status: {appliedFilters.status}
+                <button
+                  onClick={() => removeFilter('status')}
+                  className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
+                >
+                  ×
+                </button>
+              </span>
+            )}
+            {appliedFilters.franchisee_type && (
+              <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
+                Type: {typeLabels[appliedFilters.franchisee_type] ?? appliedFilters.franchisee_type}
+                <button
+                  onClick={() => removeFilter('franchisee_type')}
                   className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
                 >
                   ×
@@ -333,85 +220,102 @@ export function ListMembers() {
           <table className="table">
             <thead>
               <tr>
+                <th className="cursor-pointer" onClick={() => handleSort('owner_name')}>
+                  <span className="flex items-center">
+                    Name <SortIcon field="owner_name" />
+                  </span>
+                </th>
                 <th className="cursor-pointer" onClick={() => handleSort('name')}>
                   <span className="flex items-center">
-                    Name <SortIcon field="name" />
+                    Company Name <SortIcon field="name" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('companyName')}>
+                <th className="cursor-pointer" onClick={() => handleSort('territory')}>
                   <span className="flex items-center">
-                    Company Name <SortIcon field="companyName" />
+                    Service Location <SortIcon field="territory" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('serviceLocation')}>
+                <th className="cursor-pointer" onClick={() => handleSort('franchisee_type')}>
                   <span className="flex items-center">
-                    Service Location <SortIcon field="serviceLocation" />
+                    Type <SortIcon field="franchisee_type" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('type')}>
-                  <span className="flex items-center">
-                    Type <SortIcon field="type" />
-                  </span>
-                </th>
-                <th className="cursor-pointer" onClick={() => handleSort('lastActive')}>
-                  <span className="flex items-center">
-                    Last Active <SortIcon field="lastActive" />
-                  </span>
-                </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('ipad')}>
+                <th className="cursor-pointer text-center" onClick={() => handleSort('has_ipad')}>
                   <span className="flex items-center justify-center">
-                    iPAD <SortIcon field="ipad" />
+                    iPad <SortIcon field="has_ipad" />
                   </span>
                 </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('memberActive')}>
+                <th className="cursor-pointer text-center" onClick={() => handleSort('status')}>
                   <span className="flex items-center justify-center">
-                    Member Active <SortIcon field="memberActive" />
+                    Member Active <SortIcon field="status" />
                   </span>
                 </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('tscsAccepted')}>
+                <th className="cursor-pointer text-center" onClick={() => handleSort('tscs_accepted')}>
                   <span className="flex items-center justify-center">
-                    Ts & Cs Accepted <SortIcon field="tscsAccepted" />
+                    Ts & Cs Accepted <SortIcon field="tscs_accepted" />
                   </span>
                 </th>
                 <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {members.map((member) => (
-                <tr key={member.id}>
-                  <td className="font-medium">{member.name}</td>
-                  <td>{member.companyName}</td>
-                  <td className="max-w-xs">{member.serviceLocation}</td>
-                  <td>{member.type}</td>
-                  <td className="whitespace-nowrap">{member.lastActive}</td>
-                  <td className="text-center">
-                    {member.ipad ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
-                  </td>
-                  <td className="text-center">
-                    {member.memberActive ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
-                  </td>
-                  <td className="text-center">
-                    {member.tscsAccepted ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
-                  </td>
-                  <td className="text-center">
-                    <button className="p-1 hover:bg-gray-100 rounded">
-                      <MoreVertical size={18} className="text-gray-500" />
-                    </button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                    Loading members...
                   </td>
                 </tr>
-              ))}
+              ) : isError ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-red-500">
+                    Failed to load members.
+                  </td>
+                </tr>
+              ) : members.length === 0 ? (
+                <tr>
+                  <td colSpan={8} className="text-center py-8 text-gray-400">
+                    No members found.
+                  </td>
+                </tr>
+              ) : (
+                members.map((member) => (
+                  <tr key={member.id}>
+                    <td className="font-medium">{member.owner_name}</td>
+                    <td>{member.name}</td>
+                    <td className="max-w-xs">{member.territory || '-'}</td>
+                    <td>{formatType(member.franchisee_type)}</td>
+                    <td className="text-center">
+                      {member.has_ipad ? (
+                        <Check size={18} className="inline text-purple-600" />
+                      ) : (
+                        <X size={18} className="inline text-red-500" />
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {member.status === 'active' ? (
+                        <Check size={18} className="inline text-purple-600" />
+                      ) : (
+                        <X size={18} className="inline text-red-500" />
+                      )}
+                    </td>
+                    <td className="text-center">
+                      {member.tscs_accepted ? (
+                        <Check size={18} className="inline text-purple-600" />
+                      ) : (
+                        <X size={18} className="inline text-red-500" />
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <button
+                        className="p-1 hover:bg-gray-100 rounded"
+                        onClick={() => navigate(`/members/edit/${member.id}`)}
+                      >
+                        <Pencil size={16} className="text-gray-500" />
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -419,9 +323,12 @@ export function ListMembers() {
         <div className="card-footer flex items-center justify-end gap-4 py-3 px-6">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span>Rows per page:</span>
-            <select 
+            <select
               value={rowsPerPage}
-              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              onChange={(e) => {
+                setRowsPerPage(Number(e.target.value))
+                setCurrentPage(1)
+              }}
               className="border-none bg-transparent"
             >
               <option value={10}>10</option>
@@ -430,13 +337,23 @@ export function ListMembers() {
               <option value={100}>100</option>
             </select>
           </div>
-          <span className="text-sm text-gray-600">1 - {members.length} of {members.length}</span>
+          <span className="text-sm text-gray-600">
+            {startIndex} - {endIndex} of {totalMembers}
+          </span>
           <div className="flex gap-1">
-            <button className="p-1 text-gray-400 hover:text-gray-600">
-              <ChevronUp size={18} className="rotate-[-90deg]" />
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+            >
+              <ChevronLeft size={18} />
             </button>
-            <button className="p-1 text-gray-400 hover:text-gray-600">
-              <ChevronUp size={18} className="rotate-90" />
+            <button
+              className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
+              onClick={() => setCurrentPage((p) => Math.min(lastPage, p + 1))}
+              disabled={currentPage >= lastPage}
+            >
+              <ChevronRight size={18} />
             </button>
           </div>
         </div>

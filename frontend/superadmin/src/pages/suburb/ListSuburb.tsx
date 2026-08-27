@@ -1,50 +1,12 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import toast from 'react-hot-toast'
 import { Filter, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Check, X } from 'lucide-react'
+import { franchiseSuburbsApi } from '../../api/services'
+import type { FranchiseSuburb } from '../../types'
 
-interface Suburb {
-  id: number
-  suburbName: string
-  companyName: string
-  postCode: string
-  member: string
-  active: boolean
-}
-
-const mockSuburbs: Suburb[] = [
-  { id: 1, suburbName: 'NORTH POLE', companyName: '', postCode: '9999', member: '', active: true },
-  { id: 2, suburbName: 'JIBJIBYO', companyName: '', postCode: '0891', member: '', active: true },
-  { id: 3, suburbName: 'ELFANGABLE', companyName: '', postCode: '5861', member: '', active: true },
-  { id: 4, suburbName: 'GAPUWIYAK', companyName: '', postCode: '0880', member: '', active: true },
-  { id: 5, suburbName: 'YIRRKALA', companyName: '', postCode: '0880', member: '', active: true },
-  { id: 6, suburbName: 'NHULUNBUY', companyName: '', postCode: '0880', member: '', active: true },
-  { id: 7, suburbName: 'ELWAGARANA', companyName: '', postCode: '0880', member: '', active: true },
-  { id: 8, suburbName: 'FLYNX', companyName: '', postCode: '4700', member: '', active: true },
-  { id: 9, suburbName: 'DROGOLAN', companyName: '', postCode: '4574', member: '', active: true },
-  { id: 10, suburbName: 'BELFAL', companyName: '', postCode: '4579', member: '', active: true },
-  { id: 11, suburbName: 'BOGRI JEONG', companyName: '', postCode: '4579', member: '', active: true },
-  { id: 12, suburbName: 'CURRIMULLTY', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 13, suburbName: 'ARRAWPPA', companyName: '', postCode: '4593', member: '', active: true },
-  { id: 14, suburbName: 'MARTINCULRA', companyName: '', postCode: '4593', member: '', active: true },
-  { id: 15, suburbName: 'BOON', companyName: '', postCode: '4593', member: '', active: true },
-  { id: 16, suburbName: 'VALCAPR', companyName: '', postCode: '4593', member: '', active: true },
-  { id: 17, suburbName: 'ILKINDRI', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 18, suburbName: 'ELLIOTTLE SKYOW', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 19, suburbName: 'MANDEBBRA', companyName: '', postCode: '4572', member: '', active: true },
-  { id: 20, suburbName: 'WHALIEBILTGA', companyName: '', postCode: '4572', member: '', active: true },
-  { id: 21, suburbName: 'MARRANNINO', companyName: '', postCode: '4577', member: '', active: true },
-  { id: 22, suburbName: 'EVIPRI', companyName: '', postCode: '4577', member: '', active: true },
-  { id: 23, suburbName: 'BRIMATLA', companyName: '', postCode: '4594', member: '', active: true },
-  { id: 24, suburbName: 'PTHARET FLASHNI', companyName: '', postCode: '4577', member: '', active: true },
-  { id: 25, suburbName: 'MULLLEDNA SHANIAIN', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 26, suburbName: 'SWANDO POLAR LEGANA', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 27, suburbName: 'HOVAPRS', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 28, suburbName: 'PRAGIA', companyName: '', postCode: '4573', member: '', active: true },
-  { id: 29, suburbName: 'NATKUMA', companyName: '', postCode: '4577', member: '', active: true },
-  { id: 30, suburbName: 'WHAITLA', companyName: '', postCode: '4577', member: '', active: true },
-]
-
-type SortField = 'suburbName' | 'companyName' | 'postCode' | 'member' | 'active'
+type SortField = 'suburb_name' | 'franchise' | 'postcode' | 'state' | 'status'
 type SortOrder = 'asc' | 'desc'
 
 interface FilterState {
@@ -61,8 +23,8 @@ const initialFilters: FilterState = {
 
 export function ListSuburb() {
   const navigate = useNavigate()
-  const [suburbs] = useState<Suburb[]>(mockSuburbs)
-  const [sortField, setSortField] = useState<SortField>('suburbName')
+  const queryClient = useQueryClient()
+  const [sortField, setSortField] = useState<SortField>('suburb_name')
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc')
   const [showFilter, setShowFilter] = useState(false)
   const [filters, setFilters] = useState<FilterState>(initialFilters)
@@ -70,7 +32,43 @@ export function ListSuburb() {
   const [rowsPerPage, setRowsPerPage] = useState(100)
   const [currentPage, setCurrentPage] = useState(1)
 
-  const totalSuburbs = 18774
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['franchise-suburbs', appliedFilters, rowsPerPage, currentPage],
+    queryFn: () =>
+      franchiseSuburbsApi.list({
+        search: appliedFilters.search || undefined,
+        state: appliedFilters.state || undefined,
+        status: appliedFilters.activeSuburb === 'yes' ? 'active' : appliedFilters.activeSuburb === 'no' ? 'inactive' : undefined,
+        per_page: rowsPerPage,
+        page: currentPage,
+      }),
+    placeholderData: (prev) => prev,
+  })
+
+  const suburbs = data?.data ?? []
+  const totalSuburbs = data?.total ?? 0
+  const lastPage = data?.last_page ?? 1
+  const startIndex = totalSuburbs === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1
+  const endIndex = Math.min(currentPage * rowsPerPage, totalSuburbs)
+
+  const sortedSuburbs = useMemo(() => {
+    const list = [...suburbs]
+    list.sort((a, b) => {
+      let aVal: string
+      let bVal: string
+      if (sortField === 'franchise') {
+        aVal = a.franchise?.name ?? ''
+        bVal = b.franchise?.name ?? ''
+      } else {
+        aVal = String(a[sortField] ?? '')
+        bVal = String(b[sortField] ?? '')
+      }
+      if (aVal < bVal) return sortOrder === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortOrder === 'asc' ? 1 : -1
+      return 0
+    })
+    return list
+  }, [suburbs, sortField, sortOrder])
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -96,6 +94,7 @@ export function ListSuburb() {
 
   const applyFilters = () => {
     setAppliedFilters(filters)
+    setCurrentPage(1)
     setShowFilter(false)
   }
 
@@ -108,12 +107,21 @@ export function ListSuburb() {
     const newFilters = { ...appliedFilters, [field]: '' }
     setAppliedFilters(newFilters)
     setFilters(newFilters)
+    setCurrentPage(1)
   }
 
   const hasActiveFilters = Object.values(appliedFilters).some(v => v !== '')
 
-  const startIndex = (currentPage - 1) * rowsPerPage + 1
-  const endIndex = Math.min(currentPage * rowsPerPage, totalSuburbs)
+  const handleDelete = async (suburb: FranchiseSuburb) => {
+    if (!window.confirm(`Delete suburb "${suburb.suburb_name}"?`)) return
+    try {
+      await franchiseSuburbsApi.remove(suburb.id)
+      toast.success('Suburb deleted successfully!')
+      queryClient.invalidateQueries({ queryKey: ['franchise-suburbs'] })
+    } catch (err: any) {
+      toast.error(err?.response?.data?.message ?? 'Failed to delete suburb')
+    }
+  }
 
   return (
     <div className="page-content">
@@ -123,14 +131,14 @@ export function ListSuburb() {
         <div className="card-header">
           <h2 className="card-title">List Suburb</h2>
           <div className="flex gap-2">
-            <button 
+            <button
               className="btn btn-success"
               onClick={() => setShowFilter(!showFilter)}
             >
               <Filter size={14} />
               FILTER
             </button>
-            <button 
+            <button
               className="btn btn-primary"
               onClick={() => navigate('/suburb/add')}
             >
@@ -145,8 +153,8 @@ export function ListSuburb() {
             <div className="grid grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Search</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   value={filters.search}
                   onChange={(e) => handleFilterChange('search', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -155,7 +163,7 @@ export function ListSuburb() {
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">Active Suburb</label>
-                <select 
+                <select
                   value={filters.activeSuburb}
                   onChange={(e) => handleFilterChange('activeSuburb', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -167,7 +175,7 @@ export function ListSuburb() {
               </div>
               <div>
                 <label className="block text-sm text-gray-600 mb-1">State</label>
-                <select 
+                <select
                   value={filters.state}
                   onChange={(e) => handleFilterChange('state', e.target.value)}
                   className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
@@ -185,13 +193,13 @@ export function ListSuburb() {
               </div>
             </div>
             <div className="flex justify-end gap-3 mt-4">
-              <button 
+              <button
                 onClick={cancelFilters}
                 className="text-red-500 hover:text-red-600 font-medium"
               >
                 CANCEL
               </button>
-              <button 
+              <button
                 onClick={applyFilters}
                 className="btn btn-primary"
               >
@@ -208,7 +216,7 @@ export function ListSuburb() {
             {appliedFilters.search && (
               <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
                 Search: {appliedFilters.search}
-                <button 
+                <button
                   onClick={() => removeFilter('search')}
                   className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
                 >
@@ -219,7 +227,7 @@ export function ListSuburb() {
             {appliedFilters.activeSuburb && (
               <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
                 Active: {appliedFilters.activeSuburb}
-                <button 
+                <button
                   onClick={() => removeFilter('activeSuburb')}
                   className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
                 >
@@ -230,7 +238,7 @@ export function ListSuburb() {
             {appliedFilters.state && (
               <span className="inline-flex items-center gap-1 text-sm bg-white px-2 py-1 rounded border">
                 State: {appliedFilters.state}
-                <button 
+                <button
                   onClick={() => removeFilter('state')}
                   className="w-4 h-4 rounded-full bg-purple-600 text-white flex items-center justify-center text-xs"
                 >
@@ -245,55 +253,86 @@ export function ListSuburb() {
           <table className="table">
             <thead>
               <tr>
-                <th className="cursor-pointer" onClick={() => handleSort('suburbName')}>
+                <th className="cursor-pointer" onClick={() => handleSort('suburb_name')}>
                   <span className="flex items-center">
-                    Suburb Name <SortIcon field="suburbName" />
+                    Suburb Name <SortIcon field="suburb_name" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('companyName')}>
+                <th className="cursor-pointer" onClick={() => handleSort('franchise')}>
                   <span className="flex items-center">
-                    Company Name <SortIcon field="companyName" />
+                    Company Name <SortIcon field="franchise" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('postCode')}>
+                <th className="cursor-pointer" onClick={() => handleSort('postcode')}>
                   <span className="flex items-center">
-                    Post Code <SortIcon field="postCode" />
+                    Post Code <SortIcon field="postcode" />
                   </span>
                 </th>
-                <th className="cursor-pointer" onClick={() => handleSort('member')}>
+                <th className="cursor-pointer" onClick={() => handleSort('state')}>
                   <span className="flex items-center">
-                    Member <SortIcon field="member" />
+                    State <SortIcon field="state" />
                   </span>
                 </th>
-                <th className="cursor-pointer text-center" onClick={() => handleSort('active')}>
+                <th className="cursor-pointer text-center" onClick={() => handleSort('status')}>
                   <span className="flex items-center justify-center">
-                    Active <SortIcon field="active" />
+                    Active <SortIcon field="status" />
                   </span>
                 </th>
                 <th className="text-center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {suburbs.map((suburb) => (
-                <tr key={suburb.id}>
-                  <td className="font-medium">{suburb.suburbName}</td>
-                  <td>{suburb.companyName}</td>
-                  <td>{suburb.postCode}</td>
-                  <td>{suburb.member}</td>
-                  <td className="text-center">
-                    {suburb.active ? (
-                      <Check size={18} className="inline text-purple-600" />
-                    ) : (
-                      <X size={18} className="inline text-red-500" />
-                    )}
-                  </td>
-                  <td className="text-center">
-                    <button className="btn btn-primary text-xs py-1 px-3">
-                      EDIT
-                    </button>
+              {isLoading ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-gray-400">
+                    Loading suburbs...
                   </td>
                 </tr>
-              ))}
+              ) : isError ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-red-500">
+                    Failed to load suburbs.
+                  </td>
+                </tr>
+              ) : sortedSuburbs.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="text-center py-8 text-gray-400">
+                    No suburbs found.
+                  </td>
+                </tr>
+              ) : (
+                sortedSuburbs.map((suburb) => (
+                  <tr key={suburb.id}>
+                    <td className="font-medium">{suburb.suburb_name}</td>
+                    <td>{suburb.franchise?.name ?? ''}</td>
+                    <td>{suburb.postcode}</td>
+                    <td>{suburb.state}</td>
+                    <td className="text-center">
+                      {suburb.status === 'active' ? (
+                        <Check size={18} className="inline text-purple-600" />
+                      ) : (
+                        <X size={18} className="inline text-red-500" />
+                      )}
+                    </td>
+                    <td className="text-center">
+                      <div className="inline-flex gap-2">
+                        <button
+                          className="btn btn-primary text-xs py-1 px-3"
+                          onClick={() => navigate(`/suburb/edit/${suburb.id}`)}
+                        >
+                          EDIT
+                        </button>
+                        <button
+                          className="btn btn-danger text-xs py-1 px-3"
+                          onClick={() => handleDelete(suburb)}
+                        >
+                          DELETE
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         </div>
@@ -301,9 +340,9 @@ export function ListSuburb() {
         <div className="card-footer flex items-center justify-end gap-4 py-3 px-6">
           <div className="flex items-center gap-2 text-sm text-gray-600">
             <span>Rows per page:</span>
-            <select 
+            <select
               value={rowsPerPage}
-              onChange={(e) => setRowsPerPage(Number(e.target.value))}
+              onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1) }}
               className="border-none bg-transparent"
             >
               <option value={10}>10</option>
@@ -312,19 +351,19 @@ export function ListSuburb() {
               <option value={100}>100</option>
             </select>
           </div>
-          <span className="text-sm text-gray-600">{startIndex} - {endIndex} to {totalSuburbs.toLocaleString()}</span>
+          <span className="text-sm text-gray-600">{startIndex} - {endIndex} of {totalSuburbs.toLocaleString()}</span>
           <div className="flex gap-1">
-            <button 
+            <button
               className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
             >
               <ChevronLeft size={18} />
             </button>
-            <button 
+            <button
               className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-50"
-              onClick={() => setCurrentPage(p => p + 1)}
-              disabled={endIndex >= totalSuburbs}
+              onClick={() => setCurrentPage(p => Math.min(lastPage, p + 1))}
+              disabled={currentPage >= lastPage}
             >
               <ChevronRight size={18} />
             </button>

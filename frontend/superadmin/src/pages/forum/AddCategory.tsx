@@ -1,7 +1,8 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import toast from 'react-hot-toast'
-import { FolderOpen, FileText } from 'lucide-react'
+import { forumCategoriesApi } from '../../api/services'
 
 interface CategoryForm {
   categoryName: string
@@ -15,10 +16,38 @@ const initialForm: CategoryForm = {
   makeCategoryActive: false
 }
 
+function extractErrorMessage(err: any, fallback: string): string {
+  const errors = err?.response?.data?.errors
+  if (errors) {
+    const first = Object.values(errors)[0]
+    if (Array.isArray(first) && first.length > 0) return String(first[0])
+  }
+  return err?.response?.data?.message ?? fallback
+}
+
 export function AddCategory() {
   const navigate = useNavigate()
+  const { id } = useParams<{ id: string }>()
+  const isEdit = Boolean(id)
   const [form, setForm] = useState<CategoryForm>(initialForm)
   const [errors, setErrors] = useState<Partial<CategoryForm>>({})
+  const [submitting, setSubmitting] = useState(false)
+
+  const { data: category, isLoading } = useQuery({
+    queryKey: ['forum-categories', id],
+    queryFn: () => forumCategoriesApi.get(Number(id)),
+    enabled: isEdit,
+  })
+
+  useEffect(() => {
+    if (category) {
+      setForm({
+        categoryName: category.name,
+        categoryDescription: category.description ?? '',
+        makeCategoryActive: category.status === 'active',
+      })
+    }
+  }, [category])
 
   const handleChange = (field: keyof CategoryForm, value: string | boolean) => {
     setForm(prev => ({ ...prev, [field]: value }))
@@ -29,7 +58,7 @@ export function AddCategory() {
 
   const validate = (): boolean => {
     const newErrors: Partial<CategoryForm> = {}
-    
+
     if (!form.categoryName.trim()) {
       newErrors.categoryName = 'Category Name is required'
     }
@@ -41,134 +70,113 @@ export function AddCategory() {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!validate()) {
       toast.error('Please fill in all required fields')
       return
     }
 
-    toast.success('Category added successfully!')
-    navigate('/forum/list-categories')
+    setSubmitting(true)
+    try {
+      if (isEdit) {
+        await forumCategoriesApi.update(Number(id), {
+          name: form.categoryName,
+          description: form.categoryDescription,
+          status: form.makeCategoryActive ? 'active' : 'inactive',
+        })
+        toast.success('Category updated successfully!')
+      } else {
+        await forumCategoriesApi.create({
+          name: form.categoryName,
+          description: form.categoryDescription,
+        })
+        toast.success('Category added successfully!')
+      }
+      navigate('/forum/list-categories')
+    } catch (err: any) {
+      toast.error(extractErrorMessage(err, isEdit ? 'Failed to update category' : 'Failed to add category'))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleCancel = () => {
     navigate('/forum/list-categories')
   }
 
+  if (isEdit && isLoading) {
+    return (
+      <div className="page-content">
+        <h1 className="page-title">Edit Category</h1>
+        <div className="card p-8 text-center text-gray-400">Loading category...</div>
+      </div>
+    )
+  }
+
   return (
     <div className="page-content">
-      <h1 className="page-title">Add Category</h1>
+      <h1 className="page-title">{isEdit ? 'Edit Category' : 'Add Category'}</h1>
 
-      <div className="bg-white rounded-lg shadow-md border border-gray-200 overflow-hidden">
-        <form onSubmit={handleSubmit}>
-          <div className="p-6 space-y-5">
-            {/* Category Name Field */}
-            <div className="relative">
-              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-                <FolderOpen size={18} />
+      <div className="card">
+        <div className="card-header">
+          <h2 className="card-title">Category Details</h2>
+        </div>
+        <div className="card-body p-6">
+          <form onSubmit={handleSubmit}>
+            <div className="space-y-4">
+              <div>
+                <label className="form-label">
+                  Category Name <span className="text-red-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={form.categoryName}
+                  onChange={(e) => handleChange('categoryName', e.target.value)}
+                  className={`form-input ${errors.categoryName ? 'border-red-500' : ''}`}
+                  placeholder="Enter category name"
+                />
+                {errors.categoryName && <p className="text-red-500 text-xs mt-1">{errors.categoryName}</p>}
               </div>
-              <input
-                type="text"
-                id="categoryName"
-                value={form.categoryName}
-                onChange={(e) => handleChange('categoryName', e.target.value)}
-                className={`peer w-full pl-10 pr-4 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all ${
-                  errors.categoryName ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                placeholder=" "
-              />
-              <label 
-                htmlFor="categoryName"
-                className={`absolute left-10 transition-all duration-200 pointer-events-none
-                  ${form.categoryName ? 'top-1.5 text-xs text-purple-600' : 'top-1/2 -translate-y-1/2 text-sm text-gray-500'}
-                  peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-purple-600 peer-focus:translate-y-0`}
-              >
-                Category Name <span className="text-red-500">*</span>
-              </label>
-              {errors.categoryName && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.categoryName}</p>
-              )}
-            </div>
 
-            {/* Category Description Field */}
-            <div className="relative">
-              <div className="absolute left-3 top-4 text-gray-400">
-                <FileText size={18} />
+              <div>
+                <label className="form-label">
+                  Category Description <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  value={form.categoryDescription}
+                  onChange={(e) => handleChange('categoryDescription', e.target.value)}
+                  rows={4}
+                  className={`form-input form-textarea ${errors.categoryDescription ? 'border-red-500' : ''}`}
+                  placeholder="Enter category description"
+                />
+                {errors.categoryDescription && <p className="text-red-500 text-xs mt-1">{errors.categoryDescription}</p>}
               </div>
-              <textarea
-                id="categoryDescription"
-                value={form.categoryDescription}
-                onChange={(e) => handleChange('categoryDescription', e.target.value)}
-                rows={4}
-                className={`peer w-full pl-10 pr-4 pt-5 pb-2 border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all resize-none ${
-                  errors.categoryDescription ? 'border-red-500 bg-red-50' : 'border-gray-300 hover:border-gray-400'
-                }`}
-                placeholder=" "
-              />
-              <label 
-                htmlFor="categoryDescription"
-                className={`absolute left-10 transition-all duration-200 pointer-events-none
-                  ${form.categoryDescription ? 'top-1.5 text-xs text-purple-600' : 'top-4 text-sm text-gray-500'}
-                  peer-focus:top-1.5 peer-focus:text-xs peer-focus:text-purple-600`}
-              >
-                Category Description <span className="text-red-500">*</span>
-              </label>
-              {errors.categoryDescription && (
-                <p className="text-red-500 text-xs mt-1.5 ml-1">{errors.categoryDescription}</p>
-              )}
-            </div>
 
-            {/* Checkbox */}
-            <div className="pt-2">
-              <label 
-                htmlFor="makeCategoryActive" 
-                className="flex items-center gap-3 cursor-pointer group"
-              >
-                <div className="relative">
+              {/* Checkbox - only meaningful once the category exists */}
+              {isEdit && (
+                <label className="form-checkbox">
                   <input
                     type="checkbox"
-                    id="makeCategoryActive"
                     checked={form.makeCategoryActive}
                     onChange={(e) => handleChange('makeCategoryActive', e.target.checked)}
-                    className="sr-only peer"
                   />
-                  <div className="w-5 h-5 border-2 border-gray-300 rounded transition-all peer-checked:border-purple-600 peer-checked:bg-purple-600 group-hover:border-purple-400">
-                    <svg 
-                      className={`w-full h-full text-white p-0.5 transition-transform ${form.makeCategoryActive ? 'scale-100' : 'scale-0'}`}
-                      fill="none" 
-                      stroke="currentColor" 
-                      viewBox="0 0 24 24"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                </div>
-                <span className="text-sm text-gray-700 group-hover:text-gray-900 transition-colors">
-                  Make Category Active
-                </span>
-              </label>
+                  <span>Make Category Active</span>
+                </label>
+              )}
             </div>
-          </div>
 
-          {/* Footer */}
-          <div className="px-6 py-4 bg-gray-50 border-t border-gray-200 flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition-all"
-            >
-              CANCEL
-            </button>
-            <button
-              type="submit"
-              className="px-5 py-2.5 text-sm font-medium text-white bg-purple-600 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 transition-all"
-            >
-              ADD CATEGORY
-            </button>
-          </div>
-        </form>
+            <div className="flex justify-end gap-3 mt-6">
+              <button type="button" className="btn btn-outline" onClick={handleCancel}>
+                CANCEL
+              </button>
+              <button type="submit" className="btn btn-primary" disabled={submitting}>
+                {submitting ? 'SAVING...' : isEdit ? 'SAVE CATEGORY' : 'ADD CATEGORY'}
+              </button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   )

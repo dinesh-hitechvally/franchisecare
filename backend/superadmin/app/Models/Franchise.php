@@ -21,6 +21,10 @@ class Franchise extends Model
         'postcode',
         'abn',
         'status',
+        'franchisee_type',
+        'has_ipad',
+        'tscs_accepted',
+        'tscs_accepted_at',
         'logo',
         'franchise_fee',
         'royalty_percentage',
@@ -38,6 +42,9 @@ class Franchise extends Model
         'marketing_fee' => 'decimal:2',
         'start_date' => 'date',
         'end_date' => 'date',
+        'has_ipad' => 'boolean',
+        'tscs_accepted' => 'boolean',
+        'tscs_accepted_at' => 'datetime',
     ];
 
     public function users(): HasMany
