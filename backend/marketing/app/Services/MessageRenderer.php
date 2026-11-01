@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Company;
 use App\Models\Contact;
 use App\Models\EmailLog;
+use App\Models\Media;
 
 /**
  * Turns a template body into the final message for one contact:
@@ -27,6 +28,7 @@ class MessageRenderer
             'company_phone' => (string) $company->setting('profile.phone', ''),
             'company_website' => (string) $company->setting('profile.website', ''),
             'company_email' => (string) $company->setting('profile.support_email', ''),
+            'company_logo' => (string) Media::logoUrl($company), // the logo chosen from Media (Settings → Company profile)
             'unsubscribe_url' => $contact
                 ? url("/api/unsubscribe/{$contact->unsubscribe_token}?channel={$channel}")
                 : '#',

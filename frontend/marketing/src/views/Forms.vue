@@ -75,7 +75,7 @@ onMounted(load)
         <td><router-link :to="`/forms/${f.id}/submissions`">{{ f.submissions }}</router-link></td>
         <td>{{ rate(f) }}</td>
         <td><span class="badge" :class="f.active ? 'sent' : ''">{{ f.active ? 'active' : 'paused' }}</span></td>
-        <td class="act"><RowMenu :history="{ type: 'form', id: f.id, title: f.name }" :items="[{ label: 'Edit', to: `/forms/${f.id}` }, { label: 'Inbox', to: `/forms/${f.id}/submissions` }, { label: 'Share', run: () => (embed = f) }, { label: 'Delete', run: () => remove(f), danger: true }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'form', id: f.id, title: f.name }" :items="[{ label: 'Edit', to: `/forms/${f.id}` }, { label: 'View submissions', to: `/forms/${f.id}/submissions` }, { label: 'Share', run: () => (embed = f) }, { label: 'Delete', run: () => remove(f), danger: true }]" /></td>
       </tr>
     </table>
   </div>

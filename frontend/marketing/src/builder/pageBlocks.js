@@ -17,7 +17,8 @@ export const defaultSettings = () => ({ bg: '#ffffff', text: '#1f2937', accent: 
 
 const hex = (c) => (/^#[0-9a-fA-F]{3,8}$/.test(c || '') ? c : '')
 /** Only normal link targets; never javascript: and friends. */
-const url = (u) => (/^(https?:|mailto:|tel:|#|\/)/i.test(String(u || '').trim()) ? String(u).trim() : '#')
+const LOGO_TAG = /^\s*\{\{\s*company_logo\s*\}\}\s*$/ // a brand text that is only the logo tag shows the logo
+const url = (u) => (/^(https?:|mailto:|tel:|#|\/|\{\{\s*company_logo\s*\}\})/i.test(String(u || '').trim()) ? String(u).trim() : '#')
 const lines = (t) => String(t || '').split('\n').map((l) => l.trim()).filter(Boolean)
 
 // The server swaps <!--fc-form:ID--> for that form (0 = none chosen); a bare <!--fc-form--> is a page made before forms were chosen per section.
@@ -31,7 +32,7 @@ const base = (over = {}) => ({ bg: '', bg2: '', color: '', pad: 80, ...over })
 const year = () => new Date().getFullYear()
 
 export const BLOCKS = {
-  nav: { label: 'Navigation', icon: 'header', make: () => ({ bg: '#ffffff', bg2: '', color: '', pad: 0, brand: '{{company_name}}', links: [{ label: 'Features', url: '#features' }, { label: 'FAQ', url: '#faq' }], ctaText: 'Sign up', ctaUrl: '#form' }) },
+  nav: { label: 'Navigation', icon: 'header', make: () => ({ bg: '#ffffff', bg2: '', color: '', pad: 0, brand: '{{company_name}}', logo: '', logoH: 36, links: [{ label: 'Features', url: '#features' }, { label: 'FAQ', url: '#faq' }], ctaText: 'Sign up', ctaUrl: '#form' }) },
   hero: {
     label: 'Hero', icon: 'star',
     make: () => base({ bg: '#eef2ff', pad: 96, layout: 'center', eyebrow: 'Introducing', title: 'A clear headline that says what you offer', subtitle: 'One or two sentences that explain the benefit and why someone should act now.', primaryText: 'Get started', primaryUrl: '#form', secondaryText: '', secondaryUrl: '#features', image: '', bgImage: '', overlay: 45 }),
@@ -62,7 +63,7 @@ const common = [['bg', 'Background colour', 'color'], ['bg2', 'Gradient to (opti
 const cta2 = [['btnText', 'Button text', 'text'], ['btnUrl', 'Button link', 'text']]
 
 export const FIELDS = {
-  nav: [['brand', 'Brand / logo text', 'text'], ['links', 'Menu links', 'items', { sub: [['label', 'Label', 'text'], ['url', 'Link', 'text']], blank: () => ({ label: 'Link', url: '#' }) }], ['ctaText', 'Button text (blank = none)', 'text'], ['ctaUrl', 'Button link', 'text'], ['bg', 'Background colour', 'color'], ['color', 'Text colour', 'color']],
+  nav: [['brand', 'Brand / logo text', 'text'], ['logo', 'Logo image (replaces the text)', 'image'], ['logoH', 'Logo height', 'range', { min: 20, max: 90 }], ['links', 'Menu links', 'items', { sub: [['label', 'Label', 'text'], ['url', 'Link', 'text']], blank: () => ({ label: 'Link', url: '#' }) }], ['ctaText', 'Button text (blank = none)', 'text'], ['ctaUrl', 'Button link', 'text'], ['bg', 'Background colour', 'color'], ['color', 'Text colour', 'color']],
   hero: [
     ['layout', 'Layout', 'select', { options: [['center', 'Centred text'], ['split', 'Text + image']] }], ['eyebrow', 'Small label above', 'text'], ['title', 'Headline', 'text'], ['subtitle', 'Sub-headline', 'textarea'],
     ['primaryText', 'Main button text', 'text'], ['primaryUrl', 'Main button link', 'text'], ['secondaryText', 'Second button text (optional)', 'text'], ['secondaryUrl', 'Second button link', 'text'],
@@ -99,7 +100,7 @@ const img = (src, alt) => `<img src="${esc(url(src))}" alt="${esc(alt)}" loading
 export function renderBlock(b, s, edit = false) {
   switch (b.type) {
     case 'nav':
-      return `<header class="nav" style="${wrapStyle(b)}"><div class="wrap nav-in"><a class="brand" href="#">${esc(b.brand)}</a><nav class="nav-links">${(b.links || []).map((l) => `<a href="${esc(url(l.url))}">${esc(l.label)}</a>`).join('')}</nav>${btn(b.ctaText, b.ctaUrl, 'sm')}</div></header>`
+      return `<header class="nav" style="${wrapStyle(b)}"><div class="wrap nav-in"><a class="brand" href="#">${b.logo || LOGO_TAG.test(b.brand || '') ? `<img src="${esc(url(b.logo || '{{company_logo}}'))}" alt="${esc(b.brand)}" style="height:${Number(b.logoH) || 36}px;width:auto;border-radius:0">` : esc(b.brand)}</a><nav class="nav-links">${(b.links || []).map((l) => `<a href="${esc(url(l.url))}">${esc(l.label)}</a>`).join('')}</nav>${btn(b.ctaText, b.ctaUrl, 'sm')}</div></header>`
 
     case 'hero': {
       const photo = b.bgImage ? `background-image:linear-gradient(rgba(0,0,0,${(b.overlay || 0) / 100}),rgba(0,0,0,${(b.overlay || 0) / 100})),url('${esc(url(b.bgImage))}');background-size:cover;background-position:center;color:#fff;` : ''

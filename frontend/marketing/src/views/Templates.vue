@@ -1,5 +1,5 @@
 <script setup>
-import { fmtDate } from '../format'
+import { fmtDateTime } from '../format'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api, { errorMessage } from '../api'
@@ -23,7 +23,7 @@ const shown = computed(() => rows.value.filter((r) => (tab.value === 'all' || r.
   && (!age.value || new Date(r.updated_at) >= new Date(Date.now() - age.value * 86400000))
   && (!search.value.trim() || [r.name, r.subject, r.body && r.body.length < 4000 ? plain(r) : ''].some((t) => String(t || '').toLowerCase().includes(search.value.trim().toLowerCase())))))
 const count = (t) => (t === 'all' ? rows.value.length : rows.value.filter((r) => r.type === t).length)
-const when = (d) => fmtDate(d)
+const when = (d) => fmtDateTime(d)
 const plain = (t) => (t.body || '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)
 const editing = ref(null) // id | 'new'
 const designer = ref(false) // email templates use the visual designer

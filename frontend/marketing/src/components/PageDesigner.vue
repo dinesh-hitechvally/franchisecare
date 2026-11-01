@@ -2,6 +2,8 @@
 import { ref, reactive, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import Icon from './Icon.vue'
 import ImagePicker from './ImagePicker.vue'
+import MediaPicker from './MediaPicker.vue'
+import { useAuth } from '../stores/auth'
 import RichText from './RichText.vue'
 import { BLOCKS, FIELDS, LAYOUTS, setForms, defaultSettings, newBlock, renderBlock, renderBody, renderPage, pageCss, pageVars, uid } from '../builder/pageBlocks'
 
@@ -20,7 +22,11 @@ const selected = ref(null)
 const device = ref('desktop')
 const tab = ref('view')
 const hover = ref(-1)
+const auth = useAuth()
+// {{company_logo}} is filled in when the page is published; show the real logo while designing
+const withLogo = (h) => h.split('{{company_logo}}').join(auth.company?.logo_url || '')
 const imagePicker = ref(null)
+const mediaPicker = ref(null) // { block, key } while choosing from the media library
 const copied = ref(false)
 
 const s = computed(() => ({ ...defaultSettings(), ...(design.value?.settings || {}) }))
@@ -102,6 +108,11 @@ function chooseImage(block, key) {
     },
   }
 }
+function pickMedia(m) {
+  mediaPicker.value.block[mediaPicker.value.key] = m.url
+  if ('alt' in mediaPicker.value.block && !mediaPicker.value.block.alt) mediaPicker.value.block.alt = m.alt || m.name
+  mediaPicker.value = null
+}
 function pick(img) {
   imagePicker.value.apply(img)
   imagePicker.value = null
@@ -175,7 +186,7 @@ const save = () => emit('save', { name: meta.name, design: { ...design.value, ki
               <template v-for="(b, i) in blocks" :key="b.id">
                 <div class="dz" :class="{ hov: hover === i }" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)"></div>
                 <div class="cv-b" :class="{ sel: selected === b.id }" draggable="true" @dragstart="dragMove($event, i)" @click.prevent.stop="selected = b.id">
-                  <div class="cv-html" v-html="renderBlock(b, s, true)"></div>
+                  <div class="cv-html" v-html="withLogo(renderBlock(b, s, true))"></div>
                   <div v-if="selected === b.id" class="cv-tools" @click.stop>
                     <span class="lbl">{{ BLOCKS[b.type].label }}</span>
                     <span class="grip" title="Drag to move"><Icon name="drag" :size="16" /></span>
@@ -211,8 +222,10 @@ const save = () => emit('save', { name: meta.name, design: { ...design.value, ki
             <label v-else-if="kind === 'check'" class="check"><input v-model="current[k]" type="checkbox" /> {{ label }}</label>
             <div v-else-if="kind === 'color'" class="row"><input v-model="current[k]" type="color" class="clr" /><input v-model="current[k]" placeholder="none" /></div>
             <div v-else-if="kind === 'image'">
-              <img v-if="current[k]" :src="current[k]" class="thumb" />
-              <button class="btn sm" type="button" @click="chooseImage(current, k)">Choose free image</button>
+              <img v-if="current[k]" :src="withLogo(current[k])" class="thumb" />
+              <button class="btn sm" type="button" @click="mediaPicker = { block: current, key: k }">Choose from media</button>
+              <button class="btn ghost sm" type="button" style="margin-left: 6px" @click="chooseImage(current, k)">Free stock image</button>
+              <button v-if="k === 'logo'" class="btn ghost sm" type="button" style="margin-left: 6px" @click="current[k] = '{{company_logo}}'">Use company logo</button>
               <button v-if="current[k]" class="btn ghost sm" type="button" style="margin-left: 6px" @click="current[k] = ''">Remove</button>
               <input v-model="current[k]" placeholder="…or paste an image URL" style="margin-top: 6px" />
             </div>
@@ -253,6 +266,7 @@ const save = () => emit('save', { name: meta.name, design: { ...design.value, ki
       </aside>
     </div>
 
+    <MediaPicker v-if="mediaPicker" @close="mediaPicker = null" @pick="pickMedia" />
     <ImagePicker v-if="imagePicker" @close="imagePicker = null" @pick="pick" />
   </div>
 </template>

@@ -6,6 +6,7 @@ import { useFilters } from '../composables/useFilters'
 import RowMenu from '../components/RowMenu.vue'
 import Modal from '../components/Modal.vue'
 import PageDesigner from '../components/PageDesigner.vue'
+import Icon from '../components/Icon.vue'
 
 const rows = ref([])
 const { f: flt, shown: visible, dirty: fDirty, clear: fClear } = useFilters(rows, { text: (p) => [p.name, p.title, p.form?.name], match: { status: (p) => (p.published ? 'published' : 'draft') } })
@@ -87,13 +88,13 @@ onMounted(async () => { forms.value = (await api.get('/forms')).data; load() })
     <p v-if="!rows.length" class="empty">No landing pages yet.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Page</th><th>Form</th><th>Views</th><th>Status</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Title</th><th>Views</th><th>Status</th><th class="act">Actions</th></tr></thead>
       <tr v-for="p in visible" :key="p.id">
-        <td><b>{{ p.name }}</b><br /><a v-if="p.published" :href="p.url" target="_blank" rel="noopener"><small>{{ p.url }}</small></a><small v-else>Not published</small></td>
-        <td>{{ p.form?.name || '—' }}</td>
+        <td><a href="#" class="pg-name" @click.prevent="edit(p)"><b>{{ p.name }}</b></a><br /><a v-if="p.published" :href="p.url" target="_blank" rel="noopener"><small>{{ p.url }}</small></a><small v-else>Not published</small></td>
+        <td>{{ p.title || 'Landing page' }}<small v-if="!p.title" style="color: #9ca3af"> (default)</small></td>
         <td>{{ p.views }}</td>
-        <td><span class="badge" :class="p.published ? 'sent' : ''">{{ p.published ? 'published' : 'draft' }}</span></td>
-        <td class="act"><RowMenu :history="{ type: 'landing_page', id: p.id, title: p.name }" :items="[{ label: 'Edit', run: () => edit(p) }, { label: p.published ? 'Unpublish' : 'Publish', run: () => togglePublish(p) }, { label: 'Delete', run: () => remove(p), danger: true }]" /></td>
+        <td><div class="st"><span class="badge" :class="p.published ? 'sent' : ''">{{ p.published ? 'published' : 'draft' }}</span> <a v-if="p.published" :href="p.url" target="_blank" rel="noopener" class="eye" title="View the live page"><Icon name="eye" :size="18" /></a></div></td>
+        <td class="act"><RowMenu :history="{ type: 'landing_page', id: p.id, title: p.name }" :items="[{ label: 'Edit', run: () => edit(p) }, ...(p.form_id ? [{ label: 'View submissions', to: `/forms/${p.form_id}/submissions` }] : []), { label: p.published ? 'Unpublish' : 'Publish', run: () => togglePublish(p) }, { label: 'Delete', run: () => remove(p), danger: true }]" /></td>
       </tr>
     </table>
   </div>
@@ -111,5 +112,8 @@ onMounted(async () => { forms.value = (await api.get('/forms')).data; load() })
 </template>
 
 <style scoped>
+.pg-name { color: inherit; text-decoration: none; } .pg-name:hover { color: #3f51b5; text-decoration: underline; }
+.st { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.eye { color: #6b7280; display: inline-flex; margin-left: auto; } .eye:hover { color: #3f51b5; }
 .intro { color: #6b7280; margin: -8px 0 18px; max-width: 760px; }
 </style>

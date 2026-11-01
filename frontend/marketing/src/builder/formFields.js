@@ -41,7 +41,7 @@ export const defaultForm = () => ({
   notify_on: false, notify_text: '', autoreply: false, autoreply_subject: '', autoreply_body: '', autoreply_attachments: [],
 })
 
-const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'business_name', 'unsubscribe_url', 'website', 'id', 'company_id']
+const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'website', 'id', 'company_id']
 
 /** Mirrors the server's key generation; only used to show "stored as …" while editing. */
 export const slug = (label) => {

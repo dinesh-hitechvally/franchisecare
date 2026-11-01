@@ -129,4 +129,8 @@ A database written before this (TIMESTAMP columns, MySQL on a non-UTC server) ca
 
 Things that need an image **pick it from Media** instead of asking for a web address or a direct upload. First user: **Settings → Company profile → Logo → Choose from media** (images only, this company's own; shown beside the company name in the sidebar). A file that is the current logo cannot be deleted until another is chosen.
 
-Tables: `media` (+ `media_history`, so every change to a file is mirrored like the other tables).
+**Free online images.** Media has tabs: **All**, **Uploaded**, **From free sources** (copies saved from online) and **Find free images** (live search of Openverse and Wikimedia, plus Unsplash / Pexels / Pixabay when the server has their keys). *Add to library* saves a copy with the photographer's credit, licence and source link. The logo picker has the same two tabs (*My media* / *Free online images*); *Use this image* saves the copy and selects it. API: `GET /api/media?origin=uploaded|online&source=…`, `POST /api/media/import`.
+
+The server downloads these images, so imports are restricted: only addresses the image search just returned for that company (remembered 1 hour) can be imported, hosts must be public (also after redirects), downloads are capped at 8 MB, and the bytes must really be PNG/JPG/GIF/WebP. Adding the same photo twice returns the existing copy.
+
+Tables: `media` (+ `media_history`, so every change to a file is mirrored like the other tables). Columns `source` (`upload` or the free source), `credit`, `credit_url`, `license`, `source_url` describe where an image came from.

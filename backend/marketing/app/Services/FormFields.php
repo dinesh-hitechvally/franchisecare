@@ -28,7 +28,7 @@ class FormFields
     public const WIDTHS = ['full', 'two_thirds', 'half', 'third', 'quarter'];
 
     /** Names a custom field may not use (they collide with contact columns or the honeypot). */
-    public const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'business_name', 'unsubscribe_url', 'website', 'id', 'company_id'];
+    public const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'website', 'id', 'company_id'];
 
     public const FONTS = [
         'sans' => 'Arial, Helvetica, sans-serif',
