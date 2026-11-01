@@ -12,7 +12,7 @@ const emit = defineEmits(['update:modelValue'])
 const host = ref(null)
 let view
 
-const MERGE_TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'business_name', 'unsubscribe_url']
+const MERGE_TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'unsubscribe_url']
 const mergeTags = (ctx) => {
   const m = ctx.matchBefore(/\{\{\s*\w*/)
   if (!m || (m.from === m.to && !ctx.explicit)) return null

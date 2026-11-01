@@ -2,21 +2,25 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import api, { errorMessage } from '../api'
 import Icon from './Icon.vue'
+import Modal from './Modal.vue'
+import AttachmentsField from './AttachmentsField.vue'
 import ImagePicker from './ImagePicker.vue'
 import RichText from './RichText.vue'
 import CodeEditor from './CodeEditor.vue'
 import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, uid } from '../builder/blocks'
 
 // v-model-less: pass `initial` ({ name, subject, design, html }), receive `save` / `close`.
-const props = defineProps({ initial: Object, showName: Boolean, saving: Boolean })
+const props = defineProps({ initial: Object, showName: Boolean, saving: Boolean, noSubject: Boolean })
 const emit = defineEmits(['save', 'close'])
 
 const init = props.initial || {}
 const meta = reactive({ name: init.name || '', subject: init.subject || '' })
+const attachments = ref([...(init.attachments || [])])
+const attachOpen = ref(false)
 // why Save is disabled, shown next to the button and as red outlines on the empty fields
 const missing = computed(() => [
   ...(props.showName && !meta.name.trim() ? ['template name'] : []),
-  ...(!meta.subject.trim() ? ['subject line'] : []),
+  ...(!props.noSubject && !meta.subject.trim() ? ['subject line'] : []),
 ])
 const design = ref(
   init.design?.blocks ? JSON.parse(JSON.stringify(init.design))
@@ -39,6 +43,15 @@ const loadLayouts = async () => {
   } catch (e) { /* gallery still works with the built-in layouts */ }
 }
 onMounted(loadLayouts)
+
+// forms the "Form" block can point to
+const forms = ref([])
+onMounted(async () => { try { forms.value = (await api.get('/forms')).data } catch (e) { /* the block just offers none */ } })
+function pickForm(b, id) {
+  const f = forms.value.find((x) => String(x.id) === String(id))
+  b.form_id = f ? f.id : ''
+  b.form_url = f ? f.url : ''
+}
 
 function useSaved(l) {
   const d = JSON.parse(JSON.stringify(l.design))
@@ -177,6 +190,7 @@ const FIELDS = {
   text: [['html', 'Content', 'rich'], ['size', 'Font size', 'range', { min: 11, max: 28 }], ['color', 'Text colour', 'color'], ['align', 'Align', 'select', { options: ALIGN }]],
   image: [['src', 'Image', 'image'], ['alt', 'Alt text', 'text'], ['link', 'Link URL (optional)', 'text'], ['width', 'Width %', 'range', { min: 20, max: 100 }], ['align', 'Align', 'select', { options: ALIGN }], ['radius', 'Corner radius', 'range', { min: 0, max: 40 }], ['caption', 'Credit / caption', 'text']],
   button: [['text', 'Label', 'text'], ['url', 'Link URL', 'text'], ['btnBg', 'Button colour', 'color'], ['color', 'Text colour', 'color'], ['align', 'Align', 'select', { options: ALIGN }], ['radius', 'Corner radius', 'range', { min: 0, max: 40 }]],
+  form: [['form_id', 'Form to open', 'form'], ['heading', 'Heading', 'text'], ['text', 'Text', 'text'], ['btnText', 'Button label', 'text'], ['btnBg', 'Button colour', 'color'], ['color', 'Button text colour', 'color'], ['boxBg', 'Box colour', 'color'], ['align', 'Align', 'select', { options: ALIGN }], ['radius', 'Corner radius', 'range', { min: 0, max: 40 }]],
   split: [['src', 'Image', 'image'], ['alt', 'Alt text', 'text'], ['side', 'Image side', 'select', { options: [['left', 'Left'], ['right', 'Right']] }], ['html', 'Text', 'rich']],
   divider: [['color', 'Colour', 'color'], ['thickness', 'Thickness', 'range', { min: 1, max: 10 }]],
   spacer: [['height', 'Height', 'range', { min: 8, max: 120 }]],
@@ -207,7 +221,7 @@ function pick(img) {
 }
 
 function save() {
-  emit('save', { name: meta.name, subject: meta.subject, design: design.value, body: html.value })
+  emit('save', { name: meta.name, subject: meta.subject, design: design.value, body: html.value, attachments: attachments.value })
 }
 </script>
 
@@ -217,17 +231,24 @@ function save() {
     <header class="ed-top">
       <button class="ed-back" @click="emit('close')"><Icon name="back" :size="18" /> Back</button>
       <input v-if="showName" v-model="meta.name" :class="{ miss: !meta.name.trim() }" class="ed-in" placeholder="Template name *" style="max-width: 240px" />
-      <input v-model="meta.subject" :class="{ miss: !meta.subject.trim() }" class="ed-in" placeholder="Subject line * (merge tags allowed, e.g. Hi {{first_name}})" />
+      <input v-if="!noSubject" v-model="meta.subject" :class="{ miss: !meta.subject.trim() }" class="ed-in" placeholder="Subject line * (merge tags allowed, e.g. Hi {{first_name}})" />
       <div class="seg" v-if="design">
         <button :class="{ on: device === 'desktop' }" title="Desktop" @click="device = 'desktop'"><Icon name="desktop" :size="18" /></button>
         <button :class="{ on: device === 'mobile' }" title="Mobile" @click="device = 'mobile'"><Icon name="mobile" :size="18" /></button>
       </div>
       <button v-if="design" class="btn ghost sm" @click="picking = true">Change layout</button>
       <button v-if="design" class="btn ghost sm" @click="openSaveDlg">Save as layout</button>
+      <button class="btn ghost sm" @click="attachOpen = true">&#128206; Attachments{{ attachments.length ? ` (${attachments.length})` : '' }}</button>
       <span v-if="flash" class="flash">{{ flash }}</span>
       <span v-if="design && missing.length" class="need">Add a {{ missing.join(' and a ') }} to save</span>
       <button class="btn" :disabled="!design || saving || missing.length > 0" @click="save">{{ saving ? 'Saving…' : 'Save & close' }}</button>
     </header>
+
+    <Modal v-if="attachOpen" title="Attachments" @close="attachOpen = false">
+      <p class="hint" style="margin-top: 0">These files are attached to every email sent with this design.</p>
+      <AttachmentsField v-model="attachments" />
+      <button class="btn" style="margin-top: 14px" @click="attachOpen = false">Done</button>
+    </Modal>
 
     <!-- layout gallery -->
     <div v-if="picking" class="gallery">
@@ -318,6 +339,10 @@ function save() {
             <textarea v-else-if="kind === 'textarea'" v-model="current[k]" rows="8"></textarea>
             <RichText v-else-if="kind === 'rich'" v-model="current[k]" />
             <input v-else-if="kind === 'range'" v-model.number="current[k]" type="range" :min="o.min" :max="o.max" />
+            <div v-else-if="kind === 'form'">
+              <select :value="current[k]" @change="pickForm(current, $event.target.value)"><option value="">— Choose a form —</option><option v-for="f in forms" :key="f.id" :value="f.id">{{ f.name }}</option></select>
+              <small class="hint">{{ forms.length ? 'Email apps can’t show a form inside an email, so readers get a button that opens the form on its own page.' : 'No forms yet — create one under Content → Forms.' }}</small>
+            </div>
             <select v-else-if="kind === 'select'" v-model="current[k]"><option v-for="[v, l] in o.options" :key="v" :value="v">{{ l }}</option></select>
             <div v-else-if="kind === 'color'" class="row"><input v-model="current[k]" type="color" class="clr" /><input v-model="current[k]" placeholder="none" /></div>
             <div v-else-if="kind === 'image'">

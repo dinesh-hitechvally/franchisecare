@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api, { errorMessage } from '../api'
 import MessageEditor from '../components/MessageEditor.vue'
 import EmailDesigner from '../components/EmailDesigner.vue'
+import AttachmentsField from '../components/AttachmentsField.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -17,12 +18,12 @@ const busy = ref(false)
 const testTo = ref('')
 const when = ref('now')
 
-const form = reactive({ name: '', type: 'email', template_id: '', contact_list_id: '', subject: '', body: '', design: null, scheduled_at: '' })
+const form = reactive({ name: '', type: route.query.type === 'sms' ? 'sms' : 'email', template_id: '', contact_list_id: '', segment_id: '', subject: '', body: '', design: null, attachments: [], scheduled_at: '' })
 const designer = ref(false)
 const rawHtml = ref(false)
-const designInitial = () => ({ subject: form.subject, design: form.design, html: form.design ? '' : form.body })
+const designInitial = () => ({ subject: form.subject, design: form.design, html: form.design ? '' : form.body, attachments: form.attachments })
 function designed(d) {
-  Object.assign(form, { subject: d.subject, body: d.body, design: d.design })
+  Object.assign(form, { subject: d.subject, body: d.body, design: d.design, attachments: d.attachments || [] })
   designer.value = false
 }
 function useRaw() {
@@ -30,6 +31,16 @@ function useRaw() {
   form.design = null // hand-edited HTML no longer matches the visual design
 }
 const locked = computed(() => campaign.value && !['draft', 'scheduled'].includes(campaign.value.status))
+const segments = ref([])
+const audience = computed({
+  get: () => (form.segment_id ? 'segment:' + form.segment_id : form.contact_list_id ? 'list:' + form.contact_list_id : ''),
+  set: (v) => {
+    const [kind, id] = v.split(':')
+    form.contact_list_id = kind === 'list' ? Number(id) : ''
+    form.segment_id = kind === 'segment' ? Number(id) : ''
+  },
+})
+const audienceName = computed(() => (form.segment_id ? 'segment "' + segments.value.find((x) => x.id === form.segment_id)?.name + '"' : form.contact_list_id ? 'list "' + lists.value.find((l) => l.id === form.contact_list_id)?.name + '"' : 'ALL contacts'))
 const typeTemplates = computed(() => templates.value.filter((t) => t.type === form.type))
 
 // <input type=datetime-local> works in local time without a timezone
@@ -37,12 +48,12 @@ const toLocal = (iso) => (iso ? new Date(new Date(iso) - new Date().getTimezoneO
 
 function applyTemplate() {
   const t = templates.value.find((x) => x.id === form.template_id)
-  if (t) { form.subject = t.subject || ''; form.body = t.body; form.design = t.design || null; rawHtml.value = false }
+  if (t) { form.subject = t.subject || ''; form.body = t.body; form.design = t.design || null; form.attachments = t.attachments || []; rawHtml.value = false }
 }
 watch(() => form.type, () => { form.template_id = '' })
 
 function payload() {
-  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null }
+  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, segment_id: form.segment_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null }
 }
 
 async function save() {
@@ -60,7 +71,7 @@ async function onSave() {
 }
 
 async function onSend() {
-  const who = form.contact_list_id ? lists.value.find((l) => l.id === form.contact_list_id)?.name : 'ALL contacts'
+  const who = audienceName.value
   if (!confirm(`${when.value === 'later' ? 'Schedule' : 'Send'} this ${form.type} campaign to ${who}?`)) return
   busy.value = true
   try {
@@ -79,11 +90,13 @@ async function onTest() {
 
 onMounted(async () => {
   lists.value = (await api.get('/lists')).data
+  segments.value = (await api.get('/segments')).data
+  if (route.query.segment_id) form.segment_id = Number(route.query.segment_id) // coming from Segments → Send campaign
   templates.value = (await api.get('/templates')).data
   if (id.value) {
     const { data } = await api.get(`/campaigns/${id.value}`)
     campaign.value = data
-    Object.assign(form, { name: data.name, type: data.type, template_id: data.template_id || '', contact_list_id: data.contact_list_id || '', subject: data.subject || '', body: data.body, design: data.design || null, scheduled_at: toLocal(data.scheduled_at) })
+    Object.assign(form, { name: data.name, type: data.type, template_id: data.template_id || '', contact_list_id: data.contact_list_id || '', segment_id: data.segment_id || '', subject: data.subject || '', body: data.body, design: data.design || null, attachments: data.attachments || [], scheduled_at: toLocal(data.scheduled_at) })
     if (data.scheduled_at) when.value = 'later'
   }
 })
@@ -118,7 +131,11 @@ onMounted(async () => {
         </div>
         <div class="field">
           <label>Audience</label>
-          <select v-model="form.contact_list_id"><option value="">All contacts</option><option v-for="l in lists" :key="l.id" :value="l.id">{{ l.name }} ({{ l.contacts_count }})</option></select>
+          <select v-model="audience">
+            <option value="">All contacts</option>
+            <optgroup v-if="lists.length" label="Lists"><option v-for="l in lists" :key="'l' + l.id" :value="'list:' + l.id">{{ l.name }} ({{ l.contacts_count }})</option></optgroup>
+            <optgroup v-if="segments.length" label="Segments"><option v-for="g in segments" :key="'s' + g.id" :value="'segment:' + g.id">{{ g.name }} ({{ g.contacts_count }})</option></optgroup>
+          </select>
         </div>
       </div>
       <div class="field" style="max-width: 360px">
@@ -139,6 +156,12 @@ onMounted(async () => {
       <p v-else class="empty">No design yet. Choose a template above, or click “Design email” to build one.</p>
     </div>
     <div v-else class="card"><MessageEditor :type="form.type" v-model:subject="form.subject" v-model:body="form.body" /></div>
+
+    <div v-if="form.type === 'email'" class="card">
+      <h2>Attachments</h2>
+      <p class="hint" style="margin-top: 0">Files attached to every email in this campaign, including the test email.</p>
+      <AttachmentsField v-model="form.attachments" :disabled="locked" />
+    </div>
 
     <div v-if="!locked" class="card">
       <h2>Delivery</h2>

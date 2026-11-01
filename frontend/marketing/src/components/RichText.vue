@@ -5,7 +5,7 @@ import { ref, onMounted, watch } from 'vue'
 const props = defineProps({ modelValue: String })
 const emit = defineEmits(['update:modelValue'])
 const el = ref(null)
-const TAGS = ['first_name', 'last_name', 'business_name', 'unsubscribe_url']
+const TAGS = ['first_name', 'last_name', 'company_name', 'unsubscribe_url']
 
 onMounted(() => { el.value.innerHTML = props.modelValue || '' })
 // only push outside changes in; never rewrite while the user is typing (keeps the caret)

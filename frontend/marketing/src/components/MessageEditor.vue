@@ -7,7 +7,7 @@ import ImagePicker from './ImagePicker.vue'
 const props = defineProps({ type: String, subject: String, body: String })
 const emit = defineEmits(['update:subject', 'update:body'])
 
-const TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'business_name', 'unsubscribe_url']
+const TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'unsubscribe_url']
 const tag = (t) => `{{${t}}}`
 const subjectHint = 'Subject line, e.g. Hi ' + tag('first_name')
 const bodyHint = computed(() => (props.type === 'email' ? `<h1>Hello ${tag('first_name')}</h1>` : `Hi ${tag('first_name')}, …`))

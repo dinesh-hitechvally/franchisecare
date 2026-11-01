@@ -10,7 +10,7 @@ const mode = ref('login')
 const error = ref('')
 const busy = ref(false)
 const showPass = ref(false)
-const form = reactive({ business_name: '', name: '', email: '', password: '', password_confirmation: '' })
+const form = reactive({ company_name: '', name: '', email: '', password: '', password_confirmation: '' })
 
 async function submit() {
   busy.value = true
@@ -34,7 +34,7 @@ async function submit() {
         <div v-if="error" class="lg-err">{{ error }}</div>
 
         <template v-if="mode === 'register'">
-          <div class="lg-field"><input v-model="form.business_name" placeholder="Business name" required /></div>
+          <div class="lg-field"><input v-model="form.company_name" placeholder="Company name" required /></div>
           <div class="lg-field"><input v-model="form.name" placeholder="Your name" required /></div>
         </template>
 
@@ -60,7 +60,7 @@ async function submit() {
       </div>
     </div>
 
-    <p class="lg-foot">Email &amp; SMS marketing for your business</p>
+    <p class="lg-foot">Email &amp; SMS marketing for your company</p>
   </div>
 </template>
 

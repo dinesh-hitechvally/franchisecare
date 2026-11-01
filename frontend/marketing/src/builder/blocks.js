@@ -26,7 +26,7 @@ export const defaultSettings = () => ({
 const pad = (y = 16, x = 24) => ({ padY: y, padX: x, bg: '' })
 
 export const BLOCKS = {
-  header: { label: 'Header', icon: 'header', make: () => ({ text: '{{business_name}}', align: 'center', size: 22, color: '#111111', ...pad(22, 24), bg: '#ffffff' }) },
+  header: { label: 'Header', icon: 'header', make: () => ({ text: '{{company_name}}', align: 'center', size: 22, color: '#111111', ...pad(22, 24), bg: '#ffffff' }) },
   hero: {
     label: 'Hero banner', icon: 'star',
     make: () => ({
@@ -39,6 +39,8 @@ export const BLOCKS = {
   text: { label: 'Text', icon: 'text', make: () => ({ html: '<p>Write your message here. You can use merge tags like {{first_name}}.</p>', align: 'left', size: 16, color: '', ...pad() }) },
   image: { label: 'Image', icon: 'image', make: () => ({ src: '', alt: '', link: '', align: 'center', width: 100, radius: 0, caption: '', ...pad(8, 0) }) },
   button: { label: 'Button', icon: 'button', make: () => ({ text: 'Click here', url: 'https://example.com', btnBg: '#3f51b5', color: '#ffffff', align: 'center', radius: 4, ...pad(16, 24) }) },
+  // Email apps can't run a form, so this is a card whose button opens the chosen form's hosted page (form_url is filled in when a form is picked).
+  form: { label: 'Form', icon: 'email', make: () => ({ form_id: '', form_url: '', heading: 'We’d love to hear from you', text: 'It only takes a minute to fill in.', btnText: 'Open the form', btnBg: '#3f51b5', color: '#ffffff', boxBg: '#f3f4f6', align: 'center', radius: 4, ...pad(20, 24) }) },
   features: {
     label: '3 Features', icon: 'features',
     make: () => ({
@@ -57,7 +59,7 @@ export const BLOCKS = {
   social: { label: 'Social links', icon: 'social', make: () => ({ links: [{ name: 'Facebook', url: '' }, { name: 'Instagram', url: '' }, { name: 'Website', url: '' }], ...pad() }) },
   footer: {
     label: 'Footer', icon: 'footer',
-    make: () => ({ html: '<p>{{business_name}}<br>You are receiving this email because you subscribed.<br><a href="{{unsubscribe_url}}">Unsubscribe</a></p>', color: '#6b7280', ...pad(24, 24) }),
+    make: () => ({ html: '<p>{{company_name}}<br>You are receiving this email because you subscribed.<br><a href="{{unsubscribe_url}}">Unsubscribe</a></p>', color: '#6b7280', ...pad(24, 24) }),
   },
   html: { label: 'Custom HTML', icon: 'code', make: () => ({ html: '<p>Custom HTML</p>', ...pad(8, 24) }) },
 }
@@ -108,6 +110,14 @@ export function renderBlock(b, s, edit = false) {
 
     case 'button':
       return wrap(`<div style="text-align:${b.align};">${button(b.text, b.url, b.btnBg, b.color, b.radius, font)}</div>`)
+
+    case 'form': {
+      if (!b.form_url) return edit ? wrap(placeholder('Choose a form in the panel on the right', 110)) : ''
+      return wrap(`<div style="background:${b.boxBg || '#f3f4f6'};border-radius:8px;padding:24px;text-align:${b.align};font-family:${font};">`
+        + (b.heading ? `<div style="font-weight:700;font-size:20px;color:${s.textColor};margin-bottom:8px;">${esc(b.heading)}</div>` : '')
+        + (b.text ? `<div style="font-size:15px;line-height:1.5;color:#6b7280;margin-bottom:18px;">${esc(b.text)}</div>` : '')
+        + `${button(b.btnText || 'Open the form', b.form_url, b.btnBg, b.color, b.radius, font)}</div>`)
+    }
 
     case 'features': {
       const cells = (b.items || []).map((it) =>
@@ -203,7 +213,7 @@ export const LAYOUTS = [
         B('divider'),
         B('features', {
           items: [
-            { icon: '📰', title: 'Latest news', text: 'Updates from around the business.' },
+            { icon: '📰', title: 'Latest news', text: 'Updates from around the company.' },
             { icon: '💡', title: 'Tips & ideas', text: 'Simple ways to get more value.' },
             { icon: '🎁', title: 'Member offers', text: 'Deals just for our subscribers.' },
           ],
@@ -279,7 +289,7 @@ export const LAYOUTS = [
       blocks: [
         B('header', { color: '#4527a0' }),
         B('hero', {
-          bg: '#4527a0', emoji: '📣', eyebrow: 'Announcement', title: 'Big news from {{business_name}}', size: 38,
+          bg: '#4527a0', emoji: '📣', eyebrow: 'Announcement', title: 'Big news from {{company_name}}', size: 38,
           subtitle: 'We have something exciting to share with you.', subColor: '#d1c4e9',
           btnText: 'Read the details', btnBg: '#ffca28', btnColor: '#311b92', padY: 56,
         }),
@@ -307,7 +317,7 @@ export const LAYOUTS = [
         B('header', { color: '#ad1457' }),
         B('hero', {
           bg: '#ec407a', emoji: '🎂🎉', eyebrow: 'Happy birthday', title: "{{first_name}}, it's your day!", size: 42,
-          subtitle: 'Wishing you a fantastic year ahead from all of us at {{business_name}}.', subColor: '#fce4ec', btnText: '', padY: 60,
+          subtitle: 'Wishing you a fantastic year ahead from all of us at {{company_name}}.', subColor: '#fce4ec', btnText: '', padY: 60,
         }),
         B('text', { align: 'center', padY: 32, size: 18, html: "<p>To celebrate, here's a little gift just for you:</p>" }),
         B('coupon', { label: 'Your birthday gift', code: 'BDAY20', note: 'Redeem within 30 days', boxBg: '#fff8e1', border: '#ec407a', color: '#ad1457' }),

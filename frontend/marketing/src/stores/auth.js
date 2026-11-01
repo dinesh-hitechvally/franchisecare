@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import api from '../api'
 
 export const useAuth = defineStore('auth', {
-  state: () => ({ user: null, business: null, token: localStorage.getItem('token') }),
+  state: () => ({ user: null, company: null, token: localStorage.getItem('token') }),
   actions: {
     set(data) {
       if (data.token) {
@@ -10,7 +10,7 @@ export const useAuth = defineStore('auth', {
         localStorage.setItem('token', data.token)
       }
       this.user = data.user
-      this.business = data.business
+      this.company = data.company
     },
     async login(form) {
       this.set((await api.post('/login', form)).data)

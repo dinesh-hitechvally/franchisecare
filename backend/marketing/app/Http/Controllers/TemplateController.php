@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Template;
+use App\Services\Attachments;
 use Illuminate\Http\Request;
 
 class TemplateController extends Controller
@@ -33,12 +34,17 @@ class TemplateController extends Controller
 
     protected function validated(Request $request): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'name' => 'required|string|max:255',
             'type' => 'required|in:email,sms',
             'subject' => 'nullable|string|max:255|required_if:type,email',
             'body' => 'required|string',
             'design' => 'nullable|array',
+            'attachments' => 'nullable|array|max:10',
+            'attachments.*.token' => 'required|string|size:32',
         ]);
+        $data['attachments'] = $data['type'] === 'email' ? Attachments::clean($data['attachments'] ?? null, $request->user()->company_id) : null;
+
+        return $data;
     }
 }

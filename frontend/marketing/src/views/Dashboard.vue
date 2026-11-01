@@ -30,7 +30,7 @@ const ago = (s) => new Date(s).toLocaleString([], { day: 'numeric', month: 'shor
       <div class="card-p">
         <h3>Recent Activity</h3>
         <p v-if="!d.recent_logs.length" class="muted pad">No messages sent yet.</p>
-        <router-link v-for="l in d.recent_logs" :key="l.id" to="/logs" class="feed">
+        <router-link v-for="l in d.recent_logs" :key="l.channel + l.id" to="/logs" class="feed">
           <span class="ico" :class="l.channel"><Icon :name="l.channel === 'email' ? 'email' : 'sms'" :size="22" /></span>
           <span class="txt"><b>{{ l.recipient }}</b> <span class="badge" :class="l.status">{{ l.status }}</span><small>{{ ago(l.created_at) }}</small></span>
           <Icon name="chevron" :size="22" class="go" />
@@ -51,7 +51,7 @@ const ago = (s) => new Date(s).toLocaleString([], { day: 'numeric', month: 'shor
         <Icon name="schedule" :size="46" />
         <div><b>Scheduled</b><small>{{ d.scheduled }} campaign(s) queued</small></div>
       </div>
-      <router-link to="/settings" class="tile green" style="padding: 18px 24px"><b>Free images</b><small>Add Unsplash / Pexels / Pixabay keys in Settings</small></router-link>
+      <router-link to="/forms" class="tile green" style="padding: 18px 24px"><b>Grow your list</b><small>Sign-up forms &amp; landing pages</small></router-link>
 
       <div class="tile indigo"><Icon name="people" :size="42" /><div><b>{{ d.contacts }}</b>Contacts</div></div>
       <div class="tile pink"><Icon name="campaign" :size="42" /><div><b>{{ d.campaigns }}</b>Campaigns</div></div>

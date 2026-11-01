@@ -11,7 +11,7 @@ use RuntimeException;
  *
  * Openverse and Wikimedia Commons need no API key and are always available.
  * Unsplash / Pexels / Pixabay switch on automatically when a server-wide key
- * is present in .env (see config/services.php) - businesses never enter keys.
+ * is present in .env (see config/services.php) - companies never enter keys.
  */
 class ImageSearch
 {

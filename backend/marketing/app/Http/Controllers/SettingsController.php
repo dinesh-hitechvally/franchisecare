@@ -6,12 +6,9 @@ use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
-    /** Secrets are never returned to the browser: only whether they are set. */
-    protected const SECRETS = ['sms.twilio_token'];
-
     public function show(Request $request)
     {
-        return $this->payload($request->user()->business);
+        return $this->payload($request->user()->company);
     }
 
     public function update(Request $request)
@@ -22,40 +19,36 @@ class SettingsController extends Controller
             'from_email' => 'nullable|email',
             'reply_to' => 'nullable|email',
             'address' => 'nullable|string|max:255',
-            'sms.provider' => 'nullable|in:log,twilio',
-            'sms.twilio_sid' => 'nullable|string',
-            'sms.twilio_token' => 'nullable|string',
-            'sms.from' => 'nullable|string',
+            'profile.phone' => 'nullable|string|max:40',
+            'profile.website' => 'nullable|url:http,https|max:255',
+            'profile.legal_name' => 'nullable|string|max:255',
+            'profile.tax_id' => 'nullable|string|max:60',
+            'profile.industry' => 'nullable|string|max:120',
+            'profile.support_email' => 'nullable|email|max:255',
+            'profile.logo_url' => 'nullable|url:http,https|max:500',
+            'profile.city' => 'nullable|string|max:120',
+            'profile.state' => 'nullable|string|max:120',
+            'profile.postcode' => 'nullable|string|max:20',
+            'profile.country' => 'nullable|string|max:120',
         ]);
 
-        $business = $request->user()->business;
-        $settings = $business->settings ?? [];
+        $company = $request->user()->company;
+        $settings = $company->settings ?? [];
 
-        foreach (['sms'] as $group) {
-            foreach ($data[$group] ?? [] as $k => $v) {
-                // blank secret = keep the stored value
-                if ($v === null || $v === '') {
-                    if (in_array("$group.$k", self::SECRETS)) {
-                        continue;
-                    }
-                }
-                data_set($settings, "$group.$k", $v);
-            }
+        foreach ($data['profile'] ?? [] as $k => $v) {
+            data_set($settings, "profile.$k", $v);
         }
 
-        $business->update(['settings' => $settings] + collect($data)->only('name', 'from_name', 'from_email', 'reply_to', 'address')->all());
+        $company->update(['settings' => $settings] + collect($data)->only('name', 'from_name', 'from_email', 'reply_to', 'address')->all());
 
-        return $this->payload($business->fresh());
+        return $this->payload($company->fresh());
     }
 
-    protected function payload($business): array
+    protected function payload($company): array
     {
-        $out = $business->only('name', 'from_name', 'from_email', 'reply_to', 'address');
-        $out['sms'] = ['provider' => $business->setting('sms.provider', 'log'), 'twilio_sid' => $business->setting('sms.twilio_sid'), 'from' => $business->setting('sms.from')];
-        foreach (self::SECRETS as $s) {
-            [$g, $k] = explode('.', $s);
-            $out[$g][$k.'_set'] = (bool) $business->setting($s);
-        }
+        $out = $company->only('name', 'from_name', 'from_email', 'reply_to', 'address');
+        $out['profile'] = collect(['phone', 'website', 'legal_name', 'tax_id', 'industry', 'support_email', 'logo_url', 'city', 'state', 'postcode', 'country'])
+            ->mapWithKeys(fn ($k) => [$k => $company->setting('profile.'.$k, '')])->all();
 
         return $out;
     }

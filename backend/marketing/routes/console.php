@@ -8,3 +8,5 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Illuminate\Support\Facades\Schedule::command('campaigns:dispatch-scheduled')->everyMinute()->withoutOverlapping();
+
+Illuminate\Support\Facades\Schedule::command('automation:process')->everyMinute()->withoutOverlapping();

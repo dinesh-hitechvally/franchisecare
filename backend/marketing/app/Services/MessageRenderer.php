@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Business;
+use App\Models\Company;
 use App\Models\Contact;
-use App\Models\MessageLog;
+use App\Models\EmailLog;
 
 /**
  * Turns a template body into the final message for one contact:
@@ -12,9 +12,9 @@ use App\Models\MessageLog;
  */
 class MessageRenderer
 {
-    public const TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'business_name', 'unsubscribe_url'];
+    public const TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'unsubscribe_url'];
 
-    public function vars(Business $business, ?Contact $contact, string $channel): array
+    public function vars(Company $company, ?Contact $contact, string $channel): array
     {
         $vars = [
             'first_name' => $contact?->first_name ?? 'there',
@@ -22,13 +22,17 @@ class MessageRenderer
             'full_name' => $contact?->full_name ?: 'there',
             'email' => $contact?->email ?? '',
             'phone' => $contact?->phone ?? '',
-            'business_name' => $business->name,
+            'company_name' => $company->name,
+            'business_name' => $company->name, // legacy alias: templates written before the rename keep working
+            'company_phone' => (string) $company->setting('profile.phone', ''),
+            'company_website' => (string) $company->setting('profile.website', ''),
+            'company_email' => (string) $company->setting('profile.support_email', ''),
             'unsubscribe_url' => $contact
                 ? url("/api/unsubscribe/{$contact->unsubscribe_token}?channel={$channel}")
                 : '#',
         ];
 
-        foreach (($contact?->custom_fields ?? []) as $k => $v) {
+        foreach (($contact?->customMap() ?? []) as $k => $v) {
             if (is_scalar($v)) {
                 $vars[$k] ??= (string) $v;
             }
@@ -42,9 +46,9 @@ class MessageRenderer
         return preg_replace_callback('/\{\{\s*([\w.]+)\s*\}\}/', fn ($m) => $vars[$m[1]] ?? '', $text);
     }
 
-    public function renderEmail(string $subject, string $html, Business $business, ?Contact $contact, ?MessageLog $log = null): array
+    public function renderEmail(string $subject, string $html, Company $company, ?Contact $contact, ?EmailLog $log = null): array
     {
-        $vars = $this->vars($business, $contact, 'email');
+        $vars = $this->vars($company, $contact, 'email');
         $escaped = array_map(fn ($v) => e($v), $vars);
         $escaped['unsubscribe_url'] = $vars['unsubscribe_url'];
 
@@ -52,9 +56,12 @@ class MessageRenderer
         $html = $this->replace($html, $escaped);
 
         if (! $usesUnsub) {
-            $addr = $business->address ? e($business->address).'<br>' : '';
+            $place = trim(implode(' ', array_filter([$company->setting('profile.city'), $company->setting('profile.state'), $company->setting('profile.postcode')])));
+            $lines = array_filter([$company->address, $place, $company->setting('profile.country')]);
+            $addr = ($lines ? e(implode(', ', $lines)).'<br>' : '');
+            $tax = $company->setting('profile.tax_id') ? ' &middot; '.e($company->setting('profile.tax_id')) : '';
             $html .= '<div style="margin-top:32px;padding-top:16px;border-top:1px solid #e5e7eb;font:12px Arial,sans-serif;color:#6b7280;text-align:center">'
-                .$addr.e($business->name)
+                .$addr.e($company->setting('profile.legal_name') ?: $company->name).$tax
                 .' &middot; <a href="'.e($vars['unsubscribe_url']).'" style="color:#6b7280">Unsubscribe</a></div>';
         }
 
@@ -66,12 +73,12 @@ class MessageRenderer
         return [$this->replace($subject, $vars), $html];
     }
 
-    public function renderSms(string $body, Business $business, ?Contact $contact): string
+    public function renderSms(string $body, Company $company, ?Contact $contact): string
     {
-        return $this->replace($body, $this->vars($business, $contact, 'sms'));
+        return $this->replace($body, $this->vars($company, $contact, 'sms'));
     }
 
-    protected function trackClicks(string $html, MessageLog $log): string
+    protected function trackClicks(string $html, EmailLog $log): string
     {
         return preg_replace_callback('/href="(https?:\/\/[^"]+)"/i', function ($m) use ($log) {
             $url = html_entity_decode($m[1]);

@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Services;
+
+use App\Models\Company;
+use App\Models\EmailLog;
+use App\Models\SmsLog;
+use Throwable;
+
+/** Writes the send history (email_logs / sms_logs) for sends that do not go through the campaign queue: test messages and staff notifications. */
+class SendLog
+{
+    /** The service that would carry a message now: a mail/SMS connection key, "default" (platform mail) or "log" (SMS test mode). */
+    public static function service(Company $company, string $channel): string
+    {
+        return $channel === 'sms' ? SmsSettings::activeKey($company) : MailSettings::activeKey($company);
+    }
+
+    /**
+     * "sent" when the message really left for a provider, "logged" when it was only written to a log:
+     * SMS in test mode, or email on the platform mailer while it is set to MAIL_MAILER=log. Nothing was delivered in that case.
+     */
+    public static function deliveredStatus(Company $company, string $channel): string
+    {
+        if ($channel === 'sms') {
+            return SmsSettings::activeKey($company) === 'log' ? 'logged' : 'sent';
+        }
+
+        return MailSettings::activeKey($company) === 'default' && config('mail.default') === 'log' ? 'logged' : 'sent';
+    }
+
+    /**
+     * Runs $send and records it in the send history either way: "sent" (with the provider's message id when it returns one)
+     * or "failed" (with the error, which is then thrown again so the caller can show it).
+     */
+    public static function run(Company $company, string $channel, string $to, ?string $subject, ?string $body, string $source, \Closure $send): mixed
+    {
+        $isSms = $channel === 'sms';
+        $log = ($isSms ? SmsLog::class : EmailLog::class)::create([
+            'company_id' => $company->id, 'recipient' => $to, 'body' => $body,
+            'status' => 'queued', 'source' => $source, 'service' => self::service($company, $channel),
+        ] + ($isSms ? [] : ['subject' => $subject]));
+
+        try {
+            $result = $send();
+            $log->update(['status' => self::deliveredStatus($company, $channel), 'sent_at' => now(), 'provider_id' => is_string($result) ? mb_substr($result, 0, 255) : null]);
+
+            return $result;
+        } catch (Throwable $e) {
+            $log->update(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 1000)]);
+
+            throw $e;
+        }
+    }
+}

@@ -2,20 +2,16 @@
 
 namespace App\Services\Sms;
 
-use App\Models\Business;
-use RuntimeException;
+use App\Models\Company;
+use App\Services\SmsSettings;
 
 class SmsManager
 {
-    public function forBusiness(Business $business): SmsDriver
+    /** The driver of the one SMS service that is in use (test mode logs only, nothing is sent). */
+    public function forCompany(Company $company): SmsDriver
     {
-        return match ($business->setting('sms.provider', 'log')) {
-            'twilio' => new TwilioDriver(
-                $business->setting('sms.twilio_sid') ?? throw new RuntimeException('Twilio SID not configured'),
-                $business->setting('sms.twilio_token') ?? throw new RuntimeException('Twilio token not configured'),
-                $business->setting('sms.from') ?? throw new RuntimeException('SMS sender not configured'),
-            ),
-            default => new LogDriver,
-        };
+        $active = SmsSettings::active($company);
+
+        return $active ? SmsProviders::driver($active['key'], $active['conn']) : new LogDriver;
     }
 }

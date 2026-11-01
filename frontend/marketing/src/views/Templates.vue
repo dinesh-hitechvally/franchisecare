@@ -1,13 +1,29 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api, { errorMessage } from '../api'
+import RowMenu from '../components/RowMenu.vue'
+import FilterBar from '../components/FilterBar.vue'
 import Modal from '../components/Modal.vue'
 import MessageEditor from '../components/MessageEditor.vue'
 import EmailDesigner from '../components/EmailDesigner.vue'
 
 const rows = ref([])
-const tab = ref(useRoute().query.tab === 'sms' ? 'sms' : 'email')
+const q = useRoute().query.tab
+const tab = ref(['email', 'sms'].includes(q) ? q : 'all') // all | email | sms
+const saved = (() => { try { return localStorage.getItem('templates.view') } catch (e) { return null } })()
+const view = ref(saved === 'table' ? 'table' : 'grid')
+const setView = (v) => { view.value = v; try { localStorage.setItem('templates.view', v) } catch (e) { /* storage blocked */ } }
+const search = ref('')
+const age = ref('') // '' | 7 | 30 (days since last change)
+const dirty = computed(() => search.value !== '' || age.value !== '')
+const clear = () => { search.value = ''; age.value = '' }
+const shown = computed(() => rows.value.filter((r) => (tab.value === 'all' || r.type === tab.value)
+  && (!age.value || new Date(r.updated_at) >= new Date(Date.now() - age.value * 86400000))
+  && (!search.value.trim() || [r.name, r.subject, r.body && r.body.length < 4000 ? plain(r) : ''].some((t) => String(t || '').toLowerCase().includes(search.value.trim().toLowerCase())))))
+const count = (t) => (t === 'all' ? rows.value.length : rows.value.filter((r) => r.type === t).length)
+const when = (d) => (d ? new Date(d).toLocaleDateString() : '')
+const plain = (t) => (t.body || '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)
 const editing = ref(null) // id | 'new'
 const designer = ref(false) // email templates use the visual designer
 const initial = ref(null)
@@ -17,11 +33,11 @@ const form = reactive({ name: '', type: 'sms', subject: '', body: '' })
 
 const load = async () => { rows.value = (await api.get('/templates')).data }
 
-function create() {
+function create(type) {
   editing.value = 'new'
   error.value = ''
-  if (tab.value === 'email') {
-    initial.value = { name: '', subject: '', design: null }
+  if (type === 'email') {
+    initial.value = { name: '', subject: '', design: null, attachments: [] }
     designer.value = true
   } else {
     Object.assign(form, { name: '', type: 'sms', subject: '', body: '' })
@@ -32,7 +48,7 @@ function edit(t) {
   editing.value = t.id
   error.value = ''
   if (t.type === 'email') {
-    initial.value = { name: t.name, subject: t.subject || '', design: t.design, html: t.body }
+    initial.value = { name: t.name, subject: t.subject || '', design: t.design, html: t.body, attachments: t.attachments || [] }
     designer.value = true
   } else {
     Object.assign(form, { name: t.name, type: 'sms', subject: '', body: t.body })
@@ -53,7 +69,7 @@ async function persist(payload) {
 
 async function saveEmail(d) {
   saving.value = true
-  await persist({ name: d.name, type: 'email', subject: d.subject, body: d.body, design: d.design })
+  await persist({ name: d.name, type: 'email', subject: d.subject, body: d.body, design: d.design, attachments: d.attachments })
   saving.value = false
 }
 
@@ -71,26 +87,49 @@ onMounted(load)
 <template>
   <div class="head">
     <h1>Templates</h1>
-    <button class="btn" @click="create">New {{ tab }} template</button>
+    <div class="row"><button class="btn" @click="create('email')">New email template</button><button class="btn ghost" @click="create('sms')">New SMS template</button></div>
   </div>
-  <div class="row" style="margin-bottom: 14px">
-    <button class="btn sm" :class="{ ghost: tab !== 'email' }" @click="tab = 'email'">Email</button>
-    <button class="btn sm" :class="{ ghost: tab !== 'sms' }" @click="tab = 'sms'">SMS</button>
+  <div class="bar">
+    <div class="tabs">
+      <button v-for="[k, l] in [['all', 'All'], ['email', 'Email'], ['sms', 'SMS']]" :key="k" :class="{ on: tab === k }" @click="tab = k">{{ l }} <span class="n">{{ count(k) }}</span></button>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button :class="{ on: view === 'grid' }" title="Grid view" @click="setView('grid')">Grid</button>
+      <button :class="{ on: view === 'table' }" title="Table view" @click="setView('table')">Table</button>
+    </div>
   </div>
 
-  <div v-if="rows.some((r) => r.type === tab)" class="t-grid">
-    <div v-for="t in rows.filter((r) => r.type === tab)" :key="t.id" class="t-card">
+  <FilterBar :dirty="dirty" @clear="clear">
+    <input v-model="search" type="search" placeholder="Search templates…" />
+    <select v-model="age"><option value="">Changed any time</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option></select>
+  </FilterBar>
+
+  <div v-if="shown.length && view === 'table'" class="card">
+    <table>
+      <thead><tr><th>Name</th><th>Type</th><th>Subject / message</th><th>Updated</th><th class="act">Actions</th></tr></thead>
+      <tr v-for="t in shown" :key="t.id">
+        <td><a href="#" @click.prevent="edit(t)"><b>{{ t.name }}</b></a></td>
+        <td><span class="badge" :class="t.type">{{ t.type }}</span></td>
+        <td><small>{{ t.type === 'email' ? t.subject || plain(t) : plain(t) }}</small></td>
+        <td>{{ when(t.updated_at) }}</td>
+        <td class="act"><RowMenu :history="{ type: 'template', id: t.id, title: t.name }" :items="[{ label: 'Edit', run: () => edit(t) }, { label: 'Delete', run: () => remove(t), danger: true }]" /></td>
+      </tr>
+    </table>
+  </div>
+
+  <div v-else-if="shown.length" class="t-grid">
+    <div v-for="t in shown" :key="t.id" class="t-card">
       <div class="t-thumb" @click="edit(t)">
         <iframe v-if="t.type === 'email'" :srcdoc="t.body" tabindex="-1" sandbox="" loading="lazy"></iframe>
         <div v-else class="sms-bubble" style="margin: 16px">{{ t.body }}</div>
       </div>
       <div class="t-meta">
-        <div><b>{{ t.name }}</b><br /><small>{{ t.subject || 'SMS template' }}</small></div>
-        <div><button class="btn ghost sm" @click="edit(t)">Edit</button> <button class="btn ghost sm" @click="remove(t)">Delete</button></div>
+        <div><b>{{ t.name }}</b><br /><small><span class="badge" :class="t.type">{{ t.type }}</span> {{ t.subject || (t.type === 'sms' ? 'SMS template' : '') }}</small></div>
+        <RowMenu :history="{ type: 'template', id: t.id, title: t.name }" :items="[{ label: 'Edit', run: () => edit(t) }, { label: 'Delete', run: () => remove(t), danger: true }]" />
       </div>
     </div>
   </div>
-  <div v-else class="card"><p class="empty">No {{ tab }} templates yet.</p></div>
+  <div v-else class="card"><p class="empty">No {{ tab === 'all' ? '' : tab + ' ' }}templates yet.</p></div>
 
   <EmailDesigner v-if="designer" :initial="initial" show-name :saving="saving" @save="saveEmail" @close="designer = false; editing = null" />
 
@@ -105,6 +144,15 @@ onMounted(load)
 </template>
 
 <style scoped>
+.bar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; border-bottom: 1px solid #e0e0e0; }
+.tabs { display: flex; gap: 4px; }
+.tabs button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 16px; font: inherit; font-weight: 500; color: #6b7280; cursor: pointer; }
+.tabs button.on { color: #3f51b5; border-bottom-color: #3f51b5; }
+.tabs .n { background: #eceff7; border-radius: 10px; padding: 1px 8px; font-size: 12px; margin-left: 4px; }
+.seg { display: flex; margin-bottom: 8px; border: 1px solid #c5cae9; border-radius: 4px; overflow: hidden; }
+.seg button { background: #fff; border: 0; padding: 6px 14px; font: inherit; font-size: 13px; cursor: pointer; color: #3f51b5; }
+.seg button.on { background: #3f51b5; color: #fff; }
+.actions { white-space: nowrap; text-align: right; }
 .t-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 24px; }
 .t-card { background: #fff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); overflow: hidden; }
 .t-thumb { height: 300px; overflow: hidden; background: #f4f5f7; cursor: pointer; position: relative; border-bottom: 1px solid #e0e0e0; }

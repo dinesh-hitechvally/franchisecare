@@ -2,17 +2,19 @@
 
 namespace App\Models;
 
-use App\Models\Concerns\BelongsToBusiness;
+use App\Models\Concerns\Auditable;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
 class ContactList extends Model
 {
-    use BelongsToBusiness;
+    use BelongsToCompany, SoftDeletes, Auditable;
 
-    protected $guarded = ['id', 'business_id'];
+    protected $guarded = ['id', 'company_id'];
 
     public function contacts()
     {
-        return $this->belongsToMany(Contact::class, 'contact_contact_list');
+        return $this->belongsToMany(Contact::class, 'contact_list_members')->using(ContactListMember::class);
     }
 }

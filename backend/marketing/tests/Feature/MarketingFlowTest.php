@@ -2,7 +2,8 @@
 
 namespace Tests\Feature;
 
-use App\Models\MessageLog;
+use App\Models\EmailLog;
+use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Tests\TestCase;
@@ -14,7 +15,7 @@ class MarketingFlowTest extends TestCase
     protected function register(string $email = 'a@x.com', string $biz = 'Biz A'): string
     {
         return $this->postJson('/api/register', [
-            'business_name' => $biz, 'name' => 'Owner', 'email' => $email,
+            'company_name' => $biz, 'name' => 'Owner', 'email' => $email,
             'password' => 'password123', 'password_confirmation' => 'password123',
         ])->assertOk()->json('token');
     }
@@ -34,7 +35,7 @@ class MarketingFlowTest extends TestCase
 
         $this->postJson("/api/campaigns/$email/send", [], $h)->assertOk();
 
-        $logs = MessageLog::withoutGlobalScopes()->where('channel', 'email')->get();
+        $logs = EmailLog::withoutGlobalScopes()->get();
         $this->assertCount(2, $logs);
         $this->assertSame('sent', $logs[0]->status);
         $this->assertStringContainsString('Hi Ann', $logs->firstWhere('recipient', 'ann@x.com')->subject);
@@ -44,8 +45,8 @@ class MarketingFlowTest extends TestCase
         // SMS: Bob has no phone -> skipped, Ann sent via log driver
         $sms = $this->postJson('/api/campaigns', ['name' => 'Txt', 'type' => 'sms', 'contact_list_id' => $list, 'body' => 'Hi {{first_name}}'], $h)->json('id');
         $this->postJson("/api/campaigns/$sms/send", [], $h)->assertOk();
-        $this->assertSame(1, MessageLog::withoutGlobalScopes()->where('channel', 'sms')->where('status', 'sent')->count());
-        $this->assertSame(1, MessageLog::withoutGlobalScopes()->where('channel', 'sms')->where('status', 'skipped')->count());
+        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'sent')->count());
+        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'skipped')->count());
         $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('status', 'sent');
 
         $this->getJson('/api/logs?channel=email', $h)->assertJsonPath('total', 2);
@@ -58,7 +59,7 @@ class MarketingFlowTest extends TestCase
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 's', 'body' => '<a href="https://example.com">x</a>'], $h)->json('id');
         $this->postJson("/api/campaigns/$id/send", [], $h);
 
-        $log = MessageLog::withoutGlobalScopes()->first();
+        $log = EmailLog::withoutGlobalScopes()->first();
         $this->get("/api/t/o/{$log->track_token}.gif")->assertOk();
         $this->assertNotNull($log->fresh()->opened_at);
 
@@ -98,13 +99,13 @@ class MarketingFlowTest extends TestCase
         $c = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => $html, 'design' => $design], $h)->assertCreated()->json('id');
         $this->postJson("/api/campaigns/$c/send", [], $h)->assertOk();
 
-        $log = MessageLog::withoutGlobalScopes()->first();
+        $log = EmailLog::withoutGlobalScopes()->first();
         $this->assertStringContainsString('Hello Ann', $log->body);
         $this->assertStringNotContainsString('{{unsubscribe_url}}', $log->body);
         $this->getJson("/api/campaigns/$c", $h)->assertJsonPath('design.blocks.0.type', 'heading');
     }
 
-    public function test_layouts_are_saved_per_business(): void
+    public function test_layouts_are_saved_per_company(): void
     {
         $a = ['Authorization' => 'Bearer '.$this->register('a@x.com', 'A')];
         $id = $this->postJson('/api/layouts', ['name' => 'Mine', 'design' => ['settings' => [], 'blocks' => []]], $a)->assertCreated()->json('id');

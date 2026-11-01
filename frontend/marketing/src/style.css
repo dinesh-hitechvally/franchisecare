@@ -29,6 +29,7 @@ input[type=checkbox] { width: auto; } textarea { resize: vertical; font-family: 
 
 table { width: 100%; border-collapse: collapse; font-size: 14px; }
 th { text-align: left; color: #212121; font-weight: 700; font-size: 14px; }
+th.act, td.act { text-align: right; width: 72px; white-space: nowrap; }
 th, td { padding: 10px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; } tr:last-child td { border-bottom: 0; }
 .empty { text-align: center; color: var(--muted); padding: 30px; }
 
