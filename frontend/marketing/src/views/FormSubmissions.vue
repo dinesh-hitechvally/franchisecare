@@ -1,4 +1,5 @@
 <script setup>
+import DateInput from '../components/DateInput.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api, { download, errorMessage } from '../api'
@@ -67,8 +68,8 @@ onMounted(async () => {
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="f.search" type="search" placeholder="Search answers, name, email…" />
     <select v-model="f.contact"><option value="">All submissions</option><option value="yes">Saved as a contact</option><option value="no">Inbox only</option></select>
-    <label>From <input v-model="f.from" type="date" /></label>
-    <label>To <input v-model="f.to" type="date" /></label>
+    <label>From <DateInput v-model="f.from" /></label>
+    <label>To <DateInput v-model="f.to" /></label>
   </FilterBar>
 
   <div class="card">
@@ -77,10 +78,10 @@ onMounted(async () => {
       <thead><tr><th>Received</th><th>From</th><th>Answers</th><th class="act">Actions</th></tr></thead>
       <template v-for="s in rows" :key="s.id">
         <tr class="clickable" @click="open = open === s.id ? null : s.id">
-          <td style="white-space: nowrap">{{ new Date(s.created_at).toLocaleString() }}</td>
+          <td style="white-space: nowrap">{{ $dt(s.created_at) }}</td>
           <td>{{ who(s) || '—' }}<br /><small v-if="s.contact">{{ s.contact.email }}</small></td>
           <td class="prev">{{ preview(s) }}</td>
-          <td class="act" @click.stop><RowMenu :history="{ type: 'form_submission', id: s.id, title: new Date(s.created_at).toLocaleString() }" :items="[{ label: open === s.id ? 'Hide answers' : 'View answers', run: () => (open = open === s.id ? null : s.id) }, { label: 'Delete', run: () => remove(s), danger: true }]" /></td>
+          <td class="act" @click.stop><RowMenu :history="{ type: 'form_submission', id: s.id, title: $dt(s.created_at) }" :items="[{ label: open === s.id ? 'Hide answers' : 'View answers', run: () => (open = open === s.id ? null : s.id) }, { label: 'Delete', run: () => remove(s), danger: true }]" /></td>
         </tr>
         <tr v-if="open === s.id" class="detail">
           <td colspan="4">

@@ -33,8 +33,9 @@ return new class extends Migration
             $table->boolean('active')->default(true);
             $table->unsignedInteger('views')->default(0);
             $table->unsignedInteger('submissions')->default(0);
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

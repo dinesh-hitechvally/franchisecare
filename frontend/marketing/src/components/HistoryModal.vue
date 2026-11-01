@@ -33,7 +33,7 @@ onMounted(async () => {
         <div class="top">
           <span class="badge" :class="'a-' + r.change_action">{{ ACTIONS[r.change_action] || r.change_action }}</span>
           <b v-if="KINDS[r.type]"> {{ KINDS[r.type] }} · {{ r.record_label }}</b>
-          <span class="when">{{ new Date(r.changed_at).toLocaleString() }}</span>
+          <span class="when">{{ $dt(r.changed_at) }}</span>
         </div>
         <div class="who"><template v-if="r.changed_by_name">{{ r.changed_by_name }} · </template>{{ SOURCES[r.change_source] || r.change_source }}<template v-if="r.change_ip"> · {{ r.change_ip }}</template></div>
         <div v-for="(c, k) in r.changes" :key="k" class="chg">

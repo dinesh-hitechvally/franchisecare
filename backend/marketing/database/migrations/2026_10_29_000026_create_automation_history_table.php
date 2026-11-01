@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('step_type', 30);
             $table->string('status', 12); // done | skipped | failed | waiting
             $table->text('detail')->nullable();
-            $table->timestamp('created_at')->useCurrent();
-            $table->softDeletes();
+            $table->dateTime('created_at')->useCurrent();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

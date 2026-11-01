@@ -10,15 +10,15 @@ use Throwable;
 /** Writes the send history (email_logs / sms_logs) for sends that do not go through the campaign queue: test messages and staff notifications. */
 class SendLog
 {
-    /** The service that would carry a message now: a mail/SMS connection key, "default" (platform mail) or "log" (SMS test mode). */
+    /** The service that would carry a message now: a mail/SMS connection key, "default" (platform mail) or "log" (Log only for SMS). */
     public static function service(Company $company, string $channel): string
     {
         return $channel === 'sms' ? SmsSettings::activeKey($company) : MailSettings::activeKey($company);
     }
 
     /**
-     * "sent" when the message really left for a provider, "logged" when it was only written to a log:
-     * SMS in test mode, or email on the platform mailer while it is set to MAIL_MAILER=log. Nothing was delivered in that case.
+     * "sent" when the message really left for a provider, "logged" when the service in use only writes to a log
+     * ("Log only", for both email and SMS). Default never logs: it sends or fails.
      */
     public static function deliveredStatus(Company $company, string $channel): string
     {
@@ -26,7 +26,7 @@ class SendLog
             return SmsSettings::activeKey($company) === 'log' ? 'logged' : 'sent';
         }
 
-        return MailSettings::activeKey($company) === 'default' && config('mail.default') === 'log' ? 'logged' : 'sent';
+        return MailSettings::activeKey($company) === 'log' ? 'logged' : 'sent';
     }
 
     /**

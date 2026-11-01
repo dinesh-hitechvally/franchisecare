@@ -18,6 +18,7 @@ use App\Http\Controllers\ImageController;
 use App\Http\Controllers\LandingPageController;
 use App\Http\Controllers\LayoutController;
 use App\Http\Controllers\LogController;
+use App\Http\Controllers\MediaController;
 use App\Http\Controllers\MailOAuthController;
 use App\Http\Controllers\PublicController;
 use App\Http\Controllers\ReportController;
@@ -38,6 +39,7 @@ Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,
 Route::get('t/o/{token}.gif', [TrackingController::class, 'open']);
 Route::get('t/c/{token}', [TrackingController::class, 'click']);
 Route::get('unsubscribe/{token}', [TrackingController::class, 'unsubscribe']);
+Route::get('m/{token}/{name?}', [MediaController::class, 'file'])->middleware('throttle:300,1'); // a library file by its unguessable token
 Route::get('oauth/mail/{provider}/callback', [MailOAuthController::class, 'callback']); // the provider sends the browser back here
 Route::post('public/forms/{slug}', [PublicController::class, 'submit'])->middleware('throttle:20,1');
 
@@ -56,6 +58,9 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::get('dashboard', [LogController::class, 'dashboard']);
 
     Route::post('attachments', [AttachmentController::class, 'store'])->middleware('throttle:60,1');
+    Route::post('media', [MediaController::class, 'store'])->middleware('throttle:120,1');
+    Route::post('media/import', [MediaController::class, 'importOnline'])->middleware('throttle:60,1');
+    Route::apiResource('media', MediaController::class)->only(['index', 'update', 'destroy'])->parameters(['media' => 'media']);
 
     // Audience
     Route::post('contacts/import', [ContactController::class, 'import']);

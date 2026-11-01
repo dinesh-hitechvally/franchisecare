@@ -14,8 +14,8 @@ return new class extends Migration
             $table->foreignId('form_id')->constrained()->cascadeOnDelete();
             $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
             $table->longText('data'); // JSON: [{label, value}] — what was submitted, in form order
-            $table->timestamp('created_at')->useCurrent();
-            $table->softDeletes();
+            $table->dateTime('created_at')->useCurrent();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->index(['form_id', 'created_at']);
         });

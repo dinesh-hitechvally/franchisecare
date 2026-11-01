@@ -14,8 +14,8 @@ return new class extends Migration
             $table->foreignId('email_log_id')->constrained()->cascadeOnDelete(); // clicks only exist for emails
             $table->unsignedBigInteger('campaign_id')->nullable()->index();
             $table->text('url');
-            $table->timestamp('created_at')->useCurrent();
-            $table->softDeletes();
+            $table->dateTime('created_at')->useCurrent();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

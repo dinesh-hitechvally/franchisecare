@@ -7,7 +7,7 @@ use App\Services\Sms\SmsProviders;
 
 /**
  * How a company sends SMS. Like email: every service can be connected at once, each with its own saved login, and only
- * one is in use (`active`; "log" = test mode, nothing is sent). Stored under company settings `sms`:
+ * one is in use (`active`; "log" = Log only, nothing is sent). Stored under company settings `sms`:
  *   active: "log" | service key,  connections: { twilio: {account_sid, auth_token, from}, vonage: {...}, ... }
  * Companies saved with the older Twilio-only settings (provider / twilio_sid / twilio_token / from) are read as one connection.
  */
@@ -35,7 +35,7 @@ class SmsSettings
         return $key !== 'log' && isset(self::connections($company)[$key]) ? $key : 'log';
     }
 
-    /** [key, conn] of the service in use, or null for test mode. */
+    /** [key, conn] of the service in use, or null for Log only. */
     public static function active(Company $company): ?array
     {
         $key = self::activeKey($company);

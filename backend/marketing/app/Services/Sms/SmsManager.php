@@ -7,7 +7,7 @@ use App\Services\SmsSettings;
 
 class SmsManager
 {
-    /** The driver of the one SMS service that is in use (test mode logs only, nothing is sent). */
+    /** The driver of the one SMS service that is in use (Log only: written to the log, nothing is sent). */
     public function forCompany(Company $company): SmsDriver
     {
         $active = SmsSettings::active($company);

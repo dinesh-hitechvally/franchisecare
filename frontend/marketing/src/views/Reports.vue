@@ -1,4 +1,5 @@
 <script setup>
+import DateInput from '../components/DateInput.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import api from '../api'
 import FilterBar from '../components/FilterBar.vue'
@@ -27,8 +28,8 @@ onMounted(() => load())
     <input v-model="f.search" type="search" placeholder="Search campaigns…" />
     <select v-model="f.type"><option value="">All channels</option><option value="email">Email</option><option value="sms">SMS</option></select>
     <select v-model="f.status"><option value="">All statuses</option><option value="sent">Sent</option><option value="sending">Sending</option><option value="failed">Failed</option></select>
-    <label>From <input v-model="f.from" type="date" /></label>
-    <label>To <input v-model="f.to" type="date" /></label>
+    <label>From <DateInput v-model="f.from" /></label>
+    <label>To <DateInput v-model="f.to" /></label>
   </FilterBar>
   <div class="card">
     <p v-if="!rows.length" class="empty">Reports appear here once a campaign has been sent.</p>
@@ -41,7 +42,7 @@ onMounted(() => load())
         <td>{{ c.failed_count }}</td>
         <td>{{ c.type === 'email' ? c.open_rate + '%' : '—' }}</td>
         <td>{{ c.type === 'email' ? c.click_rate + '%' : '—' }}</td>
-        <td>{{ new Date(c.completed_at || c.created_at).toLocaleDateString() }}</td>
+        <td>{{ $d(c.completed_at || c.created_at) }}</td>
         <td style="text-align: right"><router-link :to="`/reports/${c.id}`" class="btn ghost sm">View report</router-link></td>
       </tr>
     </table>

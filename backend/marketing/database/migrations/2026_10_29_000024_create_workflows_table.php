@@ -16,8 +16,9 @@ return new class extends Migration
             $table->text('trigger_config')->nullable();
             $table->longText('steps');          // JSON
             $table->string('status', 10)->default('draft'); // draft | active | paused
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

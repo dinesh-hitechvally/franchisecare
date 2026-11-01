@@ -21,11 +21,12 @@ return new class extends Migration
             $table->longText('design')->nullable();
             $table->json('attachments')->nullable(); // email only: files sent with every message [{token, name, size}]
             $table->enum('status', ['draft', 'scheduled', 'sending', 'sent', 'failed'])->default('draft');
-            $table->timestamp('scheduled_at')->nullable();
-            $table->timestamp('started_at')->nullable();
-            $table->timestamp('completed_at')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('scheduled_at')->nullable();
+            $table->dateTime('started_at')->nullable();
+            $table->dateTime('completed_at')->nullable();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

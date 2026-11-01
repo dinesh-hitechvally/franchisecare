@@ -1,4 +1,5 @@
 <script setup>
+import { fmtDate } from '../format'
 import { computed } from 'vue'
 
 // series: [{ name, color, points: [{ date, value }] }]  — all series share the same dates.
@@ -18,7 +19,7 @@ const labels = computed(() => {
   const pts = props.series[0]?.points || []
   if (!pts.length) return []
   const idx = [...new Set([0, Math.floor(pts.length / 2), pts.length - 1])]
-  return idx.map((i) => ({ i, text: new Date(pts[i].date + 'T00:00').toLocaleDateString([], { day: 'numeric', month: 'short' }) }))
+  return idx.map((i) => ({ i, text: fmtDate(pts[i].date) }))
 })
 </script>
 

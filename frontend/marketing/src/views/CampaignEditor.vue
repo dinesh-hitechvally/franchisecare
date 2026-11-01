@@ -1,5 +1,7 @@
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import DateTimeInput from '../components/DateTimeInput.vue'
+import { asEntered, fmtStored } from '../format'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api, { errorMessage } from '../api'
 import MessageEditor from '../components/MessageEditor.vue'
@@ -44,7 +46,11 @@ const audienceName = computed(() => (form.segment_id ? 'segment "' + segments.va
 const typeTemplates = computed(() => templates.value.filter((t) => t.type === form.type))
 
 // <input type=datetime-local> works in local time without a timezone
-const toLocal = (iso) => (iso ? new Date(new Date(iso) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : '')
+// A schedule is kept exactly as typed: no time zone conversion in or out. The server sends it when its UTC clock reaches that time.
+const toLocal = asEntered
+const utcNow = ref(fmtStored(new Date().toISOString()))
+const clock = setInterval(() => (utcNow.value = fmtStored(new Date().toISOString())), 20000)
+onBeforeUnmount(() => clearInterval(clock))
 
 function applyTemplate() {
   const t = templates.value.find((x) => x.id === form.template_id)
@@ -53,7 +59,7 @@ function applyTemplate() {
 watch(() => form.type, () => { form.template_id = '' })
 
 function payload() {
-  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, segment_id: form.segment_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? new Date(form.scheduled_at).toISOString() : null }
+  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, segment_id: form.segment_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? form.scheduled_at.replace('T', ' ') + ':00' : null }
 }
 
 async function save() {
@@ -168,7 +174,8 @@ onMounted(async () => {
       <div class="row" style="margin-bottom: 12px">
         <label class="check"><input type="radio" value="now" v-model="when" />Send now</label>
         <label class="check"><input type="radio" value="later" v-model="when" />Schedule</label>
-        <input v-if="when === 'later'" type="datetime-local" v-model="form.scheduled_at" style="width: auto" />
+        <DateTimeInput v-if="when === 'later'" v-model="form.scheduled_at" />
+        <small v-if="when === 'later'" style="display: block; margin-top: 6px; color: #6b7280">Saved exactly as typed and sent when the server clock (UTC) reaches it. UTC now: <b>{{ utcNow }}</b></small>
       </div>
       <div class="row">
         <input v-model="testTo" :placeholder="form.type === 'email' ? 'test@example.com' : '+61400000000'" style="max-width: 240px" />

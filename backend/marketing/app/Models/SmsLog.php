@@ -7,7 +7,7 @@ use App\Models\Concerns\IsSendLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-/** One SMS the platform sent (or tried to). Table: sms_logs. "log" as the service means test mode: nothing left the server. */
+/** One SMS the platform sent (or tried to). Table: sms_logs. "log" as the service means Log only: nothing left the server. */
 class SmsLog extends Model
 {
     use BelongsToCompany, IsSendLog, SoftDeletes;

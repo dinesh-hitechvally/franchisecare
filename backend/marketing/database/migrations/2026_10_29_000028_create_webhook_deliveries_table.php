@@ -17,8 +17,8 @@ return new class extends Migration
             $table->boolean('success')->default(false);
             $table->text('response')->nullable();
             $table->text('payload')->nullable();
-            $table->timestamp('created_at')->useCurrent();
-            $table->softDeletes();
+            $table->dateTime('created_at')->useCurrent();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

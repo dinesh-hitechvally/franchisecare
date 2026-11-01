@@ -7,7 +7,7 @@ const props = defineProps({ channel: String, tick: { type: Number, default: 0 } 
 const rows = ref([])
 
 const SERVICES = {
-  default: 'Default mail server', log: 'Test mode (not sent)', gmail: 'Gmail', outlook: 'Outlook', yahoo: 'Yahoo Mail', zoho: 'Zoho Mail', sendgrid: 'SendGrid', mailgun: 'Mailgun',
+  default: 'Default', log: 'Log only', gmail: 'Gmail', outlook: 'Outlook', yahoo: 'Yahoo Mail', zoho: 'Zoho Mail', sendgrid: 'SendGrid', mailgun: 'Mailgun',
   ses: 'Amazon SES', brevo: 'Brevo', postmark: 'Postmark', mandrill: 'Mandrill', custom: 'Custom SMTP', google: 'Google', microsoft: 'Microsoft',
   twilio: 'Twilio', vonage: 'Vonage', plivo: 'Plivo', telnyx: 'Telnyx', clicksend: 'ClickSend', messagebird: 'MessageBird', sinch: 'Sinch',
 }
@@ -26,10 +26,10 @@ watch(() => props.tick, load)
     <table v-else>
       <thead><tr><th>When</th><th>To</th><th>Service</th><th>Result</th></tr></thead>
       <tr v-for="r in rows" :key="r.id">
-        <td class="nw">{{ new Date(r.sent_at || r.created_at).toLocaleString() }}</td>
+        <td class="nw">{{ $dt(r.sent_at || r.created_at) }}</td>
         <td>{{ r.recipient }}</td>
         <td>{{ SERVICES[r.service] || r.service || '—' }}</td>
-        <td><span class="badge" :class="r.status">{{ r.status }}</span><small v-if="r.error" class="err"> {{ r.error }}</small></td>
+        <td><span class="badge" :class="r.status">{{ r.status === 'logged' ? 'logged only' : r.status }}</span><small v-if="r.error" class="err"> {{ r.error }}</small></td>
       </tr>
     </table>
   </div>

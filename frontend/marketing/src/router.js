@@ -22,6 +22,9 @@ const routes = [
   { path: '/reports/:id', component: () => import('./views/ReportDetail.vue') },
   { path: '/logs', component: () => import('./views/Logs.vue') },
 
+  // Media library
+  { path: '/media', component: () => import('./views/Media.vue') },
+
   // Content
   { path: '/templates', component: () => import('./views/Templates.vue') },
   { path: '/landing-pages', component: () => import('./views/LandingPages.vue') },

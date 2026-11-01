@@ -58,6 +58,8 @@ return [
             'prefix' => '',
             'prefix_indexes' => true,
             'strict' => true,
+            // every timestamp is stored in UTC: the session must not follow the server's own clock (e.g. +05:45)
+            'timezone' => env('DB_TIMEZONE', '+00:00'),
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),

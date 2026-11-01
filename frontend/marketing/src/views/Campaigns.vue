@@ -72,16 +72,16 @@ onBeforeUnmount(() => clearInterval(timer))
     <p v-if="!rows.length" class="empty">{{ scheduledView ? 'Nothing is scheduled.' : 'No campaigns found.' }}</p>
     <table v-else>
       <thead>
-        <tr><th>Name</th><th>Type</th><th>Audience</th><th>Status</th><template v-if="scheduledView"><th>Sends at</th></template><template v-else><th>Sent</th><th>Failed</th><th>Opened</th></template><th class="act">Actions</th></tr>
+        <tr><th>Name</th><th>Type</th><th>Audience</th><th>Status</th><template v-if="scheduledView"><th>Sends at (UTC)</th></template><template v-else><th>Sent</th><th>Failed</th><th>Opened</th></template><th class="act">Actions</th></tr>
       </thead>
       <tr v-for="c in rows" :key="c.id">
         <td><router-link :to="`/campaigns/${c.id}`">{{ c.name }}</router-link></td>
         <td><span class="badge" :class="c.type">{{ c.type }}</span></td>
         <td>{{ audience(c) }}</td>
         <td><span class="badge" :class="c.status">{{ c.status }}</span></td>
-        <template v-if="scheduledView"><td>{{ c.scheduled_at ? new Date(c.scheduled_at).toLocaleString() : '—' }}</td></template>
+        <template v-if="scheduledView"><td>{{ $ds(c.scheduled_at, '—') }}</td></template>
         <template v-else>
-          <td>{{ c.sent_count }}/{{ c.logs_count }}</td>
+          <td>{{ c.sent_count }}/{{ c.logs_count }}<br v-if="c.logged_count" /><small v-if="c.logged_count" title="Written to a log only: nothing was delivered">{{ c.logged_count }} logged only</small></td>
           <td>{{ c.failed_count }}</td>
           <td>{{ c.type === 'email' ? c.opened_count : '—' }}</td>
         </template>

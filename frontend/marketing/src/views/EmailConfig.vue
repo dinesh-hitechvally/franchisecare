@@ -24,6 +24,7 @@ const showServer = ref(false)
 
 // ---- the services
 const DEFAULT = { key: 'default', name: 'Default', sub: 'Platform mail server', color: '#455a64', letter: 'D', type: 'default' }
+const LOGONLY = { key: 'log', name: 'Log only', sub: 'Nothing is sent', color: '#78909c', letter: 'L', type: 'log' }
 const ACCOUNTS = [
   { key: 'google', name: 'Google', sub: 'Sign in with Google', color: '#ea4335', letter: 'G', type: 'oauth' },
   { key: 'microsoft', name: 'Microsoft', sub: 'Sign in with Microsoft', color: '#0078d4', letter: 'M', type: 'oauth' },
@@ -41,7 +42,7 @@ const SERVICES = [
   { key: 'mandrill', name: 'Mandrill', sub: 'Mailchimp Transactional', color: '#e8603c', host: 'smtp.mandrillapp.com', port: 587, encryption: 'tls', user: 'Any name, e.g. your Mailchimp login', pass: 'A Mandrill API key' },
   { key: 'custom', name: 'Custom server', sub: 'Enter the details yourself', color: '#6b7280', letter: '⚙', host: '', port: 587, encryption: 'tls', user: 'Normally the full mailbox address', pass: 'The mailbox password', editHost: true },
 ].map((x) => ({ ...x, type: 'smtp' }))
-const TILES = [DEFAULT, ...ACCOUNTS, ...SERVICES]
+const TILES = [DEFAULT, LOGONLY, ...ACCOUNTS, ...SERVICES]
 const tile = (k) => TILES.find((x) => x.key === k)
 
 const HOWTO = {
@@ -74,7 +75,7 @@ onMounted(async () => {
 
 const conn = (k) => c.value.connections[k] || { connected: false }
 const isActive = (k) => c.value.active === k
-const statusOf = (t) => (t.key === 'default' ? 'Always available' : conn(t.key).connected ? (conn(t.key).email || conn(t.key).username || 'Connected') : 'Not connected')
+const statusOf = (t) => (t.key === 'default' ? (c.value.default_ready ? 'Sent by this server' : '⚠ Not available here') : t.key === 'log' ? 'Nothing is sent' : conn(t.key).connected ? (conn(t.key).email || conn(t.key).username || 'Connected') : 'Not connected')
 
 function open(k) {
   editing.value = k
@@ -136,7 +137,7 @@ async function connect(key) {
 async function test() {
   testMsg.value = testErr.value = testHint.value = ''
   busy.value = true
-  try { testMsg.value = (await api.post('/config/email/test', { to: testTo.value })).data.message; tested.value = c.value.active } catch (e) { testErr.value = errorMessage(e); testHint.value = e.response?.data?.hint || '' } finally { busy.value = false; tick.value++ }
+  try { const r = (await api.post('/config/email/test', { to: testTo.value })).data; testMsg.value = (r.logged ? '⚠ ' : '') + r.message; tested.value = r.logged ? '' : c.value.active } catch (e) { testErr.value = errorMessage(e); testHint.value = e.response?.data?.hint || '' } finally { busy.value = false; tick.value++ }
 }
 watch(() => c.value?.active, () => { testMsg.value = testErr.value = testHint.value = '' })
 
@@ -208,13 +209,24 @@ const mismatch = computed(() => {
           <span class="ico" :style="{ background: current.color, color: current.dark ? '#222' : '#fff' }">{{ current.letter || current.name[0] }}</span>
           <h3>{{ current.name }}</h3>
           <span v-if="isActive(current.key)" class="badge sent">In use</span>
-          <span v-else-if="connected || current.key === 'default'" class="badge">Connected, not in use</span>
+          <span v-else-if="connected" class="badge">Connected, not in use</span>
+          <span v-else-if="current.type === 'default' || current.type === 'log'" class="badge">Not in use</span>
         </div>
 
         <!-- Default -->
         <template v-if="current.type === 'default'">
-          <p class="hint">Emails go out through the mail server set up for this platform. Nothing to configure.</p>
-          <button v-if="!isActive('default')" type="button" class="btn" :disabled="busy" @click="useService('default')">Use Default for sending</button>
+          <template v-if="c.default_ready">
+            <p class="hint">Sent from <b>this server itself</b>, with its own mail program ({{ c.default_via }}), not through SMTP. The message is handed to it for real: it goes out, or it fails with the reason.</p>
+            <p v-if="c.default_catcher" class="note">ℹ This server's mail program is Mailpit: it keeps the mail in its own inbox (open <b>http://localhost:8025</b>) and never delivers to real inboxes. Fine for development. On a live server it would deliver for real.</p>
+          </template>
+          <p v-else class="warn">⚠ This server's mail program could not be found, so <b>Default</b> cannot send and would fail. Ask for <code>MAIL_SENDMAIL_PATH</code> to be set in <code>.env</code>, connect a mail service below, or use <b>Log only</b> to try things out.</p>
+          <button v-if="!isActive('default')" type="button" class="btn" :disabled="busy || !c.default_ready" :title="c.default_ready ? '' : 'This server has no mail program configured'" @click="useService('default')">Use Default for sending</button>
+        </template>
+
+        <!-- Log only -->
+        <template v-else-if="current.type === 'log'">
+          <p class="hint">Nothing is sent. Each message is only written to the log and listed in the send history as <b>logged only</b>. Handy for trying campaigns and automations safely.</p>
+          <button v-if="!isActive('log')" type="button" class="btn" :disabled="busy" @click="useService('log')">Use Log only</button>
         </template>
 
         <!-- Google / Microsoft -->
@@ -311,6 +323,7 @@ const mismatch = computed(() => {
 .auto { background: #eef7ee; color: #1b5e20; border-radius: 6px; padding: 10px 14px; font-size: 14px; margin: 0 0 14px; }
 .auto a { margin-left: 8px; }
 .warn { margin: 0 0 12px; color: #8a4b00; font-size: 14px; }
+.note { margin: 0 0 12px; color: #1b5e20; background: #eef7ee; border-radius: 6px; padding: 8px 12px; font-size: 14px; }
 .hintbox { background: #fffbea; border: 1px solid #f3e2a3; color: #5f4b00; }
 .guide { background: #fffbea; border: 1px solid #f3e2a3; border-radius: 8px; padding: 14px 16px; margin: 0 0 16px; }
 .guide h4 { margin: 0 0 8px; font-size: 15px; }

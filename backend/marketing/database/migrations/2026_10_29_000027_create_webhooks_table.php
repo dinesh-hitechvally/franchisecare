@@ -16,8 +16,9 @@ return new class extends Migration
             $table->text('events'); // JSON list, or ["*"]
             $table->text('secret'); // encrypted
             $table->boolean('active')->default(true);
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

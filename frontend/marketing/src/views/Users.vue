@@ -61,7 +61,7 @@ onMounted(load)
       <tr v-for="u in visible" :key="u.id">
         <td><b>{{ u.name }}</b> <span v-if="u.id === auth.user.id" class="badge">you</span></td>
         <td>{{ u.email }}</td>
-        <td>{{ new Date(u.created_at).toLocaleDateString() }}</td>
+        <td>{{ $d(u.created_at) }}</td>
         <td class="act"><RowMenu :history="{ type: 'user', id: u.id, title: u.email }" :items="[{ label: 'Edit', run: () => open(u) }, { label: 'Remove', run: () => remove(u), danger: true, show: u.id !== auth.user.id }]" /></td>
       </tr>
     </table>

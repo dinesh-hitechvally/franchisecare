@@ -1,4 +1,5 @@
 <script setup>
+import { fmtDateTime } from '../format'
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api, { errorMessage } from '../api'
@@ -14,7 +15,7 @@ const error = ref('')
 
 const STEP = { trigger: 'Trigger', send_email: 'Send email', send_sms: 'Send SMS', wait: 'Wait', add_tag: 'Add tag', remove_tag: 'Remove tag', add_to_list: 'Add to list', end: 'Finished', cancelled: 'Cancelled' }
 const who = (c) => (c ? [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email : 'Deleted contact')
-const when = (d) => (d ? new Date(d).toLocaleString() : '—')
+const when = (d) => fmtDateTime(d, '—')
 const badge = (s) => ({ completed: 'sent', done: 'sent', failed: 'failed', running: 'sending', waiting: 'sending', cancelled: '', skipped: '' }[s] ?? '')
 
 async function load(page = 1) {

@@ -15,11 +15,12 @@ return new class extends Migration
             $table->string('email');
             $table->string('phone', 40)->nullable();
             $table->string('job_title', 120)->nullable();
-            $table->timestamp('email_verified_at')->nullable();
+            $table->dateTime('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
             // unique only among rows that are not deleted (MySQL ignores NULLs in a unique index)
             $table->string('email_active')->nullable()->virtualAs('CASE WHEN deleted_at IS NULL THEN `email` END');
             $table->unique('email_active');

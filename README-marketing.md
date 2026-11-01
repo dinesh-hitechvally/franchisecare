@@ -42,7 +42,7 @@ Triggers: contact added, joins a list, tag added, form submitted. Workflows star
 **Analytics** — Campaign Analytics · Contact Analytics (growth, subscriptions, engagement, sources) · Conversion Reports (form/page views → sign-ups).
 
 **System Settings** — Company Profile · **Email Configuration** (sender + your own SMTP, test send) ·
-**SMS Configuration** (Twilio or test mode, test send) · **API Integrations** · **Webhooks** · **Users** · **Activity Logs**.
+**SMS Configuration** (Twilio and other SMS services, or Log only; test send) · **API Integrations** · **Webhooks** · **Users** · **Activity Logs**.
 
 ## Companies and users
 
@@ -107,4 +107,26 @@ Settings → Email sending lists every service (Default, Google, Microsoft, Gmai
 
 ## Send history
 
-**Campaigns → Send history** (`/logs`) lists every email and SMS the platform sent or tried to send, in the database (two tables: `email_logs` and `sms_logs`): campaigns, automations, form auto-replies, **test messages** (Email / SMS configuration pages and "Send test" in the campaign editor) and staff notifications for form submissions. Each row has a kind (`source`), the service that carried it (`service`: a connected mail/SMS service, `default` = platform mail, `log` = SMS test mode, where nothing leaves the server), its status and any error. Test messages and staff notifications are listed but never counted in campaign reports or the dashboard. Filter by text, channel, kind, service, status and dates. The Email and SMS configuration pages also show their last five test messages.
+**Campaigns → Send history** (`/logs`) lists every email and SMS the platform sent or tried to send, in the database (two tables: `email_logs` and `sms_logs`): campaigns, automations, form auto-replies, **test messages** (Email / SMS configuration pages and "Send test" in the campaign editor) and staff notifications for form submissions. Each row has a kind (`source`), the service that carried it (`service`: a connected mail/SMS service, `default` = platform mail, `log` = Log only for SMS, where nothing leaves the server), its status and any error. Test messages and staff notifications are listed but never counted in campaign reports or the dashboard. Filter by text, channel, kind, service, status and dates. The Email and SMS configuration pages also show their last five test messages.
+
+**Logged only.** A message sent through a service that only writes to a log gets the status **logged** ("logged only"), never "sent": the **Log only** service for email (Settings → Email sending) and for SMS (Settings → SMS sending). Logged-only messages are kept out of the "sent" counts everywhere (dashboard, reports, analytics); campaigns and reports show them as a separate number. The **Default** mail service is the server itself: it hands each message to the server's own mail program (PHP's `sendmail_path`, e.g. Postfix on a Linux host, or Mailpit on Laragon; override with `MAIL_SENDMAIL_PATH` in `.env`), not an SMTP login, and it never just logs: the message goes out, or the send fails with the reason (mail program not found, Mailpit not running, …). If `MAIL_MAILER` in `.env` is a real mailer (smtp, ses, …) Default uses that instead. On Laragon the mail program is Mailpit, which keeps mail in its own inbox at http://localhost:8025 and never reaches real inboxes; start it from Laragon (Menu → Mail) first.
+
+Failed and skipped messages show their error in the **Error / reason** column of Send history; click it (or **View**) for the full text and, where we recognise the problem (wrong Gmail password, Mailpit not running, invalid phone number, …), a **What to do** note. The same notes appear under a failed test on the Email and SMS pages.
+
+## Dates and times
+
+**Shown** as **Y-m-d** (`2026-11-01`) and **Y-m-d h:i A** (`2026-11-01 01:28 PM`). One helper does it (`src/format.js`): templates use `$d(value)`, `$dt(value)` and `$ds(value)`, scripts import `fmtDate` / `fmtDateTime` / `fmtStored`. The date entry boxes (`DateInput`, `DateTimeInput`) read and accept the same formats.
+
+**Stored** in UTC. The app runs on UTC and the MySQL connection is pinned to it (`'timezone' => '+00:00'` in `config/database.php`, `DB_TIMEZONE`), so the server's own clock never leaks in. Every date column is `DATETIME` (never `TIMESTAMP`), so any database tool shows the same UTC value. System times (created, sent, opened …) are converted to the viewer's time zone when displayed.
+
+**Typed by a person** (the campaign schedule): stored exactly as typed and shown exactly as stored, with no conversion (`$ds`, `fmtStored`). The scheduler sends it when the server's UTC clock reaches that time, so the schedule box shows "UTC now". Dates typed into custom fields are kept as typed too.
+
+A database written before this (TIMESTAMP columns, MySQL on a non-UTC server) can be repaired once with `php artisan timestamps:fix-utc --dry-run` then `php artisan timestamps:fix-utc`, before converting the columns to DATETIME.
+
+## Media library
+
+**Media** (sidebar) is the company's file library: upload images (PNG, JPG, GIF, WebP) and documents (PDF, Office, CSV, TXT, ZIP) once, by dragging them in or with **Upload files**, up to 8 MB each. Search, filter by type and date, rename, copy a file's link, open it, delete it (soft delete; the link then stops working) and see its change history from the ⋮ menu. Files are kept in private storage and served at `/api/m/{token}/{file name}` by their long random token, so an image can be used in an email or page without signing in; only images are shown in the browser, other files download.
+
+Things that need an image **pick it from Media** instead of asking for a web address or a direct upload. First user: **Settings → Company profile → Logo → Choose from media** (images only, this company's own; shown beside the company name in the sidebar). A file that is the current logo cannot be deleted until another is chosen.
+
+Tables: `media` (+ `media_history`, so every change to a file is mirrored like the other tables).

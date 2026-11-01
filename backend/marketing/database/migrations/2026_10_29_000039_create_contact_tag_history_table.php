@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('changed_by_name')->nullable();
             $table->string('change_source', 20);            // dashboard | api | public | system
             $table->string('change_ip', 45)->nullable();
-            $table->timestamp('changed_at')->useCurrent();
+            $table->dateTime('changed_at')->useCurrent();
 
             $table->index('contact_id');
             $table->index('tag_id');

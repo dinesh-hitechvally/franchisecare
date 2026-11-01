@@ -91,6 +91,7 @@ async function logout() {
           </div>
         </template>
 
+        <router-link to="/media" class="nav-item" active-class="active"><Icon name="image" :size="18" /><span>Media</span></router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: route.path.startsWith('/settings') }"><Icon name="settings" :size="18" /><span>Settings</span></router-link>
       </nav>
 

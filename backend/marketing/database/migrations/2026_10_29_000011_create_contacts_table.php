@@ -18,11 +18,12 @@ return new class extends Migration
             $table->string('source', 20)->default('manual'); // manual | import | form | api
             $table->boolean('email_subscribed')->default(true);
             $table->boolean('sms_subscribed')->default(true);
-            $table->timestamp('email_unsubscribed_at')->nullable();
-            $table->timestamp('sms_unsubscribed_at')->nullable();
+            $table->dateTime('email_unsubscribed_at')->nullable();
+            $table->dateTime('sms_unsubscribed_at')->nullable();
             $table->string('unsubscribe_token', 40)->unique();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->string('email_active')->nullable()->virtualAs('CASE WHEN deleted_at IS NULL THEN `email` END'); // unique only among rows that are not deleted
             $table->unique(['company_id', 'email_active']);

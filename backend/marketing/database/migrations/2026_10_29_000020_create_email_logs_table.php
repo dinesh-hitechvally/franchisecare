@@ -24,11 +24,12 @@ return new class extends Migration
             $table->string('provider_id')->nullable();
             $table->text('error')->nullable();
             $table->string('track_token', 40)->unique();
-            $table->timestamp('sent_at')->nullable();
-            $table->timestamp('opened_at')->nullable();
+            $table->dateTime('sent_at')->nullable();
+            $table->dateTime('opened_at')->nullable();
             $table->unsignedInteger('clicks')->default(0);
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->index(['company_id', 'status']);
         });

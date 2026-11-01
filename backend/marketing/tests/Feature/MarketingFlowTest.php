@@ -42,10 +42,11 @@ class MarketingFlowTest extends TestCase
         $this->assertStringContainsString('/api/t/c/', $logs[0]->body);
         $this->assertStringContainsString('Unsubscribe', $logs[0]->body);
 
-        // SMS: Bob has no phone -> skipped, Ann sent via log driver
+        // SMS: Bob has no phone -> skipped, Ann 'logged' (test mode: written to the log, not delivered)
         $sms = $this->postJson('/api/campaigns', ['name' => 'Txt', 'type' => 'sms', 'contact_list_id' => $list, 'body' => 'Hi {{first_name}}'], $h)->json('id');
         $this->postJson("/api/campaigns/$sms/send", [], $h)->assertOk();
-        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'sent')->count());
+        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'logged')->count());
+        $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'sent')->count()); // nothing was really sent
         $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'skipped')->count());
         $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('status', 'sent');
 

@@ -37,7 +37,7 @@ onMounted(async () => { r.value = (await api.get(`/reports/campaigns/${route.par
       <div>
         <h1>{{ r.campaign.name }}</h1>
         <small>{{ r.campaign.type.toUpperCase() }} · {{ audience }} · <span class="badge" :class="r.campaign.status">{{ r.campaign.status }}</span>
-          <template v-if="r.campaign.completed_at"> · finished {{ new Date(r.campaign.completed_at).toLocaleString() }}</template></small>
+          <template v-if="r.campaign.completed_at"> · finished {{ $dt(r.campaign.completed_at) }}</template></small>
       </div>
       <div class="row">
         <router-link to="/reports" class="btn ghost">Back</router-link>
@@ -49,6 +49,7 @@ onMounted(async () => { r.value = (await api.get(`/reports/campaigns/${route.par
     <div class="grid g4">
       <div class="card stat"><div class="n">{{ r.stats.sent }}</div><div class="l">Delivered of {{ r.stats.recipients }} recipients</div></div>
       <div class="card stat"><div class="n" :style="{ color: r.stats.failed ? '#c62828' : '' }">{{ r.stats.failed }}</div><div class="l">Failed · {{ r.stats.skipped }} skipped</div></div>
+      <div v-if="r.stats.logged" class="card stat"><div class="n" style="color: #0d47a1">{{ r.stats.logged }}</div><div class="l">Logged only: written to a log, not delivered (Log only)</div></div>
       <template v-if="isEmail">
         <div class="card stat"><div class="n">{{ r.stats.open_rate }}%</div><div class="l">Open rate · {{ r.stats.opened }} opened</div></div>
         <div class="card stat"><div class="n">{{ r.stats.click_rate }}%</div><div class="l">Click rate · {{ r.stats.clicks }} clicks</div></div>

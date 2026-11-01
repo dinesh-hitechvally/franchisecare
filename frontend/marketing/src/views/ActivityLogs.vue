@@ -1,4 +1,5 @@
 <script setup>
+import DateInput from '../components/DateInput.vue'
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
@@ -50,8 +51,8 @@ onMounted(async () => {
     <select v-if="tab === 'changes'" v-model="f.event" style="width: 150px"><option value="">All events</option><option v-for="(l, k) in EVENTS" :key="k" :value="k">{{ l }}</option></select>
     <select v-if="tab === 'changes'" v-model="f.source" style="width: 170px"><option value="">Everywhere</option><option v-for="(l, k) in SOURCES" :key="k" :value="k">{{ l }}</option></select>
     <input v-model="f.search" :placeholder="tab === 'changes' ? 'Search by record name…' : 'Search activity…'" style="max-width: 220px" />
-    <label class="check" style="margin: 0">From <input v-model="f.from" type="date" style="width: auto" /></label>
-    <label class="check" style="margin: 0">To <input v-model="f.to" type="date" style="width: auto" /></label>
+    <label class="check" style="margin: 0">From <DateInput v-model="f.from" /></label>
+    <label class="check" style="margin: 0">To <DateInput v-model="f.to" /></label>
     <button v-if="f.id" class="btn ghost sm" @click="f.id = ''">Showing one record — show all</button>
   </FilterBar>
 
@@ -62,7 +63,7 @@ onMounted(async () => {
     <table v-else-if="tab === 'changes'">
       <thead><tr><th>When</th><th>Who</th><th>What happened</th><th>What changed</th></tr></thead>
       <tr v-for="l in rows" :key="l.type + l.history_id">
-        <td class="nw">{{ new Date(l.changed_at).toLocaleString() }}</td>
+        <td class="nw">{{ $dt(l.changed_at) }}</td>
         <td>{{ l.changed_by_name || '—' }}<br /><small>{{ SOURCES[l.change_source] || l.change_source }}<template v-if="l.change_ip"> · {{ l.change_ip }}</template></small></td>
         <td>
           <span class="badge" :class="'ev-' + l.change_action">{{ EVENTS[l.change_action] || l.change_action }}</span>
@@ -82,7 +83,7 @@ onMounted(async () => {
     <table v-else>
       <thead><tr><th>When</th><th>User</th><th>Activity</th><th>IP</th></tr></thead>
       <tr v-for="l in rows" :key="l.id">
-        <td>{{ new Date(l.created_at).toLocaleString() }}</td>
+        <td>{{ $dt(l.created_at) }}</td>
         <td>{{ l.user_name || '—' }}</td>
         <td>{{ l.description }}</td>
         <td><small>{{ l.ip }}</small></td>

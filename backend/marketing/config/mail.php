@@ -18,6 +18,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | The server's own mail program ("Default" in Settings → Email sending)
+    |--------------------------------------------------------------------------
+    |
+    | When MAIL_MAILER is "log" (the Laravel skeleton default) the platform's Default mail does not just log: it hands the
+    | message to the server's mail program, PHP's sendmail_path unless MAIL_SENDMAIL_PATH says otherwise.
+    |
+    */
+
+    'server_command' => env('MAIL_SENDMAIL_PATH') ?: (ini_get('sendmail_path') ?: ''),
+
+    /*
+    |--------------------------------------------------------------------------
     | Mailer Configurations
     |--------------------------------------------------------------------------
     |

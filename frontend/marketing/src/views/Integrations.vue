@@ -67,8 +67,8 @@ onMounted(load)
       <thead><tr><th>Name</th><th>Created</th><th>Last used</th><th></th></tr></thead>
       <tr v-for="k in visible" :key="k.id">
         <td><b>{{ k.name }}</b></td>
-        <td>{{ new Date(k.created_at).toLocaleDateString() }}</td>
-        <td>{{ k.last_used_at ? new Date(k.last_used_at).toLocaleString() : 'never' }}</td>
+        <td>{{ $d(k.created_at) }}</td>
+        <td>{{ k.last_used_at ? $dt(k.last_used_at) : 'never' }}</td>
         <td style="text-align: right"><button class="btn ghost sm" @click="revoke(k)">Revoke</button></td>
       </tr>
     </table>

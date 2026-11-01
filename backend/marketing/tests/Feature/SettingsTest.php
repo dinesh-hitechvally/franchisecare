@@ -70,7 +70,7 @@ class SettingsTest extends TestCase
         $h = $this->owner();
         $this->putJson('/api/settings', ['name' => 'Acme', 'address' => '1 Main St', 'profile' => [
             'legal_name' => 'Acme Pty Ltd', 'tax_id' => 'ABN 12 345', 'industry' => 'Retail', 'support_email' => 'hello@acme.test',
-            'city' => 'Sydney', 'state' => 'NSW', 'postcode' => '2000', 'country' => 'Australia', 'logo_url' => 'https://acme.test/logo.png',
+            'city' => 'Sydney', 'state' => 'NSW', 'postcode' => '2000', 'country' => 'Australia',
         ]], $h)->assertOk()->assertJsonPath('profile.city', 'Sydney');
         $this->putJson('/api/settings', ['name' => 'Acme', 'profile' => ['support_email' => 'not-an-email']], $h)->assertStatus(422);
 
@@ -80,7 +80,6 @@ class SettingsTest extends TestCase
             $this->assertStringContainsString($bit, $html);
         }
         $this->assertSame('hello@acme.test', (new MessageRenderer)->vars($company, null, 'email')['company_email']);
-        $this->getJson('/api/me', $h)->assertJsonPath('company.logo_url', 'https://acme.test/logo.png');
 
         $this->putJson('/api/account', ['name' => 'Olivia', 'email' => 'o@x.com', 'phone' => '+61 400 000 000', 'job_title' => 'Owner'], $h)
             ->assertOk()->assertJsonPath('user.job_title', 'Owner')->assertJsonPath('user.phone', '+61 400 000 000');
@@ -147,5 +146,11 @@ class SettingsTest extends TestCase
         $this->assertStringContainsString('rejected the username or password', $explain('Expected response code "235" but got code "535"', ['host' => 'smtp.example.com']));
         $this->assertStringContainsString('Could not reach the mail server', $explain('Connection could not be established with host "smtp.example.com:587"'));
         $this->assertNull($explain('Something unrelated'));
+
+        // the server's own mail program (Default): Mailpit not running, or the program failing
+        config(['mail.server_command' => 'D:/laragon/bin/mailpit/1.22.3/mailpit.exe sendmail']);
+        $this->assertStringContainsString('Mailpit is not running', $explain('Process failed with exit code 1: dial tcp [::1]:1025: connectex: actively refused'));
+        config(['mail.server_command' => '/usr/sbin/sendmail -t -i']);
+        $this->assertStringContainsString("server's own mail program", $explain('Process failed with exit code 75: could not deliver'));
     }
 }

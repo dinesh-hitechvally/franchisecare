@@ -17,8 +17,9 @@ return new class extends Migration
             $table->longText('body');
             $table->longText('design')->nullable(); // visual-designer JSON (blocks + settings) kept next to the rendered HTML
             $table->json('attachments')->nullable(); // email only: files that go out with it [{token, name, size}]
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

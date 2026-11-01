@@ -14,8 +14,9 @@ return new class extends Migration
             $table->foreignId('contact_id')->constrained()->cascadeOnDelete();
             $table->foreignId('contact_field_id')->constrained()->cascadeOnDelete();
             $table->text('value');
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->unique(['contact_id', 'contact_field_id']);
         });

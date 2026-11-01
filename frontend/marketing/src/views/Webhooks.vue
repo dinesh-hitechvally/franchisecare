@@ -123,7 +123,7 @@ onMounted(async () => { events.value = (await api.get('/webhooks/events')).data;
     <table v-else>
       <thead><tr><th>When</th><th>Event</th><th>Result</th><th>Response</th></tr></thead>
       <tr v-for="d in log.items" :key="d.id">
-        <td>{{ new Date(d.created_at).toLocaleString() }}</td><td><code>{{ d.event }}</code></td>
+        <td>{{ $dt(d.created_at) }}</td><td><code>{{ d.event }}</code></td>
         <td><span class="badge" :class="d.success ? 'sent' : 'failed'">{{ d.success ? 'OK' : 'failed' }} {{ d.status_code || '' }}</span></td>
         <td><small>{{ d.response }}</small></td>
       </tr>

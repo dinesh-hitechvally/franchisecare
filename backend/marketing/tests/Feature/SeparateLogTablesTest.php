@@ -44,17 +44,17 @@ class SeparateLogTablesTest extends TestCase
 
         $this->assertSame(['ann@x.com'], EmailLog::pluck('recipient')->all());
         $this->assertSame(['+61400000001'], SmsLog::pluck('recipient')->all());
-        $this->assertSame('log', SmsLog::first()->service);   // SMS test mode
+        $this->assertSame('log', SmsLog::first()->service);   // SMS Log only
         $this->assertSame('default', EmailLog::first()->service);
 
         // each campaign's own counts and report come from its own table
         $rows = collect($this->getJson('/api/campaigns', $h)->json('data'))->keyBy('name');
         $this->assertSame([1, 1, 0, 1], [$rows['Mail']['logs_count'], $rows['Mail']['sent_count'], $rows['Mail']['failed_count'], $rows['Mail']['opened_count'] + 1]);
-        $this->assertSame([1, 1, 0], [$rows['Text']['logs_count'], $rows['Text']['sent_count'], $rows['Text']['opened_count']]);
-        $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('sent_count', 1)->assertJsonPath('logs_count', 1);
-        $this->getJson("/api/reports/campaigns/$sms", $h)->assertOk()->assertJsonPath('stats.sent', 1)->assertJsonPath('stats.recipients', 1)->assertJsonPath('stats.opened', 0);
+        $this->assertSame([1, 0, 1, 0], [$rows['Text']['logs_count'], $rows['Text']['sent_count'], $rows['Text']['logged_count'], $rows['Text']['opened_count']]); // test mode: logged, not sent
+        $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('sent_count', 0)->assertJsonPath('logged_count', 1)->assertJsonPath('logs_count', 1);
+        $this->getJson("/api/reports/campaigns/$sms", $h)->assertOk()->assertJsonPath('stats.sent', 0)->assertJsonPath('stats.logged', 1)->assertJsonPath('stats.recipients', 1)->assertJsonPath('stats.opened', 0);
         $reports = collect($this->getJson('/api/reports/campaigns', $h)->json('data'))->keyBy('name');
-        $this->assertSame(1, $reports['Text']['sent_count']);
+        $this->assertSame(0, $reports['Text']['sent_count']);
         $this->assertSame(1, $reports['Mail']['sent_count']);
         $this->get("/api/reports/campaigns/$sms/export", $h)->assertOk();
     }
@@ -89,15 +89,15 @@ class SeparateLogTablesTest extends TestCase
         }
 
         $d = $this->getJson('/api/dashboard', $h)->assertOk();
-        $d->assertJsonPath('email.sent', 1)->assertJsonPath('sms.sent', 1);
+        $d->assertJsonPath('email.sent', 1)->assertJsonPath('sms.sent', 0); // the text was only logged
         $this->assertEqualsCanonicalizing(['email', 'sms'], collect($d->json('recent_logs'))->pluck('channel')->all());
-        $this->assertSame(2, array_sum($d->json('daily')));
+        $this->assertSame(1, array_sum($d->json('daily')));
 
         $log = EmailLog::first();
         $this->get("/api/t/c/{$log->track_token}?".http_build_query(['u' => 'https://example.com/a', 's' => \App\Services\MessageRenderer::sign('https://example.com/a')]))->assertRedirect('https://example.com/a');
         $this->assertSame(1, $log->fresh()->clicks);
         $this->assertSame($log->id, \App\Models\ClickEvent::first()->email_log_id);
         $analytics = $this->getJson('/api/analytics/campaigns', $h)->assertOk();
-        $this->assertSame([2, 1, 1], [$analytics->json('totals.sent'), $analytics->json('totals.emails'), $analytics->json('totals.sms')]);
+        $this->assertSame([1, 1, 0], [$analytics->json('totals.sent'), $analytics->json('totals.emails'), $analytics->json('totals.sms')]);
     }
 }

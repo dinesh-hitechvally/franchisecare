@@ -1,4 +1,5 @@
 <script setup>
+import DateInput from '../components/DateInput.vue'
 import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api, { errorMessage } from '../api'
 import FilterBar from '../components/FilterBar.vue'
@@ -123,7 +124,7 @@ onMounted(async () => {
         <select v-else-if="meta(r.field).type === 'tag'" v-model="r.value" style="flex: 1"><option value="">Choose tag…</option><option v-for="t in tags" :key="t.id" :value="t.id">{{ t.name }}</option></select>
         <select v-else-if="meta(r.field).type === 'list'" v-model="r.value" style="flex: 1"><option value="">Choose list…</option><option v-for="l in lists" :key="l.id" :value="l.id">{{ l.name }}</option></select>
         <select v-else-if="meta(r.field).type === 'source'" v-model="r.value" style="flex: 1"><option v-for="[v, l] in SOURCES" :key="v" :value="v">{{ l }}</option></select>
-        <input v-else-if="meta(r.field).type === 'date'" v-model="r.value" type="date" style="flex: 1" />
+        <DateInput v-else-if="meta(r.field).type === 'date'" v-model="r.value" style="flex: 1" />
         <input v-else-if="meta(r.field).type === 'days'" v-model="r.value" type="number" min="1" max="365" style="width: 90px" /><span v-if="meta(r.field).type === 'days'">days</span>
         <input v-else v-model="r.value" style="flex: 1" placeholder="value" />
 

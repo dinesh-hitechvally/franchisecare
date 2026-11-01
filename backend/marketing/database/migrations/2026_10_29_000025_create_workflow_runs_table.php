@@ -15,13 +15,14 @@ return new class extends Migration
             $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
             $table->string('status', 12)->default('running'); // running | completed | failed | cancelled
             $table->unsignedSmallInteger('current_step')->default(0);
-            $table->timestamp('next_run_at')->nullable()->index();
-            $table->timestamp('locked_until')->nullable();
-            $table->timestamp('started_at')->nullable();
-            $table->timestamp('completed_at')->nullable();
+            $table->dateTime('next_run_at')->nullable()->index();
+            $table->dateTime('locked_until')->nullable();
+            $table->dateTime('started_at')->nullable();
+            $table->dateTime('completed_at')->nullable();
             $table->text('error')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

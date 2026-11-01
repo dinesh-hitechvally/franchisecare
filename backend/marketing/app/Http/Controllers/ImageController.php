@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\ImageSearch;
+use App\Services\OnlineImageImport;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 
@@ -24,11 +25,14 @@ class ImageController extends Controller
 
         try {
             // cache briefly to stay inside the providers' free rate limits
-            return Cache::remember(
+            $results = Cache::remember(
                 "img:{$data['provider']}:".md5($data['q']).':'.($data['page'] ?? 1),
                 600,
                 fn () => $images->search($data['provider'], $data['q'], $data['page'] ?? 1),
             );
+            OnlineImageImport::vouch($request->user()->company_id, $results); // only these addresses can be imported into the library
+
+            return $results;
         } catch (\Throwable $e) {
             return response()->json(['message' => 'Image search failed: '.$e->getMessage()], 422);
         }

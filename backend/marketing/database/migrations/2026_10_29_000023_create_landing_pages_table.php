@@ -19,8 +19,9 @@ return new class extends Migration
             $table->foreignId('form_id')->nullable()->constrained()->nullOnDelete();
             $table->boolean('published')->default(false);
             $table->unsignedInteger('views')->default(0);
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

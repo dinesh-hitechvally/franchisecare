@@ -16,8 +16,9 @@ return new class extends Migration
             $table->string('label');            // what people see, e.g. "Company name"
             $table->string('type', 20)->default('text'); // text | textarea | number | date | dropdown | radio | checkbox
             $table->text('options')->nullable();         // JSON list, for dropdown / radio
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->string('key_active')->nullable()->virtualAs('CASE WHEN deleted_at IS NULL THEN `key` END'); // unique only among rows that are not deleted
             $table->unique(['company_id', 'key_active']);

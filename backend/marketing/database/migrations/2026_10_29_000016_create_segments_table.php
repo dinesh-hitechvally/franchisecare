@@ -15,8 +15,9 @@ return new class extends Migration
             $table->text('description')->nullable();
             $table->string('match', 3)->default('all'); // all | any
             $table->text('rules');                      // JSON: [{field, op, value}]
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

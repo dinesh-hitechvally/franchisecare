@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Services\CompanyMailer;
 use App\Services\MailOAuth;
 use App\Services\MailSettings;
+use App\Services\SendErrors;
 use App\Services\SendLog;
+use App\Services\ServerMail;
 use App\Services\Sms\SmsManager;
 use App\Services\Sms\SmsProviders;
 use App\Services\SmsSettings;
@@ -30,12 +32,12 @@ class ConfigController extends Controller
             'from_email' => 'nullable|email',
             'reply_to' => 'nullable|email',
             'address' => 'nullable|string|max:255',
-            'active' => ['required', Rule::in(array_merge(['default'], MailSettings::keys()))],
+            'active' => ['required', Rule::in(array_merge(['default', 'log'], MailSettings::keys()))],
         ]);
 
         $company = $request->user()->company;
         $conns = MailSettings::connections($company);
-        if ($data['active'] !== 'default' && ! isset($conns[$data['active']])) {
+        if (! in_array($data['active'], ['default', 'log'], true) && ! isset($conns[$data['active']])) {
             return response()->json(['message' => 'Connect '.ucfirst($data['active']).' first, then choose it for sending.'], 422);
         }
         $columns = collect($data)->only('from_name', 'from_email', 'reply_to', 'address')->all();
@@ -157,35 +159,17 @@ class ConfigController extends Controller
             ], 422);
         }
 
-        return ['ok' => true, 'message' => "Test email sent to {$to}."];
+        $logged = SendLog::deliveredStatus($company, 'email') === 'logged';
+
+        return ['ok' => true, 'logged' => $logged, 'message' => $logged
+            ? "Test email for {$to} was only written to the log (Log only): nothing was sent. Choose a mail service to really send."
+            : "Test email sent to {$to}."];
     }
 
-    /** Turns a mail-server error into what the person should actually do about it (null when we have no advice). */
+    /** What to do about a mail-server error (null when we have no advice). */
     protected function explainMailError(string $error, array $email): ?string
     {
-        $host = strtolower((string) ($email['host'] ?? ''));
-        $rejected = str_contains($error, '535') || str_contains($error, 'Failed to authenticate') || str_contains($error, '534');
-
-        if ($rejected && (str_contains($host, 'gmail') || str_contains($error, '5.7.8') || str_contains($error, 'gmail'))) {
-            return 'Gmail did not accept that password. Gmail does not allow your normal password here: turn on 2-Step Verification for the Google account, create an "App password" (myaccount.google.com → Security → App passwords) and paste that 16-character code as the password. The username must be the full Gmail address. For a Google Workspace account, the administrator may also need to allow app passwords.';
-        }
-        if ($rejected && str_contains($host, 'office365')) {
-            return 'Microsoft 365 refused the sign-in. Check the username is the full mailbox address, that "Authenticated SMTP" is enabled for that mailbox, and use an app password if the account has two-step sign-in.';
-        }
-        if ($rejected) {
-            return 'The mail server rejected the username or password. Re-enter them (the password field is blank when you only want to keep the saved one) and check whether your provider needs an app password or an API key instead of your normal password.';
-        }
-        if (preg_match('/connection (could not be established|refused|timed out)|timed out|getaddrinfo|php_network/i', $error)) {
-            return 'Could not reach the mail server. Check the server name and port, and that the encryption matches the port (587 with TLS/STARTTLS, or 465 with SSL).';
-        }
-        if (stripos($error, 'starttls') !== false || stripos($error, 'ssl') !== false || stripos($error, 'tls') !== false) {
-            return 'The encryption setting does not match the server. Port 587 normally uses TLS/STARTTLS and port 465 uses SSL.';
-        }
-        if (preg_match('/5\.7\.1|relay|not allowed|sender|from address/i', $error)) {
-            return 'The server refused the sender address. Set From email to an address your mail provider lets you send from (for Gmail, Outlook, Yahoo and Zoho that is the account you sign in with).';
-        }
-
-        return null;
+        return SendErrors::email($error, $email);
     }
 
     // ------------------------------------------------------------------ SMS services (same idea as email: connect many, one in use)
@@ -195,7 +179,7 @@ class ConfigController extends Controller
         return $this->smsPayload($request->user()->company);
     }
 
-    /** Which connected SMS service is in use ("log" = test mode, nothing is sent). */
+    /** Which connected SMS service is in use ("log" = Log only, nothing is sent). */
     public function updateSms(Request $request)
     {
         $data = $request->validate(['active' => ['required', Rule::in(array_merge(['log'], SmsProviders::keys()))]]);
@@ -233,7 +217,7 @@ class ConfigController extends Controller
         return $this->smsPayload($company->fresh());
     }
 
-    /** Forgets one SMS connection. If it was the one in use, sending goes back to test mode. */
+    /** Forgets one SMS connection. If it was the one in use, sending goes back to Log only. */
     public function disconnectSms(Request $request, string $key)
     {
         abort_unless(in_array($key, SmsProviders::keys(), true), 404);
@@ -266,16 +250,26 @@ class ConfigController extends Controller
         try {
             SendLog::run($company, 'sms', $to, null, $text, 'test', fn () => $sms->forCompany($company)->send($to, $text));
         } catch (Throwable $e) {
-            return response()->json(['message' => 'Sending failed: '.mb_substr($e->getMessage(), 0, 300)], 422);
+            return response()->json([
+                'message' => 'Sending failed: '.mb_substr($e->getMessage(), 0, 300),
+                'hint' => SendErrors::sms($e->getMessage(), SmsSettings::activeKey($company)),
+            ], 422);
         }
 
-        return ['ok' => true, 'message' => "Test SMS sent to {$to}."];
+        $logged = SendLog::deliveredStatus($company, 'sms') === 'logged';
+
+        return ['ok' => true, 'logged' => $logged, 'message' => $logged
+            ? "Test SMS for {$to} was only written to the log (Log only): nothing was sent. Connect an SMS service and use it for sending to really send."
+            : "Test SMS sent to {$to}."];
     }
 
     protected function emailPayload($company): array
     {
         return $company->only('from_name', 'from_email', 'reply_to', 'address') + [
             'active' => MailSettings::activeKey($company),
+            'default_ready' => config('mail.default') !== 'log' || ServerMail::ready(), // false: no mail program on this server, so Default cannot send
+            'default_via' => config('mail.default') !== 'log' ? "the platform's mail server (".config('mail.default').')' : ServerMail::name(),
+            'default_catcher' => config('mail.default') === 'log' && ServerMail::isCatcher(), // e.g. Mailpit: mail is kept for you to read on this computer
             'connections' => MailSettings::payload($company), // which services are connected (never a password or token)
             'oauth' => collect(MailOAuth::PROVIDERS)->mapWithKeys(fn ($p) => [$p => ['configured' => MailOAuth::configured($p)]])->all(),
         ];

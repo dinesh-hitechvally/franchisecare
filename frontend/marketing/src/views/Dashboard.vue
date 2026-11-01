@@ -1,4 +1,5 @@
 <script setup>
+import { fmtDateTime, fmtStored } from '../format'
 import { ref, computed, onMounted } from 'vue'
 import api from '../api'
 import Icon from '../components/Icon.vue'
@@ -10,8 +11,8 @@ const bars = computed(() => {
   const max = Math.max(1, ...(d.value?.daily || [0]))
   return (d.value?.daily || []).map((n) => Math.max(8, Math.round((n / max) * 100)))
 })
-const fmt = (s) => new Date(s).toLocaleString([], { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
-const ago = (s) => new Date(s).toLocaleString([], { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
+const fmt = (s) => fmtDateTime(s)
+const ago = (s) => fmtDateTime(s)
 </script>
 
 <template>
@@ -32,7 +33,7 @@ const ago = (s) => new Date(s).toLocaleString([], { day: 'numeric', month: 'shor
         <p v-if="!d.recent_logs.length" class="muted pad">No messages sent yet.</p>
         <router-link v-for="l in d.recent_logs" :key="l.channel + l.id" to="/logs" class="feed">
           <span class="ico" :class="l.channel"><Icon :name="l.channel === 'email' ? 'email' : 'sms'" :size="22" /></span>
-          <span class="txt"><b>{{ l.recipient }}</b> <span class="badge" :class="l.status">{{ l.status }}</span><small>{{ ago(l.created_at) }}</small></span>
+          <span class="txt"><b>{{ l.recipient }}</b> <span class="badge" :class="l.status">{{ l.status === 'logged' ? 'logged only' : l.status }}</span><small>{{ ago(l.created_at) }}</small></span>
           <Icon name="chevron" :size="22" class="go" />
         </router-link>
       </div>
@@ -74,7 +75,7 @@ const ago = (s) => new Date(s).toLocaleString([], { day: 'numeric', month: 'shor
             <td>{{ c.name }}</td>
             <td><span class="badge" :class="c.type">{{ c.type }}</span></td>
             <td>{{ c.list?.name || 'All contacts' }}</td>
-            <td>{{ fmt(c.scheduled_at) }}</td>
+            <td>{{ fmtStored(c.scheduled_at) }} UTC</td>
             <td><router-link :to="`/campaigns/${c.id}`">View</router-link></td>
           </tr>
           <tr v-if="!d.upcoming.length"><td colspan="5" class="empty">Nothing scheduled.</td></tr>

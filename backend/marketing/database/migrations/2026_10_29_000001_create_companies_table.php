@@ -16,8 +16,9 @@ return new class extends Migration
             $table->string('reply_to')->nullable();
             $table->string('address')->nullable(); // shown in the email footer (anti-spam compliance)
             $table->text('settings')->nullable();  // encrypted JSON: email (SMTP) and SMS credentials
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
         });
     }
 

@@ -81,7 +81,7 @@ onMounted(() => load())
         <td>{{ name(c) }}</td>
         <td>{{ f.channel === 'sms' ? c.phone : c.email }}</td>
         <td><span class="badge" :class="c[col] ? 'sent' : 'failed'">{{ c[col] ? 'subscribed' : 'unsubscribed' }}</span></td>
-        <td>{{ c[when] ? new Date(c[when]).toLocaleString() : '—' }}</td>
+        <td>{{ c[when] ? $dt(c[when]) : '—' }}</td>
         <td class="act"><RowMenu :history="{ type: 'contact', id: c.id, title: c.email || c.phone }" :items="[{ label: c[col] ? 'Unsubscribe' : 'Re-subscribe', run: () => change([c.id], !c[col]) }]" /></td>
       </tr>
     </table>

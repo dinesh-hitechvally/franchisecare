@@ -16,8 +16,8 @@ return new class extends Migration
             $table->string('action', 60);
             $table->string('description', 500);
             $table->string('ip', 45)->nullable();
-            $table->timestamp('created_at')->useCurrent();
-            $table->softDeletes();
+            $table->dateTime('created_at')->useCurrent();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->index(['company_id', 'created_at']);
         });

@@ -36,9 +36,9 @@ return new class extends Migration
             $table->boolean('active')->nullable();
             $table->unsignedInteger('views')->nullable();
             $table->unsignedInteger('submissions')->nullable();
-            $table->timestamp('created_at')->nullable();
-            $table->timestamp('updated_at')->nullable();
-            $table->timestamp('deleted_at')->nullable();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->unsignedBigInteger('history_company_id')->nullable();
             $table->string('change_action', 20);            // created | updated | deleted | restored | purged
@@ -48,7 +48,7 @@ return new class extends Migration
             $table->string('changed_by_name')->nullable();
             $table->string('change_source', 20);            // dashboard | api | public | system
             $table->string('change_ip', 45)->nullable();
-            $table->timestamp('changed_at')->useCurrent();
+            $table->dateTime('changed_at')->useCurrent();
 
             $table->index('id');
             $table->index(['history_company_id', 'changed_at']);

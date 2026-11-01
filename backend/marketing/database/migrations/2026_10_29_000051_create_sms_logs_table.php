@@ -22,9 +22,10 @@ return new class extends Migration
             $table->string('service', 30)->nullable();          // which connected service carried it (twilio, vonage…; "log" = test mode)
             $table->string('provider_id')->nullable();
             $table->text('error')->nullable();
-            $table->timestamp('sent_at')->nullable();
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('sent_at')->nullable();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->index(['company_id', 'status']);
         });

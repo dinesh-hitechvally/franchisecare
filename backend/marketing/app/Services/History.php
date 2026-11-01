@@ -36,6 +36,7 @@ class History
         'contact_field' => 'contact_fields',
         'contact_field_value' => 'contact_field_values',
         'form_submission' => 'form_submissions',
+        'media' => 'media',
     ];
 
     /** Columns that change all the time without meaning anything: a change to only these is not recorded. */

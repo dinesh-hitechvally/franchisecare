@@ -6,7 +6,7 @@ use App\Models\Company;
 
 /**
  * How a company sends email. Every service can be connected at once, each with its own saved login, but only ONE is
- * in use for sending (`active`; "default" = the platform's own mail server).
+ * in use for sending (`active`; "default" = the platform's own mail server, "log" = log only: nothing is sent).
  *
  * Stored in company settings under `email`:
  *   active:      "default" | a connection key
@@ -60,7 +60,8 @@ class MailSettings
             };
         }
 
-        return $key !== 'default' && isset($conns[$key]) ? $key : 'default';
+        // "log" is a service of its own (nothing is sent, mail is only written to the log) and needs no connection
+        return $key === 'log' || ($key !== 'default' && isset($conns[$key])) ? $key : 'default';
     }
 
     /** The connection to send with: [key, type (smtp|oauth), conn], or null for the platform default. */
@@ -69,6 +70,9 @@ class MailSettings
         $key = self::activeKey($company);
         if ($key === 'default') {
             return null;
+        }
+        if ($key === 'log') {
+            return ['key' => 'log', 'type' => 'log', 'conn' => []];
         }
 
         return ['key' => $key, 'type' => in_array($key, MailOAuth::PROVIDERS, true) ? 'oauth' : 'smtp', 'conn' => self::connections($company)[$key]];
@@ -83,7 +87,7 @@ class MailSettings
         $settings = $company->settings ?? [];
         [$conns, $active] = $change(self::connections($company), self::activeKey($company));
 
-        $settings['email'] = ['active' => isset($conns[$active]) ? $active : 'default', 'connections' => $conns];
+        $settings['email'] = ['active' => $active === 'log' || isset($conns[$active]) ? $active : 'default', 'connections' => $conns];
         $company->forceFill(['settings' => $settings] + $columns)->save();
     }
 

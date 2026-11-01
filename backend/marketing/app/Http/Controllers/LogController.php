@@ -8,6 +8,7 @@ use App\Models\ContactList;
 use App\Models\EmailLog;
 use App\Models\SmsLog;
 use App\Models\Template;
+use App\Services\SendErrors;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -65,7 +66,10 @@ class LogController extends Controller
         abort_unless(in_array($channel, ['email', 'sms'], true), 404);
         $model = $channel === 'sms' ? SmsLog::class : EmailLog::class;
 
-        return $model::withoutGlobalScope('real')->with('campaign:id,name')->findOrFail($id);
+        $log = $model::withoutGlobalScope('real')->with('campaign:id,name')->findOrFail($id);
+        $log->setAttribute('hint', SendErrors::forLog($channel, $log->error, $log->service)); // what to do about the error, when we know
+
+        return $log;
     }
 
     public function dashboard()

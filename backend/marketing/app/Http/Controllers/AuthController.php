@@ -77,6 +77,6 @@ class AuthController extends Controller
 
     protected function payload(User $user): array
     {
-        return ['user' => $user->only('id', 'name', 'email', 'phone', 'job_title'), 'company' => $user->company->only('id', 'name') + ['logo_url' => $user->company->setting('profile.logo_url')]];
+        return ['user' => $user->only('id', 'name', 'email', 'phone', 'job_title'), 'company' => $user->company->only('id', 'name') + ['logo_url' => \App\Models\Media::logoUrl($user->company)]];
     }
 }

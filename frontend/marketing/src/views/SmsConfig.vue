@@ -12,11 +12,12 @@ const error = ref('')
 const testTo = ref('')
 const testMsg = ref('')
 const testErr = ref('')
+const testHint = ref('')
 const tested = ref('')
 const busy = ref(false)
 const tick = ref(0) // reloads the recent test messages after each test
 
-const LOG = { key: 'log', name: 'Test mode', sub: 'Nothing is sent', color: '#455a64', letter: 'T' }
+const LOG = { key: 'log', name: 'Log only', sub: 'Nothing is sent', color: '#78909c', letter: 'L' }
 const LOOK = {
   twilio: '#f22f46', vonage: '#7b2cbf', plivo: '#2db742', telnyx: '#00c08b', clicksend: '#e8441b', messagebird: '#2481d7', sinch: '#ffbe3c',
 }
@@ -57,7 +58,7 @@ const connected = computed(() => conn(editing.value).connected)
 async function useService(k) {
   msg.value = error.value = ''
   busy.value = true
-  try { c.value = (await api.put('/config/sms', { active: k })).data; msg.value = k === 'log' ? 'Test mode is on: nothing is sent.' : `${tile(k).name} is now used for sending.` } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
+  try { c.value = (await api.put('/config/sms', { active: k })).data; msg.value = k === 'log' ? 'Log only is on: nothing is sent.' : `${tile(k).name} is now used for sending.` } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
 }
 async function saveConnection(activate = false) {
   msg.value = error.value = ''
@@ -69,7 +70,7 @@ async function saveConnection(activate = false) {
   } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
 }
 async function disconnect(k) {
-  if (!confirm(`Disconnect ${tile(k).name}? Its saved login is removed.${isActive(k) ? ' Texts go back to test mode (nothing is sent).' : ''}`)) return
+  if (!confirm(`Disconnect ${tile(k).name}? Its saved login is removed.${isActive(k) ? ' Texts go back to Log only (nothing is sent).' : ''}`)) return
   msg.value = error.value = ''
   try {
     c.value = (await api.delete(`/config/sms/connections/${k}`)).data
@@ -93,9 +94,9 @@ const steps = computed(() => [
 const nextStep = computed(() => steps.value.findIndex((x) => !x.done))
 
 async function test() {
-  testMsg.value = testErr.value = ''
+  testMsg.value = testErr.value = testHint.value = ''
   busy.value = true
-  try { testMsg.value = (await api.post('/config/sms/test', { to: testTo.value })).data.message; tested.value = c.value.active } catch (e) { testErr.value = errorMessage(e) } finally { busy.value = false; tick.value++ }
+  try { const r = (await api.post('/config/sms/test', { to: testTo.value })).data; testMsg.value = (r.logged ? '⚠ ' : '') + r.message; tested.value = r.logged ? '' : c.value.active } catch (e) { testErr.value = errorMessage(e); testHint.value = e.response?.data?.hint || '' } finally { busy.value = false; tick.value++ }
 }
 watch(() => c.value?.active, () => { testMsg.value = testErr.value = '' })
 </script>
@@ -109,7 +110,7 @@ watch(() => c.value?.active, () => { testMsg.value = testErr.value = '' })
 
     <div class="card">
       <h2>SMS services</h2>
-      <p class="hint">Connect as many services as you like: each keeps its own login. Only one is <b>in use</b> for sending at a time; switch whenever you want. In test mode texts are only written to the server log.</p>
+      <p class="hint">Connect as many services as you like: each keeps its own login. Only one is <b>in use</b> for sending at a time; switch whenever you want. With Log only, texts are only written to the log.</p>
 
       <div class="blocks">
         <div v-for="t in TILES" :key="t.key" class="block pick" :class="{ on: editing === t.key, using: isActive(t.key) }" role="button" tabindex="0" @click="open(t.key)" @keydown.enter="open(t.key)">
@@ -131,8 +132,8 @@ watch(() => c.value?.active, () => { testMsg.value = testErr.value = '' })
         </div>
 
         <template v-if="current.key === 'log'">
-          <p class="hint">In test mode messages are written to the server log so you can try campaigns safely. Nothing leaves the server and nothing is charged.</p>
-          <button v-if="!isActive('log')" type="button" class="btn" :disabled="busy" @click="useService('log')">Use test mode</button>
+          <p class="hint">Nothing is sent. Each text is only written to the log and listed in the send history as <b>logged only</b>, so you can try campaigns and automations safely. Nothing leaves the server and nothing is charged.</p>
+          <button v-if="!isActive('log')" type="button" class="btn" :disabled="busy" @click="useService('log')">Use Log only</button>
         </template>
 
         <template v-else-if="form">
@@ -170,9 +171,10 @@ watch(() => c.value?.active, () => { testMsg.value = testErr.value = '' })
 
     <div class="card">
       <h2>Send a test SMS</h2>
-      <p class="hint">Sends through the service that is <b>in use</b> ({{ tile(c.active).name }}){{ c.active === 'log' ? '. In test mode nothing leaves the server' : '' }}.</p>
+      <p class="hint">Sends through the service that is <b>in use</b> ({{ tile(c.active).name }}){{ c.active === 'log' ? '. Log only never sends: the text is only written to the log' : '' }}.</p>
       <div v-if="testMsg" class="alert ok">{{ testMsg }}</div>
       <div v-if="testErr" class="alert err">{{ testErr }}</div>
+      <div v-if="testHint" class="alert hintbox"><b>What to do:</b> {{ testHint }}</div>
       <form class="row" @submit.prevent="test"><input v-model="testTo" required placeholder="+61400000000" style="max-width: 240px" /><button class="btn ghost" :disabled="busy">Send test</button></form>
       <RecentSends channel="sms" :tick="tick" />
     </div>
@@ -181,6 +183,7 @@ watch(() => c.value?.active, () => { testMsg.value = testErr.value = '' })
 
 <style scoped>
 .hint { color: #6b7280; font-size: 14px; margin: 0 0 12px; }
+.hintbox { background: #fffbea; border: 1px solid #f3e2a3; color: #5f4b00; }
 .blocks { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; margin: 14px 0; }
 .block { display: flex; align-items: center; gap: 12px; padding: 12px 14px; background: #fff; border: 1px solid #d9dcef; border-radius: 8px; transition: border-color .15s, box-shadow .15s; }
 .block.pick { cursor: pointer; }

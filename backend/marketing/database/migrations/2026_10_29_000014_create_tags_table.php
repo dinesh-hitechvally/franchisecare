@@ -13,8 +13,9 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->string('color', 9)->default('#3f51b5');
-            $table->timestamps();
-            $table->softDeletes();
+            $table->dateTime('created_at')->nullable();
+            $table->dateTime('updated_at')->nullable();
+            $table->dateTime('deleted_at')->nullable();
 
             $table->string('name_active')->nullable()->virtualAs('CASE WHEN deleted_at IS NULL THEN `name` END'); // unique only among rows that are not deleted
             $table->unique(['company_id', 'name_active']);
