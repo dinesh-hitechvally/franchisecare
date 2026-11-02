@@ -8,6 +8,7 @@ import MessageEditor from '../components/MessageEditor.vue'
 import EmailDesigner from '../components/EmailDesigner.vue'
 import AttachmentsField from '../components/AttachmentsField.vue'
 import Modal from '../components/Modal.vue'
+import AudiencePreview from '../components/AudiencePreview.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -150,6 +151,7 @@ onMounted(async () => {
           </select>
         </div>
       </div>
+      <AudiencePreview :list-id="form.contact_list_id" :segment-id="form.segment_id" :type="form.type" />
     </div>
 
     <div v-if="form.type === 'email' && !rawHtml" class="card">

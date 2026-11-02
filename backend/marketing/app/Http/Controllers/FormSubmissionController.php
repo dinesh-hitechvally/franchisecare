@@ -9,17 +9,28 @@ use Illuminate\Http\Request;
 /** The inbox for one form: list, delete and export what people submitted. */
 class FormSubmissionController extends Controller
 {
+    /** Every form's submissions in one list, newest first (optionally narrowed to one form). */
+    public function all(Request $request)
+    {
+        return $this->query($request, FormSubmission::query()->with('form:id,name,type')
+            ->when($request->query('form_id'), fn ($q, $v) => $q->where('form_id', $v)))->latest('id')->paginate(25);
+    }
+
     public function index(Request $request, Form $form)
     {
-        return FormSubmission::where('form_id', $form->id)->with('contact:id,first_name,last_name,email')
+        return $this->query($request, FormSubmission::where('form_id', $form->id))->latest('id')->paginate(25);
+    }
+
+    protected function query(Request $request, $base)
+    {
+        return $base->with('contact:id,first_name,last_name,email')
             // search looks through the answers and the linked contact
             ->when($request->query('search'), fn ($q, $v) => $q->where(fn ($w) => $w->where('data', 'like', '%'.str_replace(['%', '_'], ['\%', '\_'], $v).'%')
                 ->orWhereHas('contact', fn ($c) => $c->where('email', 'like', "%$v%")->orWhere('first_name', 'like', "%$v%")->orWhere('last_name', 'like', "%$v%"))))
             ->when($request->query('contact') === 'yes', fn ($q) => $q->whereNotNull('contact_id'))
             ->when($request->query('contact') === 'no', fn ($q) => $q->whereNull('contact_id'))
             ->when($request->query('from'), fn ($q, $v) => $q->where('created_at', '>=', $v.' 00:00:00'))
-            ->when($request->query('to'), fn ($q, $v) => $q->where('created_at', '<=', $v.' 23:59:59'))
-            ->latest('id')->paginate(25);
+            ->when($request->query('to'), fn ($q, $v) => $q->where('created_at', '<=', $v.' 23:59:59'));
     }
 
     public function destroy(Form $form, FormSubmission $submission)

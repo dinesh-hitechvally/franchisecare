@@ -1,6 +1,6 @@
 <script setup>
 // The "⋮" actions menu at the end of every table row. `items` are the row's own actions; when `history` is given
-// ({ type, id, title }) the menu ends with "Change history", which opens the row's full history.
+// ({ type, id, title }) the menu ends with "History", which opens the row's full history.
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import HistoryModal from './HistoryModal.vue'
@@ -50,7 +50,7 @@ onBeforeUnmount(close)
       <div v-if="open" class="rm-menu" :style="{ top: pos.top + 'px', left: pos.left + 'px' }" @click.stop>
         <button v-for="(i, n) in visible" :key="n" type="button" :class="{ danger: i.danger }" @click="pick(i)">{{ i.label }}</button>
         <hr v-if="visible.length && history" />
-        <button v-if="history" type="button" @click="close(); showHistory = true">Change history</button>
+        <button v-if="history" type="button" @click="close(); showHistory = true">History</button>
       </div>
     </Teleport>
     <Teleport to="body">

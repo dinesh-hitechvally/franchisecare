@@ -4,6 +4,7 @@ import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import api, { errorMessage } from '../api'
 import RowMenu from '../components/RowMenu.vue'
+import HistoryModal from '../components/HistoryModal.vue'
 import FilterBar from '../components/FilterBar.vue'
 import Modal from '../components/Modal.vue'
 import MessageEditor from '../components/MessageEditor.vue'
@@ -25,6 +26,7 @@ const shown = computed(() => rows.value.filter((r) => (tab.value === 'all' || r.
 const count = (t) => (t === 'all' ? rows.value.length : rows.value.filter((r) => r.type === t).length)
 const when = (d) => fmtDateTime(d)
 const plain = (t) => (t.body || '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)
+const historyOf = ref(null)
 const editing = ref(null) // id | 'new'
 const designer = ref(false) // email templates use the visual designer
 const initial = ref(null)
@@ -126,12 +128,17 @@ onMounted(load)
       </div>
       <div class="t-meta">
         <div><b>{{ t.name }}</b><br /><small><span class="badge" :class="t.type">{{ t.type }}</span> {{ t.subject || (t.type === 'sms' ? 'SMS template' : '') }}</small></div>
-        <RowMenu :history="{ type: 'template', id: t.id, title: t.name }" :items="[{ label: 'Edit', run: () => edit(t) }, { label: 'Delete', run: () => remove(t), danger: true }]" />
+      </div>
+      <div class="t-btns">
+        <button type="button" class="btn sm" @click="edit(t)">Edit</button>
+        <button type="button" class="btn ghost sm" @click="historyOf = t">History</button>
+        <button type="button" class="btn sm danger" @click="remove(t)">Delete</button>
       </div>
     </div>
   </div>
   <div v-else class="card"><p class="empty">No {{ tab === 'all' ? '' : tab + ' ' }}templates yet.</p></div>
 
+  <HistoryModal v-if="historyOf" type="template" :id="historyOf.id" :title="historyOf.name" @close="historyOf = null" />
   <EmailDesigner v-if="designer" :initial="initial" show-name :saving="saving" @save="saveEmail" @close="designer = false; editing = null" />
 
   <Modal v-if="editing && !designer" :title="editing === 'new' ? 'New SMS template' : 'Edit SMS template'" @close="editing = null">
@@ -158,5 +165,6 @@ onMounted(load)
 .t-card { background: #fff; border-radius: 6px; box-shadow: 0 2px 6px rgba(0, 0, 0, .12); overflow: hidden; }
 .t-thumb { height: 300px; overflow: hidden; background: #f4f5f7; cursor: pointer; position: relative; border-bottom: 1px solid #e0e0e0; }
 .t-thumb iframe { width: 700px; height: 1100px; border: 0; transform: scale(.37); transform-origin: top left; pointer-events: none; }
+.t-btns { display: flex; gap: 8px; padding: 0 16px 14px; }
 .t-meta { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
 </style>

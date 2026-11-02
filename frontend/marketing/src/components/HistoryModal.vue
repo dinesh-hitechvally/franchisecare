@@ -24,7 +24,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <Modal :title="`Change history${title ? ' — ' + title : ''}`" wide @close="$emit('close')">
+  <Modal :title="`History${title ? ' — ' + title : ''}`" wide @close="$emit('close')">
     <p v-if="loading" class="empty">Loading…</p>
     <p v-else-if="error" class="alert err">{{ error }}</p>
     <p v-else-if="!rows.length" class="empty">No changes have been recorded for this row yet.</p>

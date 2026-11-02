@@ -91,6 +91,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     // Content
     Route::apiResource('templates', TemplateController::class)->except('show');
     Route::apiResource('layouts', LayoutController::class)->only(['index', 'store', 'destroy']);
+    Route::get('submissions', [FormSubmissionController::class, 'all']);
     Route::get('forms/{form}/submissions', [FormSubmissionController::class, 'index']);
     Route::get('forms/{form}/submissions/export', [FormSubmissionController::class, 'export']);
     Route::delete('forms/{form}/submissions/{submission}', [FormSubmissionController::class, 'destroy']);

@@ -30,6 +30,7 @@ const routes = [
   { path: '/landing-pages', component: () => import('./views/LandingPages.vue') },
   { path: '/forms', component: () => import('./views/Forms.vue') },
   { path: '/forms/new', component: () => import('./views/FormBuilder.vue') },
+  { path: '/submissions', component: () => import('./views/AllSubmissions.vue') },
   { path: '/forms/:id/submissions', component: () => import('./views/FormSubmissions.vue') },
   { path: '/forms/:id', component: () => import('./views/FormBuilder.vue') },
 

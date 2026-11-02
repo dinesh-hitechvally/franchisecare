@@ -57,6 +57,14 @@ function active(to) {
 }
 const sectionActive = (s) => s.items.some(([, to]) => active(to))
 const isOpen = (s) => open[s.title] ?? sectionActive(s)
+// accordion: opening a section closes the others
+function toggle(s) {
+  const wasOpen = isOpen(s)
+  sections.forEach((x) => (open[x.title] = false))
+  open[s.title] = !wasOpen
+}
+// moving to another page: the section that holds it opens, the rest close
+watch(() => route.fullPath, () => Object.keys(open).forEach((k) => delete open[k]))
 
 async function logout() {
   await auth.logout()
@@ -82,7 +90,7 @@ async function logout() {
         <router-link to="/dashboard" class="nav-item" active-class="active"><Icon name="dashboard" :size="18" /><span>Dashboard</span></router-link>
 
         <template v-for="s in sections" :key="s.title">
-          <a href="#" class="nav-item" :class="{ active: sectionActive(s) }" @click.prevent="open[s.title] = !isOpen(s)">
+          <a href="#" class="nav-item" :class="{ active: sectionActive(s) }" @click.prevent="toggle(s)">
             <Icon :name="s.icon" :size="18" /><span>{{ s.title }}</span>
             <Icon name="chevron" :size="18" class="chev" :class="{ rot: isOpen(s) }" />
           </a>

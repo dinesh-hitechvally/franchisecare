@@ -49,7 +49,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="head"><h1>Forms</h1><router-link to="/forms/new" class="btn">New form</router-link></div>
+  <div class="head"><h1>Forms</h1><div class="row"><router-link to="/submissions" class="btn ghost">All submissions</router-link><router-link to="/forms/new" class="btn">New form</router-link></div></div>
   <p class="intro">Build newsletter sign-ups, contact forms and more. Each form decides what happens when someone submits: save them to contacts and lists, email you the message, send them an auto-reply, or just collect answers in its inbox.</p>
 
   <FilterBar :dirty="dirty" @clear="clear">
