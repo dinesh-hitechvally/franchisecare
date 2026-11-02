@@ -38,6 +38,16 @@ class Attachments
         return ['token' => $token, 'name' => $name, 'size' => $file->getSize()];
     }
 
+    /** Copies a file that already exists on the local disk (a Media library file) into the attachment store, so the email keeps it even if the media item is later deleted. */
+    public static function storeCopy(string $path, string $name, int $companyId): array
+    {
+        $token = bin2hex(random_bytes(16));
+        $name = self::cleanName($name);
+        Storage::disk('local')->put(self::dir($companyId).'/'.$token.'-'.$name, file_get_contents($path));
+
+        return ['token' => $token, 'name' => $name, 'size' => filesize($path)];
+    }
+
     public static function cleanName(string $name): string
     {
         $name = preg_replace('/[^\w.\- ()]+/u', '_', basename(str_replace('\\', '/', $name)));

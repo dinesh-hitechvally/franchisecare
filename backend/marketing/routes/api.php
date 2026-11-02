@@ -58,6 +58,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::get('dashboard', [LogController::class, 'dashboard']);
 
     Route::post('attachments', [AttachmentController::class, 'store'])->middleware('throttle:60,1');
+    Route::post('attachments/from-media', [AttachmentController::class, 'fromMedia'])->middleware('throttle:60,1');
     Route::post('media', [MediaController::class, 'store'])->middleware('throttle:120,1');
     Route::post('media/import', [MediaController::class, 'importOnline'])->middleware('throttle:60,1');
     Route::apiResource('media', MediaController::class)->only(['index', 'update', 'destroy'])->parameters(['media' => 'media']);

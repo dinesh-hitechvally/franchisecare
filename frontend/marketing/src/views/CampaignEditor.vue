@@ -7,6 +7,7 @@ import api, { errorMessage } from '../api'
 import MessageEditor from '../components/MessageEditor.vue'
 import EmailDesigner from '../components/EmailDesigner.vue'
 import AttachmentsField from '../components/AttachmentsField.vue'
+import Modal from '../components/Modal.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -52,9 +53,14 @@ const utcNow = ref(fmtStored(new Date().toISOString()))
 const clock = setInterval(() => (utcNow.value = fmtStored(new Date().toISOString())), 20000)
 onBeforeUnmount(() => clearInterval(clock))
 
-function applyTemplate() {
-  const t = templates.value.find((x) => x.id === form.template_id)
-  if (t) { form.subject = t.subject || ''; form.body = t.body; form.design = t.design || null; form.attachments = t.attachments || []; rawHtml.value = false }
+// A template is only a starting point: importing one copies its content and attachments into this campaign, and every edit after that belongs to the campaign alone.
+const importing = ref(false)
+function importTemplate(t) {
+  if (form.body && !confirm('Replace the content and attachments of this campaign with the template? Your edits to the campaign will be lost.')) return
+  form.template_id = t.id
+  importing.value = false
+  msg.value = `Imported "${t.name}". Edit it freely: changes are saved with this campaign only.`
+  form.subject = t.subject || ''; form.body = t.body; form.design = t.design ? JSON.parse(JSON.stringify(t.design)) : null; form.attachments = [...(t.attachments || [])]; rawHtml.value = false
 }
 watch(() => form.type, () => { form.template_id = '' })
 
@@ -144,24 +150,24 @@ onMounted(async () => {
           </select>
         </div>
       </div>
-      <div class="field" style="max-width: 360px">
-        <label>Start from template</label>
-        <select v-model="form.template_id" @change="applyTemplate"><option value="">— none —</option><option v-for="t in typeTemplates" :key="t.id" :value="t.id">{{ t.name }}</option></select>
-      </div>
     </div>
 
     <div v-if="form.type === 'email' && !rawHtml" class="card">
       <div class="row" style="justify-content: space-between; margin-bottom: 12px">
         <div><b>Subject:</b> {{ form.subject || '—' }}</div>
         <div class="row">
+          <button type="button" class="btn ghost sm" @click="importing = true">Import from template</button>
           <button type="button" class="btn ghost sm" @click="useRaw">Edit raw HTML</button>
-          <button type="button" class="btn" @click="designer = true">{{ form.body ? 'Edit design' : 'Design email' }}</button>
+          <button type="button" class="btn sm" @click="designer = true">{{ form.body ? 'Edit design' : 'Design email' }}</button>
         </div>
       </div>
       <iframe v-if="form.body" class="preview" sandbox="" :srcdoc="form.body" style="height: 520px"></iframe>
-      <p v-else class="empty">No design yet. Choose a template above, or click “Design email” to build one.</p>
+      <p v-else class="empty">No design yet. Import a template above, or click “Design email” to build one.</p>
     </div>
-    <div v-else class="card"><MessageEditor :type="form.type" v-model:subject="form.subject" v-model:body="form.body" /></div>
+    <div v-else class="card">
+      <div class="row" style="justify-content: flex-end; margin-bottom: 10px"><button type="button" class="btn ghost sm" @click="importing = true">Import from template</button></div>
+      <MessageEditor :type="form.type" v-model:subject="form.subject" v-model:body="form.body" />
+    </div>
 
     <div v-if="form.type === 'email'" class="card">
       <h2>Attachments</h2>
@@ -186,5 +192,21 @@ onMounted(async () => {
       </div>
     </div>
   </fieldset>
+  <Modal v-if="importing" title="Import from template" @close="importing = false">
+    <p v-if="!typeTemplates.length" class="empty">There are no {{ form.type }} templates yet. Create one in Content → Templates.</p>
+    <ul v-else class="tpl-list">
+      <li v-for="t in typeTemplates" :key="t.id">
+        <div><b>{{ t.name }}</b><small v-if="t.subject"> · {{ t.subject }}</small><small v-if="(t.attachments || []).length"> · {{ t.attachments.length }} attachment{{ t.attachments.length === 1 ? '' : 's' }}</small></div>
+        <button type="button" class="btn sm" @click="importTemplate(t)">Import</button>
+      </li>
+    </ul>
+    <p class="hint" style="margin-bottom: 0">The template is copied into this campaign together with its attachments. The template itself is never changed.</p>
+  </Modal>
   <EmailDesigner v-if="designer" :initial="designInitial()" @save="designed" @close="designer = false" />
 </template>
+
+<style scoped>
+.tpl-list { list-style: none; margin: 0 0 12px; padding: 0; max-height: 360px; overflow: auto; }
+.tpl-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eceef7; }
+.tpl-list small { color: #6b7280; }
+</style>

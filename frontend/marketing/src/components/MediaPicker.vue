@@ -6,7 +6,7 @@ import Modal from './Modal.vue'
 import Pager from './Pager.vue'
 import OnlineImages from './OnlineImages.vue'
 
-const props = defineProps({ title: { type: String, default: 'Choose an image' }, selectedId: { type: [Number, String], default: null } })
+const props = defineProps({ title: { type: String, default: 'Choose an image' }, selectedId: { type: [Number, String], default: null }, kind: { type: String, default: 'image' }, online: { type: Boolean, default: true }, noun: { type: String, default: 'image' } }) // kind '' = images and documents; online false hides the free-image tab
 const emit = defineEmits(['pick', 'close'])
 
 const rows = ref([])
@@ -18,7 +18,7 @@ const tab = ref('library') // library | online
 async function load(page = 1) {
   loading.value = true
   try {
-    const { data } = await api.get('/media', { params: { page, kind: 'image', per_page: 12, search: search.value || undefined } })
+    const { data } = await api.get('/media', { params: { page, kind: props.kind || undefined, per_page: 12, search: search.value || undefined } })
     rows.value = data.data
     meta.value = data
   } finally { loading.value = false }
@@ -30,23 +30,23 @@ onMounted(() => load())
 
 <template>
   <Modal :title="title" wide @close="emit('close')">
-    <div class="tabs">
+    <div v-if="online" class="tabs">
       <button type="button" :class="{ on: tab === 'library' }" @click="tab = 'library'">My media</button>
       <button type="button" :class="{ on: tab === 'online' }" @click="tab = 'online'">Free online images</button>
     </div>
-    <OnlineImages v-if="tab === 'online'" action-label="Use this image" @added="(m) => emit('pick', m)" />
+    <OnlineImages v-if="online && tab === 'online'" action-label="Use this image" @added="(m) => emit('pick', m)" />
     <template v-else>
-    <input v-model="search" type="search" placeholder="Search images…" style="max-width: 280px; margin-bottom: 14px" />
+    <input v-model="search" type="search" :placeholder="`Search ${noun}s…`" style="max-width: 280px; margin-bottom: 14px" />
     <p v-if="loading" class="empty">Loading…</p>
     <p v-else-if="!rows.length" class="empty">
-      {{ search ? 'No image matches.' : 'There are no images in the media library yet.' }}
+      {{ search ? `No ${noun} matches.` : `There are no ${noun}s in the media library yet.` }}
       <router-link to="/media" @click="emit('close')">Open Media to upload one</router-link>, then come back and choose it.
     </p>
     <div v-else class="pk">
       <button v-for="m in rows" :key="m.id" type="button" class="pic" :class="{ on: Number(selectedId) === m.id }" :title="m.name" @click="emit('pick', m)">
-        <span class="im"><img :src="m.url" :alt="m.alt || m.name" loading="lazy" /></span>
+        <span class="im"><img v-if="m.kind === 'image'" :src="m.url" :alt="m.alt || m.name" loading="lazy" /><b v-else class="dc">{{ (m.file_name.split('.').pop() || '').toUpperCase() }}</b></span>
         <span class="nm">{{ m.name }}</span>
-        <small>{{ m.width }}×{{ m.height }}</small>
+        <small v-if="m.width">{{ m.width }}×{{ m.height }}</small><small v-else>{{ m.size >= 1048576 ? (m.size / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(m.size / 1024)) + ' KB' }}</small>
       </button>
     </div>
     <Pager :meta="meta" @page="load" />
@@ -65,6 +65,7 @@ onMounted(() => load())
 .pic.on { border-color: #3f51b5; background: #eef0fb; }
 .im { display: grid; place-items: center; height: 96px; background: repeating-conic-gradient(#f3f4f8 0% 25%, #fff 0% 50%) 50% / 14px 14px; border-radius: 4px; overflow: hidden; }
 .im img { max-width: 100%; max-height: 96px; object-fit: contain; }
+.dc { background: #e8eaf6; color: #3f51b5; padding: 12px 16px; border-radius: 6px; }
 .nm { display: block; margin-top: 6px; font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 small { color: #6b7280; }
 .foot { margin: 12px 0 0; font-size: 13px; }
