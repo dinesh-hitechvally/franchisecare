@@ -6,7 +6,7 @@ import FilterBar from '../components/FilterBar.vue'
 import RowMenu from '../components/RowMenu.vue'
 import Pager from '../components/Pager.vue'
 
-// Everything people submitted through any form, newest first. Each form's own inbox (with CSV export) is under Forms.
+// Everything people submitted through any form, newest first. Each form's own submissions page (with CSV export) is under Forms.
 const forms = ref([])
 const rows = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
@@ -53,7 +53,7 @@ onMounted(async () => {
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="f.search" type="search" placeholder="Search answers, name, email…" />
     <select v-model="f.form_id"><option value="">All forms</option><option v-for="fm in forms" :key="fm.id" :value="fm.id">{{ fm.name }}</option></select>
-    <select v-model="f.contact"><option value="">All submissions</option><option value="yes">Saved as a contact</option><option value="no">Inbox only</option></select>
+    <select v-model="f.contact"><option value="">All submissions</option><option value="yes">Saved as a contact</option><option value="no">Not saved as a contact</option></select>
     <label>From <DateInput v-model="f.from" /></label>
     <label>To <DateInput v-model="f.to" /></label>
   </FilterBar>
@@ -68,7 +68,7 @@ onMounted(async () => {
           <td><router-link :to="`/forms/${s.form_id}/submissions`" @click.stop>{{ s.form?.name || 'Deleted form' }}</router-link></td>
           <td>{{ who(s) || '—' }}<br /><small v-if="s.contact">{{ s.contact.email }}</small></td>
           <td class="prev">{{ preview(s) }}</td>
-          <td class="act" @click.stop><RowMenu :history="{ type: 'form_submission', id: s.id, title: $dt(s.created_at) }" :items="[{ label: open === s.id ? 'Hide answers' : 'View answers', run: () => (open = open === s.id ? null : s.id) }, { label: 'Open form inbox', to: `/forms/${s.form_id}/submissions` }, { label: 'Delete', run: () => remove(s), danger: true }]" /></td>
+          <td class="act" @click.stop><RowMenu :history="{ type: 'form_submission', id: s.id, title: $dt(s.created_at) }" :items="[{ label: open === s.id ? 'Hide answers' : 'View answers', run: () => (open = open === s.id ? null : s.id) }, { label: 'Open form submissions', to: `/forms/${s.form_id}/submissions` }, { label: 'Delete', run: () => remove(s), danger: true }]" /></td>
         </tr>
         <tr v-if="open === s.id" class="detail">
           <td colspan="5">

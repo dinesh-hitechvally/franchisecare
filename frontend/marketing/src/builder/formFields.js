@@ -54,8 +54,8 @@ export const slug = (label) => {
 /** What kind of form it is. The type only picks defaults; every action stays an explicit setting. */
 export const FORM_TYPES = {
   newsletter: { label: 'Newsletter sign-up', icon: 'email', short: 'Newsletter', desc: 'Grow your mailing list. Sign-ups are saved to your contacts and subscribed to marketing emails.' },
-  contact: { label: 'Contact form', icon: 'sms', short: 'Contact', desc: 'Let people send you a message. You get it by email and in the form’s inbox, and they get a confirmation. Nobody is added to your contacts unless you turn that on.' },
-  other: { label: 'Other', icon: 'template', short: 'Other', desc: 'A survey, booking request, feedback… Answers go to the form’s inbox; choose whether to also save people as contacts.' },
+  contact: { label: 'Contact form', icon: 'sms', short: 'Contact', desc: 'Let people send you a message. You get it by email and in the form’s submissions, and they get a confirmation. Nobody is added to your contacts unless you turn that on.' },
+  other: { label: 'Other', icon: 'template', short: 'Other', desc: 'A survey, booking request, feedback… Answers are kept in the form’s submissions; choose whether to also save people as contacts.' },
 }
 
 /** A brand-new form of this type: fields, wording and what happens on submit. */

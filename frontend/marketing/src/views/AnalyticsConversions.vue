@@ -14,7 +14,7 @@ const pages = computed(() => d.value.pages.filter((p) => (has(p.name) || has(p.f
 const dirty = computed(() => q.value !== '' || state.value !== '')
 const clear = () => { q.value = ''; state.value = '' }
 const SRC = { manual: 'Added manually', import: 'CSV import', form: 'Sign-up form', api: 'API' }
-const signups = computed(() => [{ name: 'Sign-ups', color: '#4caf50', points: d.value.signups_30d }])
+const signups = computed(() => [{ name: 'Submissions', color: '#4caf50', points: d.value.signups_30d }])
 const rate = (v) => (v === null || v === undefined ? '—' : v + '%')
 
 onMounted(async () => { d.value = (await api.get('/analytics/conversions')).data })
@@ -26,7 +26,7 @@ onMounted(async () => { d.value = (await api.get('/analytics/conversions')).data
   <p v-if="!d" class="empty">Loading…</p>
   <template v-else>
     <div class="grid g4">
-      <div class="card stat"><div class="n">{{ d.totals.form_submissions }}</div><div class="l">Form sign-ups</div></div>
+      <div class="card stat"><div class="n">{{ d.totals.form_submissions }}</div><div class="l">Form submissions</div></div>
       <div class="card stat"><div class="n">{{ d.totals.form_views }}</div><div class="l">Form views</div></div>
       <div class="card stat"><div class="n">{{ d.totals.overall_rate }}%</div><div class="l">Overall conversion rate</div></div>
       <div class="card stat"><div class="n">{{ d.totals.page_views }}</div><div class="l">Landing page views</div></div>
@@ -45,7 +45,7 @@ onMounted(async () => { d.value = (await api.get('/analytics/conversions')).data
         <p v-if="!d.forms.length" class="muted">No forms yet.</p>
         <p v-else-if="!forms.length" class="muted">Nothing matches these filters.</p>
         <table v-else>
-          <thead><tr><th>Form</th><th>Views</th><th>Sign-ups</th><th>Rate</th></tr></thead>
+          <thead><tr><th>Form</th><th>Views</th><th>Submissions</th><th>Rate</th></tr></thead>
           <tr v-for="f in forms" :key="f.id"><td>{{ f.name }} <span v-if="!f.active" class="badge">paused</span></td><td>{{ f.views }}</td><td>{{ f.submissions }}</td><td><b>{{ rate(f.rate) }}</b></td></tr>
         </table>
       </div>
@@ -54,7 +54,7 @@ onMounted(async () => { d.value = (await api.get('/analytics/conversions')).data
         <p v-if="!d.pages.length" class="muted">No landing pages yet.</p>
         <p v-else-if="!pages.length" class="muted">Nothing matches these filters.</p>
         <table v-else>
-          <thead><tr><th>Page</th><th>Views</th><th>Sign-ups</th><th>Rate</th></tr></thead>
+          <thead><tr><th>Page</th><th>Views</th><th>Submissions</th><th>Rate</th></tr></thead>
           <tr v-for="p in pages" :key="p.id"><td>{{ p.name }}<br /><small>{{ p.form ? 'Form: ' + p.form : 'No form attached' }}</small></td><td>{{ p.views }}</td><td>{{ p.form ? p.submissions : '—' }}</td><td><b>{{ rate(p.rate) }}</b></td></tr>
         </table>
       </div>

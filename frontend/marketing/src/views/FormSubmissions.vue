@@ -54,7 +54,7 @@ onMounted(async () => {
 <template>
   <div class="head">
     <div>
-      <h1>{{ form?.name || 'Form' }} — inbox <small>({{ meta.total }})</small></h1>
+      <h1>{{ form?.name || 'Form' }} — submissions <small>({{ meta.total }})</small></h1>
       <small v-if="form"><span class="badge" :class="'ft-' + form.type">{{ FORM_TYPES[form.type]?.label }}</span></small>
     </div>
     <div class="row">
@@ -67,7 +67,7 @@ onMounted(async () => {
 
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="f.search" type="search" placeholder="Search answers, name, email…" />
-    <select v-model="f.contact"><option value="">All submissions</option><option value="yes">Saved as a contact</option><option value="no">Inbox only</option></select>
+    <select v-model="f.contact"><option value="">All submissions</option><option value="yes">Saved as a contact</option><option value="no">Not saved as a contact</option></select>
     <label>From <DateInput v-model="f.from" /></label>
     <label>To <DateInput v-model="f.to" /></label>
   </FilterBar>

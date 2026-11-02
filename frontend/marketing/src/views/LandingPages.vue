@@ -76,7 +76,7 @@ onMounted(async () => { forms.value = (await api.get('/forms')).data; load() })
 </script>
 
 <template>
-  <div class="head"><h1>Pages</h1><button class="btn" @click="create">New landing page</button></div>
+  <div class="head"><h1>Pages</h1><button class="btn" @click="create">New page</button></div>
   <p class="intro">Build a full web page from ready-made sections (hero, features, testimonials, pricing, FAQ…), add Form sections (each can show a different form) where you want them, and publish it on its own link. Pages are responsive and look right on phones.</p>
 
   <FilterBar :dirty="fDirty" @clear="fClear">

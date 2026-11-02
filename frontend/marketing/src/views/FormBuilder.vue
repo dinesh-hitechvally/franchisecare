@@ -308,7 +308,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
             <template v-else>
               <div class="r-head"><b>{{ typeLabel(current) }}</b><button class="x" title="Close" @click="select(null)">&times;</button></div>
               <p v-if="linked(current)" class="linked">Linked to the custom field <b>{{ customByKey[current.key].label }}</b> (<code>{{ tagFor(current.key) }}</code>). Its choices are managed in <router-link to="/custom-fields">Custom Fields</router-link>.</p>
-              <p v-if="FIELD_TYPES[current.type].hint" class="hint">{{ form.save_contact ? FIELD_TYPES[current.type].hint : 'Kept in this form’s inbox. This form does not save contacts.' }}</p>
+              <p v-if="FIELD_TYPES[current.type].hint" class="hint">{{ form.save_contact ? FIELD_TYPES[current.type].hint : 'Kept in this form’s submissions. This form does not save contacts.' }}</p>
 
               <div class="field"><label>{{ current.type === 'paragraph' ? 'Text' : current.type === 'heading' ? 'Heading' : 'Label' }}</label>
                 <textarea v-if="current.type === 'paragraph'" v-model="current.label" rows="4" style="font-family: inherit"></textarea>
@@ -337,9 +337,9 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
                     <small v-if="current.to_contact">
                       Stored as the contact field <code>{{ linked(current) ? current.key : slug(current.label) }}</code> (see <b>Audience → Custom Fields</b>) and usable as the merge tag <code>{{ tagFor(linked(current) ? current.key : slug(current.label)) }}</code>.
                     </small>
-                    <small v-else>Kept in this form’s inbox only; the contact record is not changed.</small>
+                    <small v-else>Kept in this form’s submissions only; the contact record is not changed.</small>
                   </template>
-                  <small v-else>Kept in this form’s inbox. This form does not save contacts, so no custom field is created.</small>
+                  <small v-else>Kept in this form’s submissions. This form does not save contacts, so no custom field is created.</small>
                 </div>
               </template>
             </template>

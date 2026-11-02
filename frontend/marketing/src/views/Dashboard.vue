@@ -52,7 +52,7 @@ const ago = (s) => fmtDateTime(s)
         <Icon name="schedule" :size="46" />
         <div><b>Scheduled</b><small>{{ d.scheduled }} campaign(s) queued</small></div>
       </div>
-      <router-link to="/forms" class="tile green" style="padding: 18px 24px"><b>Grow your list</b><small>Sign-up forms &amp; landing pages</small></router-link>
+      <router-link to="/forms" class="tile green" style="padding: 18px 24px"><b>Grow your list</b><small>Forms &amp; pages</small></router-link>
 
       <div class="tile indigo"><Icon name="people" :size="42" /><div><b>{{ d.contacts }}</b>Contacts</div></div>
       <div class="tile pink"><Icon name="campaign" :size="42" /><div><b>{{ d.campaigns }}</b>Campaigns</div></div>

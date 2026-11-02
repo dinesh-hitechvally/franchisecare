@@ -27,7 +27,7 @@ const fieldSummary = (f) => f.fields.filter((x) => x.type !== 'heading' && x.typ
 function actions(f) {
   const a = []
   if (f.save_contact) a.push(f.subscribe ? 'Saved & subscribed' : 'Saved to contacts')
-  else a.push('Inbox only')
+  else a.push('Kept as a submission')
   if (f.notify_emails?.length) a.push(`emails ${f.notify_emails.length} ${f.notify_emails.length === 1 ? 'person' : 'people'}`)
   if (f.autoreply) a.push('auto-reply')
   return a.join(' · ')
