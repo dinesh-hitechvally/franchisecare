@@ -2,6 +2,8 @@
 
 Multi-tenant email + SMS marketing. `backend/marketing/` = Laravel 13 API (Sanctum tokens), `frontend/marketing/` = Vue 3 SPA (Vite, Pinia).
 
+**Full documentation:** run the backend and open `http://localhost:8000/`. It is one page (contents, search, light/dark): quick start, architecture, every screen, forms, messaging, automation, the API with an endpoint list read from the running app, webhooks, operations and troubleshooting. It is on everywhere except production; set `DOCS_ENABLED=true` to publish it there. API clients that ask for JSON still get `{"app": …}` at `/`.
+
 ## Run
 
 ```bash

@@ -55,6 +55,12 @@ return [
     'url' => env('APP_URL', 'http://localhost'),
 
     /*
+    | The single-page documentation at the root address. On everywhere except production; set DOCS_ENABLED=true to publish it there.
+    */
+
+    'docs_enabled' => env('DOCS_ENABLED', env('APP_ENV', 'production') !== 'production'),
+
+    /*
     |--------------------------------------------------------------------------
     | Application Timezone
     |--------------------------------------------------------------------------
