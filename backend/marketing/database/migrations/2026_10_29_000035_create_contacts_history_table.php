@@ -19,10 +19,8 @@ return new class extends Migration
             $table->string('email', 255)->nullable();
             $table->string('phone', 255)->nullable();
             $table->string('source', 20)->nullable();
-            $table->boolean('email_subscribed')->nullable();
-            $table->boolean('sms_subscribed')->nullable();
-            $table->dateTime('email_unsubscribed_at')->nullable();
-            $table->dateTime('sms_unsubscribed_at')->nullable();
+            $table->boolean('is_subscribed')->nullable();
+            $table->dateTime('subscribed_at')->nullable();
             $table->string('unsubscribe_token', 40)->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();

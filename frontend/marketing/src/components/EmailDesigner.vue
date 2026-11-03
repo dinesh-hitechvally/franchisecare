@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, watch, onMounted } from 'vue'
 import api, { errorMessage } from '../api'
 import Icon from './Icon.vue'
 import Modal from './Modal.vue'
@@ -7,11 +7,13 @@ import AttachmentsField from './AttachmentsField.vue'
 import ImagePicker from './ImagePicker.vue'
 import RichText from './RichText.vue'
 import CodeEditor from './CodeEditor.vue'
+import HistoryTimeline from './HistoryTimeline.vue'
+import { fmtDateTime } from '../format'
 import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, uid } from '../builder/blocks'
 
 // v-model-less: pass `initial` ({ name, subject, design, html }), receive `save` / `close`.
-const props = defineProps({ initial: Object, showName: Boolean, saving: Boolean, noSubject: Boolean })
-const emit = defineEmits(['save', 'close'])
+const props = defineProps({ initial: Object, showName: Boolean, saving: Boolean, noSubject: Boolean, readonly: Boolean, note: String, historyId: [Number, String], startVersion: Number, savedTick: { type: Number, default: 0 }, historyType: { type: String, default: 'template' } })
+const emit = defineEmits(['save', 'close', 'version'])
 
 const init = props.initial || {}
 const meta = reactive({ name: init.name || '', subject: init.subject || '' })
@@ -93,6 +95,50 @@ const copied = ref(false)
 async function copyHtml() {
   try { await navigator.clipboard.writeText(html.value); copied.value = true; setTimeout(() => (copied.value = false), 1500) } catch (e) { /* clipboard blocked */ }
 }
+// ---- history: the header button swaps the side panel for a timeline of this record; picking a point shows that saved copy here, read-only
+const historyOpen = ref(false)
+// the parent bumps savedTick after a save that kept the editor open (History was open): say so; the timeline reloads itself
+watch(() => props.savedTick, () => { flash.value = 'Saved'; setTimeout(() => (flash.value = ''), 2500) })
+const viewing = ref(null) // the saved copy being shown, or null for the version you are editing
+let backup = null // the version being edited, kept while a past one is shown
+const locked = computed(() => props.readonly || !!viewing.value)
+watch(viewing, (v) => emit('version', v ? v.history_id : null)) // so the address can say which version is on show
+const canHistory = computed(() => !!props.historyId && !props.readonly)
+const WHAT = { created: 'Created', updated: 'Updated', deleted: 'Deleted', restored: 'Restored', baseline: 'Existing record' }
+const noteText = computed(() => (viewing.value ? (WHAT[viewing.value.change_action] || viewing.value.change_action) + ' on ' + fmtDateTime(viewing.value.changed_at) + (viewing.value.changed_by_name ? ' by ' + viewing.value.changed_by_name : '') + '.' : props.note))
+function swapTo(next) {
+  design.value = next.design
+  meta.name = next.name
+  meta.subject = next.subject
+  attachments.value = next.attachments
+  selected.value = null
+}
+function viewCopy(entry) {
+  const d = entry.data
+  if (!backup) backup = { design: design.value, name: meta.name, subject: meta.subject, attachments: attachments.value }
+  const next = d.design?.blocks ? JSON.parse(JSON.stringify(d.design)) : d.body ? designFromHtml(d.body) : null // a hand-coded email has no blocks: open it as the editor does
+  if (next) next.settings = { ...defaultSettings(), ...(next.settings || {}) }
+  swapTo({ design: next, name: d.name || '', subject: d.subject || '', attachments: d.attachments || [] })
+  viewing.value = entry
+}
+function backToCurrent() {
+  if (!backup) return
+  swapTo(backup)
+  backup = null
+  viewing.value = null
+}
+// opened from a history list: start with History open and that version shown
+onMounted(async () => {
+  if (!props.startVersion || !props.historyId) return
+  try {
+    historyOpen.value = true
+    viewCopy((await api.get('/history/' + props.historyType + '/entry/' + props.startVersion)).data)
+  } catch (e) { flash.value = errorMessage(e) }
+})
+function toggleHistory() {
+  if (historyOpen.value) backToCurrent() // leaving history: back on the version you are editing
+  historyOpen.value = !historyOpen.value
+}
 const imagePicker = ref(null) // { apply(img) }
 const hover = ref(-1)
 
@@ -120,7 +166,7 @@ function pretty(src) {
 }
 const editorValue = computed(() => (rawMode.value ? html.value : pretty(html.value)))
 function onCode(v) {
-  if (design.value && v !== editorValue.value) design.value.rawHtml = v
+  if (!locked.value && design.value && v !== editorValue.value) design.value.rawHtml = v
 }
 function backToBlocks() {
   if (confirm('Discard your HTML edits and go back to the visual blocks?')) {
@@ -221,37 +267,41 @@ function pick(img) {
 }
 
 function save() {
-  emit('save', { name: meta.name, subject: meta.subject, design: design.value, body: html.value, attachments: attachments.value })
+  emit('save', { name: meta.name, subject: meta.subject, design: design.value, body: html.value, attachments: attachments.value, keepOpen: historyOpen.value && !!props.historyId })
 }
 </script>
 
 <template>
-  <div class="ed">
+  <div class="ed" :class="{ ro: locked }">
     <!-- top bar -->
     <header class="ed-top">
-      <button class="ed-back" @click="emit('close')"><Icon name="back" :size="18" /> Back</button>
-      <input v-if="showName" v-model="meta.name" :class="{ miss: !meta.name.trim() }" class="ed-in" placeholder="Template name *" style="max-width: 240px" />
-      <input v-if="!noSubject" v-model="meta.subject" :class="{ miss: !meta.subject.trim() }" class="ed-in" placeholder="Subject line * (merge tags allowed, e.g. Hi {{first_name}})" />
+      <button class="ed-back" @click="emit('close')"><Icon name="back" :size="18" /> {{ readonly ? 'Back to history' : 'Back' }}</button>
+      <input v-if="showName" v-model="meta.name" :class="{ miss: !meta.name.trim() }" class="ed-in" placeholder="Template name *" style="max-width: 240px" :readonly="locked" />
+      <input v-if="!noSubject" v-model="meta.subject" :class="{ miss: !meta.subject.trim() }" class="ed-in" placeholder="Subject line * (merge tags allowed, e.g. Hi {{first_name}})" :readonly="locked" />
+      <span v-if="locked" class="ro-pill">Read only · saved copy</span>
+      <button v-if="viewing" class="btn ghost sm" @click="backToCurrent">Back to current version</button>
       <div class="seg" v-if="design">
         <button :class="{ on: device === 'desktop' }" title="Desktop" @click="device = 'desktop'"><Icon name="desktop" :size="18" /></button>
         <button :class="{ on: device === 'mobile' }" title="Mobile" @click="device = 'mobile'"><Icon name="mobile" :size="18" /></button>
       </div>
-      <button v-if="design" class="btn ghost sm" @click="picking = true">Change layout</button>
-      <button v-if="design" class="btn ghost sm" @click="openSaveDlg">Save as layout</button>
+      <button v-if="canHistory" class="btn ghost sm" :class="{ hon: historyOpen }" @click="toggleHistory">History</button>
+      <button v-else-if="design && !readonly && !historyId" class="btn ghost sm" disabled title="History starts once it has been saved for the first time">History</button>
+      <button v-if="design && !locked" class="btn ghost sm" @click="picking = true">Change layout</button>
+      <button v-if="design && !locked" class="btn ghost sm" @click="openSaveDlg">Save as layout</button>
       <button class="btn ghost sm" @click="attachOpen = true">&#128206; Attachments{{ attachments.length ? ` (${attachments.length})` : '' }}</button>
       <span v-if="flash" class="flash">{{ flash }}</span>
-      <span v-if="design && missing.length" class="need">Add a {{ missing.join(' and a ') }} to save</span>
-      <button class="btn" :disabled="!design || saving || missing.length > 0" @click="save">{{ saving ? 'Saving…' : 'Save & close' }}</button>
+      <span v-if="!locked && design && missing.length" class="need">Add a {{ missing.join(' and a ') }} to save</span>
+      <button v-if="!locked" class="btn" :disabled="!design || saving || missing.length > 0" @click="save">{{ saving ? 'Saving…' : historyOpen ? 'Save' : 'Save & close' }}</button>
     </header>
 
     <Modal v-if="attachOpen" title="Attachments" @close="attachOpen = false">
       <p class="hint" style="margin-top: 0">These files are attached to every email sent with this design.</p>
-      <AttachmentsField v-model="attachments" />
+      <AttachmentsField v-model="attachments" :disabled="locked" />
       <button class="btn" style="margin-top: 14px" @click="attachOpen = false">Done</button>
     </Modal>
 
     <!-- layout gallery -->
-    <div v-if="picking" class="gallery">
+    <div v-if="picking && !locked" class="gallery">
       <template v-if="myLayouts.length">
         <h2>My layouts</h2>
         <p class="muted">Layouts you saved with “Save as layout”.</p>
@@ -280,9 +330,10 @@ function save() {
       <aside class="ed-left">
         <div class="tabs"><button class="on">Content</button></div>
         <div class="palette">
-          <p v-if="rawMode" class="hint">Visual blocks are off while you hand-edit the HTML.</p>
+          <div v-if="locked" class="ro-note"><b>Saved copy</b><p>{{ noteText }}</p><p>This is exactly how it was when it was saved. You can look around, switch device sizes, open the HTML and click a block to see its settings, but nothing can be changed.</p></div>
+          <p v-else-if="rawMode" class="hint">Visual blocks are off while you hand-edit the HTML.</p>
           <p v-else class="hint">Drag a block onto the email, or click to add.</p>
-          <div class="tiles" :class="{ off: rawMode }">
+          <div v-if="!locked" class="tiles" :class="{ off: rawMode }">
             <div v-for="(def, type) in BLOCKS" :key="type" class="pal" draggable="true" @dragstart="dragNew($event, type)" @click="add(type)">
               <Icon :name="def.icon" :size="26" /><span>{{ def.label }}</span>
             </div>
@@ -300,21 +351,21 @@ function save() {
         </div>
         <div v-if="rawMode" class="raw-note">
           <span><b>Custom HTML mode.</b> You edited the code, so the visual blocks are switched off for this email.</span>
-          <button class="btn sm" @click="backToBlocks">Back to visual blocks</button>
+          <button v-if="!locked" class="btn sm" @click="backToBlocks">Back to visual blocks</button>
         </div>
-        <div v-else-if="tab === 'html'" class="raw-note soft">Edit the code freely — typing here switches this email to custom HTML. Type <code>&lt;</code> for tag suggestions or <code>{{'{{'}}</code> for merge tags.</div>
-        <div v-if="tab === 'html'" class="code-wrap"><CodeEditor :model-value="editorValue" @update:model-value="onCode" /></div>
+        <div v-else-if="tab === 'html' && !locked" class="raw-note soft">Edit the code freely — typing here switches this email to custom HTML. Type <code>&lt;</code> for tag suggestions or <code>{{'{{'}}</code> for merge tags.</div>
+        <div v-if="tab === 'html'" class="code-wrap"><CodeEditor :model-value="editorValue" :readonly="locked" @update:model-value="onCode" /></div>
         <div v-else-if="rawMode" class="ed-canvas raw-view"><iframe class="raw-frame" sandbox="" :srcdoc="html" :style="{ width: canvasWidth + 48 + 'px' }"></iframe></div>
       <main v-show="tab === 'view' && !rawMode" class="ed-canvas" @click.self="selected = null">
         <div class="cv-page" :style="{ background: s.bg, width: canvasWidth + 48 + 'px' }" @click.self="selected = null">
           <div class="cv-content" :style="{ background: s.contentBg, width: canvasWidth + 'px', fontFamily: s.font, borderRadius: s.radius + 'px', overflow: 'hidden' }">
-            <div v-if="!blocks.length" class="dz-empty" :class="{ hov: hover === 0 }" @dragover.prevent="hover = 0" @dragleave="hover = -1" @drop.prevent="drop($event, 0)">Drag content here</div>
+            <div v-if="!blocks.length && !locked" class="dz-empty" :class="{ hov: hover === 0 }" @dragover.prevent="hover = 0" @dragleave="hover = -1" @drop.prevent="drop($event, 0)">Drag content here</div>
             <template v-for="(b, i) in blocks" :key="b.id">
-              <div class="dz" :class="{ hov: hover === i }" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)"></div>
-              <div class="cv-block" :class="{ sel: selected === b.id, stack: device === 'mobile' }" draggable="true"
+              <div v-if="!locked" class="dz" :class="{ hov: hover === i }" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)"></div>
+              <div class="cv-block" :class="{ sel: selected === b.id, stack: device === 'mobile' }" :draggable="!locked"
                 @dragstart="dragMove($event, i)" @click.prevent.stop="selected = b.id">
                 <div class="cv-html" v-html="renderBlock(b, s, true)"></div>
-                <div v-if="selected === b.id" class="cv-tools" @click.stop>
+                <div v-if="selected === b.id && !locked" class="cv-tools" @click.stop>
                   <span class="grip" title="Drag to move"><Icon name="drag" :size="16" /></span>
                   <button title="Move up" @click="move(i, -1)"><Icon name="up" :size="16" /></button>
                   <button title="Move down" @click="move(i, 1)"><Icon name="down" :size="16" /></button>
@@ -323,7 +374,7 @@ function save() {
                 </div>
               </div>
             </template>
-            <div v-if="blocks.length" class="dz end" :class="{ hov: hover === blocks.length }" @dragover.prevent="hover = blocks.length" @dragleave="hover = -1" @drop.prevent="drop($event, blocks.length)"></div>
+            <div v-if="blocks.length && !locked" class="dz end" :class="{ hov: hover === blocks.length }" @dragover.prevent="hover = blocks.length" @dragleave="hover = -1" @drop.prevent="drop($event, blocks.length)"></div>
           </div>
         </div>
       </main>
@@ -331,6 +382,8 @@ function save() {
 
       <!-- right: settings -->
       <aside class="ed-right" :class="{ off: rawMode }">
+        <HistoryTimeline v-if="historyOpen" :type="historyType" :id="historyId" :active-id="viewing ? viewing.history_id : null" :refresh="savedTick" :names="{ body: 'Design', design: 'Design' }" @pick="viewCopy" @current="backToCurrent" @close="toggleHistory" />
+        <fieldset v-else :disabled="locked" class="fs">
         <template v-if="current">
           <div class="r-head"><b>{{ BLOCKS[current.type].label }}</b><button class="x" @click="selected = null">&times;</button></div>
           <div v-for="[k, label, kind, o] in fields" :key="current.id + k" class="field">
@@ -376,8 +429,9 @@ function save() {
           <div class="field"><label>Content width <span class="val">{{ s.width }}px</span></label><input v-model.number="design.settings.width" type="range" min="480" max="700" step="10" /></div>
           <div class="field"><label>Corner radius <span class="val">{{ s.radius }}px</span></label><input v-model.number="design.settings.radius" type="range" min="0" max="24" /></div>
           <div class="field"><label>Font</label><select v-model="design.settings.font"><option v-for="f in FONTS" :key="f" :value="f">{{ f.split(',')[0].replace(/'/g, '') }}</option></select></div>
-          <p class="hint">Click any block in the email to edit it.</p>
+          <p class="hint">Click any block in the email to {{ locked ? 'see its settings' : 'edit it' }}.</p>
         </template>
+        </fieldset>
       </aside>
     </div>
 
@@ -400,6 +454,13 @@ function save() {
 <style scoped>
 .ed { position: fixed; inset: 0; z-index: 60; background: #eceff1; display: flex; flex-direction: column; }
 .ed-top { background: #fff; display: flex; align-items: center; gap: 10px; padding: 10px 16px; box-shadow: 0 1px 4px rgba(0, 0, 0, .15); z-index: 2; }
+.ed-top .btn.hon { background: #eef0fb; border-color: #3f51b5; color: #3f51b5; }
+.ro-pill { background: #fef3c7; color: #92400e; border-radius: 99px; padding: 2px 12px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.ro-note { background: #f5f6fd; border: 1px solid #e0e3f0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4b5563; }
+.ro-note p { margin: 6px 0 0; }
+.fs { border: 0; padding: 0; margin: 0; min-width: 0; }
+.ed.ro .fs :deep([contenteditable]) { pointer-events: none; }
+.ed.ro .fs :deep(input:disabled), .ed.ro .fs :deep(textarea:disabled), .ed.ro .fs :deep(select:disabled) { background: #f9fafb; color: #374151; }
 .ed-back { display: flex; align-items: center; gap: 6px; border: 0; background: none; color: #3f51b5; font-weight: 500; cursor: pointer; font-size: 14px; }
 .ed-in { flex: 1; min-width: 120px; }
 .ed-in.miss { border-color: #e53935; background: #fff8f8; }

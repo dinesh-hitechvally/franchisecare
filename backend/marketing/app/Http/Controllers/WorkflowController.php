@@ -61,7 +61,7 @@ class WorkflowController extends Controller
         $workflows = Workflow::get(['id', 'name', 'status', 'trigger_type', 'trigger_config'])->groupBy('trigger_type');
 
         return collect(Automation::TRIGGERS)->map(fn ($t, $key) => [
-            'type' => $key, 'label' => $t['label'], 'description' => $t['description'], 'config' => $t['config'],
+            'type' => $key, 'group' => $t['group'], 'label' => $t['label'], 'description' => $t['description'], 'config' => $t['config'],
             'workflows' => ($workflows[$key] ?? collect())->values(),
         ])->values();
     }
@@ -102,6 +102,11 @@ class WorkflowController extends Controller
             'trigger_config.list_id' => 'nullable|integer',
             'trigger_config.tag_id' => 'nullable|integer',
             'trigger_config.form_id' => 'nullable|integer',
+            'trigger_config.url' => 'nullable|string|max:500',
+            'trigger_config.field_id' => 'nullable|integer',
+            'trigger_config.days' => 'nullable|integer|min:0|max:3650',
+            'trigger_config.when' => 'nullable|in:before,on,after',
+            'trigger_config.yearly' => 'nullable|boolean',
             'steps' => 'present|array|max:30',
             'steps.*.type' => 'required|in:'.implode(',', Automation::STEPS),
             'steps.*.template_id' => 'nullable|integer',
@@ -118,6 +123,11 @@ class WorkflowController extends Controller
         abort_if(! empty($cfg['list_id']) && ! ContactList::whereKey($cfg['list_id'])->exists(), 422, 'Trigger list not found.');
         abort_if(! empty($cfg['tag_id']) && ! Tag::whereKey($cfg['tag_id'])->exists(), 422, 'Trigger tag not found.');
         abort_if(! empty($cfg['form_id']) && ! Form::whereKey($cfg['form_id'])->exists(), 422, 'Trigger form not found.');
+        if ($data['trigger_type'] === 'date_reached') {
+            abort_unless(! empty($cfg['field_id']) && \App\Models\ContactField::whereKey($cfg['field_id'])->where('type', 'date')->exists(), 422, 'Choose the date field this workflow follows (a custom field of the type Date).');
+            abort_if(($cfg['when'] ?? 'on') !== 'on' && (int) ($cfg['days'] ?? 0) < 1, 422, 'Say how many days before or after the date it should start.');
+        }
+        abort_if($data['trigger_type'] === 'inactive' && (int) ($cfg['days'] ?? 0) < 1, 422, 'Say after how many days without an opened email the workflow starts.');
 
         foreach ($data['steps'] as $i => $s) {
             $n = $i + 1;

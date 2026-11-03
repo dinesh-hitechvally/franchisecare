@@ -12,7 +12,7 @@ const q = ref('')
 const status = ref('') // '' | failed | skipped
 const has = (t) => String(t || '').toLowerCase().includes(q.value.trim().toLowerCase())
 const links = computed(() => (r.value?.top_links || []).filter((l) => has(l.url)))
-const problems = computed(() => (r.value?.problems || []).filter((p) => (has(p.recipient) || has(p.error)) && (status.value === '' || p.status === status.value)))
+const problems = computed(() => (r.value?.problems || []).filter((p) => (has(p.recipient) || has(p.error) || has(p.name)) && (status.value === '' || p.status === status.value)))
 const dirty = computed(() => q.value !== '' || status.value !== '')
 const clear = () => { q.value = ''; status.value = '' }
 
@@ -79,8 +79,8 @@ onMounted(async () => { r.value = (await api.get(`/reports/campaigns/${route.par
           <p v-if="!r.problems.length" class="muted">No failed or skipped recipients.</p>
           <p v-else-if="!problems.length" class="muted">No recipients match.</p>
           <table v-else>
-            <thead><tr><th>Recipient</th><th>Status</th><th>Reason</th></tr></thead>
-            <tr v-for="(p, i) in problems" :key="i"><td>{{ p.recipient }}</td><td><span class="badge" :class="p.status">{{ p.status }}</span></td><td><small>{{ p.error }}</small></td></tr>
+            <thead><tr><th>Name</th><th>Recipient</th><th>Status</th><th>Reason</th></tr></thead>
+            <tr v-for="(p, i) in problems" :key="i"><td>{{ p.name || '—' }}</td><td>{{ p.recipient }}</td><td><span class="badge" :class="p.status">{{ p.status }}</span></td><td><small>{{ p.error }}</small></td></tr>
           </table>
         </div>
       </div>
@@ -91,8 +91,8 @@ onMounted(async () => { r.value = (await api.get(`/reports/campaigns/${route.par
       <p v-if="!r.problems.length" class="muted">No failed or skipped recipients.</p>
           <p v-else-if="!problems.length" class="muted">No recipients match.</p>
       <table v-else>
-        <thead><tr><th>Recipient</th><th>Status</th><th>Reason</th></tr></thead>
-        <tr v-for="(p, i) in problems" :key="i"><td>{{ p.recipient }}</td><td><span class="badge" :class="p.status">{{ p.status }}</span></td><td><small>{{ p.error }}</small></td></tr>
+        <thead><tr><th>Name</th><th>Recipient</th><th>Status</th><th>Reason</th></tr></thead>
+        <tr v-for="(p, i) in problems" :key="i"><td>{{ p.name || '—' }}</td><td>{{ p.recipient }}</td><td><span class="badge" :class="p.status">{{ p.status }}</span></td><td><small>{{ p.error }}</small></td></tr>
       </table>
     </div>
   </template>

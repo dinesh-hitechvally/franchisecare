@@ -24,6 +24,7 @@ return new class extends Migration
             $table->unsignedInteger('width')->nullable();
             $table->unsignedInteger('height')->nullable();
             $table->string('alt', 255)->nullable();
+            $table->text('description')->nullable();
             $table->string('source', 20)->nullable();
             $table->string('credit', 255)->nullable();
             $table->string('credit_url', 500)->nullable();

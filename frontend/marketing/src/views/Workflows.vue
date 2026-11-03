@@ -16,6 +16,8 @@ const templates = ref([])
 const tags = ref([])
 const lists = ref([])
 const forms = ref([])
+const customFields = ref([])
+const dateFields = computed(() => customFields.value.filter((c) => c.type === 'date')) // what "a date arrives" can follow
 const editing = ref(null)
 const error = ref('')
 const msg = ref('')
@@ -28,6 +30,10 @@ const STEP_TYPES = [
 const emailTpl = computed(() => templates.value.filter((t) => t.type === 'email'))
 const smsTpl = computed(() => templates.value.filter((t) => t.type === 'sms'))
 const trig = computed(() => triggers.value.find((t) => t.type === form.trigger_type))
+// what a trigger starts out with when you pick it
+function defaults(type) {
+  return { date_reached: { when: 'on', days: 1, yearly: true }, inactive: { days: 30 } }[type] || {}
+}
 const label = (type) => triggers.value.find((t) => t.type === type)?.label || type
 
 const load = async () => { rows.value = (await api.get('/workflows')).data }
@@ -37,7 +43,7 @@ function blankStep(type) {
 }
 
 function open(w, trigger) {
-  Object.assign(form, { name: w?.name || '', trigger_type: w?.trigger_type || trigger || 'contact_created', trigger_config: w ? { ...(w.trigger_config || {}) } : {}, steps: w ? JSON.parse(JSON.stringify(w.steps)) : [] })
+  Object.assign(form, { name: w?.name || '', trigger_type: w?.trigger_type || trigger || 'contact_created', trigger_config: w ? { ...(w.trigger_config || {}) } : defaults(trigger || 'contact_created'), steps: w ? JSON.parse(JSON.stringify(w.steps)) : [] })
   editing.value = w ? w.id : 'new'
   error.value = ''
 }
@@ -53,7 +59,12 @@ async function save() {
   error.value = ''
   const body = {
     name: form.name, trigger_type: form.trigger_type,
-    trigger_config: { list_id: clean(form.trigger_config.list_id), tag_id: clean(form.trigger_config.tag_id), form_id: clean(form.trigger_config.form_id) },
+    trigger_config: {
+      list_id: clean(form.trigger_config.list_id), tag_id: clean(form.trigger_config.tag_id), form_id: clean(form.trigger_config.form_id),
+      url: clean((form.trigger_config.url || '').trim()), field_id: clean(form.trigger_config.field_id),
+      when: clean(form.trigger_config.when), days: form.trigger_config.when === 'on' ? 0 : clean(form.trigger_config.days),
+      yearly: form.trigger_config.yearly ? true : null,
+    },
     steps: form.steps.map((s) => Object.fromEntries(Object.entries(s).map(([k, v]) => [k, clean(v)]))),
   }
   try {
@@ -89,8 +100,8 @@ const describe = (s) => {
 }
 
 onMounted(async () => {
-  ;[triggers.value, templates.value, tags.value, lists.value, forms.value] = (await Promise.all([
-    api.get('/automation/triggers'), api.get('/templates'), api.get('/tags'), api.get('/lists'), api.get('/forms'),
+  ;[triggers.value, templates.value, tags.value, lists.value, forms.value, customFields.value] = (await Promise.all([
+    api.get('/automation/triggers'), api.get('/templates'), api.get('/tags'), api.get('/lists'), api.get('/forms'), api.get('/contact-fields'),
   ])).map((r) => r.data)
   load()
   if (route.query.trigger) open(null, route.query.trigger) // arrived from the Triggers page
@@ -98,7 +109,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="head"><h1>Workflows</h1><button class="btn" @click="open(null)">New workflow</button></div>
+  <div class="head"><h1>Workflows</h1><div class="row"><router-link to="/workflows/history" class="btn ghost">Workflow histories</router-link><button class="btn" @click="open(null)">New workflow</button></div></div>
   <p class="intro">A workflow runs automatically for each contact when its trigger happens: send emails or texts, wait, then tag or move them.</p>
   <div v-if="msg" class="alert ok">{{ msg }}</div>
   <div v-if="error && !editing" class="alert err">{{ error }}</div>
@@ -113,7 +124,7 @@ onMounted(async () => {
     <p v-if="!rows.length" class="empty">No workflows yet. Try “Welcome new contacts”: trigger <i>Contact is added</i> → send email → wait 3 days → send follow-up.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Workflow</th><th>Trigger</th><th>Steps</th><th>In progress</th><th>Completed</th><th>Status</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Trigger</th><th>Steps</th><th>In progress</th><th>Completed</th><th>Status</th><th class="act">Actions</th></tr></thead>
       <tr v-for="w in visible" :key="w.id">
         <td><b>{{ w.name }}</b></td>
         <td>{{ label(w.trigger_type) }}</td>
@@ -134,12 +145,23 @@ onMounted(async () => {
       <div class="block start">
         <b>When</b>
         <div class="row" style="margin-top: 8px">
-          <select v-model="form.trigger_type" style="width: 240px" @change="form.trigger_config = {}"><option v-for="t in triggers" :key="t.type" :value="t.type">{{ t.label }}</option></select>
+          <select v-model="form.trigger_type" style="width: 240px" @change="form.trigger_config = defaults(form.trigger_type)"><option v-for="t in triggers" :key="t.type" :value="t.type">{{ t.label }}</option></select>
           <select v-if="trig?.config === 'list'" v-model="form.trigger_config.list_id" style="width: 220px"><option value="">Any list</option><option v-for="l in lists" :key="l.id" :value="l.id">{{ l.name }}</option></select>
           <select v-if="trig?.config === 'tag'" v-model="form.trigger_config.tag_id" style="width: 220px"><option value="">Any tag</option><option v-for="t in tags" :key="t.id" :value="t.id">{{ t.name }}</option></select>
           <select v-if="trig?.config === 'form'" v-model="form.trigger_config.form_id" style="width: 220px"><option value="">Any form</option><option v-for="f in forms" :key="f.id" :value="f.id">{{ f.name }}</option></select>
+          <input v-if="trig?.config === 'url'" v-model="form.trigger_config.url" maxlength="500" placeholder="Link contains… (empty = any link)" style="width: 280px" />
+          <template v-if="trig?.config === 'days'">
+            <span>after</span><input v-model.number="form.trigger_config.days" type="number" min="1" max="365" style="width: 90px" /><span>days without opening an email</span>
+          </template>
+          <template v-if="trig?.config === 'date'">
+            <select v-model="form.trigger_config.field_id" style="width: 220px"><option value="">Choose a date field…</option><option v-for="d in dateFields" :key="d.id" :value="d.id">{{ d.label }}</option></select>
+            <select v-model="form.trigger_config.when" style="width: 150px"><option value="on">On the day</option><option value="before">Days before</option><option value="after">Days after</option></select>
+            <input v-if="form.trigger_config.when !== 'on'" v-model.number="form.trigger_config.days" type="number" min="1" max="3650" style="width: 90px" title="How many days" />
+            <label class="check"><input v-model="form.trigger_config.yearly" type="checkbox" /> Repeat every year</label>
+          </template>
         </div>
         <small>{{ trig?.description }}</small>
+        <small v-if="trig?.config === 'date' && !dateFields.length" style="display: block; margin-top: 6px; color: #c62828">You have no date fields yet. <router-link to="/custom-fields">Add one in Custom Fields</router-link> (type Date), for example Birthday.</small>
       </div>
 
       <div v-for="(s, i) in form.steps" :key="i" class="block">
@@ -183,7 +205,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 760px; }
+.intro { color: #6b7280; margin: -8px 0 18px; }
 .block { border: 1px solid #e0e0e0; border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; background: #fafafa; }
 .block.start { background: #eef0fb; border-color: #c5cae9; }
 .ic { border: 0; background: none; cursor: pointer; color: #757575; padding: 3px; } .ic:hover:not(:disabled) { color: #3f51b5; } .ic:disabled { opacity: .3; cursor: default; }

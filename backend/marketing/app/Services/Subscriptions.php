@@ -4,20 +4,20 @@ namespace App\Services;
 
 use App\Models\Contact;
 
-/** One place that flips a contact's email/SMS subscription, so timestamps and webhooks stay consistent. */
+/** One place that flips a contact's newsletter subscription, so the date and webhooks stay consistent. */
 class Subscriptions
 {
-    public static function set(Contact $contact, string $channel, bool $on): bool
+    public static function set(Contact $contact, bool $on): bool
     {
-        $col = $channel === 'sms' ? 'sms_subscribed' : 'email_subscribed';
-        if ((bool) $contact->{$col} === $on) {
+        if ((bool) $contact->is_subscribed === $on) {
             return false;
         }
 
-        $contact->forceFill([$col => $on, $channel.'_unsubscribed_at' => $on ? null : now()])->save();
+        $contact->forceFill(['is_subscribed' => $on, 'subscribed_at' => $on ? now() : null])->save();
 
         if (! $on) {
-            WebhookDispatcher::dispatch($contact->company_id, 'contact.unsubscribed', Automation::contactPayload($contact) + ['channel' => $channel]);
+            WebhookDispatcher::dispatch($contact->company_id, 'contact.unsubscribed', Automation::contactPayload($contact));
+            Automation::fire('unsubscribed', $contact);
         }
 
         return true;

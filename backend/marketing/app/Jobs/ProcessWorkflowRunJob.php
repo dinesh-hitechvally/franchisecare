@@ -117,7 +117,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
                 if (! $to) {
                     return ['skipped', 'Contact has no '.($email ? 'email' : 'phone')];
                 }
-                if (! ($email ? $contact->email_subscribed : $contact->sms_subscribed)) {
+                if (! $contact->is_subscribed) {
                     return ['skipped', 'Contact is unsubscribed'];
                 }
                 $tpl = ! empty($step['template_id']) ? Template::withoutGlobalScope('company')->where('company_id', $wf->company_id)->find($step['template_id']) : null;
@@ -143,7 +143,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
                 if (! $tag) {
                     return ['failed', 'Tag no longer exists'];
                 }
-                $step['type'] === 'add_tag' ? $contact->tags()->syncWithoutDetaching([$tag->id]) : $contact->tags()->detach($tag->id);
+                $step['type'] === 'add_tag' ? $contact->tags()->syncWithoutDetaching([$tag->id]) : ($contact->tags()->detach($tag->id) && \App\Services\Automation::fire('tag_removed', $contact, ['id' => $tag->id])); // only when it was really on them, so a workflow that removes the tag it listens for cannot loop
 
                 return ['done', ($step['type'] === 'add_tag' ? 'Added tag ' : 'Removed tag ').$tag->name];
 

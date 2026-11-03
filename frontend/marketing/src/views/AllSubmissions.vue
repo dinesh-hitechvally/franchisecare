@@ -66,7 +66,8 @@ onMounted(async () => {
         <tr class="clickable" @click="open = open === s.id ? null : s.id">
           <td style="white-space: nowrap">{{ $dt(s.created_at) }}</td>
           <td><router-link :to="`/forms/${s.form_id}/submissions`" @click.stop>{{ s.form?.name || 'Deleted form' }}</router-link></td>
-          <td>{{ who(s) || '—' }}<br /><small v-if="s.contact">{{ s.contact.email }}</small></td>
+          <td>{{ who(s) || '—' }}<br /><small v-if="s.contact">{{ s.contact.email }}</small>
+            <span v-if="s.contact && s.contact_existed !== null && s.contact_existed !== undefined" class="badge cx" :class="s.contact_existed ? 'sms' : 'sent'" :title="s.contact_existed ? 'This person was already one of your contacts' : 'This submission created the contact'">{{ s.contact_existed ? 'Existing contact' : 'New contact' }}</span></td>
           <td class="prev">{{ preview(s) }}</td>
           <td class="act" @click.stop><RowMenu :history="{ type: 'form_submission', id: s.id, title: $dt(s.created_at) }" :items="[{ label: open === s.id ? 'Hide answers' : 'View answers', run: () => (open = open === s.id ? null : s.id) }, { label: 'Open form submissions', to: `/forms/${s.form_id}/submissions` }, { label: 'Delete', run: () => remove(s), danger: true }]" /></td>
         </tr>
@@ -86,6 +87,7 @@ onMounted(async () => {
 <style scoped>
 .clickable { cursor: pointer; } .clickable:hover { background: #fafbff; }
 .prev { max-width: 420px; color: #555; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cx { display: inline-block; margin-top: 3px; font-size: 11px; }
 .detail td { background: #f7f8fc; padding: 4px 20px 14px; }
 dl { display: grid; grid-template-columns: 200px 1fr; gap: 6px 16px; margin: 8px 0 0; }
 dt { color: #6b7280; font-size: 13px; } dd { margin: 0; white-space: pre-wrap; word-break: break-word; }

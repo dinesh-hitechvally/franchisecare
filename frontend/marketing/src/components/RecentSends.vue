@@ -9,7 +9,7 @@ const rows = ref([])
 const SERVICES = {
   default: 'Default', log: 'Log only', gmail: 'Gmail', outlook: 'Outlook', yahoo: 'Yahoo Mail', zoho: 'Zoho Mail', sendgrid: 'SendGrid', mailgun: 'Mailgun',
   ses: 'Amazon SES', brevo: 'Brevo', postmark: 'Postmark', mandrill: 'Mandrill', custom: 'Custom SMTP', google: 'Google', microsoft: 'Microsoft',
-  twilio: 'Twilio', vonage: 'Vonage', plivo: 'Plivo', telnyx: 'Telnyx', clicksend: 'ClickSend', messagebird: 'MessageBird', sinch: 'Sinch',
+  twilio: 'Twilio', vonage: 'Vonage', plivo: 'Plivo', telnyx: 'Telnyx', clicksend: 'ClickSend', messagebird: 'MessageBird', messagemedia: 'MessageMedia', sinch: 'Sinch',
 }
 
 async function load() {
@@ -21,7 +21,7 @@ watch(() => props.tick, load)
 
 <template>
   <div class="recent">
-    <div class="rhead"><b>Recent test messages</b><router-link :to="`/logs?channel=${channel}`">View all send history →</router-link></div>
+    <div class="rhead"><b>Recent test messages</b><router-link :to="`/message-logs?channel=${channel}`">View all message logs →</router-link></div>
     <p v-if="!rows.length" class="none">Nothing yet. Send a test above and it appears here.</p>
     <table v-else>
       <thead><tr><th>When</th><th>To</th><th>Service</th><th>Result</th></tr></thead>

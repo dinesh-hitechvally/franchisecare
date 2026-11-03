@@ -21,7 +21,7 @@ onMounted(async () => { d.value = (await api.get('/analytics/conversions')).data
 </script>
 
 <template>
-  <div class="head"><h1>Conversion Reports</h1></div>
+  <div class="head"><h1>Forms &amp; pages analytics</h1></div>
   <p class="intro">A conversion is a visitor who signs up. Conversion rate = sign-ups ÷ views.</p>
   <p v-if="!d" class="empty">Loading…</p>
   <template v-else>

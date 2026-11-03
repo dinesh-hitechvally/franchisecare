@@ -1,7 +1,8 @@
 <script setup>
 import { fmtDateTime } from '../format'
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
+import { setQuery } from '../urlState'
 import api, { errorMessage } from '../api'
 import RowMenu from '../components/RowMenu.vue'
 import HistoryModal from '../components/HistoryModal.vue'
@@ -11,7 +12,9 @@ import MessageEditor from '../components/MessageEditor.vue'
 import EmailDesigner from '../components/EmailDesigner.vue'
 
 const rows = ref([])
-const q = useRoute().query.tab
+const route = useRoute()
+const router = useRouter()
+const q = route.query.tab
 const tab = ref(['email', 'sms'].includes(q) ? q : 'all') // all | email | sms
 const saved = (() => { try { return localStorage.getItem('templates.view') } catch (e) { return null } })()
 const view = ref(saved === 'table' ? 'table' : 'grid')
@@ -47,22 +50,28 @@ function create(type) {
   }
 }
 
-function edit(t) {
+const savedTick = ref(0) // bumped after a save that kept the editor open, so its History timeline reloads
+const startVersion = ref(null) // history_id to show as soon as the editor opens (coming from a history list)
+function edit(t, version = null) {
   editing.value = t.id
   error.value = ''
+  startVersion.value = version
   if (t.type === 'email') {
     initial.value = { name: t.name, subject: t.subject || '', design: t.design, html: t.body, attachments: t.attachments || [] }
     designer.value = true
+    setQuery({ edit: t.id, history: version }) // an open editor has an address: a refresh or a shared link comes back to it
   } else {
     Object.assign(form, { name: t.name, type: 'sms', subject: '', body: t.body })
   }
 }
 
-async function persist(payload) {
+async function persist(payload, keepOpen = false) {
   try {
     editing.value === 'new' ? await api.post('/templates', payload) : await api.put(`/templates/${editing.value}`, payload)
+    if (keepOpen) { await load(); savedTick.value++; return } // History is open in the editor: stay, so the new version shows in the timeline
     editing.value = null
     designer.value = false
+    leave()
     await load()
   } catch (e) {
     error.value = errorMessage(e)
@@ -70,13 +79,30 @@ async function persist(payload) {
   }
 }
 
+// the address carries ?edit=&history= when the editor was opened from a history list: drop it once the editor is closed
+function leave() {
+  startVersion.value = null
+  setQuery({ edit: null, history: null })
+  if (route.query.edit) router.replace('/templates') // arrived through a link with ?edit=: bring the router's own record of the address back in line
+}
+function closeDesigner() { designer.value = false; editing.value = null; leave() }
+function openFromQuery() {
+  const q = route.query
+  const t = q.edit ? rows.value.find((r) => String(r.id) === String(q.edit)) : null
+  if (t) edit(t, q.history ? Number(q.history) : null)
+}
+
 async function saveEmail(d) {
   saving.value = true
-  await persist({ name: d.name, type: 'email', subject: d.subject, body: d.body, design: d.design, attachments: d.attachments })
+  await persist({ name: d.name, type: 'email', subject: d.subject, body: d.body, design: d.design, attachments: d.attachments }, d.keepOpen && editing.value !== 'new')
   saving.value = false
 }
 
 const saveSms = () => persist({ ...form })
+
+async function duplicate(t) {
+  try { await api.post(`/templates/${t.id}/duplicate`); load() } catch (e) { alert(errorMessage(e)) }
+}
 
 async function remove(t) {
   if (!confirm(`Delete template "${t.name}"?`)) return
@@ -84,13 +110,13 @@ async function remove(t) {
   load()
 }
 
-onMounted(load)
+onMounted(async () => { await load(); openFromQuery() })
 </script>
 
 <template>
   <div class="head">
     <h1>Templates</h1>
-    <div class="row"><button class="btn" @click="create('email')">New email template</button><button class="btn ghost" @click="create('sms')">New SMS template</button></div>
+    <div class="row"><router-link to="/templates/history" class="btn ghost">Template histories</router-link><button class="btn" @click="create('email')">New email template</button><button class="btn ghost" @click="create('sms')">New SMS template</button></div>
   </div>
   <div class="bar">
     <div class="tabs">
@@ -109,13 +135,13 @@ onMounted(load)
 
   <div v-if="shown.length && view === 'table'" class="card">
     <table>
-      <thead><tr><th>Name</th><th>Type</th><th>Subject / message</th><th>Updated</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Channel</th><th>Subject / message</th><th>Updated</th><th class="act">Actions</th></tr></thead>
       <tr v-for="t in shown" :key="t.id">
         <td><a href="#" @click.prevent="edit(t)"><b>{{ t.name }}</b></a></td>
         <td><span class="badge" :class="t.type">{{ t.type }}</span></td>
         <td><small>{{ t.type === 'email' ? t.subject || plain(t) : plain(t) }}</small></td>
         <td>{{ when(t.updated_at) }}</td>
-        <td class="act"><RowMenu :history="{ type: 'template', id: t.id, title: t.name }" :items="[{ label: 'Edit', run: () => edit(t) }, { label: 'Delete', run: () => remove(t), danger: true }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'template', id: t.id, title: t.name }" :items="[{ label: 'Edit', run: () => edit(t) }, { label: 'Clone', run: () => duplicate(t) }, { label: 'Delete', run: () => remove(t), danger: true }]" /></td>
       </tr>
     </table>
   </div>
@@ -131,6 +157,7 @@ onMounted(load)
       </div>
       <div class="t-btns">
         <button type="button" class="btn sm" @click="edit(t)">Edit</button>
+        <button type="button" class="btn ghost sm" @click="duplicate(t)">Clone</button>
         <button type="button" class="btn ghost sm" @click="historyOf = t">History</button>
         <button type="button" class="btn sm danger" @click="remove(t)">Delete</button>
       </div>
@@ -139,7 +166,7 @@ onMounted(load)
   <div v-else class="card"><p class="empty">No {{ tab === 'all' ? '' : tab + ' ' }}templates yet.</p></div>
 
   <HistoryModal v-if="historyOf" type="template" :id="historyOf.id" :title="historyOf.name" @close="historyOf = null" />
-  <EmailDesigner v-if="designer" :initial="initial" show-name :saving="saving" @save="saveEmail" @close="designer = false; editing = null" />
+  <EmailDesigner v-if="designer" :initial="initial" :history-id="editing === 'new' ? null : editing" :start-version="startVersion" :saved-tick="savedTick" show-name :saving="saving" @save="saveEmail" @close="closeDesigner" @version="(v) => setQuery({ history: v })" />
 
   <Modal v-if="editing && !designer" :title="editing === 'new' ? 'New SMS template' : 'Edit SMS template'" @close="editing = null">
     <form @submit.prevent="saveSms">

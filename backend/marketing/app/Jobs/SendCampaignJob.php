@@ -3,14 +3,15 @@
 namespace App\Jobs;
 
 use App\Models\Campaign;
-use App\Models\Contact;
+use App\Models\Company;
+use App\Services\SendLog;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 
-/** Expands a campaign into one log row (email_logs or sms_logs) + SendMessageJob per recipient. */
+/** Expands a campaign into one log row (email_logs or sms_logs) + SendMessageJob per recipient, spread out at the company's sending speed. */
 class SendCampaignJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -20,43 +21,48 @@ class SendCampaignJob implements ShouldQueue
     public function handle(): void
     {
         $campaign = Campaign::withoutGlobalScope('company')->find($this->campaignId); // null when it was deleted meanwhile
-        if (! $campaign || $campaign->status === 'sent') {
+        if (! $campaign || in_array($campaign->status, ['sent', 'cancelled'], true)) {
             return;
         }
 
         $campaign->forceFill(['status' => 'sending', 'started_at' => now()])->save();
 
-        if ($campaign->segment_id && ($segment = \App\Models\Segment::withoutGlobalScope('company')->where('company_id', $campaign->company_id)->find($campaign->segment_id))) {
-            $query = \App\Services\SegmentQuery::forSegment($segment);
-        } else {
-            $query = $campaign->contact_list_id
-                ? Contact::withoutGlobalScope('company')->whereHas('lists', fn ($q) => $q->where('contact_lists.id', $campaign->contact_list_id))
-                : Contact::withoutGlobalScope('company');
-            $query->where('company_id', $campaign->company_id);
-        }
-
         $isEmail = $campaign->type === 'email';
+        // messages go out at the company's own pace (messages per minute; 0 = as fast as possible), so a mail account's limits are not hit
+        $perMinute = SendLog::perMinute(Company::find($campaign->company_id));
+        $gap = $perMinute > 0 ? 60 / $perMinute : 0;
+        $n = 0;
+        $left = 0; // unsubscribed or without an address: not messages, so nothing is written to the message log for them
 
-        $query->chunkById(200, function ($contacts) use ($campaign, $isEmail) {
+        $campaign->audienceQuery()->chunkById(200, function ($contacts) use ($campaign, $isEmail, $gap, &$n, &$left) {
+            // stopped by a person while the list was still being expanded: create nothing more
+            if (Campaign::withoutGlobalScope('company')->whereKey($campaign->id)->value('status') === 'cancelled') {
+                return false;
+            }
+
             foreach ($contacts as $contact) {
                 $recipient = $isEmail ? $contact->email : $contact->phone;
-                $subscribed = $isEmail ? $contact->email_subscribed : $contact->sms_subscribed;
+                if (! $recipient || ! $contact->is_subscribed) {
+                    $left++;
+
+                    continue;
+                }
 
                 $log = $campaign->logModel()::create([
                     'company_id' => $campaign->company_id,
                     'campaign_id' => $campaign->id,
                     'contact_id' => $contact->id,
-                    'recipient' => $recipient ?: '(none)',
-                    'status' => $recipient && $subscribed ? 'queued' : 'skipped',
-                    'error' => ! $recipient ? 'Contact has no '.($isEmail ? 'email' : 'phone')
-                        : (! $subscribed ? 'Contact unsubscribed' : null),
+                    'recipient' => $recipient,
+                    'status' => 'queued',
                 ]);
 
-                if ($log->status === 'queued') {
-                    SendMessageJob::dispatch($log->id, $campaign->type);
-                }
+                SendMessageJob::dispatch($log->id, $campaign->type)->delay(now()->addSeconds((int) round($n * $gap)));
+                $n++;
             }
         });
+
+        // kept on the campaign so the reports can still say how many people were left out
+        Campaign::withoutGlobalScope('company')->whereKey($campaign->id)->update(['audience_skipped' => $left]);
 
         FinalizeCampaign::check($campaign->id);
     }

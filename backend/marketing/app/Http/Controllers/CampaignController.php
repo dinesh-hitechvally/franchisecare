@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApiResponse;
 use App\Jobs\SendCampaignJob;
 use App\Models\Campaign;
 use App\Models\Contact;
@@ -18,7 +19,7 @@ class CampaignController extends Controller
 {
     public function index(Request $request)
     {
-        $page = Campaign::with('list:id,name', 'segment:id,name')->withLogCounts()
+        $page = Campaign::with('list:id,name', 'segment:id,name', 'tag:id,name')->withLogCounts()
             ->when($request->query('type'), fn ($q, $v) => $q->where('type', $v))
             ->when($request->query('status'), fn ($q, $v) => $q->where('status', $v))
             ->when($request->query('search'), fn ($q, $v) => $q->where('name', 'like', "%$v%"))
@@ -79,6 +80,68 @@ class CampaignController extends Controller
         return $campaign->fresh();
     }
 
+    /** Stop a campaign that is sending: what has gone out stays sent, everything still waiting is skipped. */
+    public function cancel(Campaign $campaign)
+    {
+        abort_unless($campaign->status === 'sending', 422, 'Only a campaign that is sending can be stopped.');
+
+        $campaign->logModel()::where('campaign_id', $campaign->id)->where('status', 'queued')
+            ->update(['status' => 'skipped', 'error' => 'Sending was stopped before this was sent.']);
+        $campaign->forceFill(['status' => 'cancelled', 'completed_at' => now()])->save();
+
+        return ApiResponse::ok($campaign->fresh()->loadCount(Campaign::logCountSpec())->logTotals(), 'Sending stopped. What already went out stays sent; the rest was skipped.');
+    }
+
+    /** A copy to start from: same content and audience, back to draft with no schedule. */
+    public function duplicate(Campaign $campaign)
+    {
+        $copy = $campaign->replicate(['scheduled_at', 'started_at', 'completed_at']);
+        $copy->name = mb_substr('Copy of '.$campaign->name, 0, 255);
+        $copy->forceFill(['status' => 'draft'])->save();
+
+        return response($copy, 201);
+    }
+
+    /** What sending would do, and anything worth fixing first. */
+    public function check(Campaign $campaign)
+    {
+        $isEmail = $campaign->type === 'email';
+        $col = $isEmail ? 'contacts.email' : 'contacts.phone';
+        $base = fn () => $campaign->audienceQuery();
+
+        $total = $base()->count();
+        $reach = $base()->where('contacts.is_subscribed', true)->whereNotNull($col)->where($col, '!=', '')->count();
+        $unsub = $base()->where('contacts.is_subscribed', false)->count();
+
+        $warnings = [];
+        if ($isEmail) {
+            if (! trim((string) $campaign->subject)) {
+                $warnings[] = 'The subject line is empty.';
+            } elseif (mb_strlen($campaign->subject) > 90) {
+                $warnings[] = 'The subject line is long ('.mb_strlen($campaign->subject).' characters). Mail apps cut it off after about 60.';
+            }
+            if (preg_match('~https?://(localhost|127\.0\.0\.1|[^/"\']*\.test\b)~i', (string) $campaign->body)) {
+                $warnings[] = 'The email links to a local address (localhost) that recipients cannot open.';
+            }
+            $company = \App\Models\Company::find($campaign->company_id);
+            if ($company && ! $company->from_email && \App\Services\MailSettings::activeKey($company) === 'default') {
+                $warnings[] = 'No sender address is set (Settings → Email sending), so mail may be rejected or marked as spam.';
+            }
+        } else {
+            $len = mb_strlen((string) $campaign->body);
+            $unicode = preg_match('/[^\x00-\x7F]/', (string) $campaign->body) === 1;
+            $per = $unicode ? 70 : 160;
+            if ($len > $per) {
+                $warnings[] = "The text is {$len} characters, which is sent as ".(int) ceil($len / ($unicode ? 67 : 153)).' parts and may cost more'.($unicode ? ' (it contains characters like emoji or accents that shorten each part)' : '').'.';
+            }
+        }
+        if ($total > 0 && $reach === 0) {
+            $warnings[] = 'Nobody in this audience can receive it: they are unsubscribed or have no '.($isEmail ? 'email address' : 'phone number').'.';
+        }
+
+        return ['audience' => $total, 'reach' => $reach, 'unsubscribed' => $unsub, 'skipped' => $total - $reach, 'warnings' => $warnings];
+    }
+
     /** Sends a single test message synchronously to the given address/number. */
     public function test(Request $request, Campaign $campaign, MessageRenderer $renderer, SmsManager $sms)
     {
@@ -92,10 +155,11 @@ class CampaignController extends Controller
             [$subject, $html] = $renderer->renderEmail('[TEST] '.$campaign->subject, $campaign->body, $company, $sample);
             $files = Attachments::in($html.Attachments::marker($campaign->attachments), $company->id);
             // through the service that is in use, like the real send, and written to the send history
-            SendLog::run($company, 'email', $data['to'], $subject, $html, 'test', fn () => CompanyMailer::for($company)->html($html, function ($m) use ($data, $company, $subject, $files) {
+            SendLog::run($company, 'email', $data['to'], $subject, $html, 'test', fn () => CompanyMailer::for($company)->html($html, function ($m) use ($data, $company, $subject, $files, $html) {
                 foreach ($files as $f) {
                     $m->attach($f['path'], ['as' => $f['name'], 'mime' => $f['mime']]);
                 }
+                $m->text(MessageRenderer::plainText($html));
                 $m->to($data['to'])->subject($subject);
                 if ($company->from_email) {
                     $m->from($company->from_email, $company->from_name ?: $company->name);
@@ -106,7 +170,7 @@ class CampaignController extends Controller
             SendLog::run($company, 'sms', $data['to'], null, $text, 'test', fn () => $sms->forCompany($company)->send($data['to'], $text));
         }
 
-        return ['ok' => true];
+        return ApiResponse::ok(['ok' => true], 'Test message sent.');
     }
 
     /** Live preview of a body using sample data. */
@@ -134,6 +198,7 @@ class CampaignController extends Controller
             'template_id' => 'nullable|integer',
             'contact_list_id' => 'nullable|integer',
             'segment_id' => 'nullable|integer',
+            'tag_id' => 'nullable|integer',
             'subject' => 'nullable|string|max:255|required_if:type,email',
             'body' => 'required|string',
             'design' => 'nullable|array',
@@ -144,9 +209,13 @@ class CampaignController extends Controller
 
         $data['attachments'] = $data['type'] === 'email' ? Attachments::clean($data['attachments'] ?? null, $request->user()->company_id) : null;
 
-        // one audience source at a time: a segment wins over a list
+        // one audience source at a time: a segment wins over a tag, a tag over a list
         if (! empty($data['segment_id'])) {
             abort_unless(\App\Models\Segment::whereKey($data['segment_id'])->exists(), 422, 'Invalid segment.');
+            $data['contact_list_id'] = $data['tag_id'] = null;
+        }
+        if (! empty($data['tag_id'])) {
+            abort_unless(\App\Models\Tag::whereKey($data['tag_id'])->exists(), 422, 'Invalid tag.');
             $data['contact_list_id'] = null;
         }
         if (! empty($data['contact_list_id'])) {

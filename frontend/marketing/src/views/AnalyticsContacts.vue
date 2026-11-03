@@ -9,8 +9,7 @@ const SRC = { manual: 'Added manually', import: 'CSV import', form: 'Sign-up for
 
 const growth = computed(() => [{ name: 'New contacts', color: '#3f51b5', points: d.value.growth }])
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0)
-const emailTotal = computed(() => d.value.subscriptions.email_subscribed + d.value.subscriptions.email_unsubscribed)
-const smsTotal = computed(() => d.value.subscriptions.sms_subscribed + d.value.subscriptions.sms_unsubscribed)
+const subTotal = computed(() => d.value.subscriptions.subscribed + d.value.subscriptions.unsubscribed)
 const engagement = computed(() => [
   { label: 'Opened in the last 30 days', value: d.value.engagement.engaged_30d },
   { label: 'Opened before, not recently', value: d.value.engagement.opened_before },
@@ -22,14 +21,14 @@ onMounted(async () => { d.value = (await api.get('/analytics/contacts')).data })
 </script>
 
 <template>
-  <div class="head"><h1>Contact Analytics</h1></div>
+  <div class="head"><h1>Contact analytics</h1></div>
   <p v-if="!d" class="empty">Loading…</p>
   <template v-else>
     <div class="grid g4">
       <div class="card stat"><div class="n">{{ d.total }}</div><div class="l">Total contacts</div></div>
       <div class="card stat"><div class="n">{{ d.new_30d }}</div><div class="l">New in the last 30 days</div></div>
-      <div class="card stat"><div class="n">{{ pct(d.subscriptions.email_subscribed, emailTotal) }}%</div><div class="l">Email subscribed · {{ d.subscriptions.email_unsubscribed }} opted out</div></div>
-      <div class="card stat"><div class="n">{{ pct(d.subscriptions.sms_subscribed, smsTotal) }}%</div><div class="l">SMS subscribed · {{ d.subscriptions.sms_unsubscribed }} opted out</div></div>
+      <div class="card stat"><div class="n">{{ pct(d.subscriptions.subscribed, subTotal) }}%</div><div class="l">Subscribed to newsletter · {{ d.subscriptions.subscribed }} contacts</div></div>
+      <div class="card stat"><div class="n">{{ d.subscriptions.unsubscribed }}</div><div class="l">Unsubscribed</div></div>
     </div>
 
     <div class="card"><h2>Audience growth <small>(last 30 days)</small></h2><LineChart :series="growth" /></div>

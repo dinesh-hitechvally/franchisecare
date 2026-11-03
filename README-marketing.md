@@ -35,11 +35,16 @@ Production: run the worker under Supervisor and add `* * * * * php artisan sched
 **Content** — Email Templates (visual designer: blocks, ready-made & saved layouts, code editor) · SMS Templates ·
 **Landing Pages** (a dedicated web-page builder, separate from the email designer: full-width responsive sections — navigation, hero, numbers, features, steps, testimonials, pricing, FAQ, sign-up form, footer, custom HTML — with web layouts such as Lead magnet, Product launch, Event, Coming soon and Service business; desktop/tablet/phone preview; free photos with automatic credits; the "Sign-up form" section marks where the attached form appears; own public link; older email-style pages still work) · **Forms** (full-screen form builder: drag-and-drop fields in a column layout, colours & fonts, hosted page + embed code). Pick a **form type** — Newsletter sign-up, Contact form or Other — then choose what happens on submit: save to contacts (and whether they are subscribed to marketing), add to lists/tags, **email the submission to up to 5 addresses**, send the person an **auto-reply**, show a thank-you or redirect. Contact and Other forms start as an **inbox only** (no contact is created) — turn on "Save them to my contacts" when you want one. When a form does save contacts, name/email/mobile fill the contact's own columns and each extra question can be saved as a custom field (or kept in the inbox only). Every submission is kept in the form's **inbox** (view, delete, CSV export). Custom field names that would clash with a built-in tag get a `contact_` prefix (e.g. `{{contact_company_name}}`; `{{company_name}}` is always *your* company).
 
-**Automation** — **Workflows** (trigger → send email/SMS, wait, add/remove tag, add to list) · **Triggers** (catalogue) ·
+**Automation** — **Workflows** (trigger → send email/SMS, wait, add/remove tag, add to list) · **Triggers** (catalogue) · **Webhooks** (send events to other systems; moved here from Settings, the old `/settings/webhooks` and `/webhooks` addresses redirect) ·
 **Automation History** (contacts in flight with cancel, and a step-by-step log).
-Triggers: contact added, joins a list, tag added, form submitted. Workflows start as drafts; activate them when ready.
+Triggers (Automation → Triggers, a table with filters; each row has **Create workflow**):
+- **Contact:** is added · joins a list · leaves a list · tag is added · tag is removed · submits a form · unsubscribes (workflows never email or text unsubscribed people, so use this to tag them or move lists).
+- **Email activity:** clicks a link (any link, or only links containing some text) · opens an email (the first open of each message).
+- **Time** (checked once a day at 00:15 server time, command `automation:time-triggers`, needs the scheduler running): a date arrives (a Date custom field such as a birthday or renewal: on the day, N days before or after, once or every year; dates are matched as YYYY-MM-DD) · has not opened emails for N days (received our email at least N days ago, opened none since, still subscribed; not started again within N days).
 
-**Analytics** — Campaign Analytics · Contact Analytics (growth, subscriptions, engagement, sources) · Conversion Reports (form/page views → sign-ups).
+A person is never in the same workflow twice at once, a date trigger never starts the same person twice in a day, and a workflow that removes the tag it listens for cannot loop. Workflows start as drafts; activate them when ready.
+
+**Analytics** — seven reports, each with a 7 / 14 / 30 / 60 / 90 day period: **Overview** (headline numbers compared with the previous period) · **Email** (opens, clicks, per-campaign table, top links) · **SMS** (sent, failed, by provider, per-campaign table) · **Delivery & errors** (sent / failed / skipped, failure and skip reasons grouped, success rate per service, latest failures) · **Contacts** (growth, subscriptions, engagement, sources) · **Forms & pages** (views → submissions) · **Automation** (workflow runs, completion, messages sent, step results). Tables have an Export CSV button. Per-campaign detail stays under Campaigns → Reports. API: `GET /api/analytics/{overview,email,sms,delivery,automation,contacts,conversions}?days=`.
 
 **System Settings** — Company Profile · **Email Configuration** (sender + your own SMTP, test send) ·
 **SMS Configuration** (Twilio and other SMS services, or Log only; test send) · **API Integrations** · **Webhooks** · **Users** · **Activity Logs**.
@@ -88,7 +93,7 @@ Every table page has a filter bar **above** the table card (search plus the filt
 
 ## Settings
 
-One **Settings** entry in the sidebar opens a settings hub with a section list: **My account** (name, job title, phone, sign-in email, password), **Company profile** (business names and tax number, industry, public email, phone, website, logo, full postal address; merge tags `{{company_name}}`, `{{company_email}}`, `{{company_phone}}`, `{{company_website}}`), **Email sending**, **SMS sending**, **Users**, **API keys**, **Webhooks** and **Activity logs**. The old addresses (`/config/email`, `/users`, `/webhooks`, …) redirect to the matching section.
+One **Settings** entry in the sidebar opens a settings hub with a section list: **My account** (name, job title, phone, sign-in email, password), **Company profile** (business names and tax number, industry, public email, phone, website, logo, full postal address; merge tags `{{company_name}}`, `{{company_email}}`, `{{company_phone}}`, `{{company_website}}`), **Email sending**, **SMS sending**, **Users**, **API keys** and **Activity logs**. The old addresses (`/config/email`, `/users`, `/webhooks`, …) redirect to the matching section.
 
 ### Sending email through Google / Microsoft (one click)
 
@@ -105,13 +110,70 @@ The SMTP section also has a **Setup guide**: it suggests the matching service fr
 
 Settings → Email sending lists every service (Default, Google, Microsoft, Gmail, Outlook, Yahoo, Zoho, SendGrid, Mailgun, Amazon SES, Brevo, Postmark, Mandrill, Custom server). Each can be **connected** at the same time and keeps its own saved login; exactly one is **In use** for sending. Connecting does not switch sending: use "Use for sending" (or "Connect and use for sending"). Disconnecting the one in use falls back to Default. Settings are stored per company as `email.active` + `email.connections.{service}` (`App\Services\MailSettings`); companies saved with the older single server are read as one connection and converted on their next change.
 
-## Send history
+## API responses
 
-**Campaigns → Send history** (`/logs`) lists every email and SMS the platform sent or tried to send, in the database (two tables: `email_logs` and `sms_logs`): campaigns, automations, form auto-replies, **test messages** (Email / SMS configuration pages and "Send test" in the campaign editor) and staff notifications for form submissions. Each row has a kind (`source`), the service that carried it (`service`: a connected mail/SMS service, `default` = platform mail, `log` = Log only for SMS, where nothing leaves the server), its status and any error. Test messages and staff notifications are listed but never counted in campaign reports or the dashboard. Filter by text, channel, kind, service, status and dates. The Email and SMS configuration pages also show their last five test messages.
+Every answer of the dashboard API (`/api/*`) has one shape.
+
+```json
+// success   (a list also has "meta": { current_page, last_page, per_page, total, ... } and "data" is the items)
+{ "success": true,  "message": "Sending stopped." | null, "data": { ... } }
+
+// failure   ("code" is a short machine-readable reason; "errors" appears for validation only)
+{ "success": false, "message": "The name field is required.", "code": "validation_failed", "errors": { "name": ["The name field is required."] } }
+```
+
+Codes: `validation_failed` (422), `unauthenticated` (401), `forbidden` (403), `not_found` (404), `method_not_allowed` (405), `conflict` (409), `unprocessable` (other 422s, e.g. `abort(422, '…')`), `too_many_requests` (429, with `retry_after` and a `Retry-After` header), `server_error` (500). An unexpected error never shows its details, only a calm sentence; with `APP_DEBUG=true` a `debug` block (exception, file, line, trace) is added.
+
+**In a controller** use `App\Support\ApiResponse`:
+
+```php
+return ApiResponse::ok($campaign, 'Sending stopped.');          // 200, with a sentence for the person
+return ApiResponse::created($form);                              // 201
+return ApiResponse::message('Test message sent.');               // 200, a sentence and no data
+return ApiResponse::paginated($query->paginate(25));            // items as data, paging as meta
+return ApiResponse::accepted();                                  // 202, working on it in the background
+return ApiResponse::noContent();                                 // 204 (after a delete)
+return ApiResponse::error('Sending failed.', 422, 'send_failed', null, ['hint' => '…']); // any failure; extra keys are allowed
+return ApiResponse::validation(['email' => ['Not valid.']]);     // 422 with field errors
+return ApiResponse::notFound('That page no longer exists.');     // also unauthenticated(), forbidden(), conflict(), tooManyRequests(), serverError()
+```
+
+You do not have to: a controller that simply returns a model, a list or a paginator is wrapped into the success shape by `WrapApiResponse`, and every exception, including `abort()`, `findOrFail()` and validation, is turned into the failure shape by `ApiResponse::fromException` (registered in `bootstrap/app.php`).
+
+**Left exactly as they are** because other systems read them: the public API v1 (`/api/v1/*`), hosted forms (`/api/public/*`), tracking links, media files, downloads and streams (CSV exports). Their failures use the standard failure shape.
+
+**Frontend:** `src/api.js` unwraps a successful answer, so screens still work with `response.data` as the record, list or paginator; the server's sentence is `response.message` (`responseMessage(r)`). `errorMessage(err)` reads a failure.
+
+**Tests:** `json()` and `assertJson*()` see the payload inside the envelope. To check the envelope itself read the raw body: `json_decode($response->getContent(), true)` (see `ApiResponseTest`).
+
+## Forms: what the visitor sees, and people who are already contacts
+
+- **After sending** the hosted form is replaced by a thank-you panel (a tick, the form's own thank-you message, and "Your form has been submitted successfully."), with **Send another response**, or a short pause before the redirect when the form has one. The button says "Sending…" and cannot be pressed twice. A problem shows a red message and focuses the field to fix.
+- **A form that saves contacts** matches an existing contact by email (or phone when there is no email): no duplicate is made, names, phone and custom fields are only filled where empty, subscription is never changed, and the form's lists and tags are added. The submission is linked to that contact.
+- **A notice for people who are already contacts** is optional: write it under the form's Settings → *Message for people who are already your contacts*. It is shown instead of the thank-you (with "We already have you in our records."). Left empty, everybody sees the same thank-you, so a visitor can never find out who is in your contacts. In the submissions lists the **From** column always shows **New contact** or **Existing contact** under the person's name.
+
+## Campaign audience: lists, tags, segments and subscription
+
+- The campaign's **Audience** dropdown offers *All contacts*, **Lists**, **Tags** and **Segments**. One source is used at a time (segment, then tag, then list).
+- Next to Audience, a **Subscription** dropdown (All, Subscribed, Unsubscribed) narrows the preview below it. The table lists name, email (and phone for SMS), and a **Subscription** status per contact. The five-row preview and *Show all* follow the dropdown.
+- Unsubscribed contacts are never sent to, whichever audience is chosen: they are left out, and so are contacts with no email address or phone number. Nothing is written to Message logs for them; the campaign only keeps the count, shown as **Skipped** in Reports.
+
+## Sending safety
+
+- **Sending speed** (Settings → Email sending): campaigns go out at N messages per minute (default 60, 0 = unlimited), email and SMS, so a mail account's limits are not hit.
+- **Retries:** a temporary problem (timeout, "try again later", rate limit, 421/429/45x/50x) is retried after 1 and 5 minutes; anything else (wrong password, invalid number) fails at once. While waiting, the message stays queued and shows "Will try again".
+- **Stop sending:** a campaign that is sending can be stopped (Campaigns list menu, or the campaign page). What went out stays sent; everything still waiting is skipped; the status is shown as "stopped".
+- **Every email** carries a plain-text copy beside the HTML, and `List-Unsubscribe` / `List-Unsubscribe-Post` headers (the one-click Unsubscribe button in Gmail, Apple Mail and others; `POST /api/unsubscribe/{token}`).
+- **Before sending**, the campaign page checks the audience (how many will receive it, how many are skipped) and warns about a long subject, a localhost link, a missing sender address, or an SMS that is split into several parts. Nobody to send to blocks the send.
+- **Duplicate** a campaign or a template from its menu; **Export CSV** on Contacts downloads the contacts the list is showing (with their custom fields).
+
+## Message logs
+
+**Analytics → Message logs** (`/message-logs`; the old `/logs` address redirects) lists every email and SMS the platform sent or tried to send, in the database (two tables: `email_logs` and `sms_logs`): campaigns, automations, form auto-replies, **test messages** (Email / SMS configuration pages and "Send test" in the campaign editor) and staff notifications for form submissions. Each row has a kind (`source`), the service that carried it (`service`: a connected mail/SMS service, `default` = platform mail, `log` = Log only for SMS, where nothing leaves the server), its status and any error. Test messages and staff notifications are listed but never counted in campaign reports or the dashboard. Filter by text, channel, kind, service, status and dates. The Email and SMS configuration pages also show their last five test messages.
 
 **Logged only.** A message sent through a service that only writes to a log gets the status **logged** ("logged only"), never "sent": the **Log only** service for email (Settings → Email sending) and for SMS (Settings → SMS sending). Logged-only messages are kept out of the "sent" counts everywhere (dashboard, reports, analytics); campaigns and reports show them as a separate number. The **Default** mail service is the server itself: it hands each message to the server's own mail program (PHP's `sendmail_path`, e.g. Postfix on a Linux host, or Mailpit on Laragon; override with `MAIL_SENDMAIL_PATH` in `.env`), not an SMTP login, and it never just logs: the message goes out, or the send fails with the reason (mail program not found, Mailpit not running, …). If `MAIL_MAILER` in `.env` is a real mailer (smtp, ses, …) Default uses that instead. On Laragon the mail program is Mailpit, which keeps mail in its own inbox at http://localhost:8025 and never reaches real inboxes; start it from Laragon (Menu → Mail) first.
 
-Failed and skipped messages show their error in the **Error / reason** column of Send history; click it (or **View**) for the full text and, where we recognise the problem (wrong Gmail password, Mailpit not running, invalid phone number, …), a **What to do** note. The same notes appear under a failed test on the Email and SMS pages.
+Failed and skipped messages show their error in the **Error / reason** column of Message logs; click it (or **View**) for the full text and, where we recognise the problem (wrong Gmail password, Mailpit not running, invalid phone number, …), a **What to do** note. The same notes appear under a failed test on the Email and SMS pages.
 
 ## Dates and times
 

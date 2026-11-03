@@ -33,7 +33,7 @@ class FinalizeCampaign
             $count = fn ($s) => $logs()->where('status', $s)->count();
             \App\Services\WebhookDispatcher::dispatch($c->company_id, 'campaign.sent', [
                 'id' => $c->id, 'name' => $c->name, 'type' => $c->type, 'status' => $c->status,
-                'sent' => $count('sent'), 'failed' => $count('failed'), 'skipped' => $count('skipped'), 'logged' => $count('logged'),
+                'sent' => $count('sent'), 'failed' => $count('failed'), 'skipped' => $count('skipped') + (int) $c->audience_skipped, 'logged' => $count('logged'),
             ]);
         }
     }

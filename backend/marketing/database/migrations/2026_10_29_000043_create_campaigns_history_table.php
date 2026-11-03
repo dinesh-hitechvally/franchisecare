@@ -17,11 +17,13 @@ return new class extends Migration
             $table->unsignedBigInteger('template_id')->nullable();
             $table->unsignedBigInteger('contact_list_id')->nullable();
             $table->unsignedBigInteger('segment_id')->nullable();
+            $table->unsignedBigInteger('tag_id')->nullable();
             $table->string('name', 255)->nullable();
             $table->string('type', 30)->nullable();
             $table->string('subject', 255)->nullable();
             $table->longText('body')->nullable();
             $table->longText('design')->nullable();
+            $table->unsignedInteger('audience_skipped')->nullable();
             $table->json('attachments')->nullable();
             $table->string('status', 30)->nullable();
             $table->dateTime('scheduled_at')->nullable();

@@ -55,7 +55,7 @@ class SendErrors
         if (preg_match('/5\.7\.1|relay|not allowed|sender|from address/i', $error)) {
             return 'The server refused the sender address. Set From email to an address your mail provider lets you send from (for Gmail, Outlook, Yahoo and Zoho that is the account you sign in with).';
         }
-        if (preg_match('/unsubscribed|has no email|no email/i', $error)) {
+        if (preg_match('/unsubscribed|has no email|no email|No email address found/i', $error)) {
             return 'This message was skipped on purpose: the person has unsubscribed, or has no email address.';
         }
 
@@ -64,7 +64,7 @@ class SendErrors
 
     public static function sms(string $error, ?string $service): ?string
     {
-        if (preg_match('/has no phone|unsubscribed/i', $error)) {
+        if (preg_match('/has no phone|No phone number found|unsubscribed/i', $error)) {
             return 'This text was skipped on purpose: the person has unsubscribed, or has no phone number.';
         }
         if (preg_match('/401|403|authenticat|credential|unauthori[sz]ed|invalid.*(key|token|secret|sid)|api[_ ]?key/i', $error)) {

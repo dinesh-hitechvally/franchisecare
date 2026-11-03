@@ -165,7 +165,7 @@ class PublicController extends Controller
                 $contact = (new Contact)->forceFill([
                     'company_id' => $biz, 'email' => $email, 'phone' => $phone, 'source' => 'form',
                     'first_name' => $data['first_name'] ?? null, 'last_name' => $data['last_name'] ?? null,
-                    'email_subscribed' => (bool) $form->subscribe, 'sms_subscribed' => (bool) $form->subscribe,
+                    'is_subscribed' => (bool) $form->subscribe,
                 ]);
                 $contact->save();
             } else {
@@ -187,7 +187,9 @@ class PublicController extends Controller
             $contact->tags()->syncWithoutDetaching($tagIds);
         }
 
-        $submission = FormSubmission::create(['company_id' => $biz, 'form_id' => $form->id, 'contact_id' => $contact?->id, 'data' => $answers]);
+        // whether this person was already a contact (null when the form does not save contacts): shown in the submissions list
+        $existed = $contact ? ! $created : null;
+        $submission = FormSubmission::create(['company_id' => $biz, 'form_id' => $form->id, 'contact_id' => $contact?->id, 'contact_existed' => $existed, 'data' => $answers]);
         $form->increment('submissions');
 
         if ($contact) {
@@ -223,6 +225,10 @@ class PublicController extends Controller
             SendMessageJob::dispatch($log->id);
         }
 
-        return ['message' => $form->success_message, 'redirect' => $form->redirect_url];
+        // Telling a visitor "you are already one of our contacts" shows anyone who is on the list, so it is only said when the form's owner
+        // wrote a message for it. Without one, everybody gets the same thank-you.
+        $known = $existed === true && filled($form->existing_message);
+
+        return ['message' => $known ? $form->existing_message : $form->success_message, 'redirect' => $form->redirect_url, 'existing' => $known];
     }
 }

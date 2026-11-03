@@ -19,7 +19,7 @@ const tick = ref(0) // reloads the recent test messages after each test
 
 const LOG = { key: 'log', name: 'Log only', sub: 'Nothing is sent', color: '#78909c', letter: 'L' }
 const LOOK = {
-  twilio: '#f22f46', vonage: '#7b2cbf', plivo: '#2db742', telnyx: '#00c08b', clicksend: '#e8441b', messagebird: '#2481d7', sinch: '#ffbe3c',
+  twilio: '#f22f46', vonage: '#7b2cbf', plivo: '#2db742', telnyx: '#00c08b', clicksend: '#e8441b', messagebird: '#2481d7', messagemedia: '#00a3e0', sinch: '#ffbe3c',
 }
 const HOWTO = {
   twilio: ['Open the Twilio Console and copy the Account SID and Auth token from the dashboard.', 'Buy or verify a phone number (Phone Numbers → Manage), or register an alphanumeric sender ID where your country allows it.', 'Paste the SID, the token and the sender (a number in international format, e.g. +15551234567).'],
@@ -28,6 +28,7 @@ const HOWTO = {
   telnyx: ['In the Telnyx portal create an API V2 key (Auth → API keys).', 'Buy a number and attach it to a Messaging Profile.', 'Paste the key and use that number as the sender.'],
   clicksend: ['Open the ClickSend dashboard → Developers → API credentials.', 'Use your username and the API key shown there.', 'The sender is an alphanumeric ID or one of your dedicated numbers.'],
   messagebird: ['In the MessageBird dashboard open Developers → API access and create a live access key.', 'The originator is a sender name (up to 11 letters) or a number you own.', 'Paste the key here.'],
+  messagemedia: ['Sign in to the MessageMedia hub and open Settings → API credentials (or Developers → API keys).', 'Create a Basic-auth API key: you get an API key and an API secret.', 'Paste both here. The sender is optional: leave it blank to send from the shared MessageMedia number, or enter a number or sender ID that MessageMedia has approved for your account.'],
   sinch: ['In the Sinch portal open SMS → APIs and note the Service plan ID and API token.', 'The region (us, eu, au, br or ca) is shown on the same page; leave it blank for us.', 'The sender is a number from your plan.'],
 }
 const TILES = computed(() => [LOG, ...Object.entries(c.value.providers).map(([key, p]) => ({ key, name: p.name, sub: '', color: LOOK[key] || '#6b7280', fields: p.fields }))])
@@ -132,7 +133,7 @@ watch(() => c.value?.active, () => { testMsg.value = testErr.value = '' })
         </div>
 
         <template v-if="current.key === 'log'">
-          <p class="hint">Nothing is sent. Each text is only written to the log and listed in the send history as <b>logged only</b>, so you can try campaigns and automations safely. Nothing leaves the server and nothing is charged.</p>
+          <p class="hint">Nothing is sent. Each text is only written to the log and listed in Message logs as <b>logged only</b>, so you can try campaigns and automations safely. Nothing leaves the server and nothing is charged.</p>
           <button v-if="!isActive('log')" type="button" class="btn" :disabled="busy" @click="useService('log')">Use Log only</button>
         </template>
 

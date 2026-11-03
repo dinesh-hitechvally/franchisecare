@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Campaign;
 use App\Models\EmailLog;
 use App\Models\SmsLog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,12 +43,13 @@ class MarketingFlowTest extends TestCase
         $this->assertStringContainsString('/api/t/c/', $logs[0]->body);
         $this->assertStringContainsString('Unsubscribe', $logs[0]->body);
 
-        // SMS: Bob has no phone -> skipped, Ann 'logged' (test mode: written to the log, not delivered)
+        // SMS: Bob has no phone -> left out (counted), Ann 'logged' (test mode: written to the log, not delivered)
         $sms = $this->postJson('/api/campaigns', ['name' => 'Txt', 'type' => 'sms', 'contact_list_id' => $list, 'body' => 'Hi {{first_name}}'], $h)->json('id');
         $this->postJson("/api/campaigns/$sms/send", [], $h)->assertOk();
         $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'logged')->count());
         $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'sent')->count()); // nothing was really sent
-        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'skipped')->count());
+        $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'skipped')->count()); // nobody without a number is written to the message log
+        $this->assertSame(1, Campaign::withoutGlobalScopes()->find($sms)->audience_skipped); // but they are counted
         $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('status', 'sent');
 
         $this->getJson('/api/logs?channel=email', $h)->assertJsonPath('total', 2);
@@ -69,7 +71,7 @@ class MarketingFlowTest extends TestCase
 
         $contact = \App\Models\Contact::withoutGlobalScopes()->first();
         $this->get("/api/unsubscribe/{$contact->unsubscribe_token}")->assertOk();
-        $this->assertFalse($contact->fresh()->email_subscribed);
+        $this->assertFalse($contact->fresh()->is_subscribed);
     }
 
     public function test_tenants_are_isolated(): void

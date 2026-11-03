@@ -7,7 +7,7 @@ import DateInput from '../components/DateInput.vue'
 import Modal from '../components/Modal.vue'
 import Pager from '../components/Pager.vue'
 import OnlineImages from '../components/OnlineImages.vue'
-import RowMenu from '../components/RowMenu.vue'
+import HistoryModal from '../components/HistoryModal.vue'
 
 const rows = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
@@ -20,8 +20,11 @@ const msg = ref('')
 const error = ref('')
 const uploading = ref([]) // { name, state: 'uploading' | 'done' | 'failed', error }
 const dragging = ref(false)
-const renaming = ref(null)
-const rn = reactive({ name: '', alt: '' })
+const at = ref(-1) // index (in rows) of the file shown in the details window
+const cur = computed(() => rows.value[at.value] || null)
+const rn = reactive({ name: '', alt: '', description: '' })
+const saving = ref(false)
+const historyOf = ref(null)
 
 const ACCEPT = '.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip'
 const size = (n) => (n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB')
@@ -56,9 +59,21 @@ async function send(files) {
 const pick = (e) => { send([...e.target.files]); e.target.value = '' }
 const drop = (e) => { dragging.value = false; send([...e.dataTransfer.files]) }
 
-function startRename(m) { renaming.value = m; Object.assign(rn, { name: m.name, alt: m.alt || '' }) }
-async function saveRename() {
-  try { await api.put(`/media/${renaming.value.id}`, rn); renaming.value = null; msg.value = 'Saved.'; load(meta.value.current_page) } catch (e) { error.value = errorMessage(e); renaming.value = null }
+// Attachment details window (like WordPress): big preview, file facts, editable name / description, previous & next.
+function show(i) { at.value = i; Object.assign(rn, { name: cur.value.name, alt: cur.value.alt || '', description: cur.value.description || '' }) }
+const openDetails = (m) => show(rows.value.findIndex((r) => r.id === m.id))
+const step = (d) => { const j = at.value + d; if (j >= 0 && j < rows.value.length) show(j) }
+const dirty = computed(() => cur.value && (rn.name !== cur.value.name || rn.alt !== (cur.value.alt || '') || rn.description !== (cur.value.description || '')))
+async function saveDetails() {
+  saving.value = true
+  error.value = ''
+  try { Object.assign(cur.value, (await api.put(`/media/${cur.value.id}`, rn)).data); msg.value = 'Saved.' } catch (e) { error.value = errorMessage(e) } finally { saving.value = false }
+}
+async function removeDetails() {
+  const m = cur.value
+  if (!confirm(`Delete "${m.name}"? Its link stops working.`)) return
+  msg.value = error.value = ''
+  try { await api.delete(`/media/${m.id}`); at.value = -1; msg.value = 'Deleted.'; load(meta.value.current_page) } catch (e) { error.value = errorMessage(e) }
 }
 async function remove(m) {
   if (!confirm(`Delete "${m.name}"? Its link stops working.`)) return
@@ -76,7 +91,7 @@ function added() {
   load(1)
 }
 function setTab(k) { tab.value = k; msg.value = error.value = ''; if (k !== 'find') load(1) }
-const creditLine = (m) => (m.source && m.source !== 'upload' ? m.source : '')
+const isOnline = (m) => m.source && m.source !== 'upload'
 
 let t
 watch(f, () => { clearTimeout(t); t = setTimeout(() => load(1), 300) })
@@ -118,23 +133,21 @@ onMounted(() => load())
     <p v-if="!rows.length" class="empty">{{ fDirty ? 'Nothing matches these filters.' : tab === 'online' ? 'No free online images saved yet. Use "Find free images" to add some.' : 'No files yet. Upload your first one above.' }}</p>
     <div v-else class="grid-m">
       <div v-for="m in rows" :key="m.id" class="m">
-        <div class="thumb">
+        <div class="thumb click" @click="openDetails(m)">
           <img v-if="m.kind === 'image'" :src="m.url" :alt="m.alt || m.name" loading="lazy" />
           <span v-else class="doc">{{ ext(m) }}</span>
         </div>
         <div class="info">
-          <div class="nm" :title="m.file_name">{{ m.name }}</div>
+          <div class="nm click" :title="m.file_name" @click="openDetails(m)">{{ m.name }}</div>
           <small>{{ size(m.size) }}<template v-if="m.width"> · {{ m.width }}×{{ m.height }}</template></small>
           <small class="when">{{ $d(m.created_at) }}</small>
-          <small v-if="creditLine(m)" class="cr"><span class="src">{{ creditLine(m) }}</span> <a v-if="m.credit_url || m.source_url" :href="m.credit_url || m.source_url" target="_blank" rel="noopener noreferrer">{{ m.credit || 'Source' }}</a><template v-else>{{ m.credit }}</template><template v-if="m.license"> · {{ m.license }}</template></small>
+          <small v-if="isOnline(m)" class="cr"><span class="src">{{ m.source }}</span> <a v-if="m.credit_url || m.source_url" :href="m.credit_url || m.source_url" target="_blank" rel="noopener noreferrer">{{ m.credit || 'Source' }}</a><template v-else>{{ m.credit }}</template><template v-if="m.license"> · {{ m.license }}</template></small>
+          <small v-else class="cr"><span class="src">uploaded</span> {{ m.creator?.name || 'Unknown' }} · Own file</small>
         </div>
-        <div class="menu">
-          <RowMenu :history="{ type: 'media', id: m.id, title: m.name }" :items="[
-            { label: 'Copy link', run: () => copyLink(m) },
-            { label: 'Open', run: () => openFile(m) },
-            { label: 'Rename', run: () => startRename(m) },
-            { label: 'Delete', run: () => remove(m), danger: true },
-          ]" />
+        <div class="btns">
+          <button type="button" class="btn sm" @click="openDetails(m)">Details</button>
+          <button type="button" class="btn ghost sm" @click="historyOf = m">History</button>
+          <button type="button" class="btn sm danger" @click="remove(m)">Delete</button>
         </div>
       </div>
     </div>
@@ -143,16 +156,55 @@ onMounted(() => load())
 
   </template>
 
-  <Modal v-if="renaming" title="Rename file" @close="renaming = null">
-    <form @submit.prevent="saveRename">
-      <div class="field"><label>Name</label><input v-model="rn.name" required maxlength="255" /></div>
-      <div v-if="renaming.kind === 'image'" class="field"><label>Description <small>(for people who cannot see the image)</small></label><input v-model="rn.alt" maxlength="255" /></div>
-      <div class="row"><button class="btn">Save</button><button type="button" class="btn ghost" @click="renaming = null">Cancel</button></div>
-    </form>
+  <Modal v-if="cur" title="File details" wide @close="at = -1">
+    <div class="dt">
+      <div class="dt-pre">
+        <img v-if="cur.kind === 'image'" :src="cur.url" :alt="cur.alt || cur.name" />
+        <span v-else class="doc big">{{ ext(cur) }}</span>
+      </div>
+      <div class="dt-side">
+        <ul class="facts">
+          <li><b>File name:</b> {{ cur.file_name }}</li>
+          <li><b>Uploaded on:</b> {{ $dt(cur.created_at) }}</li>
+          <li><b>File type:</b> {{ cur.mime }}</li>
+          <li><b>File size:</b> {{ size(cur.size) }}</li>
+          <li v-if="cur.width"><b>Dimensions:</b> {{ cur.width }} × {{ cur.height }} pixels</li>
+          <li v-if="!isOnline(cur)"><b>Source:</b> Uploaded<template v-if="cur.creator"> by {{ cur.creator.name }}</template> · Own file</li>
+          <li v-if="isOnline(cur)"><b>Source:</b> <span style="text-transform: capitalize">{{ cur.source }}</span><template v-if="cur.credit"> · <a v-if="cur.credit_url || cur.source_url" :href="cur.credit_url || cur.source_url" target="_blank" rel="noopener noreferrer">{{ cur.credit }}</a><template v-else>{{ cur.credit }}</template></template><template v-if="cur.license"> · {{ cur.license }}</template></li>
+        </ul>
+        <form @submit.prevent="saveDetails">
+          <div class="field"><label>Name</label><input v-model="rn.name" required maxlength="255" /></div>
+          <div v-if="cur.kind === 'image'" class="field"><label>Alt text <small>(read out for people who cannot see the image)</small></label><input v-model="rn.alt" maxlength="255" /></div>
+          <div class="field"><label>Description</label><textarea v-model="rn.description" rows="4" maxlength="5000" placeholder="Notes about this file"></textarea></div>
+          <div class="field"><label>File URL</label><div class="row"><input :value="cur.url" readonly style="flex: 1" @focus="$event.target.select()" /><button type="button" class="btn ghost sm" @click="copyLink(cur)">Copy link</button></div></div>
+          <div class="row">
+            <button class="btn" :disabled="saving || !dirty">{{ saving ? 'Saving…' : 'Save changes' }}</button>
+            <button type="button" class="btn ghost" @click="openFile(cur)">View file</button>
+            <button type="button" class="btn ghost" @click="historyOf = cur">History</button>
+            <button type="button" class="btn danger" style="margin-left: auto" @click="removeDetails">Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
+    <div class="dt-nav">
+      <button type="button" class="btn ghost sm" :disabled="at <= 0" @click="step(-1)">&larr; Previous</button>
+      <small>{{ at + 1 }} of {{ rows.length }}</small>
+      <button type="button" class="btn ghost sm" :disabled="at >= rows.length - 1" @click="step(1)">Next &rarr;</button>
+    </div>
   </Modal>
+  <HistoryModal v-if="historyOf" type="media" :id="historyOf.id" :title="historyOf.name" @close="historyOf = null" />
 </template>
 
 <style scoped>
+.click { cursor: pointer; }
+.dt { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 22px; }
+.dt-pre { background: repeating-conic-gradient(#f3f4f8 0% 25%, #fff 0% 50%) 50% / 16px 16px; border-radius: 8px; display: grid; place-items: center; min-height: 260px; padding: 12px; }
+.dt-pre img { max-width: 100%; max-height: 62vh; object-fit: contain; }
+.doc.big { font-size: 26px; padding: 26px 34px; }
+.facts { list-style: none; margin: 0 0 16px; padding: 0 0 14px; border-bottom: 1px solid #eceef7; font-size: 13px; color: #4b5563; }
+.facts li { padding: 2px 0; word-break: break-all; } .facts b { color: #111827; }
+.dt-nav { display: flex; justify-content: space-between; align-items: center; margin-top: 14px; padding-top: 12px; border-top: 1px solid #eceef7; }
+@media (max-width: 760px) { .dt { grid-template-columns: 1fr; } }
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e0e3f0; margin-bottom: 16px; flex-wrap: wrap; }
 .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 9px 14px; font: inherit; color: #6b7280; cursor: pointer; margin-bottom: -1px; }
 .tabs button:hover { color: #3f51b5; }
@@ -166,13 +218,14 @@ onMounted(() => load())
 .ups { list-style: none; margin: 0 0 14px; padding: 0; font-size: 13px; }
 .ups li { display: flex; justify-content: space-between; gap: 12px; padding: 4px 0; color: #6b7280; }
 .ups li.done b { color: #2e7d32; } .ups li.failed b { color: #c62828; font-weight: 500; }
-.grid-m { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
-.m { position: relative; border: 1px solid #e0e3f0; border-radius: 8px; overflow: hidden; background: #fff; }
-.thumb { height: 130px; background: repeating-conic-gradient(#f3f4f8 0% 25%, #fff 0% 50%) 50% / 16px 16px; display: grid; place-items: center; }
+.grid-m { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.m { display: flex; flex-direction: column; border: 1px solid #e0e3f0; border-radius: 8px; overflow: hidden; background: #fff; }
+.thumb { height: 130px; background: repeating-conic-gradient(#f3f4f8 0% 25%, #fff 0% 50%) 50% / 16px 16px; display: grid; place-items: center; flex: none; }
 .thumb img { max-width: 100%; max-height: 130px; object-fit: contain; }
 .doc { background: #e8eaf6; color: #3f51b5; font-weight: 700; padding: 14px 18px; border-radius: 6px; font-size: 15px; }
-.info { padding: 10px 12px 12px; }
-.nm { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-right: 22px; }
-.info small { color: #6b7280; display: block; line-height: 1.5; padding-right: 26px; }
-.menu { position: absolute; right: 4px; bottom: 6px; }
+.info { padding: 10px 12px 12px; flex: 1; }
+.nm { font-weight: 600; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.info small { color: #6b7280; display: block; line-height: 1.5; }
+.btns { display: flex; flex-wrap: nowrap; gap: 6px; padding: 0 12px 12px; margin-top: auto; flex: none; }
+.btns .btn { flex: 1; padding-left: 6px; padding-right: 6px; white-space: nowrap; }
 </style>

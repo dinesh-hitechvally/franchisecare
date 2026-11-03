@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApiResponse;
 use App\Services\CompanyMailer;
 use App\Services\MailOAuth;
 use App\Services\MailSettings;
@@ -33,12 +34,13 @@ class ConfigController extends Controller
             'reply_to' => 'nullable|email',
             'address' => 'nullable|string|max:255',
             'active' => ['required', Rule::in(array_merge(['default', 'log'], MailSettings::keys()))],
+            'per_minute' => 'nullable|integer|min:0|max:6000',
         ]);
 
         $company = $request->user()->company;
         $conns = MailSettings::connections($company);
         if (! in_array($data['active'], ['default', 'log'], true) && ! isset($conns[$data['active']])) {
-            return response()->json(['message' => 'Connect '.ucfirst($data['active']).' first, then choose it for sending.'], 422);
+            return ApiResponse::error('Connect '.ucfirst($data['active']).' first, then choose it for sending.', 422);
         }
         $columns = collect($data)->only('from_name', 'from_email', 'reply_to', 'address')->all();
         if (in_array($data['active'], MailOAuth::PROVIDERS, true) && ! empty($conns[$data['active']]['email'])) {
@@ -46,6 +48,11 @@ class ConfigController extends Controller
         }
 
         MailSettings::update($company, fn ($c, $active) => [$c, $data['active']], $columns);
+        if (array_key_exists('per_minute', $data) && $data['per_minute'] !== null) {
+            $settings = $company->fresh()->settings ?? [];
+            $settings['sending']['per_minute'] = (int) $data['per_minute'];
+            $company->fresh()->forceFill(['settings' => $settings])->save();
+        }
 
         return $this->emailPayload($company->fresh());
     }
@@ -66,7 +73,7 @@ class ConfigController extends Controller
         try {
             UrlGuard::assertPublicHost($data['host']);
         } catch (Throwable $e) {
-            return response()->json(['message' => 'SMTP host: '.$e->getMessage()], 422);
+            return ApiResponse::error('SMTP host: '.$e->getMessage(), 422);
         }
 
         $company = $request->user()->company;
@@ -153,10 +160,9 @@ class ConfigController extends Controller
                 }
             }));
         } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Sending failed: '.mb_substr($e->getMessage(), 0, 300),
-                'hint' => $this->explainMailError($e->getMessage(), MailSettings::active($company)['conn'] ?? []),
-            ], 422);
+            return ApiResponse::error('Sending failed: '.mb_substr($e->getMessage(), 0, 300), 422, 'send_failed', null, [
+                'hint' => $this->explainMailError($e->getMessage(), MailSettings::active($company)['conn'] ?? []), // what to do about it
+            ]);
         }
 
         $logged = SendLog::deliveredStatus($company, 'email') === 'logged';
@@ -185,7 +191,7 @@ class ConfigController extends Controller
         $data = $request->validate(['active' => ['required', Rule::in(array_merge(['log'], SmsProviders::keys()))]]);
         $company = $request->user()->company;
         if ($data['active'] !== 'log' && ! isset(SmsSettings::connections($company)[$data['active']])) {
-            return response()->json(['message' => 'Connect '.SmsProviders::SPECS[$data['active']]['name'].' first, then choose it for sending.'], 422);
+            return ApiResponse::error('Connect '.SmsProviders::SPECS[$data['active']]['name'].' first, then choose it for sending.', 422);
         }
         SmsSettings::update($company, fn ($c, $active) => [$c, $data['active']]);
 
@@ -250,10 +256,9 @@ class ConfigController extends Controller
         try {
             SendLog::run($company, 'sms', $to, null, $text, 'test', fn () => $sms->forCompany($company)->send($to, $text));
         } catch (Throwable $e) {
-            return response()->json([
-                'message' => 'Sending failed: '.mb_substr($e->getMessage(), 0, 300),
-                'hint' => SendErrors::sms($e->getMessage(), SmsSettings::activeKey($company)),
-            ], 422);
+            return ApiResponse::error('Sending failed: '.mb_substr($e->getMessage(), 0, 300), 422, 'send_failed', null, [
+                'hint' => SendErrors::sms($e->getMessage(), SmsSettings::activeKey($company)), // what to do about it
+            ]);
         }
 
         $logged = SendLog::deliveredStatus($company, 'sms') === 'logged';
@@ -266,6 +271,7 @@ class ConfigController extends Controller
     protected function emailPayload($company): array
     {
         return $company->only('from_name', 'from_email', 'reply_to', 'address') + [
+            'per_minute' => \App\Services\SendLog::perMinute($company), // campaign sending speed
             'active' => MailSettings::activeKey($company),
             'default_ready' => config('mail.default') !== 'log' || ServerMail::ready(), // false: no mail program on this server, so Default cannot send
             'default_via' => config('mail.default') !== 'log' ? "the platform's mail server (".config('mail.default').')' : ServerMail::name(),

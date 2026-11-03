@@ -34,11 +34,12 @@ onMounted(() => load())
   <div class="card">
     <p v-if="!rows.length" class="empty">Reports appear here once a campaign has been sent.</p>
     <table v-else>
-      <thead><tr><th>Campaign</th><th>Type</th><th>Sent</th><th>Failed</th><th>Open rate</th><th>Click rate</th><th>Date</th><th></th></tr></thead>
+      <thead><tr><th>Campaign</th><th>Channel</th><th>Sent</th><th>Skipped</th><th>Failed</th><th>Open rate</th><th>Click rate</th><th>Date</th><th></th></tr></thead>
       <tr v-for="c in rows" :key="c.id">
         <td><router-link :to="`/reports/${c.id}`">{{ c.name }}</router-link></td>
         <td><span class="badge" :class="c.type">{{ c.type }}</span></td>
         <td>{{ c.sent_count }}</td>
+        <td>{{ c.skipped_count }}</td>
         <td>{{ c.failed_count }}</td>
         <td>{{ c.type === 'email' ? c.open_rate + '%' : '—' }}</td>
         <td>{{ c.type === 'email' ? c.click_rate + '%' : '—' }}</td>

@@ -5,7 +5,7 @@ import api from '../api'
 import Modal from './Modal.vue'
 import Pager from './Pager.vue'
 
-const props = defineProps({ listId: { type: [Number, String], default: '' }, segmentId: { type: [Number, String], default: '' }, type: { type: String, default: 'email' } })
+const props = defineProps({ listId: { type: [Number, String], default: '' }, segmentId: { type: [Number, String], default: '' }, tagId: { type: [Number, String], default: '' }, status: { type: String, default: '' }, type: { type: String, default: 'email' } })
 
 const PREVIEW = 5
 const rows = ref([])
@@ -17,8 +17,9 @@ const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const search = ref('')
 const modalLoading = ref(false)
 
-const params = (extra) => ({ ...extra, list_id: props.listId || undefined, segment_id: props.segmentId || undefined })
-const channel = (c) => (props.type === 'sms' ? { value: c.phone, ok: c.sms_subscribed } : { value: c.email, ok: c.email_subscribed })
+const emit = defineEmits(['counts'])
+const params = (extra) => ({ ...extra, list_id: props.listId || undefined, segment_id: props.segmentId || undefined, tag_id: props.tagId || undefined, status: props.status || undefined })
+const channel = (c) => (props.type === 'sms' ? { value: c.phone, ok: c.is_subscribed } : { value: c.email, ok: c.is_subscribed })
 
 async function load() {
   loading.value = true
@@ -26,6 +27,10 @@ async function load() {
     const { data } = await api.get('/contacts', { params: params({ per_page: PREVIEW }) })
     rows.value = data.data
     total.value = data.total
+    // totals for the whole audience (not the open filter), shown in the Subscription dropdown
+    const count = async (st) => (await api.get('/contacts', { params: { ...params({ per_page: 1 }), status: st } })).data.total
+    const [all, subscribed, unsubscribed] = await Promise.all([count(undefined), count('subscribed'), count('unsubscribed')])
+    emit('counts', { all, subscribed, unsubscribed })
   } finally { loading.value = false }
 }
 async function loadAll(page = 1) {
@@ -39,25 +44,26 @@ async function loadAll(page = 1) {
 function openAll() { search.value = ''; all.value = true; loadAll(1) }
 let t
 watch(search, () => { clearTimeout(t); t = setTimeout(() => loadAll(1), 300) })
-watch(() => [props.listId, props.segmentId], load)
+watch(() => [props.listId, props.segmentId, props.tagId, props.status], load)
 onMounted(load)
 </script>
 
 <template>
   <div class="aud">
     <div class="top">
-      <b>{{ loading ? 'Loading audience…' : `${total} contact${total === 1 ? '' : 's'} in this audience` }}</b>
+      <b>{{ loading ? 'Loading audience…' : `${total} contact${total === 1 ? '' : 's'}${props.status ? ' (' + props.status + ')' : ' in this audience'}` }}</b>
       <button v-if="total > PREVIEW" type="button" class="btn ghost sm" @click="openAll">Show all ({{ total }})</button>
     </div>
     <p v-if="!loading && !rows.length" class="empty">No contacts in this audience yet.</p>
     <table v-else-if="rows.length">
-      <thead><tr><th>Name</th><th>{{ type === 'sms' ? 'Phone' : 'Email' }}</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th v-if="type === 'sms'">Phone</th><th>Subscription</th></tr></thead>
       <tr v-for="c in rows" :key="c.id">
         <td>{{ [c.first_name, c.last_name].filter(Boolean).join(' ') || '—' }}</td>
-        <td>{{ channel(c).value || '—' }} <span v-if="channel(c).value && !channel(c).ok" class="badge failed" title="Unsubscribed: will be skipped">unsub</span></td>
+        <td>{{ c.email || '—' }}</td>
+        <td v-if="type === 'sms'">{{ c.phone || '—' }}</td>
+        <td><span class="badge" :class="c.is_subscribed ? 'sent' : 'failed'">{{ c.is_subscribed ? 'Subscribed' : 'Unsubscribed' }}</span></td>
       </tr>
     </table>
-    <small v-if="rows.length" class="note">Unsubscribed contacts, and contacts without {{ type === 'sms' ? 'a phone number' : 'an email address' }}, are skipped when the campaign is sent.</small>
   </div>
 
   <Modal v-if="all" title="Audience" wide @close="all = false">
@@ -65,11 +71,12 @@ onMounted(load)
     <p v-if="modalLoading && !full.length" class="empty">Loading…</p>
     <p v-else-if="!full.length" class="empty">No contact matches.</p>
     <table v-else>
-      <thead><tr><th>Name</th><th>Email</th><th>Phone</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Subscription</th></tr></thead>
       <tr v-for="c in full" :key="c.id">
         <td>{{ [c.first_name, c.last_name].filter(Boolean).join(' ') || '—' }}</td>
-        <td>{{ c.email || '—' }} <span v-if="c.email && !c.email_subscribed" class="badge failed">unsub</span></td>
-        <td>{{ c.phone || '—' }} <span v-if="c.phone && !c.sms_subscribed" class="badge failed">unsub</span></td>
+        <td>{{ c.email || '—' }}</td>
+        <td>{{ c.phone || '—' }}</td>
+        <td><span class="badge" :class="c.is_subscribed ? 'sent' : 'failed'">{{ c.is_subscribed ? 'Subscribed' : 'Unsubscribed' }}</span></td>
       </tr>
     </table>
     <Pager :meta="meta" @page="loadAll" />
@@ -79,5 +86,4 @@ onMounted(load)
 <style scoped>
 .aud { margin-top: 14px; border-top: 1px solid #eceef7; padding-top: 12px; }
 .top { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 8px; }
-.note { display: block; margin-top: 8px; color: #6b7280; }
 </style>

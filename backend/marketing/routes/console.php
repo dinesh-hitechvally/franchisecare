@@ -10,3 +10,6 @@ Artisan::command('inspire', function () {
 Illuminate\Support\Facades\Schedule::command('campaigns:dispatch-scheduled')->everyMinute()->withoutOverlapping();
 
 Illuminate\Support\Facades\Schedule::command('automation:process')->everyMinute()->withoutOverlapping();
+
+// "a date arrives" and "has not opened emails" workflows: checked once a day (server time, UTC)
+Illuminate\Support\Facades\Schedule::command('automation:time-triggers')->dailyAt('00:15')->withoutOverlapping();

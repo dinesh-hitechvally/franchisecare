@@ -49,7 +49,7 @@ onMounted(load)
     <p v-if="!rows.length" class="empty">No tags yet. Tags label contacts (e.g. “VIP”, “Wholesale”) so you can filter, segment and automate.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Tag</th><th>Contacts</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Contacts</th><th class="act">Actions</th></tr></thead>
       <tr v-for="t in visible" :key="t.id">
         <td><span class="chip" :style="{ background: t.color + '22', color: t.color }">{{ t.name }}</span></td>
         <td><router-link :to="`/contacts?tag_id=${t.id}`">{{ t.contacts_count }}</router-link></td>

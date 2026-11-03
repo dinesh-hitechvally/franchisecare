@@ -23,7 +23,13 @@ class SendMessageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    // a temporary problem (timeout, "try again later", rate limit) is retried twice, a minute and then five minutes later; anything else fails at once
+    public int $tries = 3;
+
+    protected function isTransient(Throwable $e): bool
+    {
+        return (bool) preg_match('/timed? ?out|temporar|try again|rate.?limit|too many|throttl|service unavailable|(421|429|450|451|452|500|502|503|504)/i', $e->getMessage());
+    }
 
     /** $channel says which table the log row is in: email_logs or sms_logs */
     public function __construct(public int $logId, public string $channel = 'email') {}
@@ -57,7 +63,18 @@ class SendMessageJob implements ShouldQueue
 
                 $files = Attachments::in($html.Attachments::marker($campaign->attachments ?? null), $log->company_id); // the campaign's files, plus any the message body itself names (form auto-replies, workflow templates)
 
-                CompanyMailer::for($company)->html($html, function ($m) use ($log, $company, $subject, $files) {
+                // the text copy keeps the real links, not the click-tracking ones the HTML gets
+                $plain = MessageRenderer::plainText($renderer->renderEmail($subjectSrc, $bodySrc, $company, $log->contact)[1]);
+                $unsub = $log->contact ? url("/api/unsubscribe/{$log->contact->unsubscribe_token}?channel=email") : null;
+
+                CompanyMailer::for($company)->html($html, function ($m) use ($log, $company, $subject, $files, $plain, $unsub) {
+                    $m->text($plain);
+                    if ($unsub) {
+                        // the "Unsubscribe" button mail apps show next to the sender; required by Gmail and Yahoo for bulk senders
+                        $headers = $m->getSymfonyMessage()->getHeaders();
+                        $headers->addTextHeader('List-Unsubscribe', '<'.$unsub.'>');
+                        $headers->addTextHeader('List-Unsubscribe-Post', 'List-Unsubscribe=One-Click');
+                    }
                     foreach ($files as $f) {
                         $m->attach($f['path'], ['as' => $f['name'], 'mime' => $f['mime']]);
                     }
@@ -70,14 +87,20 @@ class SendMessageJob implements ShouldQueue
                     }
                 });
 
-                $log->update(['status' => SendLog::deliveredStatus($company, 'email'), 'subject' => $subject, 'body' => $html, 'sent_at' => now(), 'service' => SendLog::service($company, 'email')]);
+                $log->update(['status' => SendLog::deliveredStatus($company, 'email'), 'error' => null, 'subject' => $subject, 'body' => $html, 'sent_at' => now(), 'service' => SendLog::service($company, 'email')]);
             } else {
                 $text = $renderer->renderSms($bodySrc, $company, $log->contact);
                 $id = $sms->forCompany($company)->send($log->recipient, $text);
 
-                $log->update(['status' => SendLog::deliveredStatus($company, 'sms'), 'body' => $text, 'provider_id' => $id, 'sent_at' => now(), 'service' => SendLog::service($company, 'sms')]);
+                $log->update(['status' => SendLog::deliveredStatus($company, 'sms'), 'error' => null, 'body' => $text, 'provider_id' => $id, 'sent_at' => now(), 'service' => SendLog::service($company, 'sms')]);
             }
         } catch (Throwable $e) {
+            if ($this->isTransient($e) && $this->attempts() < $this->tries && config('queue.default') !== 'sync') {
+                $log->update(['error' => 'Will try again: '.mb_substr($e->getMessage(), 0, 900)]); // still queued; the next attempt clears this on success
+                $this->release($this->attempts() === 1 ? 60 : 300);
+
+                return;
+            }
             $log->update(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 1000), 'service' => SendLog::service($company, $this->channel)]);
             WebhookDispatcher::dispatch($log->company_id, 'message.failed', [
                 'channel' => $this->channel, 'recipient' => $log->recipient, 'campaign_id' => $log->campaign_id, 'error' => $log->error,

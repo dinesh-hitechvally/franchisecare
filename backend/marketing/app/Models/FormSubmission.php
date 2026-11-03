@@ -24,7 +24,7 @@ class FormSubmission extends Model
 
     protected function casts(): array
     {
-        return ['data' => 'array'];
+        return ['data' => 'array', 'contact_existed' => 'boolean']; // null stays null: no contact was linked
     }
 
     public function form()

@@ -22,6 +22,7 @@ return new class extends Migration
             $table->text('fields')->nullable();
             $table->string('button_text', 255)->nullable();
             $table->string('success_message', 255)->nullable();
+            $table->string('existing_message', 500)->nullable();
             $table->text('style')->nullable();
             $table->string('redirect_url', 500)->nullable();
             $table->boolean('save_contact')->nullable();

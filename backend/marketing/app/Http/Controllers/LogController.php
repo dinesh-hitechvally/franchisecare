@@ -90,7 +90,7 @@ class LogController extends Controller
             'sms' => $stat(SmsLog::class),
             'lists' => ContactList::count(),
             'templates' => Template::count(),
-            'unsubscribed' => Contact::where(fn ($q) => $q->where('email_subscribed', false)->orWhere('sms_subscribed', false))->count(),
+            'unsubscribed' => Contact::where('is_subscribed', false)->count(),
             'drafts' => Campaign::where('status', 'draft')->count(),
             'scheduled' => Campaign::where('status', 'scheduled')->count(),
             'daily' => $this->daily(),

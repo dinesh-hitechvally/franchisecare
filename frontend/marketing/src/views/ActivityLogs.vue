@@ -5,12 +5,14 @@ import { useRoute } from 'vue-router'
 import api from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import Pager from '../components/Pager.vue'
+import Modal from '../components/Modal.vue'
 
 const route = useRoute()
 const tab = ref(route.query.tab === 'requests' ? 'requests' : 'changes') // changes = what changed; requests = what was done
 const rows = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const types = ref([])
+const viewing = ref(null) // the row open in the details window
 const f = reactive({ search: '', from: '', to: '', type: route.query.type || '', event: '', source: '', id: route.query.id || '' })
 const fDirty = computed(() => Object.entries(f).some(([k, v]) => v && k !== 'id'))
 const fClear = () => Object.keys(f).forEach((k) => (f[k] = ''))
@@ -42,7 +44,7 @@ onMounted(async () => {
 <template>
   <div class="head"><h1>My activity <small>({{ meta.total }})</small></h1></div>
   <div class="bar">
-    <button :class="{ on: tab === 'changes' }" @click="tab = 'changes'">Change history</button>
+    <button :class="{ on: tab === 'changes' }" @click="tab = 'changes'">My Activities</button>
     <button :class="{ on: tab === 'requests' }" @click="tab = 'requests'">Actions</button>
   </div>
 
@@ -61,7 +63,7 @@ onMounted(async () => {
     <p v-if="!rows.length" class="empty">Nothing recorded.</p>
 
     <table v-else-if="tab === 'changes'">
-      <thead><tr><th>When</th><th>Who</th><th>What happened</th><th>What changed</th></tr></thead>
+      <thead><tr><th>When</th><th>Who</th><th>What happened</th><th>What changed</th><th class="act">Details</th></tr></thead>
       <tr v-for="l in rows" :key="l.type + l.history_id">
         <td class="nw">{{ $dt(l.changed_at) }}</td>
         <td>{{ l.changed_by_name || '—' }}<br /><small>{{ SOURCES[l.change_source] || l.change_source }}<template v-if="l.change_ip"> · {{ l.change_ip }}</template></small></td>
@@ -77,20 +79,51 @@ onMounted(async () => {
             <template v-else><span class="old">{{ show(c.old) }}</span> → <span class="new">{{ show(c.new) }}</span></template>
           </div>
         </td>
+        <td class="act"><button type="button" class="btn ghost sm" @click="viewing = { kind: 'change', l }">View</button></td>
       </tr>
     </table>
 
     <table v-else>
-      <thead><tr><th>When</th><th>User</th><th>Activity</th><th>IP</th></tr></thead>
+      <thead><tr><th>When</th><th>User</th><th>Activity</th><th>IP</th><th class="act">Details</th></tr></thead>
       <tr v-for="l in rows" :key="l.id">
         <td>{{ $dt(l.created_at) }}</td>
         <td>{{ l.user_name || '—' }}</td>
         <td>{{ l.description }}</td>
         <td><small>{{ l.ip }}</small></td>
+        <td class="act"><button type="button" class="btn ghost sm" @click="viewing = { kind: 'action', l }">View</button></td>
       </tr>
     </table>
     <Pager :meta="meta" @page="load" />
   </div>
+
+  <Modal v-if="viewing && viewing.kind === 'change'" :title="(EVENTS[viewing.l.change_action] || viewing.l.change_action) + ' — ' + label(viewing.l.type)" wide @close="viewing = null">
+    <dl class="dl">
+      <dt>Record</dt><dd><b>{{ label(viewing.l.type) }}</b> · {{ viewing.l.record_label || '—' }}</dd>
+      <dt>What happened</dt><dd><span class="badge" :class="'ev-' + viewing.l.change_action">{{ EVENTS[viewing.l.change_action] || viewing.l.change_action }}</span></dd>
+      <dt>When</dt><dd>{{ $dt(viewing.l.changed_at) }}</dd>
+      <dt>Who</dt><dd>{{ viewing.l.changed_by_name || '—' }}</dd>
+      <dt>Where from</dt><dd>{{ SOURCES[viewing.l.change_source] || viewing.l.change_source }}<template v-if="viewing.l.change_ip"> · IP {{ viewing.l.change_ip }}</template></dd>
+    </dl>
+    <h3 class="sub">What changed</h3>
+    <p v-if="!Object.keys(viewing.l.changes || {}).length" class="none">Nothing to show for this entry.</p>
+    <div v-for="(c, k) in viewing.l.changes" :key="k" class="chg big">
+      <b>{{ label(k) }}</b>
+      <template v-if="['created', 'baseline'].includes(viewing.l.change_action)"><span class="new">{{ show(c.new) }}</span></template>
+      <template v-else><span class="old">{{ show(c.old) }}</span> → <span class="new">{{ show(c.new) }}</span></template>
+    </div>
+    <p class="mini">This is a saved copy taken at that moment. It cannot be edited or removed.</p>
+  </Modal>
+
+  <Modal v-if="viewing && viewing.kind === 'action'" title="Action details" @close="viewing = null">
+    <dl class="dl">
+      <dt>Activity</dt><dd><b>{{ viewing.l.description }}</b></dd>
+      <dt>When</dt><dd>{{ $dt(viewing.l.created_at) }}</dd>
+      <dt>Who</dt><dd>{{ viewing.l.user_name || '—' }}</dd>
+      <dt>Action</dt><dd><code>{{ viewing.l.action }}</code></dd>
+      <dt>IP address</dt><dd>{{ viewing.l.ip || '—' }}</dd>
+    </dl>
+    <p class="mini">Passwords, message content and other submitted data are never stored in this log. To see what an action changed, open the matching entry under My Activities (same time).</p>
+  </Modal>
   <p class="note">
     <template v-if="tab === 'changes'">This shows only what <b>you</b> did. Every table keeps a full copy of each row after every change (create, update, delete), with who did it, where it came from and what changed (old → new). Use the ⋮ menu on any row, on any page, for that row’s own history. Passwords, keys and other secrets are never copied, and entries can’t be edited or removed.</template>
     <template v-else>This shows only your own actions. Every action made in the dashboard is recorded with who did it and from where. Passwords, message content and other submitted data are never stored in this log.</template>
@@ -103,6 +136,13 @@ onMounted(async () => {
 .bar button { background: none; border: 0; border-bottom: 3px solid transparent; padding: 10px 16px; font: inherit; font-weight: 500; color: #6b7280; cursor: pointer; }
 .bar button.on { color: #3f51b5; border-bottom-color: #3f51b5; }
 .nw { white-space: nowrap; }
+.dl { display: grid; grid-template-columns: 130px 1fr; gap: 8px 16px; margin: 0 0 14px; }
+.dl dt { color: #6b7280; font-size: 13px; } .dl dd { margin: 0; word-break: break-word; }
+.dl code { background: #f1f2f6; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
+.sub { margin: 4px 0 8px; font-size: 14px; }
+.chg.big { font-size: 14px; line-height: 1.9; }
+.none { color: #6b7280; font-size: 13px; margin: 0; }
+.mini { color: #6b7280; font-size: 12px; margin: 14px 0 0; }
 .chg { font-size: 13px; line-height: 1.6; word-break: break-word; }
 .chg b { margin-right: 6px; }
 .old { background: #fee2e2; color: #991b1b; border-radius: 3px; padding: 0 5px; text-decoration: line-through; }

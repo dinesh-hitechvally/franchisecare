@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApiResponse;
 use App\Models\Media;
 use App\Services\Attachments;
 use App\Services\OnlineImageImport;
@@ -92,7 +93,7 @@ class MediaController extends Controller
                 [$data, $info] = OnlineImageImport::download($d['thumb']);
             }
         } catch (\Throwable $e) {
-            return response()->json(['message' => $e->getMessage()], 422);
+            return ApiResponse::error($e->getMessage(), 422);
         }
 
         [$ext, $mime] = OnlineImageImport::TYPES[$info[2]];
@@ -115,7 +116,7 @@ class MediaController extends Controller
 
     public function update(Request $request, Media $media)
     {
-        $media->update($request->validate(['name' => 'required|string|max:255', 'alt' => 'nullable|string|max:255']));
+        $media->update($request->validate(['name' => 'required|string|max:255', 'alt' => 'nullable|string|max:255', 'description' => 'nullable|string|max:5000']));
 
         return $media;
     }

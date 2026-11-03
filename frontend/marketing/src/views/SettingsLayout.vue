@@ -8,10 +8,7 @@ const GROUPS = [
     ['SMS sending', '/settings/sms', 'SMS provider and sender'],
   ] },
   { title: 'Team', items: [['Users', '/settings/users', 'Who can sign in to this company']] },
-  { title: 'Developers', items: [
-    ['API keys', '/settings/api', 'Connect websites, Zapier and other systems'],
-    ['Webhooks', '/settings/webhooks', 'Send events to other systems'],
-  ] },
+  { title: 'Developers', items: [['API keys', '/settings/api', 'Connect websites, Zapier and other systems']] },
   { title: 'Security', items: [['My activity', '/settings/activity', 'Your own actions and changes']] },
 ]
 </script>

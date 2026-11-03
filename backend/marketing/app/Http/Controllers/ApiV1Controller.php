@@ -87,7 +87,7 @@ class ApiV1Controller extends Controller
     {
         $data = $request->validate(['email' => 'required|email', 'channel' => 'nullable|in:email,sms']);
         $contact = Contact::where('email', Str::lower($data['email']))->firstOrFail();
-        Subscriptions::set($contact, $data['channel'] ?? 'email', false);
+        Subscriptions::set($contact, false); // 'channel' is still accepted so existing integrations keep working, but it unsubscribes the contact from the newsletter as a whole
 
         return ['ok' => true];
     }

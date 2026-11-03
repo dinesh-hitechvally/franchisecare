@@ -15,11 +15,22 @@ class ContactController extends Controller
 {
     public function index(Request $request)
     {
+        $q = $this->filtered($request)->latest('contacts.id');
+
+        $page = $q->paginate(min((int) $request->query('per_page', 25), 100));
+        $page->getCollection()->each(fn ($c) => $this->present($c));
+
+        return $page;
+    }
+
+    /** The contacts matching the list's filters (search, list, tag, segment, subscription). */
+    protected function filtered(Request $request)
+    {
         $q = $request->query('segment_id') && ($seg = Segment::find($request->query('segment_id')))
             ? SegmentQuery::forSegment($seg)
             : Contact::query();
 
-        $q->with(['lists:id,name', 'tags:id,name,color', 'fieldValues.field:id,key'])->latest('contacts.id');
+        $q->with(['lists:id,name', 'tags:id,name,color', 'fieldValues.field:id,key']);
 
         if ($s = $request->query('search')) {
             $q->where(fn ($w) => $w->where('first_name', 'like', "%$s%")->orWhere('last_name', 'like', "%$s%")
@@ -28,14 +39,45 @@ class ContactController extends Controller
         if ($list = $request->query('list_id')) {
             $q->whereHas('lists', fn ($w) => $w->where('contact_lists.id', $list));
         }
+        match ($request->query('status')) {
+            'subscribed' => $q->where('contacts.is_subscribed', true),
+            'unsubscribed' => $q->where('contacts.is_subscribed', false),
+            default => null,
+        };
         if ($tag = $request->query('tag_id')) {
             $q->whereHas('tags', fn ($w) => $w->where('tags.id', $tag));
         }
 
-        $page = $q->paginate(min((int) $request->query('per_page', 25), 100));
-        $page->getCollection()->each(fn ($c) => $this->present($c));
+        return $q;
+    }
 
-        return $page;
+    /** Everyone matching the same filters as the list, as a CSV file (also usable as a backup or to move to another tool). */
+    public function export(Request $request)
+    {
+        $fields = ContactField::orderBy('label')->get(['id', 'key', 'label']);
+
+        return response()->streamDownload(function () use ($request, $fields) {
+            $out = fopen('php://output', 'w');
+            fputcsv($out, array_merge(['First name', 'Last name', 'Email', 'Phone', 'Subscribed', 'Subscribed on', 'Source', 'Lists', 'Tags', 'Added on'], $fields->pluck('label')->map(fn ($l) => self::safe($l))->all()));
+
+            $this->filtered($request)->chunkById(500, function ($rows) use ($out, $fields) {
+                foreach ($rows as $c) {
+                    $custom = $c->customMap();
+                    fputcsv($out, array_merge([
+                        self::safe((string) $c->first_name), self::safe((string) $c->last_name), self::safe((string) $c->email), self::safe((string) $c->phone),
+                        $c->is_subscribed ? 'yes' : 'no', $c->subscribed_at, $c->source,
+                        self::safe($c->lists->pluck('name')->implode('; ')), self::safe($c->tags->pluck('name')->implode('; ')), $c->created_at,
+                    ], $fields->map(fn ($f) => self::safe(is_scalar($custom[$f->key] ?? null) ? (string) $custom[$f->key] : ''))->all()));
+                }
+            });
+            fclose($out);
+        }, 'contacts-'.now()->format('Y-m-d').'.csv', ['Content-Type' => 'text/csv']);
+    }
+
+    /** A spreadsheet runs anything starting with = + - @ as a formula: write what people typed as plain text instead. */
+    protected static function safe(string $v): string
+    {
+        return $v !== '' && in_array($v[0], ['=', '+', '-', '@'], true) ? "'".$v : $v;
     }
 
     public function store(Request $request)
@@ -54,16 +96,14 @@ class ContactController extends Controller
     {
         $data = $this->validated($request, $contact);
         $custom = $this->customAnswers($request);
-        $email = $data['email_subscribed'] ?? $contact->email_subscribed;
-        $sms = $data['sms_subscribed'] ?? $contact->sms_subscribed;
-        unset($data['email_subscribed'], $data['sms_subscribed']);
+        $subscribed = $data['is_subscribed'] ?? $contact->is_subscribed;
+        unset($data['is_subscribed']);
 
         $contact->update($data);
         if ($request->has('custom')) {
             $contact->setCustom($custom);
         }
-        Subscriptions::set($contact, 'email', (bool) $email);
-        Subscriptions::set($contact, 'sms', (bool) $sms);
+        Subscriptions::set($contact, (bool) $subscribed);
         [$lists, $tags] = $this->syncRelations($request, $contact);
         Automation::contactChanged($contact, false, $lists, $tags);
 
@@ -92,7 +132,7 @@ class ContactController extends Controller
         foreach ($contacts as $c) {
             match ($data['action']) {
                 'add_tag' => $this->attachTag($c, (int) $data['tag_id']),
-                'remove_tag' => $c->tags()->detach($data['tag_id']),
+                'remove_tag' => $c->tags()->detach($data['tag_id']) ? Automation::fire('tag_removed', $c, ['id' => (int) $data['tag_id']]) : null,
                 'add_list' => $this->attachList($c, (int) $data['list_id']),
                 'delete' => $c->delete(),
             };
@@ -175,6 +215,9 @@ class ContactController extends Controller
                 $before = $contact->{$relation}()->pluck($relation === 'lists' ? 'contact_lists.id' : 'tags.id')->all();
                 $contact->{$relation}()->sync($ids);
                 $new[$key] = array_values(array_diff($ids, $before));
+                foreach (array_diff($before, $ids) as $gone) { // taken off: the "tag is removed" / "leaves a list" triggers
+                    Automation::fire($key === 'list' ? 'list_left' : 'tag_removed', $contact, ['id' => $gone]);
+                }
             }
         }
 
@@ -191,8 +234,7 @@ class ContactController extends Controller
             'email' => ['nullable', 'email', 'required_without:phone',
                 Rule::unique('contacts')->where('company_id', $biz)->whereNull('deleted_at')->ignore($contact?->id)],
             'phone' => 'nullable|string|max:30|required_without:email',
-            'email_subscribed' => 'boolean',
-            'sms_subscribed' => 'boolean',
+            'is_subscribed' => 'boolean',
             'custom' => 'nullable|array',
             'custom.*' => 'nullable|string|max:2000',
         ]);

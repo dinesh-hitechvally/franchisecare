@@ -93,7 +93,7 @@ onMounted(load)
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 760px; }
+.intro { color: #6b7280; margin: -8px 0 18px; }
 .hint { color: #6b7280; font-size: 14px; margin: 0 0 12px; }
 .docs td { vertical-align: top; font-size: 14px; } .docs td:first-child { white-space: nowrap; }
 code { background: #f1f2f6; padding: 1px 6px; border-radius: 3px; font-size: 13px; }

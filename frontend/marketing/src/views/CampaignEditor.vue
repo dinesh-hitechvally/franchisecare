@@ -7,6 +7,7 @@ import api, { errorMessage } from '../api'
 import MessageEditor from '../components/MessageEditor.vue'
 import EmailDesigner from '../components/EmailDesigner.vue'
 import AttachmentsField from '../components/AttachmentsField.vue'
+import { setQuery } from '../urlState'
 import Modal from '../components/Modal.vue'
 import AudiencePreview from '../components/AudiencePreview.vue'
 
@@ -22,13 +23,15 @@ const busy = ref(false)
 const testTo = ref('')
 const when = ref('now')
 
-const form = reactive({ name: '', type: route.query.type === 'sms' ? 'sms' : 'email', template_id: '', contact_list_id: '', segment_id: '', subject: '', body: '', design: null, attachments: [], scheduled_at: '' })
+const form = reactive({ name: '', type: route.query.type === 'sms' ? 'sms' : 'email', template_id: '', contact_list_id: '', segment_id: '', tag_id: '', subject: '', body: '', design: null, attachments: [], scheduled_at: '' })
 const designer = ref(false)
+const startVersion = ref(null) // history_id to show as soon as the designer opens (coming from a history list)
+function closeDesigner() { designer.value = false; startVersion.value = null; setQuery({ history: null }) }
 const rawHtml = ref(false)
 const designInitial = () => ({ subject: form.subject, design: form.design, html: form.design ? '' : form.body, attachments: form.attachments })
 function designed(d) {
   Object.assign(form, { subject: d.subject, body: d.body, design: d.design, attachments: d.attachments || [] })
-  designer.value = false
+  closeDesigner()
 }
 function useRaw() {
   rawHtml.value = true
@@ -36,15 +39,20 @@ function useRaw() {
 }
 const locked = computed(() => campaign.value && !['draft', 'scheduled'].includes(campaign.value.status))
 const segments = ref([])
+const tags = ref([])
+const allContacts = ref(0)
+const subCounts = ref({ all: 0, subscribed: 0, unsubscribed: 0 })
+const subscription = ref('') // narrows the audience shown below; unsubscribed contacts are never sent to either way
 const audience = computed({
-  get: () => (form.segment_id ? 'segment:' + form.segment_id : form.contact_list_id ? 'list:' + form.contact_list_id : ''),
+  get: () => (form.segment_id ? 'segment:' + form.segment_id : form.tag_id ? 'tag:' + form.tag_id : form.contact_list_id ? 'list:' + form.contact_list_id : ''),
   set: (v) => {
     const [kind, id] = v.split(':')
     form.contact_list_id = kind === 'list' ? Number(id) : ''
     form.segment_id = kind === 'segment' ? Number(id) : ''
+    form.tag_id = kind === 'tag' ? Number(id) : ''
   },
 })
-const audienceName = computed(() => (form.segment_id ? 'segment "' + segments.value.find((x) => x.id === form.segment_id)?.name + '"' : form.contact_list_id ? 'list "' + lists.value.find((l) => l.id === form.contact_list_id)?.name + '"' : 'ALL contacts'))
+const audienceName = computed(() => (form.segment_id ? 'segment "' + segments.value.find((x) => x.id === form.segment_id)?.name + '"' : form.tag_id ? 'tag "' + tags.value.find((x) => x.id === form.tag_id)?.name + '"' : form.contact_list_id ? 'list "' + lists.value.find((l) => l.id === form.contact_list_id)?.name + '"' : 'ALL contacts'))
 const typeTemplates = computed(() => templates.value.filter((t) => t.type === form.type))
 
 // <input type=datetime-local> works in local time without a timezone
@@ -66,7 +74,7 @@ function importTemplate(t) {
 watch(() => form.type, () => { form.template_id = '' })
 
 function payload() {
-  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, segment_id: form.segment_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? form.scheduled_at.replace('T', ' ') + ':00' : null }
+  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, segment_id: form.segment_id || null, tag_id: form.tag_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? form.scheduled_at.replace('T', ' ') + ':00' : null }
 }
 
 async function save() {
@@ -84,14 +92,29 @@ async function onSave() {
 }
 
 async function onSend() {
-  const who = audienceName.value
-  if (!confirm(`${when.value === 'later' ? 'Schedule' : 'Send'} this ${form.type} campaign to ${who}?`)) return
   busy.value = true
+  error.value = msg.value = ''
   try {
     await save()
+    // what sending would really do, and anything worth fixing first
+    const c = (await api.get(`/campaigns/${id.value}/check`)).data
+    if (!c.reach) { error.value = c.audience ? `Nobody in ${audienceName.value} can receive this: ${c.unsubscribed} unsubscribed, the rest have no ${form.type === 'sms' ? 'phone number' : 'email address'}.` : `${audienceName.value} has no contacts yet.`; return }
+    const lines = [`${when.value === 'later' ? 'Schedule' : 'Send'} this ${form.type} campaign to ${c.reach} ${c.reach === 1 ? 'person' : 'people'} (${audienceName.value})?`]
+    if (c.skipped) lines.push(`${c.skipped} more will be skipped: unsubscribed, or no ${form.type === 'sms' ? 'phone number' : 'email address'}.`)
+    if (c.warnings.length) lines.push('', 'Worth a look first:', ...c.warnings.map((w) => '• ' + w), '', 'Send anyway?')
+    if (!confirm(lines.join(String.fromCharCode(10)))) return
     await api.post(`/campaigns/${id.value}/send`)
     router.push('/campaigns')
   } catch (e) { error.value = errorMessage(e) } finally { busy.value = false }
+}
+
+async function onStop() {
+  if (!confirm('Stop sending this campaign? What has already gone out stays sent; everything still waiting is skipped.')) return
+  try { campaign.value = { ...campaign.value, ...(await api.post(`/campaigns/${id.value}/cancel`)).data }; msg.value = 'Sending stopped.' } catch (e) { error.value = errorMessage(e) }
+}
+
+async function onDuplicate() {
+  try { router.push(`/campaigns/${(await api.post(`/campaigns/${id.value}/duplicate`)).data.id}`) } catch (e) { error.value = errorMessage(e) }
 }
 
 async function onTest() {
@@ -104,13 +127,17 @@ async function onTest() {
 onMounted(async () => {
   lists.value = (await api.get('/lists')).data
   segments.value = (await api.get('/segments')).data
+  tags.value = (await api.get('/tags')).data
+  allContacts.value = (await api.get('/contacts', { params: { per_page: 1 } })).data.total
   if (route.query.segment_id) form.segment_id = Number(route.query.segment_id) // coming from Segments → Send campaign
   templates.value = (await api.get('/templates')).data
   if (id.value) {
     const { data } = await api.get(`/campaigns/${id.value}`)
     campaign.value = data
-    Object.assign(form, { name: data.name, type: data.type, template_id: data.template_id || '', contact_list_id: data.contact_list_id || '', segment_id: data.segment_id || '', subject: data.subject || '', body: data.body, design: data.design || null, attachments: data.attachments || [], scheduled_at: toLocal(data.scheduled_at) })
+    Object.assign(form, { name: data.name, type: data.type, template_id: data.template_id || '', contact_list_id: data.contact_list_id || '', segment_id: data.segment_id || '', tag_id: data.tag_id || '', subject: data.subject || '', body: data.body, design: data.design || null, attachments: data.attachments || [], scheduled_at: toLocal(data.scheduled_at) })
     if (data.scheduled_at) when.value = 'later'
+    // coming from a history list: the email designer opens on that saved version, with History open
+    if (route.query.history && !locked.value && form.type === 'email') { startVersion.value = Number(route.query.history); designer.value = true }
   }
 })
 </script>
@@ -118,7 +145,10 @@ onMounted(async () => {
 <template>
   <div class="head">
     <h1>{{ id ? 'Campaign' : 'New campaign' }}</h1>
-    <span v-if="campaign" class="badge" :class="campaign.status">{{ campaign.status }}</span>
+    <span v-if="campaign" class="badge" :class="campaign.status">{{ campaign.status === 'cancelled' ? 'stopped' : campaign.status }}</span>
+    <span style="flex: 1"></span>
+    <button v-if="campaign?.status === 'sending'" type="button" class="btn danger" @click="onStop">Stop sending</button>
+    <button v-if="id" type="button" class="btn ghost" @click="onDuplicate">Clone</button>
   </div>
   <div v-if="error" class="alert err">{{ error }}</div>
   <div v-if="msg" class="alert ok">{{ msg }}</div>
@@ -131,12 +161,12 @@ onMounted(async () => {
       <div class="stat"><div class="n">{{ campaign.skipped_count }}</div><div class="l">Skipped (unsubscribed / missing)</div></div>
       <div class="stat" v-if="campaign.type === 'email'"><div class="n">{{ campaign.opened_count }}</div><div class="l">Opened</div></div>
     </div>
-    <p style="margin-bottom: 0"><router-link :to="`/logs?campaign_id=${campaign.id}`">View message logs →</router-link></p>
+    <p style="margin-bottom: 0"><router-link :to="`/message-logs?campaign_id=${campaign.id}`">View message logs →</router-link></p>
   </div>
 
   <fieldset :disabled="locked" style="border: 0; padding: 0; margin: 0; min-width: 0">
     <div class="card">
-      <div class="grid g3">
+      <div class="grid g4">
         <div class="field"><label>Campaign name</label><input v-model="form.name" required /></div>
         <div class="field">
           <label>Channel</label>
@@ -145,13 +175,18 @@ onMounted(async () => {
         <div class="field">
           <label>Audience</label>
           <select v-model="audience">
-            <option value="">All contacts</option>
+            <option value="">All contacts ({{ allContacts }})</option>
             <optgroup v-if="lists.length" label="Lists"><option v-for="l in lists" :key="'l' + l.id" :value="'list:' + l.id">{{ l.name }} ({{ l.contacts_count }})</option></optgroup>
+            <optgroup v-if="tags.length" label="Tags"><option v-for="t in tags" :key="'t' + t.id" :value="'tag:' + t.id">{{ t.name }} ({{ t.contacts_count }})</option></optgroup>
             <optgroup v-if="segments.length" label="Segments"><option v-for="g in segments" :key="'s' + g.id" :value="'segment:' + g.id">{{ g.name }} ({{ g.contacts_count }})</option></optgroup>
           </select>
         </div>
+        <div class="field">
+          <label>Subscription</label>
+          <select v-model="subscription"><option value="">All Status ({{ subCounts.all }})</option><option value="subscribed">Subscribed ({{ subCounts.subscribed }})</option><option value="unsubscribed">Unsubscribed ({{ subCounts.unsubscribed }})</option></select>
+        </div>
       </div>
-      <AudiencePreview :list-id="form.contact_list_id" :segment-id="form.segment_id" :type="form.type" />
+      <AudiencePreview @counts="(c) => (subCounts = c)" :list-id="form.contact_list_id" :segment-id="form.segment_id" :tag-id="form.tag_id" :status="subscription" :type="form.type" />
     </div>
 
     <div v-if="form.type === 'email' && !rawHtml" class="card">
@@ -204,7 +239,7 @@ onMounted(async () => {
     </ul>
     <p class="hint" style="margin-bottom: 0">The template is copied into this campaign together with its attachments. The template itself is never changed.</p>
   </Modal>
-  <EmailDesigner v-if="designer" :initial="designInitial()" @save="designed" @close="designer = false" />
+  <EmailDesigner v-if="designer" :initial="designInitial()" :history-id="id" history-type="campaign" :start-version="startVersion" @save="designed" @close="closeDesigner" @version="(v) => setQuery({ history: v })" />
 </template>
 
 <style scoped>

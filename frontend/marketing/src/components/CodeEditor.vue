@@ -1,16 +1,19 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, watch } from 'vue'
 import { EditorView, basicSetup } from 'codemirror'
+import { EditorState, Compartment } from '@codemirror/state'
 import { html, htmlLanguage } from '@codemirror/lang-html'
 import { oneDark } from '@codemirror/theme-one-dark'
 
 // HTML editor with IDE features: syntax colours, tag/attribute completion, auto-close tags,
 // bracket matching, line numbers, search (Ctrl+F) and merge-tag completion on "{{".
-const props = defineProps({ modelValue: String })
+const props = defineProps({ modelValue: String, readonly: Boolean })
 const emit = defineEmits(['update:modelValue'])
 
 const host = ref(null)
 let view
+const lock = new Compartment() // read-only on/off, changeable while the editor is open
+const lockWith = (on) => [EditorState.readOnly.of(on), EditorView.editable.of(!on)]
 
 const MERGE_TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'unsubscribe_url']
 const mergeTags = (ctx) => {
@@ -25,6 +28,7 @@ onMounted(() => {
     parent: host.value,
     extensions: [
       basicSetup,
+      lock.of(lockWith(props.readonly)),
       html({ autoCloseTags: true, matchClosingTags: true }),
       htmlLanguage.data.of({ autocomplete: mergeTags }),
       oneDark,
@@ -39,6 +43,8 @@ onMounted(() => {
 watch(() => props.modelValue, (v) => {
   if (view && v !== view.state.doc.toString()) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: v || '' } })
 })
+
+watch(() => props.readonly, (on) => view?.dispatch({ effects: lock.reconfigure(lockWith(on)) }))
 
 onBeforeUnmount(() => view?.destroy())
 </script>

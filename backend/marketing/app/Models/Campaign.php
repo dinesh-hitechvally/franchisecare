@@ -11,7 +11,7 @@ class Campaign extends Model
 {
     use BelongsToCompany, SoftDeletes, Auditable;
 
-    protected $guarded = ['id', 'company_id', 'status', 'started_at', 'completed_at'];
+    protected $guarded = ['id', 'company_id', 'status', 'started_at', 'completed_at', 'audience_skipped'];
 
     protected function casts(): array
     {
@@ -33,6 +33,11 @@ class Campaign extends Model
         return $this->belongsTo(Segment::class);
     }
 
+    public function tag()
+    {
+        return $this->belongsTo(Tag::class);
+    }
+
     public function emailLogs()
     {
         return $this->hasMany(EmailLog::class);
@@ -47,6 +52,25 @@ class Campaign extends Model
     public function logs()
     {
         return $this->type === 'sms' ? $this->smsLogs() : $this->emailLogs();
+    }
+
+    /** Everyone this campaign goes to (before unsubscribed / missing-address people are left out): its segment, its list, or all contacts. */
+    public function audienceQuery()
+    {
+        if ($this->segment_id && ($segment = Segment::withoutGlobalScope('company')->where('company_id', $this->company_id)->find($this->segment_id))) {
+            return \App\Services\SegmentQuery::forSegment($segment);
+        }
+
+        if ($this->tag_id) {
+            return Contact::withoutGlobalScope('company')->where('company_id', $this->company_id)
+                ->whereHas('tags', fn ($q) => $q->where('tags.id', $this->tag_id));
+        }
+
+        $query = $this->contact_list_id
+            ? Contact::withoutGlobalScope('company')->whereHas('lists', fn ($q) => $q->where('contact_lists.id', $this->contact_list_id))
+            : Contact::withoutGlobalScope('company');
+
+        return $query->where('company_id', $this->company_id);
     }
 
     /** The model that stores this campaign's messages. */
@@ -86,7 +110,7 @@ class Campaign extends Model
         $this->setAttribute('logs_count', (int) ($sms ? $this->sms_logs_count : $this->email_logs_count));
         $this->setAttribute('sent_count', (int) ($sms ? $this->sms_sent : $this->email_sent));
         $this->setAttribute('failed_count', (int) ($sms ? $this->sms_failed : $this->email_failed));
-        $this->setAttribute('skipped_count', (int) ($sms ? $this->sms_skipped : $this->email_skipped));
+        $this->setAttribute('skipped_count', (int) ($sms ? $this->sms_skipped : $this->email_skipped) + (int) $this->audience_skipped); // stopped-before-sending messages are logged, people left out at send time are only counted
         $this->setAttribute('logged_count', (int) ($sms ? $this->sms_logged : $this->email_logged)); // written to the log only, not delivered
         $this->setAttribute('opened_count', $sms ? 0 : (int) $this->email_opened);
         $this->setAttribute('clicked_count', $sms ? 0 : (int) $this->email_clicked);

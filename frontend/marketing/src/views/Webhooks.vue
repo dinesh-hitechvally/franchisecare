@@ -68,7 +68,7 @@ onMounted(async () => { events.value = (await api.get('/webhooks/events')).data;
 </script>
 
 <template>
-  <div class="head"><h1>Webhooks</h1><button class="btn" @click="open(null)">Add webhook</button></div>
+  <div class="head"><h1>Webhooks</h1><div class="row"><router-link to="/automation/webhooks/history" class="btn ghost">Webhook histories</router-link><router-link to="/automation/webhooks/deliveries" class="btn ghost">Deliveries</router-link><button class="btn" @click="open(null)">Add webhook</button></div></div>
   <p class="intro">Webhooks tell another system the moment something happens here (a contact joins, a campaign finishes…). Each request is signed so the receiver can verify it came from you.</p>
   <div v-if="msg" class="alert ok">{{ msg }}</div>
   <div v-if="error && !editing" class="alert err">{{ error }}</div>
@@ -133,7 +133,7 @@ onMounted(async () => { events.value = (await api.get('/webhooks/events')).data;
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 760px; }
+.intro { color: #6b7280; margin: -8px 0 18px; }
 .url { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 code { background: #f1f2f6; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
 </style>

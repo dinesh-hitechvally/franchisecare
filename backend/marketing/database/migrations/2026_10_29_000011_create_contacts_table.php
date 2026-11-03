@@ -16,10 +16,8 @@ return new class extends Migration
             $table->string('email')->nullable();
             $table->string('phone')->nullable();
             $table->string('source', 20)->default('manual'); // manual | import | form | api
-            $table->boolean('email_subscribed')->default(true);
-            $table->boolean('sms_subscribed')->default(true);
-            $table->dateTime('email_unsubscribed_at')->nullable();
-            $table->dateTime('sms_unsubscribed_at')->nullable();
+            $table->boolean('is_subscribed')->default(true); // subscribed to the newsletter (email and SMS together)
+            $table->dateTime('subscribed_at')->nullable();   // when they subscribed; empty while unsubscribed
             $table->string('unsubscribe_token', 40)->unique();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();

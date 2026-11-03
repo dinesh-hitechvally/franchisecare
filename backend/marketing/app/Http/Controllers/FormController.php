@@ -38,6 +38,20 @@ class FormController extends Controller
         return response($this->present($form), 201);
     }
 
+    /** A copy to start from: same fields and settings, its own address, no views or submissions yet. */
+    public function duplicate(Form $form)
+    {
+        do {
+            $slug = Str::lower(Str::random(10));
+        } while (Form::withoutGlobalScope('company')->where('slug', $slug)->exists());
+
+        $copy = $form->replicate();
+        $copy->name = mb_substr('Copy of '.$form->name, 0, 255);
+        $copy->forceFill(['slug' => $slug, 'views' => 0, 'submissions' => 0])->save();
+
+        return response($this->present($copy), 201);
+    }
+
     public function update(Request $request, Form $form)
     {
         $form->update($this->validated($request));
@@ -83,6 +97,7 @@ class FormController extends Controller
             'fields.*.options.*' => 'nullable|string|max:100', // blanks are dropped below
             'button_text' => 'nullable|string|max:60',
             'success_message' => 'nullable|string|max:255',
+            'existing_message' => 'nullable|string|max:500',
             'redirect_url' => 'nullable|url:http,https|max:500',
             'type' => ['nullable', Rule::in(FormFields::FORM_TYPES)],
             'save_contact' => 'boolean',
@@ -131,6 +146,7 @@ class FormController extends Controller
         $data['tag_ids'] = Tag::whereIn('id', $data['tag_ids'] ?? [])->pluck('id')->all();
         $data['button_text'] = ($data['button_text'] ?? '') ?: 'Subscribe';
         $data['success_message'] = ($data['success_message'] ?? '') ?: 'Thanks for subscribing!';
+        $data['existing_message'] = trim((string) ($data['existing_message'] ?? '')) ?: null; // empty = everyone sees the same thank-you
         $data['redirect_url'] = ($data['redirect_url'] ?? '') ?: null;
 
         return $data;

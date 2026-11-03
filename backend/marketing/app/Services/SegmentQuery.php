@@ -13,8 +13,7 @@ class SegmentQuery
 {
     /** field => [label, type, ops] — also used by the UI rule builder. */
     public const FIELDS = [
-        'email_subscribed' => ['Subscribed to email', 'bool', ['is']],
-        'sms_subscribed' => ['Subscribed to SMS', 'bool', ['is']],
+        'is_subscribed' => ['Subscribed to newsletter', 'bool', ['is']],
         'has_email' => ['Has an email address', 'bool', ['is']],
         'has_phone' => ['Has a phone number', 'bool', ['is']],
         'tag' => ['Tag', 'tag', ['in', 'not_in']],
@@ -56,9 +55,10 @@ class SegmentQuery
         $yes = filter_var($v, FILTER_VALIDATE_BOOLEAN);
 
         switch ($f) {
-            case 'email_subscribed':
+            case 'is_subscribed':
+            case 'email_subscribed': // rules saved before there was a single newsletter subscription
             case 'sms_subscribed':
-                $q->where($f, '=', $yes, $bool);
+                $q->where('is_subscribed', '=', $yes, $bool);
                 break;
             case 'has_email':
             case 'has_phone':

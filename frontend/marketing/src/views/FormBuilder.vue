@@ -5,6 +5,9 @@ import api, { errorMessage } from '../api'
 import AttachmentsField from '../components/AttachmentsField.vue'
 import Icon from '../components/Icon.vue'
 import MultiSelect from '../components/MultiSelect.vue'
+import HistoryTimeline from '../components/HistoryTimeline.vue'
+import { fmtDateTime } from '../format'
+import { setQuery } from '../urlState'
 import { useAuth } from '../stores/auth'
 import { FIELD_TYPES, FORM_TYPES, GROUPS, FONTS, WIDTHS, newField, defaultForm, typePreset, slug, uid } from '../builder/formFields'
 
@@ -49,14 +52,14 @@ const parseEmails = (text) => [...new Set((text || '').split(/[,;\s]+/).map((e) 
 const payload = () => ({
   name: form.name.trim(), title: form.title, description: form.description,
   fields: form.fields.map((f) => ({ id: f.id, key: f.key, type: f.type, label: f.label, placeholder: f.placeholder, help: f.help, required: !!f.required, options: f.options || [], width: isBlock(f) ? 'full' : f.width || 'full', to_contact: !!f.to_contact })),
-  style: form.style, button_text: form.button_text, success_message: form.success_message, redirect_url: form.redirect_url || null,
+  style: form.style, button_text: form.button_text, success_message: form.success_message, existing_message: form.existing_message || null, redirect_url: form.redirect_url || null,
   list_ids: form.list_ids, tag_ids: form.tag_ids, active: form.active,
   type: form.type, save_contact: form.save_contact, subscribe: form.subscribe,
   notify_emails: form.notify_on ? parseEmails(form.notify_text) : [],
   autoreply: form.autoreply, autoreply_subject: form.autoreply ? form.autoreply_subject : null, autoreply_body: form.autoreply ? form.autoreply_body : null,
   autoreply_attachments: form.autoreply ? form.autoreply_attachments || [] : [],
 })
-const dirty = computed(() => snapshot.value !== JSON.stringify(payload()))
+const dirty = computed(() => !viewing.value && snapshot.value !== JSON.stringify(payload()))
 
 // ---------------------------------------------------------------- field operations
 function select(fid) {
@@ -100,6 +103,7 @@ function dragCustom(e, key) { e.dataTransfer.setData('text/plain', `custom:${key
 function dragMove(e, i) { e.dataTransfer.setData('text/plain', `move:${i}`); e.dataTransfer.effectAllowed = 'move' }
 function drop(e, i) {
   hover.value = -1
+  if (locked.value) return
   const [kind, v] = (e.dataTransfer.getData('text/plain') || '').split(':')
   if (kind === 'new' && FIELD_TYPES[v]) add(v, i)
   if (kind === 'custom' && customByKey.value[v]) addCustom(customByKey.value[v], i)
@@ -135,17 +139,57 @@ const optionsText = (f) => (f.options || []).join('\n')
 const setOptions = (f, text) => { f.options = text.split('\n') }
 
 // ---------------------------------------------------------------- load / save
-async function load() {
-  try {
-    const { data } = await api.get(`/forms/${id.value}`)
-    Object.assign(form, {
+const fromData = (data) => ({
       name: data.name, title: data.title || '', description: data.description || '', fields: data.fields, style: { ...defaultForm().style, ...data.style },
-      button_text: data.button_text, success_message: data.success_message, redirect_url: data.redirect_url || '',
+      button_text: data.button_text, success_message: data.success_message, existing_message: data.existing_message || '', redirect_url: data.redirect_url || '',
       list_ids: data.list_ids || [], tag_ids: data.tag_ids || [], active: data.active,
       type: data.type || 'newsletter', save_contact: data.save_contact, subscribe: data.subscribe,
       notify_on: (data.notify_emails || []).length > 0, notify_text: (data.notify_emails || []).join(', '),
       autoreply: data.autoreply, autoreply_subject: data.autoreply_subject || '', autoreply_body: data.autoreply_body || '', autoreply_attachments: data.autoreply_attachments || [],
-    })
+})
+
+// ---------------------------------------------------------------- history: the header button swaps the side panel for a timeline;
+// picking a point shows that saved copy in this same builder, read-only
+const historyOpen = ref(false)
+const histTick = ref(0) // bumped after each save so an open timeline shows the new entry
+const viewing = ref(null) // the saved copy being shown, or null for the form you are editing
+let backup = null // the form being edited, kept while a past version is shown
+const locked = computed(() => !!viewing.value)
+const canHistory = computed(() => !!id.value)
+const WHAT = { created: 'Created', updated: 'Updated', deleted: 'Deleted', restored: 'Restored', baseline: 'Existing record' }
+const noteText = computed(() => (viewing.value ? (WHAT[viewing.value.change_action] || viewing.value.change_action) + ' on ' + fmtDateTime(viewing.value.changed_at) + (viewing.value.changed_by_name ? ' by ' + viewing.value.changed_by_name : '') + '.' : ''))
+const HISTORY_NAMES = { fields: 'Fields', style: 'Design', title: 'Form title', description: 'Description', button_text: 'Button text', success_message: 'Thank-you message', existing_message: 'Message for existing contacts', redirect_url: 'Redirect', save_contact: 'Save to contacts', subscribe: 'Subscribe', notify_emails: 'Notify by email', autoreply: 'Auto-reply', autoreply_subject: 'Auto-reply subject', autoreply_body: 'Auto-reply message', autoreply_attachments: 'Auto-reply attachments', list_ids: 'Lists', tag_ids: 'Tags', active: 'Active' }
+function viewCopy(entry) {
+  if (!backup) backup = JSON.parse(JSON.stringify(form))
+  Object.assign(form, fromData(entry.data))
+  selectedId.value = null
+  viewing.value = entry
+  setQuery({ history: entry.history_id })
+}
+function backToCurrent() {
+  if (!backup) return
+  Object.assign(form, backup)
+  backup = null
+  viewing.value = null
+  selectedId.value = null
+  setQuery({ history: null })
+}
+// opened from a history list (?history=): start with History open and that version shown
+async function openVersion(historyId) {
+  try {
+    const entry = (await api.get('/history/form/entry/' + historyId)).data
+    historyOpen.value = true
+    viewCopy(entry)
+  } catch (e) { error.value = errorMessage(e) }
+}
+function toggleHistory() {
+  if (historyOpen.value) backToCurrent() // leaving history: back on the form you are editing
+  historyOpen.value = !historyOpen.value
+}
+async function load() {
+  try {
+    const { data } = await api.get(`/forms/${id.value}`)
+    Object.assign(form, fromData(data))
     saved.value = data
   } catch (e) {
     error.value = errorMessage(e)
@@ -164,6 +208,7 @@ async function save(close = false) {
     saved.value = data
     form.fields = data.fields // the server may have generated field keys
     snapshot.value = JSON.stringify(payload())
+    histTick.value++
     if (close) return router.push('/forms')
     notice.value = 'Saved'
     setTimeout(() => (notice.value = ''), 2500)
@@ -192,23 +237,29 @@ async function copy(text, key) {
 onMounted(async () => {
   window.addEventListener('beforeunload', warn)
   ;[lists.value, tags.value, customFields.value] = (await Promise.all([api.get('/lists'), api.get('/tags'), api.get('/contact-fields')])).map((r) => r.data)
-  if (id.value) await load()
-  else snapshot.value = JSON.stringify(payload())
+  if (id.value) {
+    await load()
+    if (route.query.history) await openVersion(Number(route.query.history))
+  } else snapshot.value = JSON.stringify(payload())
 })
 onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
 </script>
 
 <template>
-  <div class="fb">
+  <div class="fb" :class="{ ro: locked }">
     <header class="fb-top">
       <button class="fb-back" @click="back"><Icon name="back" :size="18" /> Forms</button>
-      <input v-if="!picking" v-model="form.name" class="fb-name" :class="{ miss: !form.name.trim() }" placeholder="Form name *" maxlength="255" />
-      <span v-if="!picking" class="state" :class="{ dirty }">{{ notice || (dirty ? 'Unsaved changes' : saved ? 'All changes saved' : 'New form') }}</span>
+      <input v-if="!picking" v-model="form.name" class="fb-name" :class="{ miss: !form.name.trim() }" placeholder="Form name *" maxlength="255" :readonly="locked" />
+      <span v-if="viewing" class="ro-pill">Read only · saved copy</span>
+      <button v-if="viewing" class="btn ghost sm" @click="backToCurrent">Back to current version</button>
+      <span v-if="!picking && !viewing" class="state" :class="{ dirty }">{{ notice || (dirty ? 'Unsaved changes' : saved ? 'All changes saved' : 'New form') }}</span>
       <span style="flex: 1"></span>
+      <button v-if="canHistory" class="btn ghost sm" :class="{ hon: historyOpen }" @click="toggleHistory">History</button>
+      <button v-else-if="!picking" class="btn ghost sm" disabled title="History starts once the form has been saved for the first time">History</button>
       <a v-if="saved" :href="saved.url" target="_blank" rel="noopener" class="btn ghost sm">Open live form</a>
       <button class="btn ghost sm" :disabled="!saved" :title="saved ? '' : 'Save the form first'" @click="shareOpen = true">Share / embed</button>
-      <button class="btn ghost sm" :disabled="busy" @click="save(false)">Save</button>
-      <button class="btn" :disabled="busy || !form.name.trim()" @click="save(true)">{{ busy ? 'Saving…' : 'Save & close' }}</button>
+      <button v-if="!locked" class="btn ghost sm" :disabled="busy" @click="save(false)">Save</button>
+      <button v-if="!locked" class="btn" :disabled="busy || !form.name.trim()" @click="save(true)">{{ busy ? 'Saving…' : 'Save & close' }}</button>
     </header>
     <div v-if="error" class="fb-err" @click="error = ''">{{ error }}</div>
     <div v-else-if="needsReachable" class="fb-warn">Add an <b>Email</b> or <b>Mobile</b> field so you can reach the people who submit — or switch off “Save them to my contacts” and the auto-reply.</div>
@@ -228,6 +279,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
     <div v-else class="fb-body">
       <!-- left: fields -->
       <aside class="fb-left">
+        <div v-if="locked" class="ro-note"><b>Saved copy</b><p>{{ noteText }}</p><p>This is exactly how the form was when it was saved. You can look around and click a field to see its settings, but nothing can be changed.</p></div>
         <p class="hint">Click a field to add it, or drag it into the form. Set a field to <b>½</b> width to put two side by side.</p>
         <template v-for="g in GROUPS" :key="g">
           <div class="grp">{{ g }}</div>
@@ -257,10 +309,10 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
           <h2 v-if="form.title" class="p-title" @click="tab = 'settings'; selectedId = null">{{ form.title }}</h2>
           <p v-if="form.description" class="p-desc" @click="tab = 'settings'; selectedId = null">{{ form.description }}</p>
 
-          <div v-if="!form.fields.length" class="dz-empty" :class="{ hov: hover === 0 }" @dragover.prevent="hover = 0" @dragleave="hover = -1" @drop.prevent="drop($event, 0)">Drag a field here</div>
+          <div v-if="!form.fields.length && !locked" class="dz-empty" :class="{ hov: hover === 0 }" @dragover.prevent="hover = 0" @dragleave="hover = -1" @drop.prevent="drop($event, 0)">Drag a field here</div>
 
           <div class="rows">
-            <div v-for="(f, i) in form.fields" :key="f.id" class="fld" :class="['w-' + widthOf(f), { sel: selectedId === f.id, hov: hover === i }]" draggable="true"
+            <div v-for="(f, i) in form.fields" :key="f.id" class="fld" :class="['w-' + widthOf(f), { sel: selectedId === f.id, hov: hover === i }]" :draggable="!locked"
               @dragstart="dragMove($event, i)" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)" @click.stop="select(f.id)">
               <div class="fld-in">
                 <h3 v-if="f.type === 'heading'" class="p-h">{{ f.label }}</h3>
@@ -277,7 +329,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
                 </label>
                 <small v-if="f.help && !isBlock(f)" class="p-help">{{ f.help }}</small>
               </div>
-              <div v-if="selectedId === f.id" class="tools" @click.stop>
+              <div v-if="selectedId === f.id && !locked" class="tools" @click.stop>
                 <span class="grip" title="Drag to move"><Icon name="drag" :size="16" /></span>
                 <button v-if="!isBlock(f)" :title="widthOf(f) === 'half' ? 'Make full width' : 'Make half width (share a row)'" class="half" :class="{ on: widthOf(f) === 'half' }" @click="toggleHalf(f)">½</button>
                 <button title="Move up" @click="move(i, -1)"><Icon name="up" :size="16" /></button>
@@ -286,7 +338,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
                 <button title="Remove" @click="remove(i)"><Icon name="trash" :size="16" /></button>
               </div>
             </div>
-            <div v-if="form.fields.length" class="dz end" :class="{ hov: hover === form.fields.length }" @dragover.prevent="hover = form.fields.length" @dragleave="hover = -1" @drop.prevent="drop($event, form.fields.length)"></div>
+            <div v-if="form.fields.length && !locked" class="dz end" :class="{ hov: hover === form.fields.length }" @dragover.prevent="hover = form.fields.length" @dragleave="hover = -1" @drop.prevent="drop($event, form.fields.length)"></div>
           </div>
 
           <button class="p-btn" :style="{ background: s.accent, color: s.btnText, borderRadius: s.radius + 'px' }" @click="tab = 'settings'; selectedId = null">{{ form.button_text || 'Submit' }}</button>
@@ -295,12 +347,17 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
 
       <!-- right: settings -->
       <aside class="fb-right">
+        <div v-if="historyOpen" class="hist-wrap">
+          <HistoryTimeline type="form" :id="id" :active-id="viewing ? viewing.history_id : null" :names="HISTORY_NAMES" :refresh="histTick" @pick="viewCopy" @current="backToCurrent" @close="toggleHistory" />
+        </div>
+        <template v-else>
         <div class="tabs">
           <button :class="{ on: tab === 'field' }" @click="tab = 'field'">Field</button>
           <button :class="{ on: tab === 'design' }" @click="tab = 'design'">Design</button>
           <button :class="{ on: tab === 'settings' }" @click="tab = 'settings'">Settings</button>
         </div>
 
+        <fieldset :disabled="locked" class="fs">
         <div class="panel">
           <!-- FIELD -->
           <template v-if="tab === 'field'">
@@ -372,6 +429,11 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
             <div class="field"><label>Description</label><textarea v-model="form.description" rows="2" maxlength="1000" style="font-family: inherit"></textarea></div>
             <div class="field"><label>Button text</label><input v-model="form.button_text" maxlength="60" /></div>
             <div class="field"><label>Thank-you message</label><input v-model="form.success_message" maxlength="255" /></div>
+            <div v-if="form.save_contact" class="field">
+              <label>Message for people who are already your contacts <small>(optional)</small></label>
+              <input v-model="form.existing_message" maxlength="500" placeholder="You are already on our list. Thanks, we have updated your details." />
+              <small>Shown instead of the thank-you when the email is already one of your contacts. Leave it empty to show everyone the same thank-you, which never reveals who is in your contacts. Their details are never overwritten either way.</small>
+            </div>
             <div class="field"><label>Redirect to a page <small>(optional)</small></label><input v-model="form.redirect_url" type="url" placeholder="https://yoursite.com/thanks" /></div>
 
             <div class="grp">When someone submits</div>
@@ -405,6 +467,8 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
             <label class="check" style="margin-top: 18px"><input v-model="form.active" type="checkbox" /> Form is active (accepting submissions)</label>
           </template>
         </div>
+        </fieldset>
+        </template>
       </aside>
     </div>
 
@@ -433,6 +497,14 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
 .fb-err { background: #fdecea; color: #b71c1c; padding: 9px 20px; font-size: 14px; cursor: pointer; }
 .fb-warn { background: #fff8e1; color: #6d4c00; padding: 9px 20px; font-size: 14px; }
 
+.fb-top .btn.hon { background: #eef0fb; border-color: #3f51b5; color: #3f51b5; }
+.ro-pill { background: #fef3c7; color: #92400e; border-radius: 99px; padding: 2px 12px; font-size: 12.5px; font-weight: 500; white-space: nowrap; }
+.ro-note { background: #f5f6fd; border: 1px solid #e0e3f0; border-radius: 8px; padding: 12px 14px; font-size: 13px; color: #4b5563; }
+.ro-note p { margin: 6px 0 0; }
+.fb.ro .fb-left > :not(.ro-note) { display: none; }
+.fs { border: 0; padding: 0; margin: 0; min-width: 0; }
+.fb.ro .panel { pointer-events: none; }
+.hist-wrap { padding: 16px; }
 .fb-body { flex: 1; display: grid; grid-template-columns: 250px 1fr 340px; min-height: 0; }
 .fb-left, .fb-right { background: #fff; overflow: auto; }
 .fb-left { border-right: 1px solid #e0e0e0; padding: 16px; } .fb-right { border-left: 1px solid #e0e0e0; }

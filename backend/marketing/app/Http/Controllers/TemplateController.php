@@ -18,6 +18,15 @@ class TemplateController extends Controller
         return Template::create($this->validated($request));
     }
 
+    public function duplicate(Template $template)
+    {
+        $copy = $template->replicate();
+        $copy->name = mb_substr('Copy of '.$template->name, 0, 255);
+        $copy->save();
+
+        return response($copy, 201);
+    }
+
     public function update(Request $request, Template $template)
     {
         $template->update($this->validated($request));

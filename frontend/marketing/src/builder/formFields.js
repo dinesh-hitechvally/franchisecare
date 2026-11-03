@@ -35,7 +35,7 @@ export const FONTS = { sans: 'Arial, Helvetica, sans-serif', serif: 'Georgia, "T
 export const defaultForm = () => ({
   name: '', title: 'Join our newsletter', description: 'Tips and offers, straight to your inbox.',
   fields: [{ ...newField('first_name') }, { ...newField('email') }],
-  style: defaultStyle(), button_text: 'Subscribe', success_message: 'Thanks for subscribing!', redirect_url: '',
+  style: defaultStyle(), button_text: 'Subscribe', success_message: 'Thanks for subscribing!', existing_message: '', redirect_url: '',
   list_ids: [], tag_ids: [], active: true,
   type: 'newsletter', save_contact: true, subscribe: true,
   notify_on: false, notify_text: '', autoreply: false, autoreply_subject: '', autoreply_body: '', autoreply_attachments: [],
@@ -72,7 +72,7 @@ export function typePreset(type, userEmail = '') {
     }
   }
   if (type === 'other') {
-    return { type, title: 'Tell us more', description: '', button_text: 'Submit', success_message: 'Thanks!', fields: [f('first_name'), f('email', { required: true })], save_contact: false, subscribe: false, ...none }
+    return { type, title: 'Tell us more', description: '', button_text: 'Submit', success_message: 'Thank you! We have received your response.', fields: [f('first_name'), f('email', { required: true })], save_contact: false, subscribe: false, ...none }
   }
   return { type: 'newsletter', title: 'Join our newsletter', description: 'Tips and offers, straight to your inbox.', button_text: 'Subscribe', success_message: 'Thanks for subscribing!', fields: [f('first_name'), f('email', { required: true })], save_contact: true, subscribe: true, ...none }
 }

@@ -75,6 +75,24 @@ class MessageRenderer
         return [$this->replace($subject, $vars), $html];
     }
 
+    /** A readable plain-text copy of an HTML email, sent beside the HTML so text-only readers and spam filters are happy. */
+    public static function plainText(string $html): string
+    {
+        $t = preg_replace('~<(head|style|script)\b.*?</\1>|<!--.*?-->|<img\b[^>]*>~is', '', $html);
+        // a link shows its address after the words, unless they are the address
+        $t = preg_replace_callback('~<a\b[^>]*href=["\']([^"\']+)["\'][^>]*>(.*?)</a>~is', function ($m) {
+            $label = trim(strip_tags($m[2]));
+            $url = html_entity_decode($m[1]);
+
+            return ($label === '' || $label === $url) ? $url : $label.' ('.$url.')';
+        }, $t);
+        $t = preg_replace(['~<br\s*/?>~i', '~</(p|div|h[1-6]|tr|table|ul|ol|section)>~i', '~<li\b[^>]*>~i', '~</td>~i'], ["\n", "\n\n", "\n- ", ' '], $t);
+        $t = html_entity_decode(strip_tags($t), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $t = preg_replace(["~[ \t\x{00A0}]+~u", "~ *\n *~", "~\n{3,}~"], [' ', "\n", "\n\n"], $t);
+
+        return trim($t);
+    }
+
     public function renderSms(string $body, Company $company, ?Contact $contact): string
     {
         return $this->replace($body, $this->vars($company, $contact, 'sms'));

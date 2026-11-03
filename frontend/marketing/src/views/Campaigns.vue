@@ -1,6 +1,6 @@
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api, { errorMessage } from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import RowMenu from '../components/RowMenu.vue'
@@ -8,6 +8,7 @@ import Pager from '../components/Pager.vue'
 
 // One view for all four sidebar entries: /campaigns, ?type=email, ?type=sms, ?status=scheduled
 const route = useRoute()
+const router = useRouter()
 const rows = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const search = ref('')
@@ -20,7 +21,7 @@ let timer
 
 const title = computed(() => (route.query.status === 'scheduled' ? 'Scheduled Campaigns' : route.query.type === 'email' ? 'Email Campaigns' : route.query.type === 'sms' ? 'SMS Campaigns' : 'All Campaigns'))
 const scheduledView = computed(() => status.value === 'scheduled')
-const audience = (c) => c.segment?.name ? `Segment: ${c.segment.name}` : c.list?.name || 'All contacts'
+const audience = (c) => c.segment?.name ? `Segment: ${c.segment.name}` : c.tag?.name ? `Tag: ${c.tag.name}` : c.list?.name || 'All contacts'
 
 async function load(page = 1) {
   const params = { page }
@@ -43,6 +44,16 @@ async function unschedule(c) {
   try { await api.post(`/campaigns/${c.id}/unschedule`); load(meta.value.current_page) } catch (e) { error.value = errorMessage(e) }
 }
 
+async function duplicate(c) {
+  error.value = ''
+  try { router.push(`/campaigns/${(await api.post(`/campaigns/${c.id}/duplicate`)).data.id}`) } catch (e) { error.value = errorMessage(e) }
+}
+
+async function stop(c) {
+  if (!confirm(`Stop sending "${c.name}"? What has already gone out stays sent; everything still waiting is skipped.`)) return
+  try { await api.post(`/campaigns/${c.id}/cancel`); load(meta.value.current_page) } catch (e) { error.value = errorMessage(e) }
+}
+
 let t
 watch(search, () => { clearTimeout(t); t = setTimeout(() => load(), 300) })
 watch([type, status], () => load())
@@ -59,20 +70,20 @@ onBeforeUnmount(() => clearInterval(timer))
 <template>
   <div class="head">
     <h1>{{ title }} <small>({{ meta.total }})</small></h1>
-    <router-link class="btn" :to="route.query.type ? `/campaigns/new?type=${route.query.type}` : '/campaigns/new'">New campaign</router-link>
+    <div class="row"><router-link to="/campaigns/history" class="btn ghost">Campaign histories</router-link><router-link class="btn" :to="route.query.type ? `/campaigns/new?type=${route.query.type}` : '/campaigns/new'">New campaign</router-link></div>
   </div>
   <div v-if="error" class="alert err">{{ error }}</div>
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="search" type="search" placeholder="Search campaigns…" />
     <select v-model="type"><option value="">All channels</option><option value="email">Email</option><option value="sms">SMS</option></select>
-    <select v-model="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="sending">Sending</option><option value="sent">Sent</option><option value="failed">Failed</option></select>
+    <select v-model="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="sending">Sending</option><option value="sent">Sent</option><option value="failed">Failed</option><option value="cancelled">Stopped</option></select>
   </FilterBar>
 
   <div class="card">
     <p v-if="!rows.length" class="empty">{{ scheduledView ? 'Nothing is scheduled.' : 'No campaigns found.' }}</p>
     <table v-else>
       <thead>
-        <tr><th>Name</th><th>Type</th><th>Audience</th><th>Status</th><template v-if="scheduledView"><th>Sends at (UTC)</th></template><template v-else><th>Sent</th><th>Failed</th><th>Opened</th></template><th class="act">Actions</th></tr>
+        <tr><th>Name</th><th>Channel</th><th>Audience</th><th>Status</th><template v-if="scheduledView"><th>Sends at (UTC)</th></template><template v-else><th>Sent</th><th>Failed</th><th>Opened</th></template><th class="act">Actions</th></tr>
       </thead>
       <tr v-for="c in rows" :key="c.id">
         <td><router-link :to="`/campaigns/${c.id}`">{{ c.name }}</router-link></td>
@@ -85,7 +96,7 @@ onBeforeUnmount(() => clearInterval(timer))
           <td>{{ c.failed_count }}</td>
           <td>{{ c.type === 'email' ? c.opened_count : '—' }}</td>
         </template>
-        <td class="act"><RowMenu :history="{ type: 'campaign', id: c.id, title: c.name }" :items="[{ label: 'Open', to: `/campaigns/${c.id}` }, { label: 'Report', to: `/reports/${c.id}`, show: ['sent', 'sending', 'failed'].includes(c.status) }, { label: 'Cancel schedule', run: () => unschedule(c), show: c.status === 'scheduled' }, { label: 'Delete', run: () => remove(c), danger: true, show: c.status !== 'sending' }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'campaign', id: c.id, title: c.name }" :items="[{ label: 'Open', to: `/campaigns/${c.id}` }, { label: 'Report', to: `/reports/${c.id}`, show: ['sent', 'sending', 'failed'].includes(c.status) }, { label: 'Cancel schedule', run: () => unschedule(c), show: c.status === 'scheduled' }, { label: 'Stop sending', run: () => stop(c), show: c.status === 'sending', danger: true }, { label: 'Clone', run: () => duplicate(c) }, { label: 'Delete', run: () => remove(c), danger: true, show: c.status !== 'sending' }]" /></td>
       </tr>
     </table>
     <Pager :meta="meta" @page="load" />

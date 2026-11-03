@@ -22,19 +22,19 @@ const sections = [
   },
   {
     title: 'Campaigns', icon: 'campaign',
-    items: [['Campaigns', '/campaigns'], ['Reports', '/reports'], ['Send history', '/logs']],
+    items: [['Campaigns', '/campaigns'], ['Reports', '/reports']],
   },
   {
     title: 'Content', icon: 'template',
-    items: [['Templates', '/templates'], ['Pages', '/landing-pages'], ['Forms', '/forms']],
+    items: [['Forms', '/forms'], ['Pages', '/pages'], ['Templates', '/templates']],
   },
   {
     title: 'Automation', icon: 'bolt',
-    items: [['Workflows', '/workflows'], ['Triggers', '/automation/triggers'], ['Automation History', '/automation/history']],
+    items: [['Workflows', '/workflows'], ['Triggers', '/automation/triggers'], ['Webhooks', '/automation/webhooks'], ['Automation History', '/automation/history']],
   },
   {
     title: 'Analytics', icon: 'chart',
-    items: [['Campaign Analytics', '/analytics/campaigns'], ['Contact Analytics', '/analytics/contacts'], ['Conversion Reports', '/analytics/conversions']],
+    items: [['Overview', '/analytics/overview'], ['Email', '/analytics/email'], ['SMS', '/analytics/sms'], ['Delivery & errors', '/analytics/delivery'], ['Message logs', '/message-logs'], ['Contacts', '/analytics/contacts'], ['Forms & pages', '/analytics/conversions'], ['Automation', '/analytics/automation']],
   },
 ]
 
@@ -50,7 +50,7 @@ const top = [
 // a plain link (no query) is only active when none of the filter keys are set.
 function active(to) {
   const [path, q] = to.split('?')
-  if (route.path !== path) return false
+  if (route.path !== path && route.meta.parent !== path) return false // a sub-screen (Page histories) keeps its parent's menu item lit
   const want = Object.fromEntries(new URLSearchParams(q || ''))
   if (!q) return !['type', 'status', 'tab', 'channel'].some((k) => route.query[k])
   return Object.entries(want).every(([k, v]) => route.query[k] === v)
@@ -88,6 +88,7 @@ async function logout() {
       <div class="side-title">MAIN</div>
       <nav>
         <router-link to="/dashboard" class="nav-item" active-class="active"><Icon name="dashboard" :size="18" /><span>Dashboard</span></router-link>
+        <router-link to="/media" class="nav-item" active-class="active"><Icon name="image" :size="18" /><span>Media</span></router-link>
 
         <template v-for="s in sections" :key="s.title">
           <a href="#" class="nav-item" :class="{ active: sectionActive(s) }" @click.prevent="toggle(s)">
@@ -99,7 +100,6 @@ async function logout() {
           </div>
         </template>
 
-        <router-link to="/media" class="nav-item" active-class="active"><Icon name="image" :size="18" /><span>Media</span></router-link>
         <router-link to="/settings" class="nav-item" :class="{ active: route.path.startsWith('/settings') }"><Icon name="settings" :size="18" /><span>Settings</span></router-link>
       </nav>
 

@@ -72,17 +72,56 @@ class FormRenderer
             .'<div class="fc-row">'.$rows.'</div>'
             .'<input name="website" class="fc-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' // honeypot: bots fill it, people never see it
             .'<button type="submit">'.self::e($form->button_text).'</button><div id="fc-msg'.$suffix.'" class="fc-msg" role="status"></div></form>'
-            .'<script nonce="'.$nonce.'">(function(){'
-            ."var f=document.getElementById('fc-form{$suffix}'),m=document.getElementById('fc-msg{$suffix}');"
-            ."f.addEventListener('submit',function(ev){ev.preventDefault();m.className='';m.textContent='';var d={};"
-            .'Array.prototype.forEach.call(f.elements,function(el){if(!el.name)return;'
-            ."if(el.type==='checkbox')d[el.name]=el.checked;else if(el.type==='radio'){if(el.checked)d[el.name]=el.value}else d[el.name]=el.value});"
-            ."fetch('/api/public/forms/{$slug}',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(d)})"
-            .'.then(function(r){return r.json().then(function(j){return[r.ok,j]})})'
-            .".then(function(x){var j=x[1];m.className=x[0]?'ok':'err';m.textContent=x[0]?j.message:(j.errors?Object.values(j.errors)[0][0]:(j.message||'Something went wrong.'));"
-            .'if(x[0]){f.reset();if(j.redirect){setTimeout(function(){location.href=j.redirect},800)}}})'
-            .".catch(function(){m.className='err';m.textContent='Network error. Please try again.'})});"
-            .'})()</script>';
+            .self::script($nonce, $suffix, $slug);
+    }
+
+    /**
+     * What happens when the form is sent. The person must always be able to tell what happened:
+     *  - while sending, the button says so and cannot be pressed again (no double submissions);
+     *  - on success the form is replaced by a clear "thank you" panel (a tick, the form's own message, and a line saying it was submitted),
+     *    with a way to send another response, or a short pause before the redirect the form asks for;
+     *  - on a problem a visible message says what to fix, and the first field that needs attention is focused.
+     * The server's wording is only ever put in with textContent, never as HTML.
+     */
+    protected static function script(string $nonce, string $suffix, string $slug): string
+    {
+        $js = <<<'JS'
+(function(){
+var f=document.getElementById('fc-form__SUFFIX__'),m=document.getElementById('fc-msg__SUFFIX__'),b=f.querySelector('button[type=submit]'),label=b.textContent;
+function say(cls,text){m.className='fc-msg'+(cls?' '+cls:'');m.textContent=text}
+function idle(){b.disabled=false;b.textContent=label}
+function done(j){
+  var box=document.createElement('div');box.className='fc-done';box.setAttribute('role','status');
+  var c=document.createElement('div');c.className='fc-check';c.textContent='\u2713';
+  var t=document.createElement('p');t.className='fc-done-msg';t.textContent=j.message||'Thank you!';
+  var s=document.createElement('p');s.className='fc-done-sub';s.textContent=j.existing?'We already have you in our records.':(j.redirect?'Your form has been submitted. Taking you on\u2026':'Your form has been submitted successfully.');
+  box.appendChild(c);box.appendChild(t);box.appendChild(s);
+  if(!j.redirect){var a=document.createElement('button');a.type='button';a.className='fc-again';a.textContent='Send another response';a.addEventListener('click',function(){box.remove();f.reset();f.style.display='';say('','')});box.appendChild(a)}
+  f.style.display='none';f.parentNode.insertBefore(box,f.nextSibling);
+  try{box.scrollIntoView({behavior:'smooth',block:'nearest'})}catch(e){}
+  if(j.redirect){setTimeout(function(){location.href=j.redirect},1500)}
+}
+f.addEventListener('submit',function(ev){
+  ev.preventDefault();say('','');
+  var d={};
+  Array.prototype.forEach.call(f.elements,function(el){if(!el.name)return;
+    if(el.type==='checkbox')d[el.name]=el.checked;else if(el.type==='radio'){if(el.checked)d[el.name]=el.value}else d[el.name]=el.value});
+  b.disabled=true;b.textContent='Sending\u2026';
+  fetch('/api/public/forms/__SLUG__',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(d)})
+  .then(function(r){return r.json().then(function(j){return[r.ok,j]},function(){return[r.ok,{}]})})
+  .then(function(x){
+    var j=x[1];idle();
+    if(x[0]){done(j);return}
+    var first=j.errors?Object.keys(j.errors)[0]:null;
+    say('err',j.errors?Object.values(j.errors)[0][0]:(j.message||'Something went wrong. Please try again.'));
+    if(first&&f.elements[first]){try{f.elements[first].focus()}catch(e){}}
+  })
+  .catch(function(){idle();say('err','We could not send your form. Please check your connection and try again.')});
+});
+})();
+JS;
+
+        return '<script nonce="'.$nonce.'">'.str_replace(['__SUFFIX__', '__SLUG__'], [$suffix, $slug], $js).'</script>';
     }
 
     /** Stylesheet for the form; $style must come from FormFields::style() (validated). */
@@ -112,7 +151,12 @@ class FormRenderer
             .".fc-form .fc-help{display:block;margin:-8px 0 14px;font-size:12px;opacity:.65}"
             .".fc-form button{width:100%;padding:13px;border:0;border-radius:{$s['radius']}px;background:{$s['accent']};color:{$s['btnText']};font:inherit;font-size:16px;font-weight:700;cursor:pointer}"
             .'.fc-hp{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0}'
-            .'.fc-msg{margin-top:12px;font-size:14px;text-align:center}.fc-msg.ok{color:#2e7d32}.fc-msg.err{color:#c62828}';
+            .'.fc-form button:disabled{opacity:.65;cursor:wait}'
+            .'.fc-msg{font-size:14px;text-align:center}.fc-msg.err{margin-top:12px;padding:10px 12px;border:1px solid #f5c2c0;border-radius:6px;background:#fdecea;color:#b71c1c;text-align:left}'
+            .'.fc-done{max-width:'.$s['width'].'px;margin:0 auto;padding:32px 16px;text-align:center;font-family:'.$font.';color:'.$s['text'].'}'
+            .'.fc-check{width:60px;height:60px;margin:0 auto 16px;border-radius:50%;background:#e8f5e9;color:#2e7d32;font-size:32px;line-height:60px;font-weight:700}'
+            .'.fc-done-msg{margin:0 0 6px;font-size:22px;font-weight:700}.fc-done-sub{margin:0 0 18px;font-size:14px;opacity:.7}'
+            .'.fc-again{background:none;border:0;padding:4px;font:inherit;font-size:14px;color:'.$s['accent'].';text-decoration:underline;cursor:pointer}';
     }
 
     /** Full standalone page for /f/{slug}. */

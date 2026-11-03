@@ -1,7 +1,7 @@
 <script setup>
 import DateInput from '../components/DateInput.vue'
-// Send history: every email and SMS the platform sent (or tried to), including tests and staff notifications.
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+// Message logs: every email and SMS the platform sent (or tried to), including tests and staff notifications.
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import api from '../api'
 import FilterBar from '../components/FilterBar.vue'
@@ -20,7 +20,7 @@ const SOURCES = { campaign: 'Campaign', automation: 'Automation', form: 'Form au
 const SERVICES = {
   default: 'Default', log: 'Log only', gmail: 'Gmail', outlook: 'Outlook', yahoo: 'Yahoo Mail', zoho: 'Zoho Mail', sendgrid: 'SendGrid', mailgun: 'Mailgun',
   ses: 'Amazon SES', brevo: 'Brevo', postmark: 'Postmark', mandrill: 'Mandrill', custom: 'Custom SMTP', google: 'Google', microsoft: 'Microsoft',
-  twilio: 'Twilio', vonage: 'Vonage', plivo: 'Plivo', telnyx: 'Telnyx', clicksend: 'ClickSend', messagebird: 'MessageBird', sinch: 'Sinch',
+  twilio: 'Twilio', vonage: 'Vonage', plivo: 'Plivo', telnyx: 'Telnyx', clicksend: 'ClickSend', messagebird: 'MessageBird', messagemedia: 'MessageMedia', sinch: 'Sinch',
 }
 const service = (k) => (k ? SERVICES[k] || k : '—')
 const statusLabel = (s) => (s === 'logged' ? 'logged only' : s) // logged = written to a log, nothing was delivered
@@ -39,16 +39,20 @@ async function open(l) { detail.value = (await api.get(`/logs/${l.channel}/${l.i
 let t
 watch(f, () => { clearTimeout(t); t = setTimeout(() => load(), 300) })
 onMounted(() => load())
+
+// Messages are sent by the background worker, so a queued one changes status on its own: keep the open page up to date while any is waiting
+const poll = setInterval(() => { if (rows.value.some((r) => r.status === 'queued')) load(meta.value.current_page || 1) }, 4000)
+onBeforeUnmount(() => clearInterval(poll))
 </script>
 
 <template>
-  <div class="head"><h1>Send history <small>({{ meta.total }})</small></h1></div>
+  <div class="head"><h1>Message logs <small>({{ meta.total }})</small></h1></div>
   <p class="intro">Every email and SMS that was sent or tried: campaigns, automations, form replies, test messages and staff notifications. Messages marked “logged only” were just written to a log (the Log only email service, or the Log only SMS service): nothing was delivered.</p>
 
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="f.search" type="search" placeholder="Search recipient or subject…" />
     <select v-model="f.channel"><option value="">Email and SMS</option><option value="email">Email</option><option value="sms">SMS</option></select>
-    <select v-model="f.source"><option value="">All kinds</option><option v-for="(l, k) in SOURCES" :key="k" :value="k">{{ l }}</option></select>
+    <select v-model="f.source"><option value="">All sources</option><option v-for="(l, k) in SOURCES" :key="k" :value="k">{{ l }}</option></select>
     <select v-model="f.service"><option value="">All services</option><option v-for="(l, k) in SERVICES" :key="k" :value="k">{{ l }}</option></select>
     <select v-model="f.status"><option value="">All statuses</option><option value="queued">queued</option><option value="sent">sent</option><option value="logged">logged only</option><option value="failed">failed</option><option value="skipped">skipped</option></select>
     <label>From <DateInput v-model="f.from" /></label>
@@ -59,7 +63,7 @@ onMounted(() => load())
   <div class="card">
     <p v-if="!rows.length" class="empty">Nothing has been sent yet.</p>
     <table v-else>
-      <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Kind</th><th>Service</th><th>Status</th><th>Error / reason</th><th>Opens / clicks</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>When</th><th>Channel</th><th>To</th><th>Sent from</th><th>Service</th><th>Status</th><th>Error / reason</th><th>Opens / clicks</th><th class="act">Actions</th></tr></thead>
       <tr v-for="l in rows" :key="l.channel + l.id">
         <td class="nw">{{ $dt(l.sent_at || l.created_at) }}</td>
         <td><span class="badge" :class="l.channel">{{ l.channel }}</span></td>

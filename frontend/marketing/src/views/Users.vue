@@ -84,5 +84,5 @@ onMounted(load)
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -4px 0 18px; max-width: 760px; }
+.intro { color: #6b7280; margin: -4px 0 18px; }
 </style>

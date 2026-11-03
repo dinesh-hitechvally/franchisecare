@@ -10,6 +10,12 @@ use Throwable;
 /** Writes the send history (email_logs / sms_logs) for sends that do not go through the campaign queue: test messages and staff notifications. */
 class SendLog
 {
+    /** Campaign sending speed in messages per minute (Settings → Email sending); 0 means no limit. */
+    public static function perMinute(Company $company): int
+    {
+        return max(0, (int) $company->setting('sending.per_minute', 60));
+    }
+
     /** The service that would carry a message now: a mail/SMS connection key, "default" (platform mail) or "log" (Log only for SMS). */
     public static function service(Company $company, string $channel): string
     {

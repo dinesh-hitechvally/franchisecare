@@ -19,6 +19,7 @@ return new class extends Migration
             $table->text('fields');                       // JSON: [{id, key, type, label, placeholder, help, required, options}]
             $table->string('button_text')->default('Subscribe');
             $table->string('success_message')->default('Thanks for subscribing!');
+            $table->string('existing_message', 500)->nullable(); // optional: shown instead of the thank-you when the person is already a contact
             $table->text('style')->nullable();            // JSON: colours, font, corner radius, width
             $table->string('redirect_url', 500)->nullable(); // optional page to send people to after they submit
             $table->boolean('save_contact')->default(true);  // create/update a contact from the submission

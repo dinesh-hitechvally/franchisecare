@@ -232,8 +232,8 @@ class FormBuilderTest extends TestCase
 
         // 1. a contact exists, but was NOT opted in to marketing (they only asked a question)
         $c = Contact::withoutGlobalScopes()->where('email', 'sam@x.com')->firstOrFail();
-        $this->assertFalse((bool) $c->email_subscribed);
-        $this->assertFalse((bool) $c->sms_subscribed);
+        $this->assertFalse((bool) $c->is_subscribed);
+        $this->assertNull($c->subscribed_at);
         $this->assertSame('form', $c->source);
 
         // 2. the submission is in the form's inbox
@@ -263,7 +263,7 @@ class FormBuilderTest extends TestCase
         $news = $this->postJson('/api/forms', ['name' => 'News', 'type' => 'newsletter'], $h)->assertCreated();
         $news->assertJsonPath('subscribe', true);
         $this->postJson('/api/public/forms/'.$news->json('slug'), ['email' => 'fan@x.com'])->assertOk();
-        $this->assertTrue((bool) Contact::withoutGlobalScopes()->where('email', 'fan@x.com')->value('email_subscribed'));
+        $this->assertTrue((bool) Contact::withoutGlobalScopes()->where('email', 'fan@x.com')->value('is_subscribed'));
     }
 
     public function test_a_form_can_skip_saving_contacts_and_just_be_an_inbox(): void

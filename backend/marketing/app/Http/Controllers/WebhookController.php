@@ -61,6 +61,26 @@ class WebhookController extends Controller
         return WebhookDelivery::where('webhook_id', $webhook->id)->latest('id')->paginate(30);
     }
 
+    /** Every delivery of every webhook (the Deliveries screen), newest first. Filters: webhook_id, event, result (ok | failed), search, from, to. */
+    public function allDeliveries(Request $request)
+    {
+        $page = WebhookDelivery::query()
+            ->when($request->query('webhook_id'), fn ($q, $v) => $q->where('webhook_id', (int) $v))
+            ->when($request->query('event'), fn ($q, $v) => $q->where('event', $v))
+            ->when($request->query('result') === 'ok', fn ($q) => $q->where('success', true))
+            ->when($request->query('result') === 'failed', fn ($q) => $q->where('success', false))
+            ->when($request->query('search'), fn ($q, $v) => $q->where(fn ($w) => $w->where('response', 'like', "%$v%")->orWhere('event', 'like', "%$v%")))
+            ->when($request->query('from'), fn ($q, $v) => $q->where('created_at', '>=', $v.' 00:00:00'))
+            ->when($request->query('to'), fn ($q, $v) => $q->where('created_at', '<=', $v.' 23:59:59'))
+            ->latest('id')->paginate(30);
+
+        // a deleted webhook's deliveries stay in the log: keep showing its name
+        $names = Webhook::withTrashed()->whereIn('id', $page->getCollection()->pluck('webhook_id')->unique())->pluck('name', 'id');
+        $page->getCollection()->each(fn ($d) => $d->setAttribute('webhook_name', $names[$d->webhook_id] ?? 'Deleted webhook'));
+
+        return $page;
+    }
+
     protected function validated(Request $request): array
     {
         $data = $request->validate([

@@ -35,6 +35,11 @@ class SmsProviders
             ['key' => 'access_key', 'label' => 'Access key', 'secret' => true],
             ['key' => 'from', 'label' => 'Originator (sender)', 'placeholder' => 'MyBrand'],
         ]],
+        'messagemedia' => ['name' => 'MessageMedia', 'fields' => [
+            ['key' => 'api_key', 'label' => 'API key'],
+            ['key' => 'api_secret', 'label' => 'API secret', 'secret' => true],
+            ['key' => 'from', 'label' => 'Sender number / ID (optional)', 'placeholder' => '+61400000000 or MyBrand'],
+        ]],
         'sinch' => ['name' => 'Sinch', 'fields' => [
             ['key' => 'service_plan_id', 'label' => 'Service plan ID'],
             ['key' => 'api_token', 'label' => 'API token', 'secret' => true],
@@ -63,6 +68,7 @@ class SmsProviders
             'telnyx' => new TelnyxDriver($c),
             'clicksend' => new ClickSendDriver($c),
             'messagebird' => new MessageBirdDriver($c),
+            'messagemedia' => new MessageMediaDriver($c),
             'sinch' => new SinchDriver($c),
         };
     }

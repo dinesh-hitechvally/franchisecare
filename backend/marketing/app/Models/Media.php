@@ -20,6 +20,13 @@ class Media extends Model
 
     protected $appends = ['url'];
 
+    protected $with = ['creator:id,name']; // who uploaded it, shown on the card
+
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
     public const IMAGES = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
     public const DOCUMENTS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'csv', 'txt', 'zip'];

@@ -82,7 +82,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="head"><h1>Segments</h1><button class="btn" :disabled="!fields.length" @click="open(null)">New segment</button></div>
+  <div class="head"><h1>Segments</h1><div class="row"><router-link to="/segments/history" class="btn ghost">Segment histories</router-link><button class="btn" :disabled="!fields.length" @click="open(null)">New segment</button></div></div>
   <p class="intro">A segment is a saved group of contacts that updates itself — e.g. “gmail users tagged VIP who opened an email this month”. Use it as the audience for a campaign.</p>
 
   <FilterBar :dirty="fDirty" @clear="fClear">
@@ -146,7 +146,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 760px; }
+.intro { color: #6b7280; margin: -8px 0 18px; }
 .rule { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; flex-wrap: wrap; }
 .x { background: none; border: 0; font-size: 22px; color: #9e9e9e; cursor: pointer; }
 .pv { margin-top: 16px; background: #eef0fb; border-radius: 4px; padding: 10px 14px; }

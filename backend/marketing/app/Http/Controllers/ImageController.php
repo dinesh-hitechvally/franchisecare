@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Support\ApiResponse;
 use App\Services\ImageSearch;
 use App\Services\OnlineImageImport;
 use Illuminate\Http\Request;
@@ -34,7 +35,7 @@ class ImageController extends Controller
 
             return $results;
         } catch (\Throwable $e) {
-            return response()->json(['message' => 'Image search failed: '.$e->getMessage()], 422);
+            return ApiResponse::error('Image search failed: '.$e->getMessage(), 422);
         }
     }
 }

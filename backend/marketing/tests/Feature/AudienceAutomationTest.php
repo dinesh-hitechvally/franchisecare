@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Campaign;
 use App\Models\AutomationHistory;
 use App\Models\Contact;
 use App\Models\EmailLog;
@@ -74,19 +75,25 @@ class AudienceAutomationTest extends TestCase
         $t = $this->owner();
         $id = $this->call_as($t, 'POST', '/api/contacts', ['email' => 'ann@x.com'])->json('id');
 
-        $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'channel' => 'email', 'subscribed' => false])->assertJsonPath('changed', 1);
-        $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'channel' => 'email', 'subscribed' => false])->assertJsonPath('changed', 0);
-        $this->call_as($t, 'GET', '/api/subscriptions?channel=email&status=unsubscribed')
-            ->assertJsonPath('summary.email.unsubscribed', 1)->assertJsonPath('contacts.total', 1);
-        $this->assertNotNull(Contact::withoutGlobalScopes()->find($id)->email_unsubscribed_at);
+        $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'subscribed' => false])->assertJsonPath('changed', 1);
+        $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'subscribed' => false])->assertJsonPath('changed', 0);
+        $this->call_as($t, 'GET', '/api/subscriptions?status=unsubscribed')
+            ->assertJsonPath('summary.unsubscribed', 1)->assertJsonPath('contacts.total', 1);
+        $this->assertFalse((bool) Contact::withoutGlobalScopes()->find($id)->is_subscribed);
+        $this->assertNull(Contact::withoutGlobalScopes()->find($id)->subscribed_at);
+
+        $this->call_as($t, 'GET', '/api/contacts?status=unsubscribed')->assertJsonPath('total', 1);
+        $this->call_as($t, 'GET', '/api/contacts?status=subscribed')->assertJsonPath('total', 0);
 
         // an unsubscribed contact is skipped by campaigns
         $c = $this->call_as($t, 'POST', '/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 's', 'body' => '<p>x</p>'])->json('id');
         $this->call_as($t, 'POST', "/api/campaigns/$c/send");
-        $this->assertSame('skipped', EmailLog::withoutGlobalScopes()->first()->status);
+        $this->assertSame(0, EmailLog::withoutGlobalScopes()->count()); // nothing is written to the message log for them
+        $this->assertSame(1, Campaign::withoutGlobalScopes()->find($c)->audience_skipped);
 
-        $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'channel' => 'email', 'subscribed' => true])->assertJsonPath('changed', 1);
-        $this->assertNull(Contact::withoutGlobalScopes()->find($id)->email_unsubscribed_at);
+        $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'subscribed' => true])->assertJsonPath('changed', 1);
+        $this->assertTrue((bool) Contact::withoutGlobalScopes()->find($id)->is_subscribed);
+        $this->assertNotNull(Contact::withoutGlobalScopes()->find($id)->subscribed_at);
     }
 
     // -------------------------------------------------------------------- reports
@@ -145,10 +152,10 @@ class AudienceAutomationTest extends TestCase
         $this->assertSame([$tag], $c->tags()->pluck('tags.id')->all());
 
         // same person again: no duplicate; an opt-out is never reversed by a form
-        $c->forceFill(['email_subscribed' => false])->save();
+        $c->forceFill(['is_subscribed' => false])->save();
         $this->postJson("/api/public/forms/$slug", ['email' => 'new@site.com'])->assertOk();
         $this->assertSame(1, Contact::withoutGlobalScopes()->count());
-        $this->assertFalse((bool) $c->fresh()->email_subscribed);
+        $this->assertFalse((bool) $c->fresh()->is_subscribed);
 
         $this->postJson("/api/public/forms/$slug", ['email' => 'not-an-email'])->assertStatus(422);
         $this->postJson("/api/public/forms/$slug", ['email' => 'bot@x.com', 'website' => 'spam'])->assertOk(); // honeypot

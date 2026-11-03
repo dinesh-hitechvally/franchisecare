@@ -62,7 +62,7 @@ onMounted(load)
     <p v-if="!rows.length" class="empty">No custom fields yet. They are also created automatically when a form question is set to “Also save this answer on the contact”.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Field</th><th>Merge tag</th><th>Type</th><th>Choices</th><th>Contacts with a value</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Merge tag</th><th>Type</th><th>Choices</th><th>Contacts with a value</th><th class="act">Actions</th></tr></thead>
       <tr v-for="f in visible" :key="f.id">
         <td><b>{{ f.label }}</b></td>
         <td><code>{{ tag(f.key) }}</code></td>
@@ -96,6 +96,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 800px; }
+.intro { color: #6b7280; margin: -8px 0 18px; }
 code { background: #f1f2f6; padding: 1px 6px; border-radius: 3px; font-size: 12px; }
 </style>

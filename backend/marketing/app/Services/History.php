@@ -204,10 +204,16 @@ class History
             if ($prev && $row->change_action === 'updated' && $fields && ! in_array($c, $fields, true)) {
                 continue;
             }
-            $out[$c] = ['old' => self::short($old), 'new' => self::short($new)];
+            $out[$c] = ['old' => self::short(self::scrub($old)), 'new' => self::short(self::scrub($new))];
         }
 
         return $out;
+    }
+
+    /** An encrypted value (e.g. a company's settings, which hold keys) is meaningless as text and not for showing: it is hidden when a change is listed. */
+    protected static function scrub(mixed $v): mixed
+    {
+        return is_string($v) && str_starts_with($v, 'eyJpdiI6') ? '••••••' : $v;
     }
 
     protected static function short(mixed $v): mixed

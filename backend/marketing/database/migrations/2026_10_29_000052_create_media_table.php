@@ -22,6 +22,7 @@ return new class extends Migration
             $table->unsignedInteger('width')->nullable(); // images only
             $table->unsignedInteger('height')->nullable();
             $table->string('alt')->nullable();            // describes an image for people who cannot see it
+            $table->text('description')->nullable();      // free notes about the file, shown in the details window
             $table->string('source', 20)->default('upload'); // upload, or the free source it was added from: openverse | wikimedia | unsplash | pexels | pixabay
             $table->string('credit')->nullable();         // photographer, for images from a free source
             $table->string('credit_url', 500)->nullable();

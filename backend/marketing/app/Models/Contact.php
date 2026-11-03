@@ -22,16 +22,19 @@ class Contact extends Model
     protected function casts(): array
     {
         return [
-            'email_subscribed' => 'boolean',
-            'sms_subscribed' => 'boolean',
-            'email_unsubscribed_at' => 'datetime',
-            'sms_unsubscribed_at' => 'datetime',
+            'is_subscribed' => 'boolean',
+            'subscribed_at' => 'datetime',
         ];
     }
 
     protected static function booted(): void
     {
-        static::creating(fn ($c) => $c->unsubscribe_token ??= Str::random(40));
+        static::creating(function ($c) {
+            $c->unsubscribe_token ??= Str::random(40);
+            // a new contact is subscribed unless said otherwise; note when
+            $c->is_subscribed ??= true;
+            $c->subscribed_at ??= $c->is_subscribed ? now() : null;
+        });
     }
 
     public function tags()

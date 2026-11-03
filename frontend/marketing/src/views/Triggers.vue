@@ -1,43 +1,60 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../api'
-import Icon from '../components/Icon.vue'
+import FilterBar from '../components/FilterBar.vue'
+import { useFilters } from '../composables/useFilters'
 
-const triggers = ref([])
-const ICONS = { contact_created: 'people', list_joined: 'list', tag_added: 'coupon', form_submitted: 'template' }
+// Every event that can start a workflow, as a table: what it is, what it needs, and which workflows already use it.
+const rows = ref([])
+const { f: flt, shown, dirty, clear } = useFilters(rows, {
+  text: (t) => [t.label, t.description],
+  match: { group: (t) => t.group, used: (t) => (t.workflows.length ? 'used' : 'unused') },
+})
+const SETTINGS = {
+  list: 'A list (or any list)', tag: 'A tag (or any tag)', form: 'A form (or any form)', url: 'Link text (optional)',
+  date: 'A date field, days before or after, once or every year', days: 'A number of days',
+}
 
-onMounted(async () => { triggers.value = (await api.get('/automation/triggers')).data })
+onMounted(async () => { rows.value = (await api.get('/automation/triggers')).data })
 </script>
 
 <template>
-  <div class="head"><h1>Triggers</h1></div>
-  <p class="intro">A trigger is the event that starts a workflow. Pick one below to build a workflow around it, or see which workflows already listen for it.</p>
+  <div class="head"><h1>Triggers <small>({{ rows.length }})</small></h1></div>
+  <p class="intro">A trigger is the event that starts a workflow. Pick one to build a workflow around it, or see which workflows already listen for it.</p>
 
-  <div class="grid g2">
-    <div v-for="t in triggers" :key="t.type" class="card trig">
-      <div class="row" style="align-items: flex-start; flex-wrap: nowrap">
-        <span class="ico"><Icon :name="ICONS[t.type]" :size="24" /></span>
-        <div style="flex: 1">
-          <h2 style="margin: 0 0 4px">{{ t.label }}</h2>
-          <p class="d">{{ t.description }}</p>
-        </div>
-      </div>
-      <div class="used">
-        <small v-if="!t.workflows.length">No workflows use this trigger yet.</small>
-        <template v-else>
-          <small>Used by:</small>
-          <router-link v-for="w in t.workflows" :key="w.id" to="/workflows" class="pill">{{ w.name }} <span class="badge" :class="w.status === 'active' ? 'sent' : ''">{{ w.status }}</span></router-link>
-        </template>
-      </div>
-      <router-link :to="`/workflows?trigger=${t.type}`" class="btn sm">Create workflow with this trigger</router-link>
-    </div>
+  <FilterBar :dirty="dirty" @clear="clear">
+    <input v-model="flt.q" type="search" placeholder="Search triggers…" />
+    <select v-model="flt.group"><option value="">All kinds</option><option v-for="g in [...new Set(rows.map((t) => t.group))]" :key="g" :value="g">{{ g }}</option></select>
+    <select v-model="flt.used"><option value="">Used and unused</option><option value="used">Used by a workflow</option><option value="unused">Not used yet</option></select>
+  </FilterBar>
+
+  <div class="card">
+    <p v-if="!rows.length" class="empty">Loading…</p>
+    <p v-else-if="!shown.length" class="empty">No trigger matches these filters.</p>
+    <table v-else>
+      <thead><tr><th>Trigger</th><th>Kind</th><th>When it starts</th><th>Settings</th><th>Used by</th><th class="act">Action</th></tr></thead>
+      <tr v-for="t in shown" :key="t.type">
+        <td style="white-space: nowrap"><b>{{ t.label }}</b></td>
+        <td><span class="badge" :class="'g-' + t.group.split(' ')[0].toLowerCase()">{{ t.group }}</span></td>
+        <td class="d">{{ t.description }}</td>
+        <td class="d">{{ SETTINGS[t.config] || '—' }}</td>
+        <td>
+          <small v-if="!t.workflows.length" class="none">Not used yet</small>
+          <template v-else>
+            <router-link v-for="w in t.workflows" :key="w.id" to="/workflows" class="pill">{{ w.name }} <span class="badge" :class="w.status === 'active' ? 'sent' : ''">{{ w.status }}</span></router-link>
+          </template>
+        </td>
+        <td class="act"><router-link :to="`/workflows?trigger=${t.type}`" class="btn sm">Create workflow</router-link></td>
+      </tr>
+    </table>
   </div>
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 760px; }
-.ico { width: 46px; height: 46px; border-radius: 50%; background: #e8eaf6; color: #3f51b5; display: grid; place-items: center; flex: none; margin-right: 14px; }
-.d { margin: 0 0 12px; color: #555; font-size: 14px; }
-.used { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 14px; min-height: 26px; }
-.pill { background: #f4f5f7; border-radius: 99px; padding: 3px 10px; font-size: 13px; color: #333; text-decoration: none; }
+.d { color: #555; font-size: 13px; max-width: 420px; }
+.none { color: #6b7280; }
+.pill { display: inline-block; background: #f4f5f7; border-radius: 99px; padding: 3px 10px; font-size: 13px; color: #333; text-decoration: none; margin: 0 6px 4px 0; }
+.badge.g-contact { background: #e8eaf6; color: #3f51b5; }
+.badge.g-email { background: #e0f2f1; color: #00796b; }
+.badge.g-time { background: #fff3e0; color: #e65100; }
 </style>

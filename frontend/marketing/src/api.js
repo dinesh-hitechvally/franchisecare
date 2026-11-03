@@ -12,8 +12,22 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * The API answers in one standard shape: { success, message, data, meta }. Screens work with the payload, so a successful answer is
+ * unwrapped here: response.data is what the endpoint returned (a record, a list, or a paginator with its paging details put back),
+ * and response.message is the sentence the server chose, if any. Files and anything else pass through unchanged.
+ */
+function unwrap(r) {
+  const b = r.data
+  if (b && typeof b === 'object' && !Array.isArray(b) && b.success === true && 'data' in b && 'message' in b) {
+    r.message = b.message
+    r.data = b.meta ? { data: b.data, ...b.meta } : b.data
+  }
+  return r
+}
+
 api.interceptors.response.use(
-  (r) => r,
+  unwrap,
   (err) => {
     const status = err.response?.status
     if (status === 401 && !location.pathname.startsWith('/login')) {
@@ -27,7 +41,10 @@ api.interceptors.response.use(
   },
 )
 
-/** First validation message, or the server message, or a fallback. */
+/** The sentence the server sent with a successful answer (e.g. "Sending stopped."), or a fallback. */
+export const responseMessage = (r, fallback = '') => r?.message || fallback
+
+/** First validation message, or the server message, or a fallback. Failures are { success: false, message, code, errors? }. */
 export function errorMessage(err) {
   const d = err.response?.data
   if (d?.errors) return Object.values(d.errors)[0][0]

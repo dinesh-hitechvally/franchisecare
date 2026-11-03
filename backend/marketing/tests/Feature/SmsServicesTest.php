@@ -74,6 +74,7 @@ class SmsServicesTest extends TestCase
             'rest.clicksend.com/*' => Http::response(['data' => ['messages' => [['status' => 'SUCCESS', 'message_id' => 'C1']]]]),
             'rest.messagebird.com/*' => Http::response(['id' => 'M1']),
             'eu.sms.api.sinch.com/*' => Http::response(['id' => 'S1']),
+            'api.messagemedia.com/*' => Http::response(['messages' => [['message_id' => 'MM1', 'status' => 'queued']]]),
         ]);
         $conns = [
             'twilio' => ['account_sid' => 'AC1', 'auth_token' => 't', 'from' => '+1555'],
@@ -82,17 +83,19 @@ class SmsServicesTest extends TestCase
             'telnyx' => ['api_key' => 'k', 'from' => '+1555'],
             'clicksend' => ['username' => 'u', 'api_key' => 'k', 'from' => 'Acme'],
             'messagebird' => ['access_key' => 'ak', 'from' => 'Acme'],
+            'messagemedia' => ['api_key' => 'mk', 'api_secret' => 'ms', 'from' => '+61400000001'],
             'sinch' => ['service_plan_id' => 'plan1', 'api_token' => 'tok', 'region' => 'eu', 'from' => '+1555'],
         ];
         $ids = [];
         foreach ($conns as $key => $c) {
             $ids[$key] = SmsProviders::driver($key, $c)->send('+61400000000', 'Hello');
         }
-        $this->assertSame(['twilio' => 'SM1', 'vonage' => 'V1', 'plivo' => 'P1', 'telnyx' => 'T1', 'clicksend' => 'C1', 'messagebird' => 'M1', 'sinch' => 'S1'], $ids);
+        $this->assertSame(['twilio' => 'SM1', 'vonage' => 'V1', 'plivo' => 'P1', 'telnyx' => 'T1', 'clicksend' => 'C1', 'messagebird' => 'M1', 'messagemedia' => 'MM1', 'sinch' => 'S1'], $ids);
 
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'api.plivo.com/v1/Account/PID/Message/') && $r['dst'] === '61400000000' && $r['src'] === '+1555' && $r['text'] === 'Hello');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'api.telnyx.com/v2/messages') && $r->hasHeader('Authorization', 'Bearer k') && $r['to'] === '+61400000000');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'rest.clicksend.com/v3/sms/send') && $r['messages'][0]['body'] === 'Hello');
+        Http::assertSent(fn (Request $r) => str_contains($r->url(), 'api.messagemedia.com/v1/messages') && $r['messages'][0]['content'] === 'Hello' && $r['messages'][0]['destination_number'] === '+61400000000' && $r['messages'][0]['source_number'] === '+61400000001');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'rest.messagebird.com/messages') && $r->hasHeader('Authorization', 'AccessKey ak') && $r['originator'] === 'Acme');
         Http::assertSent(fn (Request $r) => str_contains($r->url(), 'eu.sms.api.sinch.com/xms/v1/plan1/batches') && $r['to'] === ['+61400000000']);
     }

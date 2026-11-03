@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ReportMath;
 use App\Models\Campaign;
 use App\Models\ClickEvent;
 use App\Models\Contact;
@@ -16,21 +17,7 @@ use Illuminate\Http\Request;
 /** Campaign reports (per campaign) and the three analytics dashboards. */
 class ReportController extends Controller
 {
-    protected function pct(int|float $a, int|float $b): float
-    {
-        return $b > 0 ? round($a / $b * 100, 1) : 0.0;
-    }
-
-    /** Fill a {date => count} map into a continuous list of the last $days days. */
-    protected function series($rows, int $days): array
-    {
-        $map = collect($rows)->pluck('c', 'd');
-
-        return collect(range($days - 1, 0))->map(fn ($i) => [
-            'date' => ($d = now()->subDays($i)->toDateString()),
-            'value' => (int) ($map[$d] ?? 0),
-        ])->all();
-    }
+    use ReportMath;
 
     // ------------------------------------------------------------------ campaign reports
 
@@ -75,7 +62,7 @@ class ReportController extends Controller
         return [
             'campaign' => $campaign->load('list:id,name', 'segment:id,name'),
             'stats' => [
-                'recipients' => (clone $logs)->count(), 'sent' => $sent, 'failed' => $count('failed'), 'skipped' => $count('skipped'), 'logged' => $count('logged'),
+                'recipients' => (clone $logs)->count(), 'sent' => $sent, 'failed' => $count('failed'), 'skipped' => $count('skipped') + (int) $campaign->audience_skipped, 'logged' => $count('logged'),
                 'opened' => $opened, 'open_rate' => $this->pct($opened, $sent),
                 'clickers' => $clickers, 'clicks' => $clicks, 'click_rate' => $this->pct($clickers, $sent),
                 'click_to_open' => $this->pct($clickers, $opened),
@@ -83,8 +70,33 @@ class ReportController extends Controller
             'timeline' => ['opens' => $this->series($opens, $span), 'clicks' => $this->series($clickRows, $span)],
             'top_links' => ClickEvent::where('company_id', $campaign->company_id)->where('campaign_id', $campaign->id)
                 ->selectRaw('url, COUNT(*) as clicks, COUNT(DISTINCT email_log_id) as unique_clicks')->groupBy('url')->orderByDesc('clicks')->limit(10)->get(),
-            'problems' => (clone $logs)->whereIn('status', ['failed', 'skipped'])->latest('id')->limit(20)->get(['recipient', 'status', 'error']),
+            'problems' => $this->problems(clone $logs, $campaign, $isEmail),
         ];
+    }
+
+    /**
+     * Failed messages (from the message log) and the people left out at send time, with the contact's name beside the address.
+     * Skipped people have no log rows, so they are worked out from the campaign's audience: unsubscribed, or without an address.
+     */
+    protected function problems($logs, Campaign $campaign, bool $isEmail)
+    {
+        $failed = $logs->where('status', 'failed')->latest('id')->limit(20)->get(['recipient', 'status', 'error', 'contact_id']);
+        $names = Contact::whereIn('id', $failed->pluck('contact_id')->filter())->get(['id', 'first_name', 'last_name'])
+            ->mapWithKeys(fn ($c) => [$c->id => trim($c->first_name.' '.$c->last_name)]);
+        $rows = $failed->map(fn ($l) => ['name' => $names[$l->contact_id] ?? '', 'recipient' => $l->recipient, 'status' => 'failed', 'error' => $l->error]);
+
+        $col = $isEmail ? 'contacts.email' : 'contacts.phone';
+        $left = $campaign->audienceQuery()
+            ->where(fn ($q) => $q->where('contacts.is_subscribed', false)->orWhereNull($col)->orWhere($col, ''))
+            ->orderBy('contacts.id')->limit(20)->get(['contacts.id', 'first_name', 'last_name', 'email', 'phone', 'is_subscribed'])
+            ->map(fn ($c) => [
+                'name' => trim($c->first_name.' '.$c->last_name),
+                'recipient' => (string) ($isEmail ? $c->email : $c->phone),
+                'status' => 'skipped',
+                'error' => ! ($isEmail ? $c->email : $c->phone) ? ($isEmail ? 'No email address found for this contact' : 'No phone number found for this contact') : 'Contact unsubscribed',
+            ]);
+
+        return $rows->concat($left)->values();
     }
 
     /** CSV of every recipient with delivery + engagement status. */
@@ -164,10 +176,8 @@ class ReportController extends Controller
             'new_30d' => Contact::where('created_at', '>=', $since)->count(),
             'growth' => $this->series(Contact::where('created_at', '>=', $since)->selectRaw('DATE(created_at) as d, COUNT(*) as c')->groupBy('d')->get(), 30),
             'subscriptions' => [
-                'email_subscribed' => Contact::where('email_subscribed', true)->whereNotNull('email')->count(),
-                'email_unsubscribed' => Contact::where('email_subscribed', false)->whereNotNull('email')->count(),
-                'sms_subscribed' => Contact::where('sms_subscribed', true)->whereNotNull('phone')->count(),
-                'sms_unsubscribed' => Contact::where('sms_subscribed', false)->whereNotNull('phone')->count(),
+                'subscribed' => Contact::where('is_subscribed', true)->count(),
+                'unsubscribed' => Contact::where('is_subscribed', false)->count(),
             ],
             'by_source' => Contact::selectRaw('source as label, COUNT(*) as value')->groupBy('source')->orderByDesc('value')->get(),
             'by_list' => ContactList::withCount('contacts')->orderByDesc('contacts_count')->limit(8)->get()->map(fn ($l) => ['label' => $l->name, 'value' => $l->contacts_count]),

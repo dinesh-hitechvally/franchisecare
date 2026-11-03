@@ -1,7 +1,7 @@
 <script setup>
 import { ref, reactive, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import api, { errorMessage } from '../api'
+import api, { download, errorMessage } from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import RowMenu from '../components/RowMenu.vue'
 import Modal from '../components/Modal.vue'
@@ -15,7 +15,7 @@ const lists = ref([])
 const tags = ref([])
 const customFields = ref([]) // the company's custom contact fields, edited alongside the built-in ones
 const segments = ref([])
-const f = reactive({ search: '', list_id: '', tag_id: route.query.tag_id || '', segment_id: route.query.segment_id || '' })
+const f = reactive({ search: '', list_id: '', tag_id: route.query.tag_id || '', segment_id: route.query.segment_id || '', status: route.query.status || '' })
 const fDirty = computed(() => Object.values(f).some(Boolean))
 const fClear = () => Object.keys(f).forEach((k) => (f[k] = ''))
 const error = ref('')
@@ -30,6 +30,12 @@ const bulk = reactive({ action: '', tag_id: '', list_id: '' })
 
 const listOptions = computed(() => lists.value.map((l) => ({ value: l.id, label: l.name })))
 const tagOptions = computed(() => tags.value.map((t) => ({ value: t.id, label: t.name })))
+// the file holds the same contacts as the list shows: whatever filters are set apply
+async function exportCsv() {
+  const q = new URLSearchParams(Object.entries(f).filter(([, v]) => v)).toString()
+  try { await download('/contacts/export' + (q ? '?' + q : ''), 'contacts.csv') } catch (e) { error.value = errorMessage(e) }
+}
+
 const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', subscribed: true, list_ids: [], tag_ids: [], custom: {} })
 const form = reactive(blank())
 const allSelected = computed(() => rows.value.length > 0 && rows.value.every((r) => selected.value.includes(r.id)))
@@ -43,18 +49,18 @@ async function load(page = 1) {
   selected.value = []
 }
 
-let subDirty = false // an existing contact's email/SMS subscription is only rewritten when the box is toggled
+let subDirty = false // an existing contact's subscription is only rewritten when the box is toggled
 function edit(c) {
   subDirty = false
-  Object.assign(form, blank(), c ? { ...c, subscribed: !!(c.email_subscribed || c.sms_subscribed), list_ids: c.lists.map((l) => l.id), tag_ids: c.tags.map((t) => t.id), custom: { ...(c.custom || {}) } } : {})
+  Object.assign(form, blank(), c ? { ...c, subscribed: !!c.is_subscribed, list_ids: c.lists.map((l) => l.id), tag_ids: c.tags.map((t) => t.id), custom: { ...(c.custom || {}) } } : {})
   editing.value = c ? c.id : 'new'
   error.value = ''
 }
 
 async function save() {
   error.value = ''
-  const { subscribed, ...rest } = form
-  const body = editing.value === 'new' || subDirty ? { ...rest, email_subscribed: subscribed, sms_subscribed: subscribed } : rest
+  const { subscribed, is_subscribed, subscribed_at, ...rest } = form
+  const body = editing.value === 'new' || subDirty ? { ...rest, is_subscribed: subscribed } : rest
   try {
     editing.value === 'new' ? await api.post('/contacts', body) : await api.put(`/contacts/${editing.value}`, body)
     editing.value = null
@@ -109,6 +115,8 @@ onMounted(async () => {
   <div class="head">
     <h1>Contacts <small>({{ meta.total }})</small></h1>
     <div class="row">
+      <router-link to="/contacts/history" class="btn ghost">Contact histories</router-link>
+      <button class="btn ghost" @click="exportCsv">Export CSV</button>
       <button class="btn ghost" @click="importing = true; error = ''">Import CSV</button>
       <button class="btn" @click="edit(null)">Add contact</button>
     </div>
@@ -120,6 +128,7 @@ onMounted(async () => {
     <input v-model="f.search" placeholder="Search name, email, phone…" style="max-width: 260px" />
     <select v-model="f.list_id" style="max-width: 170px"><option value="">All lists</option><option v-for="l in lists" :key="l.id" :value="l.id">{{ l.name }}</option></select>
     <select v-model="f.tag_id" style="max-width: 170px"><option value="">All tags</option><option v-for="x in tags" :key="x.id" :value="x.id">{{ x.name }}</option></select>
+    <select v-model="f.status" style="max-width: 190px"><option value="">Subscribed &amp; unsubscribed</option><option value="subscribed">Subscribed</option><option value="unsubscribed">Unsubscribed</option></select>
     <select v-model="f.segment_id" style="max-width: 190px"><option value="">All contacts</option><option v-for="s in segments" :key="s.id" :value="s.id">Segment: {{ s.name }}</option></select>
   </FilterBar>
 
@@ -138,12 +147,13 @@ onMounted(async () => {
 
     <p v-if="!rows.length" class="empty">No contacts found.</p>
     <table v-else>
-      <thead><tr><th style="width: 30px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th><th>Name</th><th>Email</th><th>Phone</th><th>Lists &amp; tags</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th style="width: 30px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th><th>Name</th><th>Email</th><th>Phone</th><th>Subscription</th><th>Lists &amp; tags</th><th class="act">Actions</th></tr></thead>
       <tr v-for="c in rows" :key="c.id">
         <td><input v-model="selected" type="checkbox" :value="c.id" /></td>
         <td>{{ c.first_name }} {{ c.last_name }}<br /><small>{{ c.source }}</small></td>
-        <td>{{ c.email }} <span v-if="c.email && !c.email_subscribed" class="badge failed">unsub</span></td>
-        <td>{{ c.phone }} <span v-if="c.phone && !c.sms_subscribed" class="badge failed">unsub</span></td>
+        <td>{{ c.email }}</td>
+        <td>{{ c.phone }}</td>
+        <td><span class="badge" :class="c.is_subscribed ? 'sent' : 'failed'">{{ c.is_subscribed ? 'Subscribed' : 'Unsubscribed' }}</span></td>
         <td>
           <span v-for="l in c.lists" :key="'l' + l.id" class="badge" style="margin: 0 4px 4px 0">{{ l.name }}</span>
           <span v-for="x in c.tags" :key="'t' + x.id" class="tagchip" :style="{ background: x.color + '22', color: x.color }">{{ x.name }}</span>

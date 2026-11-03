@@ -6,6 +6,7 @@ use App\Http\Controllers\ApiKeyController;
 use App\Http\Controllers\ApiV1Controller;
 use App\Http\Controllers\AttachmentController;
 use App\Http\Controllers\HistoryController;
+use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ConfigController;
@@ -39,6 +40,7 @@ Route::post('login', [AuthController::class, 'login'])->middleware('throttle:10,
 Route::get('t/o/{token}.gif', [TrackingController::class, 'open']);
 Route::get('t/c/{token}', [TrackingController::class, 'click']);
 Route::get('unsubscribe/{token}', [TrackingController::class, 'unsubscribe']);
+Route::post('unsubscribe/{token}', [TrackingController::class, 'unsubscribe'])->middleware('throttle:30,1'); // the one-click button in mail apps (List-Unsubscribe-Post)
 Route::get('m/{token}/{name?}', [MediaController::class, 'file'])->middleware('throttle:300,1'); // a library file by its unguessable token
 Route::get('oauth/mail/{provider}/callback', [MailOAuthController::class, 'callback']); // the provider sends the browser back here
 Route::post('public/forms/{slug}', [PublicController::class, 'submit'])->middleware('throttle:20,1');
@@ -64,6 +66,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::apiResource('media', MediaController::class)->only(['index', 'update', 'destroy'])->parameters(['media' => 'media']);
 
     // Audience
+    Route::get('contacts/export', [ContactController::class, 'export']);
     Route::post('contacts/import', [ContactController::class, 'import']);
     Route::post('contacts/bulk', [ContactController::class, 'bulk']);
     Route::apiResource('contacts', ContactController::class)->except('show');
@@ -81,6 +84,9 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::apiResource('campaigns', CampaignController::class);
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send']);
     Route::post('campaigns/{campaign}/unschedule', [CampaignController::class, 'unschedule']);
+    Route::post('campaigns/{campaign}/cancel', [CampaignController::class, 'cancel']);
+    Route::post('campaigns/{campaign}/duplicate', [CampaignController::class, 'duplicate']);
+    Route::get('campaigns/{campaign}/check', [CampaignController::class, 'check']);
     Route::post('campaigns/{campaign}/test', [CampaignController::class, 'test']);
     Route::get('reports/campaigns', [ReportController::class, 'campaigns']);
     Route::get('reports/campaigns/{campaign}', [ReportController::class, 'campaign']);
@@ -89,13 +95,16 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::get('logs/{channel}/{id}', [LogController::class, 'show'])->whereNumber('id');
 
     // Content
+    Route::post('templates/{template}/duplicate', [TemplateController::class, 'duplicate']);
     Route::apiResource('templates', TemplateController::class)->except('show');
     Route::apiResource('layouts', LayoutController::class)->only(['index', 'store', 'destroy']);
     Route::get('submissions', [FormSubmissionController::class, 'all']);
     Route::get('forms/{form}/submissions', [FormSubmissionController::class, 'index']);
     Route::get('forms/{form}/submissions/export', [FormSubmissionController::class, 'export']);
     Route::delete('forms/{form}/submissions/{submission}', [FormSubmissionController::class, 'destroy']);
+    Route::post('forms/{form}/duplicate', [FormController::class, 'duplicate']);
     Route::apiResource('forms', FormController::class);
+    Route::post('landing-pages/{page}/duplicate', [LandingPageController::class, 'duplicate']);
     Route::apiResource('landing-pages', LandingPageController::class)->except('show')->parameters(['landing-pages' => 'page']);
     Route::get('images/providers', [ImageController::class, 'providers']);
     Route::get('images/search', [ImageController::class, 'search']);
@@ -112,6 +121,11 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::get('analytics/campaigns', [ReportController::class, 'campaignAnalytics']);
     Route::get('analytics/contacts', [ReportController::class, 'contactAnalytics']);
     Route::get('analytics/conversions', [ReportController::class, 'conversionAnalytics']);
+    Route::get('analytics/overview', [AnalyticsController::class, 'overview']);
+    Route::get('analytics/email', [AnalyticsController::class, 'email']);
+    Route::get('analytics/sms', [AnalyticsController::class, 'sms']);
+    Route::get('analytics/delivery', [AnalyticsController::class, 'delivery']);
+    Route::get('analytics/automation', [AnalyticsController::class, 'automation']);
 
     Route::get('settings', [SettingsController::class, 'show']);
 
@@ -132,6 +146,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
         Route::post('config/sms/test', [ConfigController::class, 'testSms']);
 
         Route::get('webhooks/events', [WebhookController::class, 'events']);
+        Route::get('webhook-deliveries', [WebhookController::class, 'allDeliveries']);
         Route::post('webhooks/{webhook}/test', [WebhookController::class, 'test']);
         Route::get('webhooks/{webhook}/deliveries', [WebhookController::class, 'deliveries']);
         Route::apiResource('webhooks', WebhookController::class)->except('show');
@@ -142,5 +157,6 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
         Route::get('history', [HistoryController::class, 'index']);
         Route::get('history/types', [HistoryController::class, 'types']);
         Route::get('history/{type}/{id}', [HistoryController::class, 'record'])->whereNumber('id');
+        Route::get('history/{type}/entry/{historyId}', [HistoryController::class, 'entry'])->whereNumber('historyId');
     });
 });

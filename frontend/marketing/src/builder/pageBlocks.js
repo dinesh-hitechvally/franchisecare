@@ -13,7 +13,7 @@ export const FONTS = {
   rounded: "'Trebuchet MS', 'Segoe UI', Verdana, sans-serif",
 }
 
-export const defaultSettings = () => ({ bg: '#ffffff', text: '#1f2937', accent: '#4f46e5', accentText: '#ffffff', font: 'sans', width: 1100, radius: 10 })
+export const defaultSettings = () => ({ bg: '#ffffff', text: '#1f2937', accent: '#4f46e5', accentText: '#ffffff', font: 'sans', width: 1100, radius: 10, title: '' })
 
 const hex = (c) => (/^#[0-9a-fA-F]{3,8}$/.test(c || '') ? c : '')
 /** Only normal link targets; never javascript: and friends. */
@@ -228,7 +228,7 @@ export function pageCss() {
 .pg .foot p{opacity:.7}
 .pg hr{border:0;border-top:1px solid rgba(0,0,0,.12)}
 .pg .credits{font-size:12px;opacity:.6;text-align:center;padding:14px 20px}
-@container pg (max-width:760px){.pg .grid{grid-template-columns:1fr!important}.pg .split{grid-template-columns:1fr;gap:28px}.pg .nav-links{display:none}.pg .sec{padding-top:56px!important;padding-bottom:56px!important}.pg .wrap{padding:0 20px}.pg .hero-text{text-align:center}.pg .hero-text .lead{margin-left:auto}.pg .split .btns{justify-content:center}}
+@container pg (max-width:760px){.pg .grid{grid-template-columns:1fr!important}.pg .split{grid-template-columns:1fr;gap:28px}.pg .nav-links{display:none}.pg .sec{padding-top:56px!important;padding-bottom:56px!important}.pg .hero-text{text-align:center}.pg .hero-text .lead{margin-left:auto}.pg .split .btns{justify-content:center}}
 @container pg (min-width:761px) and (max-width:1000px){.pg .grid{grid-template-columns:repeat(2,1fr)!important}}`
 }
 
@@ -252,7 +252,7 @@ export function renderPage(design) {
   const s = { ...defaultSettings(), ...(design?.settings || {}) }
 
   return `<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Landing page</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(s.title || 'Landing page')}</title>
 <style>html{scroll-behavior:smooth}body{margin:0}${pageCss()}</style></head>
 <body><div class="pg" style="${pageVars(s)}">
 ${renderBody(design)}

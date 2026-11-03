@@ -91,7 +91,7 @@ const form = computed(() => forms[editing.value])
 const connected = computed(() => conn(editing.value).connected)
 
 // ---- sender + which service is in use
-const senderBody = (active) => ({ from_name: c.value.from_name, from_email: c.value.from_email, reply_to: c.value.reply_to, address: c.value.address, active })
+const senderBody = (active) => ({ from_name: c.value.from_name, from_email: c.value.from_email, reply_to: c.value.reply_to, address: c.value.address, per_minute: c.value.per_minute, active })
 async function saveSender(active = c.value.active, note = 'Sender saved.') {
   msg.value = error.value = ''
   busy.value = true
@@ -181,6 +181,7 @@ const mismatch = computed(() => {
         <div class="field"><label>From email</label><input v-model="c.from_email" type="email" placeholder="hello@yourdomain.com" :readonly="viaOauth" /><small>{{ viaOauth ? 'Google and Microsoft only let you send as the connected account.' : 'Must be an address your mail provider allows you to send from.' }}</small></div>
         <div class="field"><label>Reply-to email</label><input v-model="c.reply_to" type="email" /></div>
         <div class="field"><label>Postal address (email footer)</label><input v-model="c.address" /></div>
+        <div class="field"><label>Campaign sending speed <small>(messages per minute)</small></label><input v-model.number="c.per_minute" type="number" min="0" max="6000" /><small>Campaigns go out at this pace, email and SMS, so your mail account's limits are not hit (Gmail allows roughly 500 a day). 60 is a safe start; 0 means as fast as possible.</small></div>
       </div>
       <button class="btn" :disabled="busy">Save sender</button>
     </form>
@@ -225,7 +226,7 @@ const mismatch = computed(() => {
 
         <!-- Log only -->
         <template v-else-if="current.type === 'log'">
-          <p class="hint">Nothing is sent. Each message is only written to the log and listed in the send history as <b>logged only</b>. Handy for trying campaigns and automations safely.</p>
+          <p class="hint">Nothing is sent. Each message is only written to the log and listed in Message logs as <b>logged only</b>. Handy for trying campaigns and automations safely.</p>
           <button v-if="!isActive('log')" type="button" class="btn" :disabled="busy" @click="useService('log')">Use Log only</button>
         </template>
 

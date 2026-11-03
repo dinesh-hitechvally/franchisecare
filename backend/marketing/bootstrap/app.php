@@ -13,6 +13,9 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        // every successful JSON answer of the dashboard API gets the standard shape (App\Support\ApiResponse)
+        $middleware->api(append: [\App\Http\Middleware\WrapApiResponse::class]);
+
         $middleware->alias([
             'no.integration' => \App\Http\Middleware\BlockIntegrationTokens::class,
             'log.activity' => \App\Http\Middleware\LogActivity::class,
@@ -22,4 +25,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // every failure of the API, including abort() and validation, is answered in the standard failure shape
+        $exceptions->render(function (Throwable $e, Request $request) {
+            return $request->is('api/*') || $request->expectsJson() ? \App\Support\ApiResponse::fromException($e) : null;
+        });
     })->create();

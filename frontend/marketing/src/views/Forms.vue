@@ -1,12 +1,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
-import api from '../api'
+import api, { errorMessage } from '../api'
 import RowMenu from '../components/RowMenu.vue'
 import FilterBar from '../components/FilterBar.vue'
 import Modal from '../components/Modal.vue'
 import { FORM_TYPES } from '../builder/formFields'
 
 const rows = ref([])
+const error = ref('')
 const embed = ref(null)
 const copied = ref('')
 const filter = ref('all') // all | newsletter | contact | other
@@ -35,6 +36,10 @@ function actions(f) {
 
 const load = async () => { rows.value = (await api.get('/forms')).data }
 
+async function clone(f) {
+  try { await api.post(`/forms/${f.id}/duplicate`); load() } catch (e) { error.value = errorMessage(e) }
+}
+
 async function remove(f) {
   if (!confirm(`Delete form "${f.name}" and its ${f.submissions} stored submission(s)? Its hosted page and embed code stop working.`)) return
   await api.delete(`/forms/${f.id}`)
@@ -49,7 +54,8 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="head"><h1>Forms</h1><div class="row"><router-link to="/submissions" class="btn ghost">All submissions</router-link><router-link to="/forms/new" class="btn">New form</router-link></div></div>
+  <div class="head"><h1>Forms</h1><div class="row"><router-link to="/forms/history" class="btn ghost">Form histories</router-link><router-link to="/submissions" class="btn ghost">All submissions</router-link><router-link to="/forms/new" class="btn">New form</router-link></div></div>
+  <div v-if="error" class="alert err">{{ error }}</div>
   <p class="intro">Build newsletter sign-ups, contact forms and more. Each form decides what happens when someone submits: save them to contacts and lists, email you the message, send them an auto-reply, or just collect answers in its inbox.</p>
 
   <FilterBar :dirty="dirty" @clear="clear">
@@ -62,7 +68,7 @@ onMounted(load)
     <p v-if="!rows.length" class="empty">No forms yet. <router-link to="/forms/new">Build your first form</router-link>.</p>
     <p v-else-if="!shown.length" class="empty">No forms match these filters.</p>
     <table v-else>
-      <thead><tr><th>Form</th><th>Type</th><th>On submit</th><th>Views</th><th>Submissions</th><th>Conv.</th><th>Status</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Type</th><th>On submit</th><th>Views</th><th>Submissions</th><th>Conversion</th><th>Status</th><th class="act">Actions</th></tr></thead>
       <tr v-for="f in shown" :key="f.id">
         <td>
           <router-link :to="`/forms/${f.id}`"><b>{{ f.name }}</b></router-link><br />
@@ -75,7 +81,7 @@ onMounted(load)
         <td><router-link :to="`/forms/${f.id}/submissions`">{{ f.submissions }}</router-link></td>
         <td>{{ rate(f) }}</td>
         <td><span class="badge" :class="f.active ? 'sent' : ''">{{ f.active ? 'active' : 'paused' }}</span></td>
-        <td class="act"><RowMenu :history="{ type: 'form', id: f.id, title: f.name }" :items="[{ label: 'Edit', to: `/forms/${f.id}` }, { label: 'View submissions', to: `/forms/${f.id}/submissions` }, { label: 'Share', run: () => (embed = f) }, { label: 'Delete', run: () => remove(f), danger: true }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'form', id: f.id, title: f.name }" :items="[{ label: 'Edit', to: `/forms/${f.id}` }, { label: 'View submissions', to: `/forms/${f.id}/submissions` }, { label: 'Share', run: () => (embed = f) }, { label: 'Clone', run: () => clone(f) }, { label: 'Delete', run: () => remove(f), danger: true }]" /></td>
       </tr>
     </table>
   </div>
@@ -94,6 +100,6 @@ onMounted(load)
 </template>
 
 <style scoped>
-.intro { color: #6b7280; margin: -8px 0 18px; max-width: 800px; }
+.intro { color: #6b7280; margin: -8px 0 18px; }
 .ft-newsletter { background: #e8eaf6; color: #3f51b5; } .ft-contact { background: #e0f2f1; color: #00796b; } .ft-other { background: #f3e5f5; color: #8e24aa; }
 </style>

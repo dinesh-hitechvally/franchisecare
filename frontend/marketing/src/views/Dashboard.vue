@@ -31,7 +31,7 @@ const ago = (s) => fmtDateTime(s)
       <div class="card-p">
         <h3>Recent Activity</h3>
         <p v-if="!d.recent_logs.length" class="muted pad">No messages sent yet.</p>
-        <router-link v-for="l in d.recent_logs" :key="l.channel + l.id" to="/logs" class="feed">
+        <router-link v-for="l in d.recent_logs" :key="l.channel + l.id" to="/message-logs" class="feed">
           <span class="ico" :class="l.channel"><Icon :name="l.channel === 'email' ? 'email' : 'sms'" :size="22" /></span>
           <span class="txt"><b>{{ l.recipient }}</b> <span class="badge" :class="l.status">{{ l.status === 'logged' ? 'logged only' : l.status }}</span><small>{{ ago(l.created_at) }}</small></span>
           <Icon name="chevron" :size="22" class="go" />

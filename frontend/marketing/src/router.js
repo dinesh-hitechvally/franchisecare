@@ -20,14 +20,23 @@ const routes = [
   { path: '/campaigns/:id', component: () => import('./views/CampaignEditor.vue') },
   { path: '/reports', component: () => import('./views/Reports.vue') },
   { path: '/reports/:id', component: () => import('./views/ReportDetail.vue') },
-  { path: '/logs', component: () => import('./views/Logs.vue') },
+  { path: '/message-logs', component: () => import('./views/Logs.vue') },
+  { path: '/logs', redirect: (to) => ({ path: '/message-logs', query: to.query }) }, // old address
 
   // Media library
   { path: '/media', component: () => import('./views/Media.vue') },
 
   // Content
   { path: '/templates', component: () => import('./views/Templates.vue') },
-  { path: '/landing-pages', component: () => import('./views/LandingPages.vue') },
+  { path: '/pages', component: () => import('./views/LandingPages.vue') },
+  { path: '/pages/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'landing_page' }, meta: { parent: '/pages' } },
+  { path: '/forms/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'form' }, meta: { parent: '/forms' } },
+  { path: '/templates/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'template' }, meta: { parent: '/templates' } },
+  { path: '/campaigns/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'campaign' }, meta: { parent: '/campaigns' } },
+  { path: '/contacts/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'contact' }, meta: { parent: '/contacts' } },
+  { path: '/workflows/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'workflow' }, meta: { parent: '/workflows' } },
+  { path: '/segments/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'segment' }, meta: { parent: '/segments' } },
+  { path: '/landing-pages', redirect: '/pages' }, // the old address
   { path: '/forms', component: () => import('./views/Forms.vue') },
   { path: '/forms/new', component: () => import('./views/FormBuilder.vue') },
   { path: '/submissions', component: () => import('./views/AllSubmissions.vue') },
@@ -37,10 +46,19 @@ const routes = [
   // Automation
   { path: '/workflows', component: () => import('./views/Workflows.vue') },
   { path: '/automation/triggers', component: () => import('./views/Triggers.vue') },
+  { path: '/automation/webhooks', component: () => import('./views/Webhooks.vue') },
+  { path: '/automation/webhooks/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'webhook' }, meta: { parent: '/automation/webhooks' } },
+  { path: '/automation/webhooks/deliveries', component: () => import('./views/WebhookDeliveries.vue'), meta: { parent: '/automation/webhooks' } },
   { path: '/automation/history', component: () => import('./views/AutomationHistory.vue') },
 
   // Analytics
-  { path: '/analytics/campaigns', component: () => import('./views/AnalyticsCampaigns.vue') },
+  { path: '/analytics', redirect: '/analytics/overview' },
+  { path: '/analytics/overview', component: () => import('./views/AnalyticsOverview.vue') },
+  { path: '/analytics/email', component: () => import('./views/AnalyticsEmail.vue') },
+  { path: '/analytics/sms', component: () => import('./views/AnalyticsSms.vue') },
+  { path: '/analytics/delivery', component: () => import('./views/AnalyticsDelivery.vue') },
+  { path: '/analytics/automation', component: () => import('./views/AnalyticsAutomation.vue') },
+  { path: '/analytics/campaigns', redirect: '/analytics/email' },
   { path: '/analytics/contacts', component: () => import('./views/AnalyticsContacts.vue') },
   { path: '/analytics/conversions', component: () => import('./views/AnalyticsConversions.vue') },
 
@@ -55,7 +73,6 @@ const routes = [
       { path: 'sms', component: () => import('./views/SmsConfig.vue') },
       { path: 'users', component: () => import('./views/Users.vue') },
       { path: 'api', component: () => import('./views/Integrations.vue') },
-      { path: 'webhooks', component: () => import('./views/Webhooks.vue') },
       { path: 'activity', component: () => import('./views/ActivityLogs.vue') },
     ],
   },
@@ -63,7 +80,8 @@ const routes = [
   { path: '/config/email', redirect: '/settings/email' },
   { path: '/config/sms', redirect: '/settings/sms' },
   { path: '/integrations', redirect: '/settings/api' },
-  { path: '/webhooks', redirect: '/settings/webhooks' },
+  { path: '/webhooks', redirect: '/automation/webhooks' },
+  { path: '/settings/webhooks', redirect: '/automation/webhooks' }, // Webhooks moved from Settings to the Automation menu
   { path: '/users', redirect: '/settings/users' },
   { path: '/activity', redirect: (to) => ({ path: '/settings/activity', query: to.query }) },
 
