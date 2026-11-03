@@ -8,6 +8,7 @@ export const FIELD_TYPES = {
   last_name: { label: 'Last name', icon: 'people', group: 'Contact details', unique: true, hint: 'Saved as the contact’s last name', def: { label: 'Last name' } },
   email: { label: 'Email', icon: 'email', group: 'Contact details', unique: true, hint: 'Saved as the contact’s email', def: { label: 'Email', required: true, placeholder: 'you@example.com' } },
   phone: { label: 'Mobile', icon: 'sms', group: 'Contact details', unique: true, hint: 'Saved as the contact’s phone number', def: { label: 'Mobile', placeholder: '+61 400 000 000' } },
+  subscribe: { label: 'Subscribe to newsletter', icon: 'email', group: 'Contact details', unique: true, hint: 'A tick box: people who tick it are subscribed to your marketing emails. Not saved as a contact field.', def: { label: 'Subscribe me to the newsletter' } },
 
   text: { label: 'Short text', icon: 'text', group: 'Other fields', custom: true, def: { label: 'Your question' } },
   textarea: { label: 'Long text', icon: 'template', group: 'Other fields', custom: true, def: { label: 'Message' } },
@@ -23,7 +24,7 @@ export const FIELD_TYPES = {
 
 export const GROUPS = ['Contact details', 'Other fields', 'Content']
 
-export const newField = (type) => ({ id: uid(), key: null, type, label: '', placeholder: '', help: '', required: false, options: [], width: 'full', to_contact: type !== 'textarea', ...FIELD_TYPES[type].def })
+export const newField = (type) => ({ id: uid(), key: null, type, label: '', placeholder: '', help: '', required: false, options: [], width: 'full', to_contact: type !== 'textarea' && type !== 'subscribe', ...FIELD_TYPES[type].def })
 
 /** Column layout: fields flow left to right and wrap, so two ½ fields share a row. */
 export const WIDTHS = [['full', 'Full'], ['two_thirds', '⅔'], ['half', '½'], ['third', '⅓'], ['quarter', '¼']]
@@ -34,7 +35,7 @@ export const FONTS = { sans: 'Arial, Helvetica, sans-serif', serif: 'Georgia, "T
 
 export const defaultForm = () => ({
   name: '', title: 'Join our newsletter', description: 'Tips and offers, straight to your inbox.',
-  fields: [{ ...newField('first_name') }, { ...newField('email') }],
+  fields: [{ ...newField('first_name'), width: 'half' }, { ...newField('last_name'), width: 'half' }, { ...newField('email'), required: true }, { ...newField('phone') }, { ...newField('subscribe'), required: true }],
   style: defaultStyle(), button_text: 'Subscribe', success_message: 'Thanks for subscribing!', existing_message: '', redirect_url: '',
   list_ids: [], tag_ids: [], active: true,
   type: 'newsletter', save_contact: true, subscribe: true,
@@ -74,5 +75,5 @@ export function typePreset(type, userEmail = '') {
   if (type === 'other') {
     return { type, title: 'Tell us more', description: '', button_text: 'Submit', success_message: 'Thank you! We have received your response.', fields: [f('first_name'), f('email', { required: true })], save_contact: false, subscribe: false, ...none }
   }
-  return { type: 'newsletter', title: 'Join our newsletter', description: 'Tips and offers, straight to your inbox.', button_text: 'Subscribe', success_message: 'Thanks for subscribing!', fields: [f('first_name'), f('email', { required: true })], save_contact: true, subscribe: true, ...none }
+  return { type: 'newsletter', title: 'Join our newsletter', description: 'Tips and offers, straight to your inbox.', button_text: 'Subscribe', success_message: 'Thanks for subscribing!', fields: [f('first_name', { width: 'half' }), f('last_name', { width: 'half' }), f('email', { required: true }), f('phone'), f('subscribe', { required: true })], save_contact: true, subscribe: true, ...none }
 }

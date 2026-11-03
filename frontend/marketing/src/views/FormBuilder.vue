@@ -317,7 +317,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
               <div class="fld-in">
                 <h3 v-if="f.type === 'heading'" class="p-h">{{ f.label }}</h3>
                 <p v-else-if="f.type === 'paragraph'" class="p-p">{{ f.label }}</p>
-                <label v-else-if="f.type === 'checkbox'" class="p-opt"><input type="checkbox" disabled /> <span>{{ f.label }}<b v-if="f.required" class="req"> *</b></span></label>
+                <label v-else-if="f.type === 'checkbox' || f.type === 'subscribe'" class="p-opt"><input type="checkbox" disabled /> <span>{{ f.label }}<b v-if="f.required" class="req"> *</b></span></label>
                 <fieldset v-else-if="f.type === 'radio'" class="p-fs">
                   <legend>{{ f.label }}<b v-if="f.required" class="req"> *</b></legend>
                   <label v-for="(o, oi) in f.options.filter((x) => x && x.trim())" :key="oi" class="p-opt"><input type="radio" disabled /> {{ o }}</label>

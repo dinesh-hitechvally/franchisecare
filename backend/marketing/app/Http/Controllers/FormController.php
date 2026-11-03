@@ -203,6 +203,10 @@ class FormController extends Controller
             if (isset(FormFields::STANDARD[$type])) {
                 abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add "'.FormFields::STANDARD[$type].'" once.');
                 $types[] = $type;
+            } elseif ($type === FormFields::SUBSCRIBE) {
+                abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add the newsletter tick box once.');
+                $types[] = $type;
+                $f['key'] = FormFields::SUBSCRIBE;
             } elseif (in_array($type, FormFields::INPUTS, true)) {
                 // custom answers are stored on the contact under `key`
                 $f['key'] = $f['key'] && ! in_array($f['key'], FormFields::RESERVED, true) && ! in_array($f['key'], $keys, true)

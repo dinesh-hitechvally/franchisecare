@@ -48,6 +48,7 @@ class FormRenderer
 
                 return '<fieldset class="fc-fs"><legend>'.$label.$star.'</legend>'.$rows.$help.'</fieldset>';
             case 'checkbox':
+            case 'subscribe':
                 return '<label class="fc-opt fc-chk"><input type="checkbox" name="'.$name.'"'.$req.'> <span>'.$label.$star.'</span></label>'.$help;
             default:
                 $type = self::HTML_TYPES[$f['type']] ?? 'text';

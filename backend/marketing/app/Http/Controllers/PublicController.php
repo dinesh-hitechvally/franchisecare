@@ -113,7 +113,7 @@ class PublicController extends Controller
         $names = [];
         foreach ($fields as $f) {
             $type = $f['type'];
-            $rules[$f['key']] = $type === 'checkbox'
+            $rules[$f['key']] = in_array($type, ['checkbox', 'subscribe'], true)
                 ? ($f['required'] ? ['accepted'] : ['nullable', 'boolean'])
                 : array_merge([$f['required'] ? 'required' : 'nullable'], match ($type) {
                     'email' => ['email', 'max:255'],
@@ -132,7 +132,7 @@ class PublicController extends Controller
         $answers = [];
         foreach ($fields as $f) {
             $v = $data[$f['key']] ?? null;
-            $answers[] = ['label' => $f['label'], 'type' => $f['type'], 'value' => $f['type'] === 'checkbox' ? ($v ? 'Yes' : 'No') : (string) ($v ?? '')];
+            $answers[] = ['label' => $f['label'], 'type' => $f['type'], 'value' => in_array($f['type'], ['checkbox', 'subscribe'], true) ? ($v ? 'Yes' : 'No') : (string) ($v ?? '')];
         }
 
         // questions marked "save on the contact" fill that contact's custom fields (usable as merge tags);
@@ -145,6 +145,9 @@ class PublicController extends Controller
         }
         $email = isset($data['email']) ? Str::lower(trim($data['email'])) : null;
         $phone = $data['phone'] ?? null;
+
+        // with a "Subscribe me to the newsletter" tick box, only people who ticked it are subscribed (it never re-subscribes someone who opted out)
+        $optedIn = ! $fields->contains('type', FormFields::SUBSCRIBE) || ! empty($data[FormFields::SUBSCRIBE]);
 
         $biz = $form->company_id;
         $contact = null;
@@ -165,7 +168,7 @@ class PublicController extends Controller
                 $contact = (new Contact)->forceFill([
                     'company_id' => $biz, 'email' => $email, 'phone' => $phone, 'source' => 'form',
                     'first_name' => $data['first_name'] ?? null, 'last_name' => $data['last_name'] ?? null,
-                    'is_subscribed' => (bool) $form->subscribe,
+                    'is_subscribed' => (bool) $form->subscribe && $optedIn,
                 ]);
                 $contact->save();
             } else {
