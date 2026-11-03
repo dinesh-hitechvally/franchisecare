@@ -22,8 +22,8 @@ class WorkflowRun extends Model
         return $this->belongsTo(Workflow::class);
     }
 
-    public function contact()
+    public function person()
     {
-        return $this->belongsTo(Contact::class);
+        return $this->belongsTo(Person::class);
     }
 }

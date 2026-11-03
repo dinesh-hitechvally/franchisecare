@@ -2,7 +2,7 @@
 
 namespace App\Jobs;
 
-use App\Models\Contact;
+use App\Models\Person;
 use App\Models\Tag;
 use App\Models\Template;
 use App\Models\Workflow;
@@ -16,7 +16,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Throwable;
 
-/** Runs a contact through a workflow until it finishes or reaches a "wait" step. */
+/** Runs a person through a workflow until it finishes or reaches a "wait" step. */
 class ProcessWorkflowRunJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
@@ -35,7 +35,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
 
         $run = WorkflowRun::withoutGlobalScope('company')->findOrFail($this->runId);
         $wf = Workflow::withoutGlobalScope('company')->find($run->workflow_id);
-        $contact = Contact::withoutGlobalScope('company')->find($run->contact_id);
+        $person = Person::withoutGlobalScope('company')->find($run->person_id);
 
         if (! $wf) {
             $this->fail($run, 'Workflow was deleted');
@@ -47,8 +47,8 @@ class ProcessWorkflowRunJob implements ShouldQueue
 
             return;
         }
-        if (! $contact) {
-            $this->fail($run, 'Contact no longer exists');
+        if (! $person) {
+            $this->fail($run, 'Person no longer exists');
 
             return;
         }
@@ -74,7 +74,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
 
                     continue;
                 }
-                [$status, $detail] = $this->perform($step, $wf, $contact, $run);
+                [$status, $detail] = $this->perform($step, $wf, $person, $run);
                 Automation::log($run, $i, $step['type'], $status, $detail);
             } catch (Throwable $e) {
                 Automation::log($run, $i, $step['type'] ?? 'unknown', 'failed', mb_substr($e->getMessage(), 0, 500));
@@ -89,7 +89,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
 
         $run->update(['status' => 'completed', 'completed_at' => now(), 'locked_until' => null, 'next_run_at' => null]);
         Automation::log($run, count($steps), 'end', 'done', 'Workflow completed');
-        WebhookDispatcher::dispatch($run->company_id, 'workflow.completed', ['workflow' => $wf->name, 'contact' => Automation::contactPayload($contact)]);
+        WebhookDispatcher::dispatch($run->company_id, 'workflow.completed', ['workflow' => $wf->name, 'person' => Automation::personPayload($person)]);
     }
 
     protected function fail(WorkflowRun $run, string $msg): void
@@ -107,18 +107,18 @@ class ProcessWorkflowRunJob implements ShouldQueue
     }
 
     /** @return array{0:string,1:string} [status, detail] */
-    protected function perform(array $step, Workflow $wf, Contact $contact, WorkflowRun $run): array
+    protected function perform(array $step, Workflow $wf, Person $person, WorkflowRun $run): array
     {
         switch ($step['type']) {
             case 'send_email':
             case 'send_sms':
                 $email = $step['type'] === 'send_email';
-                $to = $email ? $contact->email : $contact->phone;
+                $to = $email ? $person->email : $person->phone;
                 if (! $to) {
-                    return ['skipped', 'Contact has no '.($email ? 'email' : 'phone')];
+                    return ['skipped', 'Person has no '.($email ? 'email' : 'phone')];
                 }
-                if (! $contact->is_subscribed) {
-                    return ['skipped', 'Contact is unsubscribed'];
+                if (! $person->is_subscribed) {
+                    return ['skipped', 'Person is unsubscribed'];
                 }
                 $tpl = ! empty($step['template_id']) ? Template::withoutGlobalScope('company')->where('company_id', $wf->company_id)->find($step['template_id']) : null;
                 $subject = $tpl->subject ?? ($step['subject'] ?? '');
@@ -130,7 +130,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
                     return ['failed', 'Step has no template or message'];
                 }
                 $log = ($email ? \App\Models\EmailLog::class : \App\Models\SmsLog::class)::create([
-                    'company_id' => $wf->company_id, 'workflow_id' => $wf->id, 'contact_id' => $contact->id,
+                    'company_id' => $wf->company_id, 'workflow_id' => $wf->id, 'person_id' => $person->id,
                     'source' => 'automation', 'recipient' => $to, 'body' => $body, 'status' => 'queued',
                 ] + ($email ? ['subject' => $subject] : []));
                 SendMessageJob::dispatch($log->id, $email ? 'email' : 'sms');
@@ -143,16 +143,16 @@ class ProcessWorkflowRunJob implements ShouldQueue
                 if (! $tag) {
                     return ['failed', 'Tag no longer exists'];
                 }
-                $step['type'] === 'add_tag' ? $contact->tags()->syncWithoutDetaching([$tag->id]) : ($contact->tags()->detach($tag->id) && \App\Services\Automation::fire('tag_removed', $contact, ['id' => $tag->id])); // only when it was really on them, so a workflow that removes the tag it listens for cannot loop
+                $step['type'] === 'add_tag' ? $person->tags()->syncWithoutDetaching([$tag->id]) : ($person->tags()->detach($tag->id) && \App\Services\Automation::fire('tag_removed', $person, ['id' => $tag->id])); // only when it was really on them, so a workflow that removes the tag it listens for cannot loop
 
                 return ['done', ($step['type'] === 'add_tag' ? 'Added tag ' : 'Removed tag ').$tag->name];
 
             case 'add_to_list':
-                $list = \App\Models\ContactList::withoutGlobalScope('company')->where('company_id', $wf->company_id)->find($step['list_id'] ?? 0);
+                $list = \App\Models\PeopleList::withoutGlobalScope('company')->where('company_id', $wf->company_id)->find($step['list_id'] ?? 0);
                 if (! $list) {
                     return ['failed', 'List no longer exists'];
                 }
-                $contact->lists()->syncWithoutDetaching([$list->id]);
+                $person->lists()->syncWithoutDetaching([$list->id]);
 
                 return ['done', 'Added to list '.$list->name];
         }

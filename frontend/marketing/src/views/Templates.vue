@@ -1,5 +1,6 @@
 <script setup>
 import { fmtDateTime } from '../format'
+import { useAuth } from '../stores/auth'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { setQuery } from '../urlState'
@@ -28,6 +29,14 @@ const shown = computed(() => rows.value.filter((r) => (tab.value === 'all' || r.
   && (!search.value.trim() || [r.name, r.subject, r.body && r.body.length < 4000 ? plain(r) : ''].some((t) => String(t || '').toLowerCase().includes(search.value.trim().toLowerCase())))))
 const count = (t) => (t === 'all' ? rows.value.length : rows.value.filter((r) => r.type === t).length)
 const when = (d) => fmtDateTime(d)
+const auth = useAuth()
+// The cards are only a preview: merge tags show sample values instead of {{first_name}}. Nothing is saved or sent with them.
+const SAMPLE = { first_name: 'Alex', last_name: 'Taylor', full_name: 'Alex Taylor', email: 'alex@example.com', phone: '+61 400 000 000', unsubscribe_url: '#' }
+const sample = (text) => String(text || '').replace(/\{\{\s*([a-z_]+)\s*\}\}/gi, (m, k) => {
+  const key = k.toLowerCase()
+  if (key === 'company_name' || key === 'business_name') return auth.company?.name || 'Your company'
+  return SAMPLE[key] ?? m
+})
 const plain = (t) => (t.body || '').replace(/<style[\s\S]*?<\/style>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 90)
 const historyOf = ref(null)
 const editing = ref(null) // id | 'new'
@@ -149,11 +158,11 @@ onMounted(async () => { await load(); openFromQuery() })
   <div v-else-if="shown.length" class="t-grid">
     <div v-for="t in shown" :key="t.id" class="t-card">
       <div class="t-thumb" @click="edit(t)">
-        <iframe v-if="t.type === 'email'" :srcdoc="t.body" tabindex="-1" sandbox="" loading="lazy"></iframe>
-        <div v-else class="sms-bubble" style="margin: 16px">{{ t.body }}</div>
+        <iframe v-if="t.type === 'email'" :srcdoc="sample(t.body)" tabindex="-1" sandbox="" loading="lazy"></iframe>
+        <div v-else class="sms-bubble" style="margin: 16px">{{ sample(t.body) }}</div>
       </div>
       <div class="t-meta">
-        <div><b>{{ t.name }}</b><br /><small><span class="badge" :class="t.type">{{ t.type }}</span> {{ t.subject || (t.type === 'sms' ? 'SMS template' : '') }}</small></div>
+        <div><b>{{ t.name }}</b><br /><small><span class="badge" :class="t.type">{{ t.type }}</span> {{ sample(t.subject) || (t.type === 'sms' ? 'SMS template' : '') }}</small></div>
       </div>
       <div class="t-btns">
         <button type="button" class="btn sm" @click="edit(t)">Edit</button>

@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('workflow_id')->constrained()->cascadeOnDelete();
             $table->foreignId('workflow_run_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('person_id')->nullable()->constrained()->nullOnDelete();
             $table->smallInteger('step_index')->default(-1);
             $table->string('step_type', 30);
             $table->string('status', 12); // done | skipped | failed | waiting

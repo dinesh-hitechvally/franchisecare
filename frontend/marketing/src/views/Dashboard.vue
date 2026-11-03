@@ -54,7 +54,7 @@ const ago = (s) => fmtDateTime(s)
       </div>
       <router-link to="/forms" class="tile green" style="padding: 18px 24px"><b>Grow your list</b><small>Forms &amp; pages</small></router-link>
 
-      <div class="tile indigo"><Icon name="people" :size="42" /><div><b>{{ d.contacts }}</b>Contacts</div></div>
+      <div class="tile indigo"><Icon name="people" :size="42" /><div><b>{{ d.people }}</b>People</div></div>
       <div class="tile pink"><Icon name="campaign" :size="42" /><div><b>{{ d.campaigns }}</b>Campaigns</div></div>
       <div class="tile cyan"><Icon name="email" :size="42" /><div><b>{{ d.email.sent }}</b>Emails Sent</div></div>
       <div class="tile salmon"><Icon name="sms" :size="42" /><div><b>{{ d.sms.sent }}</b>SMS Sent</div></div>
@@ -74,7 +74,7 @@ const ago = (s) => fmtDateTime(s)
           <tr v-for="c in d.upcoming" :key="c.id">
             <td>{{ c.name }}</td>
             <td><span class="badge" :class="c.type">{{ c.type }}</span></td>
-            <td>{{ c.list?.name || 'All contacts' }}</td>
+            <td>{{ c.list?.name || 'All people' }}</td>
             <td>{{ fmtStored(c.scheduled_at) }} UTC</td>
             <td><router-link :to="`/campaigns/${c.id}`">View</router-link></td>
           </tr>

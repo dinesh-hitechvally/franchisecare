@@ -10,7 +10,7 @@ class TagController extends Controller
 {
     public function index()
     {
-        return Tag::withCount('contacts')->orderBy('name')->get();
+        return Tag::withCount('people')->orderBy('name')->get();
     }
 
     public function store(Request $request)

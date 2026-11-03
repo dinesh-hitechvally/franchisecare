@@ -13,8 +13,8 @@ class Tag extends Model
 
     protected $guarded = ['id', 'company_id'];
 
-    public function contacts()
+    public function people()
     {
-        return $this->belongsToMany(Contact::class, 'contact_tag')->using(ContactTag::class);
+        return $this->belongsToMany(Person::class, 'person_tag')->using(PersonTag::class);
     }
 }

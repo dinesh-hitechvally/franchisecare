@@ -1,0 +1,133 @@
+{
+  "settings": {
+    "bg": "#eef0f7",
+    "contentBg": "#ffffff",
+    "width": 600,
+    "radius": 8,
+    "font": "Arial, Helvetica, sans-serif",
+    "textColor": "#333333",
+    "linkColor": "#3f51b5",
+    "preheader": "Welcome aboard! Here is what to expect, and a small gift to get you started."
+  },
+  "blocks": [
+    {
+      "id": "w-header",
+      "type": "header",
+      "text": "{{company_name}}",
+      "align": "center",
+      "size": 22,
+      "color": "#1e2a5a",
+      "padY": 24,
+      "padX": 24,
+      "bg": "#ffffff"
+    },
+    {
+      "id": "w-hero",
+      "type": "hero",
+      "emoji": "👋",
+      "eyebrow": "Welcome aboard",
+      "title": "Welcome, {{first_name}}!",
+      "subtitle": "Thank you for joining {{company_name}}. We are so happy you are here.",
+      "btnText": "",
+      "btnUrl": "https://example.com",
+      "btnBg": "#ffffff",
+      "btnColor": "#3f51b5",
+      "color": "#ffffff",
+      "subColor": "#dfe3f7",
+      "size": 42,
+      "align": "center",
+      "image": "",
+      "padY": 60,
+      "padX": 32,
+      "bg": "#3f51b5"
+    },
+    {
+      "id": "w-intro",
+      "type": "text",
+      "html": "<p>Hi {{first_name}},</p><p>Your details are registered and you are now part of the {{company_name}} family. We will only send you things worth your time: helpful news, thoughtful offers and the occasional surprise.</p>",
+      "align": "left",
+      "size": 16,
+      "color": "",
+      "padY": 32,
+      "padX": 36,
+      "bg": ""
+    },
+    {
+      "id": "w-expect",
+      "type": "heading",
+      "text": "What you can expect",
+      "size": 24,
+      "align": "center",
+      "color": "#1e2a5a",
+      "padY": 8,
+      "padX": 24,
+      "bg": ""
+    },
+    {
+      "id": "w-features",
+      "type": "features",
+      "items": [
+        {
+          "icon": "💌",
+          "title": "Useful updates",
+          "text": "News and tips, but only when they matter."
+        },
+        {
+          "icon": "🎁",
+          "title": "Member offers",
+          "text": "Exclusive deals and early access."
+        },
+        {
+          "icon": "💬",
+          "title": "Real help",
+          "text": "Reply to any email and a person answers."
+        }
+      ],
+      "padY": 20,
+      "padX": 16,
+      "bg": ""
+    },
+    {
+      "id": "w-div",
+      "type": "divider",
+      "color": "#e5e7eb",
+      "thickness": 1,
+      "padY": 8,
+      "padX": 24,
+      "bg": ""
+    },
+    {
+      "id": "w-gift",
+      "type": "coupon",
+      "label": "Your welcome gift",
+      "code": "WELCOME10",
+      "note": "10% off your first visit, valid for 14 days",
+      "boxBg": "#e8eaf6",
+      "border": "#3f51b5",
+      "color": "#1e2a5a",
+      "padY": 28,
+      "padX": 24,
+      "bg": ""
+    },
+    {
+      "id": "w-close",
+      "type": "text",
+      "html": "<p>Just show or quote the code on your first visit. If you have any question at all, simply reply to this email and a real person will get back to you.</p><p>Warm regards,<br><b>The {{company_name}} team</b></p>",
+      "align": "center",
+      "size": 16,
+      "color": "",
+      "padY": 24,
+      "padX": 36,
+      "bg": ""
+    },
+    {
+      "id": "w-footer",
+      "type": "footer",
+      "html": "<p>{{company_name}}<br>You are receiving this email because you registered with us.<br><a href=\"{{unsubscribe_url}}\">Unsubscribe</a></p>",
+      "color": "#6b7280",
+      "padY": 24,
+      "padX": 24,
+      "bg": "#f5f6fb"
+    }
+  ]
+}

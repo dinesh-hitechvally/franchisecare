@@ -14,7 +14,7 @@ const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const error = ref('')
 
 const STEP = { trigger: 'Trigger', send_email: 'Send email', send_sms: 'Send SMS', wait: 'Wait', add_tag: 'Add tag', remove_tag: 'Remove tag', add_to_list: 'Add to list', end: 'Finished', cancelled: 'Cancelled' }
-const who = (c) => (c ? [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email : 'Deleted contact')
+const who = (c) => (c ? [c.first_name, c.last_name].filter(Boolean).join(' ') || c.email : 'Deleted person')
 const when = (d) => fmtDateTime(d, '—')
 const badge = (s) => ({ completed: 'sent', done: 'sent', failed: 'failed', running: 'sending', waiting: 'sending', cancelled: '', skipped: '' }[s] ?? '')
 
@@ -28,7 +28,7 @@ async function load(page = 1) {
 }
 
 async function cancel(run) {
-  if (!confirm(`Remove ${who(run.contact)} from "${run.workflow.name}"?`)) return
+  if (!confirm(`Remove ${who(run.person)} from "${run.workflow.name}"?`)) return
   try { await api.post(`/automation/runs/${run.id}/cancel`); load(meta.value.current_page) } catch (e) { error.value = errorMessage(e) }
 }
 
@@ -42,7 +42,7 @@ onMounted(async () => { workflows.value = (await api.get('/workflows')).data; lo
   <div v-if="error" class="alert err">{{ error }}</div>
 
   <div class="row" style="margin-bottom: 14px">
-    <button class="btn sm" :class="{ ghost: tab !== 'runs' }" @click="tab = 'runs'">Contacts in workflows</button>
+    <button class="btn sm" :class="{ ghost: tab !== 'runs' }" @click="tab = 'runs'">People in workflows</button>
     <button class="btn sm" :class="{ ghost: tab !== 'steps' }" @click="tab = 'steps'">Step log</button>
     <span style="flex: 1"></span>
     <select v-model="f.workflow_id" style="width: 220px"><option value="">All workflows</option><option v-for="w in workflows" :key="w.id" :value="w.id">{{ w.name }}</option></select>
@@ -54,12 +54,12 @@ onMounted(async () => { workflows.value = (await api.get('/workflows')).data; lo
   </div>
 
   <div class="card">
-    <p v-if="!rows.length" class="empty">Nothing here yet. Activate a workflow and add a contact to see it run.</p>
+    <p v-if="!rows.length" class="empty">Nothing here yet. Activate a workflow and add a person to see it run.</p>
 
     <table v-else-if="tab === 'runs'">
-      <thead><tr><th>Contact</th><th>Workflow</th><th>Started</th><th>Progress</th><th>Status</th><th>Next / finished</th><th></th></tr></thead>
+      <thead><tr><th>Person</th><th>Workflow</th><th>Started</th><th>Progress</th><th>Status</th><th>Next / finished</th><th></th></tr></thead>
       <tr v-for="r in rows" :key="r.id">
-        <td>{{ who(r.contact) }}</td><td>{{ r.workflow?.name }}</td><td>{{ when(r.started_at) }}</td>
+        <td>{{ who(r.person) }}</td><td>{{ r.workflow?.name }}</td><td>{{ when(r.started_at) }}</td>
         <td>step {{ r.current_step }}</td>
         <td><span class="badge" :class="badge(r.status)">{{ r.status }}</span><br /><small v-if="r.error">{{ r.error }}</small></td>
         <td>{{ r.status === 'running' ? when(r.next_run_at) : when(r.completed_at) }}</td>
@@ -68,9 +68,9 @@ onMounted(async () => { workflows.value = (await api.get('/workflows')).data; lo
     </table>
 
     <table v-else>
-      <thead><tr><th>When</th><th>Contact</th><th>Workflow</th><th>Step</th><th>Result</th><th>Details</th></tr></thead>
+      <thead><tr><th>When</th><th>Person</th><th>Workflow</th><th>Step</th><th>Result</th><th>Details</th></tr></thead>
       <tr v-for="h in rows" :key="h.id">
-        <td>{{ when(h.created_at) }}</td><td>{{ who(h.contact) }}</td><td>{{ h.workflow?.name }}</td>
+        <td>{{ when(h.created_at) }}</td><td>{{ who(h.person) }}</td><td>{{ h.workflow?.name }}</td>
         <td>{{ h.step_index >= 0 ? h.step_index + 1 + '. ' : '' }}{{ STEP[h.step_type] || h.step_type }}</td>
         <td><span class="badge" :class="badge(h.status)">{{ h.status }}</span></td>
         <td><small>{{ h.detail }}</small></td>

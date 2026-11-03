@@ -40,21 +40,21 @@ class WebhookDeliveriesTest extends TestCase
         $co = (int) Company::value('id');
         $crm = $this->hook($h, 'CRM');
         $zap = $this->hook($h, 'Zapier');
-        $this->delivery($co, $crm, 'contact.created', true, 'OK', '2026-01-10 10:00:00');
+        $this->delivery($co, $crm, 'person.created', true, 'OK', '2026-01-10 10:00:00');
         $this->delivery($co, $crm, 'campaign.sent', false, 'Connection refused', '2026-02-10 10:00:00');
-        $this->delivery($co, $zap, 'contact.created', true, 'OK', '2026-03-10 10:00:00');
+        $this->delivery($co, $zap, 'person.created', true, 'OK', '2026-03-10 10:00:00');
 
         $names = fn (string $q) => collect($this->getJson('/api/webhook-deliveries?'.$q, $h)->assertOk()->json('data'))->map(fn ($d) => $d['webhook_name'].' '.$d['event'])->all();
-        $this->assertSame(['Zapier contact.created', 'CRM campaign.sent', 'CRM contact.created'], $names('')); // newest first
-        $this->assertSame(['CRM campaign.sent', 'CRM contact.created'], $names("webhook_id=$crm"));
-        $this->assertSame(['Zapier contact.created', 'CRM contact.created'], $names('event=contact.created'));
+        $this->assertSame(['Zapier person.created', 'CRM campaign.sent', 'CRM person.created'], $names('')); // newest first
+        $this->assertSame(['CRM campaign.sent', 'CRM person.created'], $names("webhook_id=$crm"));
+        $this->assertSame(['Zapier person.created', 'CRM person.created'], $names('event=person.created'));
         $this->assertSame(['CRM campaign.sent'], $names('result=failed'));
-        $this->assertSame(['Zapier contact.created', 'CRM contact.created'], $names('result=ok'));
+        $this->assertSame(['Zapier person.created', 'CRM person.created'], $names('result=ok'));
         $this->assertSame(['CRM campaign.sent'], $names('search=refused'));
         $this->assertSame(['CRM campaign.sent'], $names('from=2026-02-01&to=2026-02-28'));
 
         $first = $this->getJson('/api/webhook-deliveries', $h)->json('data.0');
-        $this->assertSame('{"event":"contact.created"}', $first['payload']); // what was sent, for the "view request" detail
+        $this->assertSame('{"event":"person.created"}', $first['payload']); // what was sent, for the "view request" detail
     }
 
     public function test_a_deleted_webhooks_deliveries_stay_in_the_log_with_its_name(): void
@@ -62,7 +62,7 @@ class WebhookDeliveriesTest extends TestCase
         $h = $this->owner();
         $co = (int) Company::value('id');
         $hook = $this->hook($h, 'Old CRM');
-        $this->delivery($co, $hook, 'contact.created', true);
+        $this->delivery($co, $hook, 'person.created', true);
         $this->deleteJson("/api/webhooks/$hook", [], $h)->assertNoContent();
 
         $this->getJson('/api/webhook-deliveries', $h)->assertOk()->assertJsonPath('data.0.webhook_name', 'Old CRM');
@@ -72,7 +72,7 @@ class WebhookDeliveriesTest extends TestCase
     {
         $h = $this->owner();
         $co = (int) Company::value('id');
-        $this->delivery($co, $this->hook($h, 'CRM'), 'contact.created', true);
+        $this->delivery($co, $this->hook($h, 'CRM'), 'person.created', true);
 
         $other = $this->owner('b@x.com', 'Other');
         $this->getJson('/api/webhook-deliveries', $other)->assertOk()->assertJsonPath('total', 0);

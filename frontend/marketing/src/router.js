@@ -7,7 +7,11 @@ const routes = [
   { path: '/dashboard', component: () => import('./views/Dashboard.vue') },
 
   // Audience
-  { path: '/contacts', component: () => import('./views/Contacts.vue') },
+  { path: '/people', component: () => import('./views/People.vue') },
+  // old addresses (this screen used to be called Contacts)
+  { path: '/contacts', redirect: (to) => ({ path: '/people', query: to.query }) },
+  { path: '/contacts/history', redirect: (to) => ({ path: '/people/history', query: to.query }) },
+  { path: '/analytics/contacts', redirect: '/analytics/people' },
   { path: '/lists', component: () => import('./views/Lists.vue') },
   { path: '/tags', component: () => import('./views/Tags.vue') },
   { path: '/custom-fields', component: () => import('./views/CustomFields.vue') },
@@ -33,7 +37,7 @@ const routes = [
   { path: '/forms/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'form' }, meta: { parent: '/forms' } },
   { path: '/templates/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'template' }, meta: { parent: '/templates' } },
   { path: '/campaigns/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'campaign' }, meta: { parent: '/campaigns' } },
-  { path: '/contacts/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'contact' }, meta: { parent: '/contacts' } },
+  { path: '/people/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'person' }, meta: { parent: '/people' } },
   { path: '/workflows/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'workflow' }, meta: { parent: '/workflows' } },
   { path: '/segments/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'segment' }, meta: { parent: '/segments' } },
   { path: '/landing-pages', redirect: '/pages' }, // the old address
@@ -59,7 +63,7 @@ const routes = [
   { path: '/analytics/delivery', component: () => import('./views/AnalyticsDelivery.vue') },
   { path: '/analytics/automation', component: () => import('./views/AnalyticsAutomation.vue') },
   { path: '/analytics/campaigns', redirect: '/analytics/email' },
-  { path: '/analytics/contacts', component: () => import('./views/AnalyticsContacts.vue') },
+  { path: '/analytics/people', component: () => import('./views/AnalyticsPeople.vue') },
   { path: '/analytics/conversions', component: () => import('./views/AnalyticsConversions.vue') },
 
   // System settings

@@ -20,11 +20,11 @@ class History
     public const TYPES = [
         'company' => 'companies',
         'user' => 'users',
-        'contact' => 'contacts',
-        'contact_list' => 'contact_lists',
-        'list_membership' => 'contact_list_members',
+        'person' => 'people',
+        'people_list' => 'people_lists',
+        'list_membership' => 'people_list_members',
         'tag' => 'tags',
-        'contact_tag' => 'contact_tag',
+        'person_tag' => 'person_tag',
         'segment' => 'segments',
         'template' => 'templates',
         'layout' => 'layouts',
@@ -33,8 +33,8 @@ class History
         'landing_page' => 'landing_pages',
         'workflow' => 'workflows',
         'webhook' => 'webhooks',
-        'contact_field' => 'contact_fields',
-        'contact_field_value' => 'contact_field_values',
+        'person_field' => 'person_fields',
+        'person_field_value' => 'person_field_values',
         'form_submission' => 'form_submissions',
         'media' => 'media',
     ];
@@ -186,7 +186,7 @@ class History
     public static function changes(string $type, object $row): array
     {
         $table = self::TYPES[$type];
-        $cols = in_array($table, ['contact_list_members', 'contact_tag'], true) ? [] : array_diff(self::mirrored($table), ['id', 'company_id', 'created_at', 'updated_at', 'deleted_at']);
+        $cols = in_array($table, ['people_list_members', 'person_tag'], true) ? [] : array_diff(self::mirrored($table), ['id', 'company_id', 'created_at', 'updated_at', 'deleted_at']);
 
         $prev = null;
         if (isset($row->id) && $row->id !== null) {

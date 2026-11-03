@@ -18,8 +18,8 @@ class BackfillHistory extends Command
     protected const MODELS = [
         'companies' => Models\Company::class,
         'users' => Models\User::class,
-        'contacts' => Models\Contact::class,
-        'contact_lists' => Models\ContactList::class,
+        'people' => Models\Person::class,
+        'people_lists' => Models\PeopleList::class,
         'tags' => Models\Tag::class,
         'segments' => Models\Segment::class,
         'templates' => Models\Template::class,
@@ -29,11 +29,11 @@ class BackfillHistory extends Command
         'landing_pages' => Models\LandingPage::class,
         'workflows' => Models\Workflow::class,
         'webhooks' => Models\Webhook::class,
-        'contact_fields' => Models\ContactField::class,
-        'contact_field_values' => Models\ContactFieldValue::class,
+        'person_fields' => Models\PersonField::class,
+        'person_field_values' => Models\PersonFieldValue::class,
         'form_submissions' => Models\FormSubmission::class,
-        'contact_list_members' => Models\ContactListMember::class,
-        'contact_tag' => Models\ContactTag::class,
+        'people_list_members' => Models\PeopleListMember::class,
+        'person_tag' => Models\PersonTag::class,
     ];
 
     public function handle(): int

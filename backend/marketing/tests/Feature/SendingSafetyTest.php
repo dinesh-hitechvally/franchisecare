@@ -36,12 +36,12 @@ class SendingSafetyTest extends TestCase
     public function test_every_email_has_a_plain_text_part_and_a_one_click_unsubscribe_header(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $id = $this->campaign($h);
         $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk();
 
         $sent = Mail::mailer()->getSymfonyTransport()->messages()->last()->getOriginalMessage();
-        $token = \App\Models\Contact::withoutGlobalScopes()->value('unsubscribe_token');
+        $token = \App\Models\Person::withoutGlobalScopes()->value('unsubscribe_token');
         $this->assertStringContainsString("/api/unsubscribe/$token", $sent->getHeaders()->get('List-Unsubscribe')->getBodyAsString());
         $this->assertSame('List-Unsubscribe=One-Click', $sent->getHeaders()->get('List-Unsubscribe-Post')->getBodyAsString());
         $this->assertStringContainsString('Visit our shop (https://example.com/a)', $sent->getTextBody());
@@ -49,7 +49,7 @@ class SendingSafetyTest extends TestCase
 
         // the one-click button posts to the same address and unsubscribes the person
         $this->post("/api/unsubscribe/$token")->assertOk();
-        $this->assertFalse((bool) \App\Models\Contact::withoutGlobalScopes()->first()->is_subscribed);
+        $this->assertFalse((bool) \App\Models\Person::withoutGlobalScopes()->first()->is_subscribed);
     }
 
     public function test_plain_text_is_readable(): void
@@ -62,7 +62,7 @@ class SendingSafetyTest extends TestCase
     {
         $h = $this->owner();
         foreach (['a', 'b', 'c'] as $n) {
-            $this->postJson('/api/contacts', ['email' => "$n@x.com"], $h)->assertCreated();
+            $this->postJson('/api/people', ['email' => "$n@x.com"], $h)->assertCreated();
         }
         $this->putJson('/api/config/email', ['active' => 'default', 'per_minute' => 30], $h)->assertOk()->assertJsonPath('per_minute', 30);
         $id = $this->campaign($h);
@@ -81,7 +81,7 @@ class SendingSafetyTest extends TestCase
     public function test_a_sending_campaign_can_be_stopped_and_what_is_waiting_is_skipped(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'a@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'a@x.com'], $h)->assertCreated();
         $id = $this->campaign($h);
         $co = (int) Company::value('id');
 
@@ -118,9 +118,9 @@ class SendingSafetyTest extends TestCase
     public function test_the_pre_send_check_counts_who_will_receive_it_and_warns(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'a@x.com'], $h)->assertCreated();
-        $this->postJson('/api/contacts', ['email' => 'b@x.com', 'is_subscribed' => false], $h)->assertCreated();
-        $this->postJson('/api/contacts', ['phone' => '+61400000000'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'a@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'b@x.com', 'is_subscribed' => false], $h)->assertCreated();
+        $this->postJson('/api/people', ['phone' => '+61400000000'], $h)->assertCreated();
         $id = $this->campaign($h, ['subject' => str_repeat('Big sale ', 12), 'body' => '<a href="http://localhost/x">x</a>']);
 
         $r = $this->getJson("/api/campaigns/$id/check", $h)->assertOk();
@@ -131,19 +131,19 @@ class SendingSafetyTest extends TestCase
         $this->assertStringContainsString('2 parts', $this->getJson("/api/campaigns/$sms/check", $h)->json('warnings.0'));
     }
 
-    public function test_contacts_export_as_csv_with_the_list_filters_and_without_spreadsheet_formulas(): void
+    public function test_people_export_as_csv_with_the_list_filters_and_without_spreadsheet_formulas(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['first_name' => '=HYPERLINK("http://evil")', 'email' => 'a@x.com'], $h)->assertCreated();
-        $this->postJson('/api/contacts', ['first_name' => 'Bob', 'email' => 'b@x.com', 'is_subscribed' => false], $h)->assertCreated();
+        $this->postJson('/api/people', ['first_name' => '=HYPERLINK("http://evil")', 'email' => 'a@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['first_name' => 'Bob', 'email' => 'b@x.com', 'is_subscribed' => false], $h)->assertCreated();
 
-        $all = $this->get('/api/contacts/export', $h)->assertOk()->streamedContent();
+        $all = $this->get('/api/people/export', $h)->assertOk()->streamedContent();
         $this->assertStringContainsString('"First name","Last name",Email,Phone,Subscribed', $all);
         $this->assertStringContainsString("'=HYPERLINK", $all);
         $this->assertStringNotContainsString(',=HYPERLINK', $all);
         $this->assertStringContainsString('a@x.com', $all);
 
-        $unsub = $this->get('/api/contacts/export?status=unsubscribed', $h)->streamedContent();
+        $unsub = $this->get('/api/people/export?status=unsubscribed', $h)->streamedContent();
         $this->assertStringContainsString('b@x.com', $unsub);
         $this->assertStringNotContainsString('a@x.com', $unsub);
     }

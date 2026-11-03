@@ -18,7 +18,7 @@ class Form extends Model
     {
         return [
             'fields' => 'array', 'style' => 'array', 'list_ids' => 'array', 'tag_ids' => 'array', 'notify_emails' => 'array',
-            'active' => 'boolean', 'save_contact' => 'boolean', 'subscribe' => 'boolean', 'autoreply' => 'boolean', 'autoreply_attachments' => 'array',
+            'active' => 'boolean', 'save_person' => 'boolean', 'subscribe' => 'boolean', 'autoreply' => 'boolean', 'autoreply_attachments' => 'array',
         ];
     }
 

@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('campaign_id')->nullable()->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('workflow_id')->nullable()->index(); // set for texts sent by an automation workflow
-            $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('person_id')->nullable()->constrained()->nullOnDelete();
             $table->string('recipient');
             $table->text('body')->nullable();
             $table->enum('status', ['queued', 'sent', 'failed', 'skipped', 'logged'])->default('queued'); // logged = only written to the log (test mode / log mailer): nothing was delivered

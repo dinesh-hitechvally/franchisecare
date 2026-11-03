@@ -52,10 +52,10 @@ class ApiResponseTest extends TestCase
     {
         $h = $this->owner();
         foreach (['a', 'b', 'c'] as $n) {
-            $this->postJson('/api/contacts', ['email' => "$n@x.com"], $h)->assertCreated();
+            $this->postJson('/api/people', ['email' => "$n@x.com"], $h)->assertCreated();
         }
 
-        $body = $this->raw($this->getJson('/api/contacts?per_page=2', $h)->assertOk());
+        $body = $this->raw($this->getJson('/api/people?per_page=2', $h)->assertOk());
         $this->assertTrue($body['success']);
         $this->assertCount(2, $body['data']);                       // the items, not a paginator inside data
         $this->assertArrayNotHasKey('current_page', $body['data']);
@@ -63,7 +63,7 @@ class ApiResponseTest extends TestCase
         $this->assertSame(2, $body['meta']['per_page']);
         $this->assertArrayNotHasKey('data', $body['meta']);
 
-        $this->getJson('/api/contacts?per_page=2', $h)->assertJsonPath('total', 3)->assertJsonCount(2, 'data'); // what the screens (and the tests) see: the original paginator
+        $this->getJson('/api/people?per_page=2', $h)->assertJsonPath('total', 3)->assertJsonCount(2, 'data'); // what the screens (and the tests) see: the original paginator
     }
 
     public function test_an_empty_answer_stays_empty(): void
@@ -212,18 +212,18 @@ class ApiResponseTest extends TestCase
 
         // public API v1: a promise to outside systems, so its successful answers are not wrapped
         $this->app['auth']->forgetGuards();
-        $v1 = $this->raw($this->postJson('/api/v1/contacts', ['email' => 'api@x.com'], ['Authorization' => 'Bearer '.$key, 'Accept' => 'application/json'])->assertCreated());
+        $v1 = $this->raw($this->postJson('/api/v1/people', ['email' => 'api@x.com'], ['Authorization' => 'Bearer '.$key, 'Accept' => 'application/json'])->assertCreated());
         $this->assertFalse(ApiResponse::isEnvelope($v1));
         $this->assertSame('api@x.com', $v1['email']);
 
         // ...but a failure there still says what went wrong in the standard way
         $this->app['auth']->forgetGuards();
-        $body = $this->raw($this->getJson('/api/v1/contacts?email=nobody@x.com', ['Authorization' => 'Bearer '.$key])->assertNotFound());
+        $body = $this->raw($this->getJson('/api/v1/people?email=nobody@x.com', ['Authorization' => 'Bearer '.$key])->assertNotFound());
         $this->assertSame([false, 'not_found'], [$body['success'], $body['code']]);
 
         // a hosted form's own page script reads this answer
         $this->app['auth']->forgetGuards();
-        $form = $this->postJson('/api/forms', ['name' => 'News', 'type' => 'newsletter', 'subscribe' => true, 'save_contact' => true], $h)->assertCreated()->json();
+        $form = $this->postJson('/api/forms', ['name' => 'News', 'type' => 'newsletter', 'subscribe' => true, 'save_person' => true], $h)->assertCreated()->json();
         $this->app['auth']->forgetGuards();
         $sub = $this->raw($this->postJson('/api/public/forms/'.$form['slug'], ['email' => 'fan@x.com'])->assertOk());
         $this->assertFalse(ApiResponse::isEnvelope($sub));

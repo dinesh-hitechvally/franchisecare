@@ -6,7 +6,7 @@ use App\Http\Controllers\Concerns\ReportMath;
 use App\Models\AutomationHistory;
 use App\Models\Campaign;
 use App\Models\ClickEvent;
-use App\Models\Contact;
+use App\Models\Person;
 use App\Models\EmailLog;
 use App\Models\FormSubmission;
 use App\Models\SmsLog;
@@ -18,7 +18,7 @@ use Illuminate\Support\Collection;
 
 /**
  * The analytics reports: overview, email, SMS, delivery & errors, automation.
- * (Contacts and forms/pages reports live in ReportController.) Every report takes ?days= (7, 14, 30, 60 or 90).
+ * (People and forms/pages reports live in ReportController.) Every report takes ?days= (7, 14, 30, 60 or 90).
  */
 class AnalyticsController extends Controller
 {
@@ -70,7 +70,7 @@ class AnalyticsController extends Controller
             'days' => $days,
             'metrics' => [
                 'messages' => $metric($sent($from, $end), $sent($prevFrom, $from)),
-                'new_contacts' => $metric($count(Contact::class, 'created_at', $from, $end), $count(Contact::class, 'created_at', $prevFrom, $from)),
+                'new_people' => $metric($count(Person::class, 'created_at', $from, $end), $count(Person::class, 'created_at', $prevFrom, $from)),
                 'submissions' => $metric($count(FormSubmission::class, 'created_at', $from, $end), $count(FormSubmission::class, 'created_at', $prevFrom, $from)),
                 'automation_runs' => $metric($count(WorkflowRun::class, 'started_at', $from, $end), $count(WorkflowRun::class, 'started_at', $prevFrom, $from)),
             ],
@@ -80,13 +80,13 @@ class AnalyticsController extends Controller
                 'failed' => EmailLog::where('status', 'failed')->where('created_at', '>=', $from)->count() + SmsLog::where('status', 'failed')->where('created_at', '>=', $from)->count(),
                 'open_rate' => $this->pct($opened, $emailSent),
                 'click_rate' => $this->pct($clickers, $emailSent),
-                'contacts' => Contact::count(),
-                'subscribed' => Contact::where('is_subscribed', true)->count(),
-                'unsubscribed' => Contact::where('is_subscribed', false)->count(),
+                'people' => Person::count(),
+                'subscribed' => Person::where('is_subscribed', true)->count(),
+                'unsubscribed' => Person::where('is_subscribed', false)->count(),
             ],
             'daily' => [
                 'messages' => $this->series($this->merged($this->daily(EmailLog::where('status', 'sent'), 'sent_at', $from), $this->daily(SmsLog::where('status', 'sent'), 'sent_at', $from)), $days),
-                'contacts' => $this->series($this->daily(Contact::query(), 'created_at', $from), $days),
+                'people' => $this->series($this->daily(Person::query(), 'created_at', $from), $days),
                 'submissions' => $this->series($this->daily(FormSubmission::query(), 'created_at', $from), $days),
             ],
         ];

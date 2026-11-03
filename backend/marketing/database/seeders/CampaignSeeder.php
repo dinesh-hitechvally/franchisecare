@@ -3,7 +3,7 @@
 namespace Database\Seeders;
 
 use App\Models\Campaign;
-use App\Models\ContactList;
+use App\Models\PeopleList;
 use App\Models\Segment;
 use App\Models\Tag;
 use App\Models\Template;
@@ -14,7 +14,7 @@ class CampaignSeeder extends DemoSeeder
     public function run(): void
     {
         $biz = $this->companyId();
-        $list = ContactList::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => ContactListSeeder::NEWSLETTER])->value('id');
+        $list = PeopleList::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => PeopleListSeeder::NEWSLETTER])->value('id');
         $vip = Tag::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => TagSeeder::VIP])->value('id');
         $web = Tag::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => TagSeeder::WEBSITE_LEAD])->value('id');
         $segment = Segment::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => 'Gmail VIPs'])->value('id');
@@ -23,7 +23,7 @@ class CampaignSeeder extends DemoSeeder
         $page = fn (string $heading, string $text) => '<div style="max-width:600px;margin:0 auto;font-family:Arial,sans-serif"><h1>'.$heading.'</h1><p>'.$text.'</p></div>';
 
         $campaigns = [
-            ['Welcome newsletter', 'email', 'Welcome to {{company_name}}, {{first_name}}!', $welcome->body, ['template_id' => $welcome->id, 'contact_list_id' => $list]],
+            ['Welcome newsletter', 'email', 'Welcome to {{company_name}}, {{first_name}}!', $welcome->body, ['template_id' => $welcome->id, 'people_list_id' => $list, 'design' => $welcome->design]],
             ['VIP early access', 'email', 'Early access for you, {{first_name}}', $page('Hello {{first_name}},', 'As one of our VIPs you get first look at what is coming next at {{company_name}}.'), ['tag_id' => $vip]],
             ['Gmail VIP offer', 'email', 'A little something for our Gmail VIPs', $page('Hi {{first_name}},', 'A special offer, just for you.'), ['segment_id' => $segment]],
             ['Monthly update (everyone)', 'email', 'What happened this month at {{company_name}}', $page('Monthly update', 'Here is what we have been up to, {{first_name}}.'), []],

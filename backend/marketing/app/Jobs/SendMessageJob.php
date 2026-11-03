@@ -37,7 +37,7 @@ class SendMessageJob implements ShouldQueue
     public function handle(MessageRenderer $renderer, SmsManager $sms): void
     {
         $model = $this->channel === 'sms' ? SmsLog::class : EmailLog::class;
-        $log = $model::withoutGlobalScope('company')->with('contact.fieldValues.field')->findOrFail($this->logId);
+        $log = $model::withoutGlobalScope('company')->with('person.fieldValues.field')->findOrFail($this->logId);
         if ($log->status !== 'queued') {
             return;
         }
@@ -46,8 +46,8 @@ class SendMessageJob implements ShouldQueue
         $campaign = $log->campaign_id ? Campaign::withoutGlobalScope('company')->find($log->campaign_id) : null;
         // campaign messages take their content from the campaign; workflow messages carry it on the log itself
         // the campaign or the person was deleted after this message was queued: don't send it
-        if (($log->campaign_id && ! $campaign) || ($log->contact_id && ! $log->contact)) {
-            $log->update(['status' => 'skipped', 'error' => $log->campaign_id && ! $campaign ? 'The campaign was deleted before this was sent.' : 'The contact was deleted before this was sent.']);
+        if (($log->campaign_id && ! $campaign) || ($log->person_id && ! $log->person)) {
+            $log->update(['status' => 'skipped', 'error' => $log->campaign_id && ! $campaign ? 'The campaign was deleted before this was sent.' : 'The person was deleted before this was sent.']);
             if ($log->campaign_id) {
                 FinalizeCampaign::check($log->campaign_id);
             }
@@ -59,13 +59,13 @@ class SendMessageJob implements ShouldQueue
 
         try {
             if ($this->channel === 'email') {
-                [$subject, $html] = $renderer->renderEmail($subjectSrc, $bodySrc, $company, $log->contact, $log);
+                [$subject, $html] = $renderer->renderEmail($subjectSrc, $bodySrc, $company, $log->person, $log);
 
                 $files = Attachments::in($html.Attachments::marker($campaign->attachments ?? null), $log->company_id); // the campaign's files, plus any the message body itself names (form auto-replies, workflow templates)
 
                 // the text copy keeps the real links, not the click-tracking ones the HTML gets
-                $plain = MessageRenderer::plainText($renderer->renderEmail($subjectSrc, $bodySrc, $company, $log->contact)[1]);
-                $unsub = $log->contact ? url("/api/unsubscribe/{$log->contact->unsubscribe_token}?channel=email") : null;
+                $plain = MessageRenderer::plainText($renderer->renderEmail($subjectSrc, $bodySrc, $company, $log->person)[1]);
+                $unsub = $log->person ? url("/api/unsubscribe/{$log->person->unsubscribe_token}?channel=email") : null;
 
                 CompanyMailer::for($company)->html($html, function ($m) use ($log, $company, $subject, $files, $plain, $unsub) {
                     $m->text($plain);
@@ -89,7 +89,7 @@ class SendMessageJob implements ShouldQueue
 
                 $log->update(['status' => SendLog::deliveredStatus($company, 'email'), 'error' => null, 'subject' => $subject, 'body' => $html, 'sent_at' => now(), 'service' => SendLog::service($company, 'email')]);
             } else {
-                $text = $renderer->renderSms($bodySrc, $company, $log->contact);
+                $text = $renderer->renderSms($bodySrc, $company, $log->person);
                 $id = $sms->forCompany($company)->send($log->recipient, $text);
 
                 $log->update(['status' => SendLog::deliveredStatus($company, 'sms'), 'error' => null, 'body' => $text, 'provider_id' => $id, 'sent_at' => now(), 'service' => SendLog::service($company, 'sms')]);

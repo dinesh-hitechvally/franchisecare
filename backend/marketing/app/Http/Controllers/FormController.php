@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\ContactField;
-use App\Models\ContactList;
+use App\Models\PersonField;
+use App\Models\PeopleList;
 use App\Models\Form;
 use App\Models\Tag;
 use App\Services\Attachments;
@@ -90,9 +90,11 @@ class FormController extends Controller
             'fields.*.label' => 'required|string|max:1000',
             'fields.*.placeholder' => 'nullable|string|max:120',
             'fields.*.help' => 'nullable|string|max:200',
+            'fields.*.default' => 'nullable|string|max:500',
+            'fields.*.rules' => 'nullable|array',
             'fields.*.required' => 'boolean',
             'fields.*.width' => ['nullable', Rule::in(FormFields::WIDTHS)],
-            'fields.*.to_contact' => 'boolean',
+            'fields.*.to_person' => 'boolean',
             'fields.*.options' => 'nullable|array|max:30',
             'fields.*.options.*' => 'nullable|string|max:100', // blanks are dropped below
             'button_text' => 'nullable|string|max:60',
@@ -100,7 +102,7 @@ class FormController extends Controller
             'existing_message' => 'nullable|string|max:500',
             'redirect_url' => 'nullable|url:http,https|max:500',
             'type' => ['nullable', Rule::in(FormFields::FORM_TYPES)],
-            'save_contact' => 'boolean',
+            'save_person' => 'boolean',
             'subscribe' => 'boolean',
             'notify_emails' => 'nullable|array|max:5',
             'notify_emails.*' => 'email|max:255',
@@ -126,7 +128,7 @@ class FormController extends Controller
         ]);
 
         $data['type'] = $data['type'] ?? 'newsletter';
-        $data['save_contact'] = $data['save_contact'] ?? true;
+        $data['save_person'] = $data['save_person'] ?? true;
         $data['subscribe'] = $data['subscribe'] ?? ($data['type'] === 'newsletter');
         $data['autoreply'] = $data['autoreply'] ?? false;
         $data['notify_emails'] = array_values(array_unique(array_map('strtolower', $data['notify_emails'] ?? [])));
@@ -136,13 +138,13 @@ class FormController extends Controller
         $files = $data['autoreply'] ? Attachments::in('<!--fc-attach:'.implode(',', array_column($data['autoreply_attachments'] ?? [], 'token')).'-->', request()->user()->company_id) : [];
         $data['autoreply_attachments'] = $files ? array_map(fn ($f) => ['token' => $f['token'], 'name' => $f['name'], 'size' => $f['size']], $files) : null;
 
-        $data['fields'] = $this->checkedFields($data['fields'] ?? FormFields::defaults(), $data['save_contact'] || $data['autoreply']); // omitted = a simple first name + email form
-        $data['fields'] = $this->linkToContactFields($data['fields'], $data['save_contact']);
+        $data['fields'] = $this->checkedFields($data['fields'] ?? FormFields::defaults(), $data['save_person'] || $data['autoreply']); // omitted = a simple first name + email form
+        $data['fields'] = $this->linkToPersonFields($data['fields'], $data['save_person']);
         abort_if($data['autoreply'] && (! $data['autoreply_subject'] || ! $data['autoreply_body']), 422, 'Write a subject and a message for the auto-reply, or switch it off.');
         abort_if($data['autoreply'] && ! collect($data['fields'])->contains(fn ($f) => $f['type'] === 'email'), 422, 'An auto-reply needs an Email field so we know where to send it.');
         $data['style'] = FormFields::style($data['style'] ?? null);
         // only ids that belong to this company
-        $data['list_ids'] = ContactList::whereIn('id', $data['list_ids'] ?? [])->pluck('id')->all();
+        $data['list_ids'] = PeopleList::whereIn('id', $data['list_ids'] ?? [])->pluck('id')->all();
         $data['tag_ids'] = Tag::whereIn('id', $data['tag_ids'] ?? [])->pluck('id')->all();
         $data['button_text'] = ($data['button_text'] ?? '') ?: 'Subscribe';
         $data['success_message'] = ($data['success_message'] ?? '') ?: 'Thanks for subscribing!';
@@ -153,19 +155,19 @@ class FormController extends Controller
     }
 
     /**
-     * Questions marked "save on the contact" become managed custom fields (Audience → Custom Fields).
+     * Questions marked "save on the person" become managed custom fields (Audience → Custom Fields).
      * Two forms asking the same thing share one field; if the same name would mean a different kind of
      * answer (say a dropdown vs free text) the question gets its own field instead of corrupting the old one.
      */
-    protected function linkToContactFields(array $fields, bool $saveContact): array
+    protected function linkToPersonFields(array $fields, bool $savePerson): array
     {
-        if (! $saveContact) {
+        if (! $savePerson) {
             return $fields;
         }
-        $existing = ContactField::get()->keyBy('key');
+        $existing = PersonField::get()->keyBy('key');
 
         foreach ($fields as &$f) {
-            if (! in_array($f['type'], FormFields::INPUTS, true) || ! $f['to_contact']) {
+            if (! in_array($f['type'], FormFields::INPUTS, true) || ! $f['to_person']) {
                 continue;
             }
             $field = $existing[$f['key']] ?? null;
@@ -176,7 +178,7 @@ class FormController extends Controller
 
             $options = in_array($f['type'], ['dropdown', 'radio'], true) ? $f['options'] : null;
             if (! $field) {
-                $field = (new ContactField)->forceFill(['key' => $f['key'], 'label' => $f['label'], 'type' => $f['type'], 'options' => $options]);
+                $field = (new PersonField)->forceFill(['key' => $f['key'], 'label' => $f['label'], 'type' => $f['type'], 'options' => $options]);
                 $field->save();
                 $existing[$f['key']] = $field;
             } elseif ($options && array_diff($options, $field->options ?? [])) {
@@ -189,7 +191,7 @@ class FormController extends Controller
     }
 
     /** Rules that need the whole list: unique standard fields, usable custom keys, options, an email/phone field. */
-    protected function checkedFields(array $fields, bool $needsContact = true): array
+    protected function checkedFields(array $fields, bool $needsPerson = true): array
     {
         $out = [];
         $types = [];
@@ -200,15 +202,23 @@ class FormController extends Controller
             $f = FormFields::field($f);
             $type = $f['type'];
 
+            $rl = $f['rules'];
+            abort_if(isset($rl['min_length'], $rl['max_length']) && $rl['min_length'] > $rl['max_length'], 422, 'Field '.$n.' ("'.$f['label'].'"): the minimum length is larger than the maximum.');
+            abort_if(isset($rl['min'], $rl['max']) && $rl['min'] > $rl['max'], 422, 'Field '.$n.' ("'.$f['label'].'"): the minimum is larger than the maximum.');
+            abort_if(isset($rl['pattern']) && @preg_match(FormFields::delimited($rl['pattern']), '') === false, 422, 'Field '.$n.' ("'.$f['label'].'"): the pattern is not a valid regular expression.');
+
             if (isset(FormFields::STANDARD[$type])) {
                 abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add "'.FormFields::STANDARD[$type].'" once.');
                 $types[] = $type;
-            } elseif ($type === FormFields::SUBSCRIBE) {
-                abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add the newsletter tick box once.');
+            } elseif ($type === FormFields::SUBSCRIBE || $type === FormFields::CAPTCHA) {
+                abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add the '.($type === FormFields::CAPTCHA ? 'captcha' : 'newsletter tick box').' once.');
                 $types[] = $type;
-                $f['key'] = FormFields::SUBSCRIBE;
+                $f['key'] = $type;
+                if ($type === FormFields::CAPTCHA) {
+                    $f['required'] = true;
+                }
             } elseif (in_array($type, FormFields::INPUTS, true)) {
-                // custom answers are stored on the contact under `key`
+                // custom answers are stored on the person under `key`
                 $f['key'] = $f['key'] && ! in_array($f['key'], FormFields::RESERVED, true) && ! in_array($f['key'], $keys, true)
                     ? $f['key']
                     : FormFields::keyFor($f['label'], array_merge($keys, array_column($out, 'key')));
@@ -221,6 +231,7 @@ class FormController extends Controller
             if (in_array($type, ['dropdown', 'radio'], true)) {
                 $f['options'] = array_values(array_unique(array_filter(array_map(fn ($o) => trim((string) $o), $f['options']), 'strlen')));
                 abort_if(count($f['options']) < 1, 422, 'Field '.$n.' ("'.$f['label'].'"): add at least one option.');
+                $f['default'] = in_array($f['default'], $f['options'], true) ? $f['default'] : ''; // a default must be one of the choices
             } else {
                 $f['options'] = [];
             }
@@ -228,8 +239,8 @@ class FormController extends Controller
             $out[] = $f;
         }
 
-        // only forms that save a contact (or reply to people) must collect a way to reach them
-        abort_if($needsContact && ! collect($out)->contains(fn ($f) => in_array($f['type'], ['email', 'phone'], true)), 422, 'Add an email or phone field so you can reach the people who sign up.');
+        // only forms that save a person (or reply to people) must collect a way to reach them
+        abort_if($needsPerson && ! collect($out)->contains(fn ($f) => in_array($f['type'], ['email', 'phone'], true)), 422, 'Add an email or phone field so you can reach the people who sign up.');
 
         return $out;
     }

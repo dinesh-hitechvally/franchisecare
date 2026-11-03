@@ -40,7 +40,7 @@ class AnalyticsReportsTest extends TestCase
         $this->log(EmailLog::class, $co, ['status' => 'failed', 'error' => 'Connection refused for a@x.com', 'sent_at' => null, 'service' => 'gmail']);
         $this->log(EmailLog::class, $co, ['status' => 'failed', 'error' => 'Connection refused for b@x.com', 'sent_at' => null, 'service' => 'gmail']);
         $this->log(SmsLog::class, $co, ['service' => 'clicksend']);
-        $this->log(SmsLog::class, $co, ['status' => 'skipped', 'error' => 'Contact unsubscribed', 'sent_at' => null]);
+        $this->log(SmsLog::class, $co, ['status' => 'skipped', 'error' => 'Person unsubscribed', 'sent_at' => null]);
 
         $email = $this->getJson('/api/analytics/email?days=7', $h)->assertOk();
         $this->assertSame([2, 1, 50.0, 2], [$email->json('totals.sent'), $email->json('totals.opened'), (float) $email->json('totals.open_rate'), $email->json('totals.failed')]);
@@ -53,13 +53,13 @@ class AnalyticsReportsTest extends TestCase
         $d = $this->getJson('/api/analytics/delivery', $h)->assertOk();
         $this->assertSame([3, 2, 1], [$d->json('totals.sent'), $d->json('totals.failed'), $d->json('totals.skipped')]);
         // the same error for different addresses is one problem
-        $d->assertJsonPath('failed_reasons.0.count', 2)->assertJsonPath('skipped_reasons.0.reason', 'Contact unsubscribed');
+        $d->assertJsonPath('failed_reasons.0.count', 2)->assertJsonPath('skipped_reasons.0.reason', 'Person unsubscribed');
         $gmail = collect($d->json('by_service'))->firstWhere('service', 'gmail');
         $this->assertSame([2, 0], [$gmail['failed'], $gmail['sent']]);
 
         $o = $this->getJson('/api/analytics/overview?days=14', $h)->assertOk();
         $this->assertSame(3, $o->json('metrics.messages.value'));
-        $o->assertJsonCount(14, 'daily.messages')->assertJsonStructure(['metrics' => ['new_contacts' => ['value', 'prev', 'change']]]);
+        $o->assertJsonCount(14, 'daily.messages')->assertJsonStructure(['metrics' => ['new_people' => ['value', 'prev', 'change']]]);
 
         $this->getJson('/api/analytics/automation', $h)->assertOk()->assertJsonPath('totals.started', 0)->assertJsonStructure(['workflows', 'steps', 'step_results', 'daily']);
 

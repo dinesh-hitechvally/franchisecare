@@ -17,6 +17,9 @@ class FormRenderer
         return htmlspecialchars((string) $v, ENT_QUOTES, 'UTF-8');
     }
 
+    /** Help text longer than this many characters is shown as an (i) icon with the text on hover, instead of under the field. */
+    public const HELP_LONG = 60;
+
     protected static function field(array $f): string
     {
         $label = self::e($f['label']);
@@ -24,7 +27,15 @@ class FormRenderer
         $star = $f['required'] ? ' <span class="fc-req">*</span>' : '';
         $name = self::e($f['key'] ?? '');
         $ph = $f['placeholder'] !== '' ? ' placeholder="'.self::e($f['placeholder']).'"' : '';
-        $help = $f['help'] !== '' ? '<small class="fc-help">'.self::e($f['help']).'</small>' : '';
+        $def = (string) ($f['default'] ?? '');
+        $r = $f['rules'] ?? [];
+        $len = (isset($r['min_length']) ? ' minlength="'.(int) $r['min_length'].'"' : '').(isset($r['max_length']) ? ' maxlength="'.(int) $r['max_length'].'"' : '');
+        $range = (isset($r['min']) ? ' min="'.self::e($r['min']).'"' : '').(isset($r['max']) ? ' max="'.self::e($r['max']).'"' : '');
+        $on = in_array(strtolower($def), ['1', 'yes', 'true', 'on'], true) ? ' checked' : '';
+        $val = $def !== '' ? ' value="'.self::e($def).'"' : '';
+        $long = mb_strlen($f['help']) > self::HELP_LONG;
+        $tip = $long ? '<span class="fc-i" tabindex="0" role="note">i<span class="fc-ib">'.self::e($f['help']).'</span></span>' : '';
+        $help = $f['help'] !== '' && ! $long ? '<small class="fc-help">'.self::e($f['help']).'</small>' : '';
 
         switch ($f['type']) {
             case 'heading':
@@ -32,28 +43,34 @@ class FormRenderer
             case 'paragraph':
                 return '<p class="fc-p">'.nl2br($label).'</p>';
             case 'textarea':
-                return '<label class="fc-l">'.$label.$star.'<textarea name="'.$name.'" rows="4"'.$ph.$req.'></textarea></label>'.$help;
+                return '<label class="fc-l">'.$label.$star.$tip.'<textarea name="'.$name.'" rows="4"'.$ph.$len.$req.'>'.self::e($def).'</textarea></label>'.$help;
             case 'dropdown':
                 $opts = '<option value="">'.self::e($f['placeholder'] !== '' ? $f['placeholder'] : 'Select…').'</option>';
                 foreach ($f['options'] as $o) {
-                    $opts .= '<option value="'.self::e($o).'">'.self::e($o).'</option>';
+                    $opts .= '<option value="'.self::e($o).'"'.($o === $def ? ' selected' : '').'>'.self::e($o).'</option>';
                 }
 
-                return '<label class="fc-l">'.$label.$star.'<select name="'.$name.'"'.$req.'>'.$opts.'</select></label>'.$help;
+                return '<label class="fc-l">'.$label.$star.$tip.'<select name="'.$name.'"'.$req.'>'.$opts.'</select></label>'.$help;
             case 'radio':
                 $rows = '';
                 foreach ($f['options'] as $i => $o) {
-                    $rows .= '<label class="fc-opt"><input type="radio" name="'.$name.'" value="'.self::e($o).'"'.($i === 0 ? $req : '').'> '.self::e($o).'</label>';
+                    $rows .= '<label class="fc-opt"><input type="radio" name="'.$name.'" value="'.self::e($o).'"'.($i === 0 ? $req : '').($o === $def ? ' checked' : '').'> '.self::e($o).'</label>';
                 }
 
-                return '<fieldset class="fc-fs"><legend>'.$label.$star.'</legend>'.$rows.$help.'</fieldset>';
+                return '<fieldset class="fc-fs"><legend>'.$label.$star.$tip.'</legend>'.$rows.$help.'</fieldset>';
+            case 'captcha':
+                $c = Captcha::challenge();
+
+                return '<label class="fc-l">'.$label.$star.$tip.'<span class="fc-q">'.self::e($c['question']).'</span><input name="captcha" type="text" inputmode="numeric" autocomplete="off" maxlength="4" required></label><input type="hidden" name="captcha_token" value="'.self::e($c['token']).'">'.$help;
             case 'checkbox':
             case 'subscribe':
-                return '<label class="fc-opt fc-chk"><input type="checkbox" name="'.$name.'"'.$req.'> <span>'.$label.$star.'</span></label>'.$help;
+                $box = '<label class="fc-opt fc-chk"><input type="checkbox" name="'.$name.'"'.$req.$on.'> <span>'.$label.$star.'</span></label>';
+
+                return ($tip !== '' ? '<div class="fc-chkrow">'.$box.$tip.'</div>' : $box).$help; // the icon sits beside the box: inside the label a click on it would tick the box
             default:
                 $type = self::HTML_TYPES[$f['type']] ?? 'text';
 
-                return '<label class="fc-l">'.$label.$star.'<input name="'.$name.'" type="'.$type.'"'.$ph.$req.'></label>'.$help;
+                return '<label class="fc-l">'.$label.$star.$tip.'<input name="'.$name.'" type="'.$type.'"'.$ph.$val.$len.$range.$req.'></label>'.$help;
         }
     }
 
@@ -143,13 +160,13 @@ JS;
         $font = FormFields::FONTS[$s['font']];
 
         return ".fc-form{max-width:{$s['width']}px;margin:0 auto;font-family:{$font};color:{$s['text']}}"
-            .".fc-row{display:flex;flex-wrap:wrap;column-gap:14px}.fc-f{box-sizing:border-box;width:100%;min-width:0}.fc-w-two_thirds{width:calc(66.667% - 4.667px)}.fc-w-half{width:calc(50% - 7px)}.fc-w-third{width:calc(33.333% - 9.333px)}.fc-w-quarter{width:calc(25% - 10.5px)}@media(max-width:480px){.fc-f{width:100%!important}}.fc-form .fc-title{margin:0 0 6px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:0}.fc-form .fc-desc{margin:0 0 18px;opacity:.75;font-size:15px;line-height:1.5;max-width:none}.fc-form .fc-h{margin:18px 0 8px;font-size:18px;line-height:1.3;font-weight:700;letter-spacing:0}.fc-form .fc-p{margin:0 0 14px;line-height:1.5}"
+            .".fc-row{display:flex;flex-wrap:wrap;column-gap:14px}.fc-f{position:relative;box-sizing:border-box;width:100%;min-width:0}.fc-w-two_thirds{width:calc(66.667% - 4.667px)}.fc-w-half{width:calc(50% - 7px)}.fc-w-third{width:calc(33.333% - 9.333px)}.fc-w-quarter{width:calc(25% - 10.5px)}@media(max-width:480px){.fc-f{width:100%!important}}.fc-form .fc-title{margin:0 0 6px;font-size:24px;line-height:1.25;font-weight:700;letter-spacing:0}.fc-form .fc-desc{margin:0 0 18px;opacity:.75;font-size:15px;line-height:1.5;max-width:none}.fc-form .fc-h{margin:18px 0 8px;font-size:18px;line-height:1.3;font-weight:700;letter-spacing:0}.fc-form .fc-p{margin:0 0 14px;line-height:1.5}"
             .".fc-form .fc-l{display:block;font-size:14px;margin-bottom:14px}.fc-form .fc-req{color:#d32f2f}"
             .".fc-form input:not([type=checkbox]):not([type=radio]),.fc-form select,.fc-form textarea{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:11px;border:1px solid #c9ccd3;border-radius:{$s['radius']}px;font:inherit;font-size:15px;color:inherit;background:#fff}"
             .".fc-form input:focus,.fc-form select:focus,.fc-form textarea:focus{outline:2px solid {$s['accent']}55;border-color:{$s['accent']}}"
             .".fc-form .fc-fs{border:0;padding:0;margin:0 0 14px}.fc-form .fc-fs legend{font-size:14px;padding:0;margin-bottom:6px}"
             .".fc-form .fc-opt{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-bottom:8px}.fc-form .fc-opt input{margin-top:3px;accent-color:{$s['accent']}}.fc-form .fc-chk{margin-bottom:14px}"
-            .".fc-form .fc-help{display:block;margin:-8px 0 14px;font-size:12px;opacity:.65}"
+            .".fc-form .fc-i{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;margin-left:6px;border-radius:50%;border:1.5px solid currentColor;font:italic 700 10px/1 Georgia,serif;cursor:help;opacity:.7;vertical-align:middle;outline:0}.fc-form .fc-i:hover,.fc-form .fc-i:focus{opacity:1}.fc-form .fc-ib{display:none;position:absolute;left:0;right:0;top:100%;z-index:20;margin-top:2px;padding:9px 11px;border-radius:8px;background:#1f2937;color:#fff;font:400 12.5px/1.45 inherit;font-style:normal;text-align:left;white-space:normal;cursor:default;box-shadow:0 6px 18px rgba(0,0,0,.25)}.fc-form .fc-i:hover .fc-ib,.fc-form .fc-i:focus .fc-ib{display:block}.fc-form .fc-chkrow{display:flex;align-items:flex-start}.fc-form .fc-chkrow .fc-i{margin-top:2px}.fc-form .fc-help{display:block;margin:-8px 0 14px;font-size:12px;opacity:.65}.fc-form .fc-q{display:block;margin:2px 0 6px;font-size:18px;font-weight:700;letter-spacing:.05em}"
             .".fc-form button{width:100%;padding:13px;border:0;border-radius:{$s['radius']}px;background:{$s['accent']};color:{$s['btnText']};font:inherit;font-size:16px;font-weight:700;cursor:pointer}"
             .'.fc-hp{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0}'
             .'.fc-form button:disabled{opacity:.65;cursor:wait}'

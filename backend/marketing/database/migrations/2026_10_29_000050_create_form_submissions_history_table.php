@@ -15,8 +15,8 @@ return new class extends Migration
             $table->unsignedBigInteger('id')->nullable();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('form_id')->nullable();
-            $table->unsignedBigInteger('contact_id')->nullable();
-            $table->boolean('contact_existed')->nullable();
+            $table->unsignedBigInteger('person_id')->nullable();
+            $table->boolean('person_existed')->nullable();
             $table->longText('data')->nullable();
             $table->dateTime('created_at')->nullable();
             $table->dateTime('deleted_at')->nullable();

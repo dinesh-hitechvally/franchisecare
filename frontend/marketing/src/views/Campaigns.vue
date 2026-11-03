@@ -21,7 +21,7 @@ let timer
 
 const title = computed(() => (route.query.status === 'scheduled' ? 'Scheduled Campaigns' : route.query.type === 'email' ? 'Email Campaigns' : route.query.type === 'sms' ? 'SMS Campaigns' : 'All Campaigns'))
 const scheduledView = computed(() => status.value === 'scheduled')
-const audience = (c) => c.segment?.name ? `Segment: ${c.segment.name}` : c.tag?.name ? `Tag: ${c.tag.name}` : c.list?.name || 'All contacts'
+const audience = (c) => c.segment?.name ? `Segment: ${c.segment.name}` : c.tag?.name ? `Tag: ${c.tag.name}` : c.list?.name || 'All people'
 
 async function load(page = 1) {
   const params = { page }

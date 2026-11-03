@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ReportMath;
 use App\Models\Campaign;
 use App\Models\ClickEvent;
-use App\Models\Contact;
-use App\Models\ContactList;
+use App\Models\Person;
+use App\Models\PeopleList;
 use App\Models\Form;
 use App\Models\LandingPage;
 use App\Models\EmailLog;
@@ -76,7 +76,7 @@ class ReportController extends Controller
 
     /**
      * Every recipient of a campaign with how it went, one page at a time: delivered, logged only, failed, queued (from the message log),
-     * and skipped (contacts with no email address / phone number). Skipped people have no log rows, so they are worked out from the
+     * and skipped (people with no email address / phone number). Skipped people have no log rows, so they are worked out from the
      * campaign's audience and listed after the logged messages.
      */
     public function deliveries(Request $request, Campaign $campaign)
@@ -87,13 +87,13 @@ class ReportController extends Controller
         $per = 20;
         $page = max(1, (int) $request->query('page', 1));
         $offset = ($page - 1) * $per;
-        $col = $isEmail ? 'contacts.email' : 'contacts.phone';
+        $col = $isEmail ? 'people.email' : 'people.phone';
 
         $logs = $campaign->logModel()::where('campaign_id', $campaign->id)
             ->when(in_array($status, ['sent', 'logged', 'failed', 'queued'], true), fn ($q) => $q->where('status', $status))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('recipient', 'like', "%$search%")
-                ->orWhereIn('contact_id', Contact::where(fn ($c) => $c->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%"))->select('id'))));
-        $left = $campaign->audienceQuery()->where('contacts.is_subscribed', true)->where(fn ($q) => $q->whereNull($col)->orWhere($col, ''))
+                ->orWhereIn('person_id', Person::where(fn ($c) => $c->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%"))->select('id'))));
+        $left = $campaign->audienceQuery()->where('people.is_subscribed', true)->where(fn ($q) => $q->whereNull($col)->orWhere($col, ''))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%")));
 
         $wantLogs = $status !== 'skipped';
@@ -103,17 +103,17 @@ class ReportController extends Controller
 
         $items = collect();
         if ($wantLogs && $offset < $logsTotal) {
-            $rows = (clone $logs)->orderBy('id')->offset($offset)->limit($per)->get(['recipient', 'status', 'error', 'contact_id', 'sent_at']);
-            $names = Contact::whereIn('id', $rows->pluck('contact_id')->filter())->get(['id', 'first_name', 'last_name'])
+            $rows = (clone $logs)->orderBy('id')->offset($offset)->limit($per)->get(['recipient', 'status', 'error', 'person_id', 'sent_at']);
+            $names = Person::whereIn('id', $rows->pluck('person_id')->filter())->get(['id', 'first_name', 'last_name'])
                 ->mapWithKeys(fn ($c) => [$c->id => trim($c->first_name.' '.$c->last_name)]);
-            $items = $rows->map(fn ($l) => ['name' => $names[$l->contact_id] ?? '', 'recipient' => $l->recipient, 'status' => $l->status, 'error' => $l->error, 'at' => $l->sent_at]);
+            $items = $rows->map(fn ($l) => ['name' => $names[$l->person_id] ?? '', 'recipient' => $l->recipient, 'status' => $l->status, 'error' => $l->error, 'at' => $l->sent_at]);
         }
         if ($wantLeft && $items->count() < $per) {
             $skip = max(0, $offset - $logsTotal);
-            $items = $items->concat((clone $left)->orderBy('contacts.id')->offset($skip)->limit($per - $items->count())->get(['contacts.id', 'first_name', 'last_name', 'email', 'phone'])
+            $items = $items->concat((clone $left)->orderBy('people.id')->offset($skip)->limit($per - $items->count())->get(['people.id', 'first_name', 'last_name', 'email', 'phone'])
                 ->map(fn ($c) => [
                     'name' => trim($c->first_name.' '.$c->last_name), 'recipient' => '', 'status' => 'skipped', 'at' => null,
-                    'error' => $isEmail ? 'No email address found for this contact' : 'No phone number found for this contact',
+                    'error' => $isEmail ? 'No email address found for this person' : 'No phone number found for this person',
                 ]));
         }
 
@@ -184,25 +184,25 @@ class ReportController extends Controller
         ];
     }
 
-    public function contactAnalytics(Request $request)
+    public function personAnalytics(Request $request)
     {
-        $total = Contact::count();
+        $total = Person::count();
         $since = now()->subDays(29)->startOfDay();
-        $engaged = EmailLog::whereNotNull('opened_at')->where('opened_at', '>=', now()->subDays(30))->distinct()->count('contact_id');
-        $received = EmailLog::where('status', 'sent')->distinct()->count('contact_id');
-        $everOpened = EmailLog::whereNotNull('opened_at')->distinct()->count('contact_id');
+        $engaged = EmailLog::whereNotNull('opened_at')->where('opened_at', '>=', now()->subDays(30))->distinct()->count('person_id');
+        $received = EmailLog::where('status', 'sent')->distinct()->count('person_id');
+        $everOpened = EmailLog::whereNotNull('opened_at')->distinct()->count('person_id');
 
         return [
             'total' => $total,
-            'new_30d' => Contact::where('created_at', '>=', $since)->count(),
-            'growth' => $this->series(Contact::where('created_at', '>=', $since)->selectRaw('DATE(created_at) as d, COUNT(*) as c')->groupBy('d')->get(), 30),
+            'new_30d' => Person::where('created_at', '>=', $since)->count(),
+            'growth' => $this->series(Person::where('created_at', '>=', $since)->selectRaw('DATE(created_at) as d, COUNT(*) as c')->groupBy('d')->get(), 30),
             'subscriptions' => [
-                'subscribed' => Contact::where('is_subscribed', true)->count(),
-                'unsubscribed' => Contact::where('is_subscribed', false)->count(),
+                'subscribed' => Person::where('is_subscribed', true)->count(),
+                'unsubscribed' => Person::where('is_subscribed', false)->count(),
             ],
-            'by_source' => Contact::selectRaw('source as label, COUNT(*) as value')->groupBy('source')->orderByDesc('value')->get(),
-            'by_list' => ContactList::withCount('contacts')->orderByDesc('contacts_count')->limit(8)->get()->map(fn ($l) => ['label' => $l->name, 'value' => $l->contacts_count]),
-            'by_tag' => Tag::withCount('contacts')->orderByDesc('contacts_count')->limit(8)->get()->map(fn ($t) => ['label' => $t->name, 'value' => $t->contacts_count]),
+            'by_source' => Person::selectRaw('source as label, COUNT(*) as value')->groupBy('source')->orderByDesc('value')->get(),
+            'by_list' => PeopleList::withCount('people')->orderByDesc('people_count')->limit(8)->get()->map(fn ($l) => ['label' => $l->name, 'value' => $l->people_count]),
+            'by_tag' => Tag::withCount('people')->orderByDesc('people_count')->limit(8)->get()->map(fn ($t) => ['label' => $t->name, 'value' => $t->people_count]),
             'engagement' => [
                 'engaged_30d' => $engaged,
                 'opened_before' => max(0, $everOpened - $engaged),
@@ -232,8 +232,8 @@ class ReportController extends Controller
                 'page_views' => (int) $pages->sum('views'),
                 'overall_rate' => $this->pct((int) $forms->sum('submissions'), (int) $forms->sum('views')),
             ],
-            'signups_30d' => $this->series(Contact::whereIn('source', ['form', 'api'])->where('created_at', '>=', $since)->selectRaw('DATE(created_at) as d, COUNT(*) as c')->groupBy('d')->get(), 30),
-            'by_source_30d' => Contact::where('created_at', '>=', $since)->selectRaw('source as label, COUNT(*) as value')->groupBy('source')->orderByDesc('value')->get(),
+            'signups_30d' => $this->series(Person::whereIn('source', ['form', 'api'])->where('created_at', '>=', $since)->selectRaw('DATE(created_at) as d, COUNT(*) as c')->groupBy('d')->get(), 30),
+            'by_source_30d' => Person::where('created_at', '>=', $since)->selectRaw('source as label, COUNT(*) as value')->groupBy('source')->orderByDesc('value')->get(),
         ];
     }
 }

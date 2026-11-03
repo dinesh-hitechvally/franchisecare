@@ -6,7 +6,7 @@ use App\Http\Controllers\ConfigController;
 use App\Models\Company;
 use App\Services\CompanyMailer;
 use App\Services\MailSettings;
-use App\Models\Contact;
+use App\Models\Person;
 use App\Services\MessageRenderer;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -37,10 +37,10 @@ class SettingsTest extends TestCase
         $this->putJson('/api/settings', ['name' => 'Acme Co', 'profile' => ['website' => 'javascript:alert(1)']], $h)->assertStatus(422);
 
         $company = \App\Models\Company::first();
-        $vars = (new MessageRenderer)->vars($company, new Contact(['first_name' => 'Ann']), 'email');
+        $vars = (new MessageRenderer)->vars($company, new Person(['first_name' => 'Ann']), 'email');
         $this->assertSame('+61 2 1234 5678', $vars['company_phone']);
         $this->assertSame('https://acme.test', $vars['company_website']);
-        [, $html] = (new MessageRenderer)->renderEmail('s', '<p>Hi</p>', $company, new Contact(['first_name' => 'Ann', 'email' => 'a@x.com']));
+        [, $html] = (new MessageRenderer)->renderEmail('s', '<p>Hi</p>', $company, new Person(['first_name' => 'Ann', 'email' => 'a@x.com']));
             }
 
     public function test_a_person_can_update_their_own_account_but_needs_the_password_to_change_how_they_sign_in(): void
@@ -75,7 +75,7 @@ class SettingsTest extends TestCase
         $this->putJson('/api/settings', ['name' => 'Acme', 'profile' => ['support_email' => 'not-an-email']], $h)->assertStatus(422);
 
         $company = Company::first();
-        [, $html] = (new MessageRenderer)->renderEmail('s', '<p>Hi</p>', $company, new Contact(['email' => 'a@x.com']));
+        [, $html] = (new MessageRenderer)->renderEmail('s', '<p>Hi</p>', $company, new Person(['email' => 'a@x.com']));
         foreach (['1 Main St, Sydney NSW 2000, Australia', 'Acme Pty Ltd', 'ABN 12 345'] as $bit) {
             $this->assertStringContainsString($bit, $html);
         }

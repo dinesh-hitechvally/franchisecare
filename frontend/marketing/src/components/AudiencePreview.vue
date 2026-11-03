@@ -1,5 +1,5 @@
 <script setup>
-// Who a campaign will go to: the first few contacts of the chosen audience, and a "Show all" window for the rest.
+// Who a campaign will go to: the first few people of the chosen audience, and a "Show all" window for the rest.
 import { ref, watch, onMounted } from 'vue'
 import api from '../api'
 import Modal from './Modal.vue'
@@ -24,11 +24,11 @@ const channel = (c) => (props.type === 'sms' ? { value: c.phone, ok: c.is_subscr
 async function load() {
   loading.value = true
   try {
-    const { data } = await api.get('/contacts', { params: params({ per_page: PREVIEW }) })
+    const { data } = await api.get('/people', { params: params({ per_page: PREVIEW }) })
     rows.value = data.data
     total.value = data.total
     // totals for the whole audience (not the open filter), shown in the Subscription dropdown
-    const count = async (st) => (await api.get('/contacts', { params: { ...params({ per_page: 1 }), status: st } })).data.total
+    const count = async (st) => (await api.get('/people', { params: { ...params({ per_page: 1 }), status: st } })).data.total
     const [all, subscribed, unsubscribed] = await Promise.all([count(undefined), count('subscribed'), count('unsubscribed')])
     emit('counts', { all, subscribed, unsubscribed })
   } finally { loading.value = false }
@@ -36,7 +36,7 @@ async function load() {
 async function loadAll(page = 1) {
   modalLoading.value = true
   try {
-    const { data } = await api.get('/contacts', { params: params({ per_page: 20, page, search: search.value || undefined }) })
+    const { data } = await api.get('/people', { params: params({ per_page: 20, page, search: search.value || undefined }) })
     full.value = data.data
     meta.value = data
   } finally { modalLoading.value = false }
@@ -51,10 +51,10 @@ onMounted(load)
 <template>
   <div class="aud">
     <div class="top">
-      <b>{{ loading ? 'Loading audience…' : `${total} contact${total === 1 ? '' : 's'}${props.status ? ' (' + props.status + ')' : ' in this audience'}` }}</b>
+      <b>{{ loading ? 'Loading audience…' : `${total} ${total === 1 ? 'person' : 'people'}${props.status ? ' (' + props.status + ')' : ' in this audience'}` }}</b>
       <button v-if="total > PREVIEW" type="button" class="btn ghost sm" @click="openAll">Show all ({{ total }})</button>
     </div>
-    <p v-if="!loading && !rows.length" class="empty">No contacts in this audience yet.</p>
+    <p v-if="!loading && !rows.length" class="empty">No people in this audience yet.</p>
     <table v-else-if="rows.length">
       <thead><tr><th>Name</th><th>Email</th><th v-if="type === 'sms'">Phone</th><th>Subscription</th></tr></thead>
       <tr v-for="c in rows" :key="c.id">
@@ -69,7 +69,7 @@ onMounted(load)
   <Modal v-if="all" title="Audience" wide @close="all = false">
     <input v-model="search" type="search" placeholder="Search name, email or phone…" style="max-width: 300px; margin-bottom: 12px" />
     <p v-if="modalLoading && !full.length" class="empty">Loading…</p>
-    <p v-else-if="!full.length" class="empty">No contact matches.</p>
+    <p v-else-if="!full.length" class="empty">No person matches.</p>
     <table v-else>
       <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Subscription</th></tr></thead>
       <tr v-for="c in full" :key="c.id">

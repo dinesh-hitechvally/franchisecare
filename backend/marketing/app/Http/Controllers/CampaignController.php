@@ -5,8 +5,8 @@ namespace App\Http\Controllers;
 use App\Support\ApiResponse;
 use App\Jobs\SendCampaignJob;
 use App\Models\Campaign;
-use App\Models\Contact;
-use App\Models\ContactList;
+use App\Models\Person;
+use App\Models\PeopleList;
 use App\Services\Attachments;
 use App\Services\CompanyMailer;
 use App\Services\SendLog;
@@ -106,12 +106,12 @@ class CampaignController extends Controller
     public function check(Campaign $campaign)
     {
         $isEmail = $campaign->type === 'email';
-        $col = $isEmail ? 'contacts.email' : 'contacts.phone';
+        $col = $isEmail ? 'people.email' : 'people.phone';
         $base = fn () => $campaign->audienceQuery();
 
         $total = $base()->count();
-        $reach = $base()->where('contacts.is_subscribed', true)->whereNotNull($col)->where($col, '!=', '')->count();
-        $unsub = $base()->where('contacts.is_subscribed', false)->count();
+        $reach = $base()->where('people.is_subscribed', true)->whereNotNull($col)->where($col, '!=', '')->count();
+        $unsub = $base()->where('people.is_subscribed', false)->count();
 
         $warnings = [];
         if ($isEmail) {
@@ -147,7 +147,7 @@ class CampaignController extends Controller
     {
         $data = $request->validate(['to' => 'required|string']);
         $company = $request->user()->company;
-        $sample = new Contact(['first_name' => 'Test', 'last_name' => 'User', 'email' => $data['to']]);
+        $sample = new Person(['first_name' => 'Test', 'last_name' => 'User', 'email' => $data['to']]);
         $sample->unsubscribe_token = 'test';
 
         if ($campaign->type === 'email') {
@@ -178,7 +178,7 @@ class CampaignController extends Controller
     {
         $data = $request->validate(['type' => 'required|in:email,sms', 'subject' => 'nullable|string', 'body' => 'required|string']);
         $company = $request->user()->company;
-        $sample = new Contact(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+61400000000']);
+        $sample = new Person(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+61400000000']);
         $sample->unsubscribe_token = 'preview';
 
         if ($data['type'] === 'email') {
@@ -196,7 +196,7 @@ class CampaignController extends Controller
             'name' => 'required|string|max:255',
             'type' => 'required|in:email,sms',
             'template_id' => 'nullable|integer',
-            'contact_list_id' => 'nullable|integer',
+            'people_list_id' => 'nullable|integer',
             'segment_id' => 'nullable|integer',
             'tag_id' => 'nullable|integer',
             'subject' => 'nullable|string|max:255|required_if:type,email',
@@ -212,14 +212,14 @@ class CampaignController extends Controller
         // one audience source at a time: a segment wins over a tag, a tag over a list
         if (! empty($data['segment_id'])) {
             abort_unless(\App\Models\Segment::whereKey($data['segment_id'])->exists(), 422, 'Invalid segment.');
-            $data['contact_list_id'] = $data['tag_id'] = null;
+            $data['people_list_id'] = $data['tag_id'] = null;
         }
         if (! empty($data['tag_id'])) {
             abort_unless(\App\Models\Tag::whereKey($data['tag_id'])->exists(), 422, 'Invalid tag.');
-            $data['contact_list_id'] = null;
+            $data['people_list_id'] = null;
         }
-        if (! empty($data['contact_list_id'])) {
-            abort_unless(ContactList::whereKey($data['contact_list_id'])->exists(), 422, 'Invalid list.');
+        if (! empty($data['people_list_id'])) {
+            abort_unless(PeopleList::whereKey($data['people_list_id'])->exists(), 422, 'Invalid list.');
         }
 
         return $data;

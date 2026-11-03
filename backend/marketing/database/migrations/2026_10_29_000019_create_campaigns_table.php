@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('template_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('contact_list_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('people_list_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('segment_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('tag_id')->nullable()->constrained()->nullOnDelete();
             $table->string('name');
@@ -20,8 +20,8 @@ return new class extends Migration
             $table->string('subject')->nullable();
             $table->longText('body');
             $table->longText('design')->nullable();
-            $table->unsignedInteger('audience_total')->nullable(); // how many contacts the audience had when it was sent (null until sent)
-            $table->unsignedInteger('audience_skipped')->default(0); // contacts left out at send time (unsubscribed / no address): counted, not logged
+            $table->unsignedInteger('audience_total')->nullable(); // how many people the audience had when it was sent (null until sent)
+            $table->unsignedInteger('audience_skipped')->default(0); // people left out at send time (unsubscribed / no address): counted, not logged
             $table->json('attachments')->nullable(); // email only: files sent with every message [{token, name, size}]
             $table->enum('status', ['draft', 'scheduled', 'sending', 'sent', 'failed', 'cancelled'])->default('draft');
             $table->dateTime('scheduled_at')->nullable();

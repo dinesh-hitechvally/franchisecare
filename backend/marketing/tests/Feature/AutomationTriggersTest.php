@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Contact;
+use App\Models\Person;
 use App\Models\EmailLog;
 use App\Models\WorkflowRun;
 use App\Services\MessageRenderer;
@@ -31,11 +31,11 @@ class AutomationTriggersTest extends TestCase
         return $this->postJson('/api/tags', ['name' => $name], $this->h)->assertCreated()->json('id');
     }
 
-    protected function contact(array $extra = []): Contact
+    protected function person(array $extra = []): Person
     {
-        $id = $this->postJson('/api/contacts', $extra + ['email' => 'c'.uniqid().'@x.com'], $this->h)->assertCreated()->json('id');
+        $id = $this->postJson('/api/people', $extra + ['email' => 'c'.uniqid().'@x.com'], $this->h)->assertCreated()->json('id');
 
-        return Contact::withoutGlobalScopes()->findOrFail($id);
+        return Person::withoutGlobalScopes()->findOrFail($id);
     }
 
     /** An active workflow that starts on $trigger and tags the person with $tagId when it runs. */
@@ -49,15 +49,15 @@ class AutomationTriggersTest extends TestCase
         return $id;
     }
 
-    protected function tagged(Contact $c, int $tagId): bool
+    protected function tagged(Person $c, int $tagId): bool
     {
         return $c->tags()->where('tags.id', $tagId)->exists();
     }
 
-    protected function sentEmail(Contact $c, string $token, array $over = []): EmailLog
+    protected function sentEmail(Person $c, string $token, array $over = []): EmailLog
     {
         return EmailLog::withoutGlobalScopes()->create($over + [
-            'company_id' => $c->company_id, 'contact_id' => $c->id, 'recipient' => $c->email, 'body' => 'b', 'status' => 'sent', 'source' => 'campaign',
+            'company_id' => $c->company_id, 'person_id' => $c->id, 'recipient' => $c->email, 'body' => 'b', 'status' => 'sent', 'source' => 'campaign',
             'service' => 'default', 'sent_at' => now(), 'track_token' => $token,
         ]);
     }
@@ -65,15 +65,15 @@ class AutomationTriggersTest extends TestCase
     public function test_the_trigger_list_has_every_trigger_with_its_group(): void
     {
         $list = collect($this->getJson('/api/automation/triggers', $this->h)->assertOk()->json());
-        $this->assertSame(['contact_created', 'list_joined', 'list_left', 'tag_added', 'tag_removed', 'form_submitted', 'unsubscribed', 'link_clicked', 'email_opened', 'date_reached', 'inactive'], $list->pluck('type')->all());
-        $this->assertSame(['Contact', 'Email activity', 'Time'], $list->pluck('group')->unique()->values()->all());
+        $this->assertSame(['person_created', 'list_joined', 'list_left', 'tag_added', 'tag_removed', 'form_submitted', 'unsubscribed', 'link_clicked', 'email_opened', 'date_reached', 'inactive'], $list->pluck('type')->all());
+        $this->assertSame(['People', 'Email activity', 'Time'], $list->pluck('group')->unique()->values()->all());
         $this->assertSame('url', $list->firstWhere('type', 'link_clicked')['config']);
     }
 
     public function test_clicking_a_link_starts_the_workflow_only_for_matching_links(): void
     {
         $clicked = $this->tag('Clicked');
-        $c = $this->contact();
+        $c = $this->person();
         $this->sentEmail($c, 'tok-click');
         $this->workflow('link_clicked', ['url' => 'Pricing'], $clicked);
 
@@ -88,7 +88,7 @@ class AutomationTriggersTest extends TestCase
     public function test_opening_an_email_starts_the_workflow_once_per_message(): void
     {
         $opened = $this->tag('Opened');
-        $c = $this->contact();
+        $c = $this->person();
         $this->sentEmail($c, 'tok-open');
         $this->workflow('email_opened', [], $opened);
 
@@ -101,7 +101,7 @@ class AutomationTriggersTest extends TestCase
     public function test_a_first_open_through_a_click_counts_as_an_open_too(): void
     {
         $opened = $this->tag('Opened');
-        $c = $this->contact();
+        $c = $this->person();
         $this->sentEmail($c, 'tok-c2');
         $this->workflow('email_opened', [], $opened);
 
@@ -113,7 +113,7 @@ class AutomationTriggersTest extends TestCase
     public function test_unsubscribing_starts_the_workflow(): void
     {
         $left = $this->tag('Left');
-        $c = $this->contact();
+        $c = $this->person();
         $this->workflow('unsubscribed', [], $left);
 
         $this->get('/api/unsubscribe/'.$c->unsubscribe_token)->assertOk();
@@ -126,36 +126,36 @@ class AutomationTriggersTest extends TestCase
         $vip = $this->tag('VIP');
         $mark = $this->tag('WasVIP');
         $listId = $this->postJson('/api/lists', ['name' => 'Club'], $this->h)->assertCreated()->json('id');
-        $c = $this->contact(['tag_ids' => [$vip], 'list_ids' => [$listId]]);
+        $c = $this->person(['tag_ids' => [$vip], 'list_ids' => [$listId]]);
         $this->workflow('tag_removed', ['tag_id' => $vip], $mark);
         $gone = $this->tag('LeftClub');
         $this->workflow('list_left', ['list_id' => $listId], $gone);
 
-        $this->putJson('/api/contacts/'.$c->id, ['email' => $c->email, 'list_ids' => []], $this->h)->assertOk(); // taken off the list in the edit form
+        $this->putJson('/api/people/'.$c->id, ['email' => $c->email, 'list_ids' => []], $this->h)->assertOk(); // taken off the list in the edit form
         $this->assertTrue($this->tagged($c, $gone));
         $this->assertFalse($this->tagged($c, $mark)); // the tag is still on them
 
-        $this->postJson('/api/contacts/bulk', ['ids' => [$c->id], 'action' => 'remove_tag', 'tag_id' => $vip], $this->h)->assertOk(); // the bulk action
+        $this->postJson('/api/people/bulk', ['ids' => [$c->id], 'action' => 'remove_tag', 'tag_id' => $vip], $this->h)->assertOk(); // the bulk action
         $this->assertTrue($this->tagged($c, $mark));
     }
 
     public function test_a_workflow_that_removes_the_tag_it_listens_for_does_not_loop(): void
     {
         $vip = $this->tag('VIP');
-        $c = $this->contact(['tag_ids' => [$vip]]);
+        $c = $this->person(['tag_ids' => [$vip]]);
         $this->workflow('tag_removed', ['tag_id' => $vip], $vip, [['type' => 'remove_tag', 'tag_id' => $vip]]);
 
-        $this->postJson('/api/contacts/bulk', ['ids' => [$c->id], 'action' => 'remove_tag', 'tag_id' => $vip], $this->h)->assertOk();
+        $this->postJson('/api/people/bulk', ['ids' => [$c->id], 'action' => 'remove_tag', 'tag_id' => $vip], $this->h)->assertOk();
         $this->assertSame(1, WorkflowRun::withoutGlobalScopes()->count()); // its own remove_tag step found nothing to remove, so it did not fire again
     }
 
     public function test_a_date_trigger_starts_on_the_day_or_some_days_before_and_never_twice_a_day(): void
     {
-        $field = $this->postJson('/api/contact-fields', ['label' => 'Birthday', 'type' => 'date'], $this->h)->assertCreated()->json();
+        $field = $this->postJson('/api/person-fields', ['label' => 'Birthday', 'type' => 'date'], $this->h)->assertCreated()->json();
         $today = now()->startOfDay();
-        $birthday = $this->contact(['custom' => [$field['key'] => '1990-'.$today->format('m-d')]]);       // their birthday is today
-        $soon = $this->contact(['custom' => [$field['key'] => '1985-'.$today->copy()->addDays(3)->format('m-d')]]); // in three days
-        $other = $this->contact(['custom' => [$field['key'] => '1990-'.$today->copy()->addDays(40)->format('m-d')]]);
+        $birthday = $this->person(['custom' => [$field['key'] => '1990-'.$today->format('m-d')]]);       // their birthday is today
+        $soon = $this->person(['custom' => [$field['key'] => '1985-'.$today->copy()->addDays(3)->format('m-d')]]); // in three days
+        $other = $this->person(['custom' => [$field['key'] => '1990-'.$today->copy()->addDays(40)->format('m-d')]]);
 
         $onTheDay = $this->tag('Happy birthday');
         $this->workflow('date_reached', ['field_id' => $field['id'], 'when' => 'on', 'days' => 0, 'yearly' => true], $onTheDay);
@@ -175,9 +175,9 @@ class AutomationTriggersTest extends TestCase
 
     public function test_a_date_that_is_not_repeated_yearly_only_matches_its_exact_day(): void
     {
-        $field = $this->postJson('/api/contact-fields', ['label' => 'Renewal', 'type' => 'date'], $this->h)->assertCreated()->json();
-        $exact = $this->contact(['custom' => [$field['key'] => now()->toDateString()]]);
-        $lastYear = $this->contact(['custom' => [$field['key'] => now()->subYear()->toDateString()]]);
+        $field = $this->postJson('/api/person-fields', ['label' => 'Renewal', 'type' => 'date'], $this->h)->assertCreated()->json();
+        $exact = $this->person(['custom' => [$field['key'] => now()->toDateString()]]);
+        $lastYear = $this->person(['custom' => [$field['key'] => now()->subYear()->toDateString()]]);
         $tag = $this->tag('Renew now');
         $this->workflow('date_reached', ['field_id' => $field['id'], 'when' => 'on', 'days' => 0, 'yearly' => false], $tag);
 
@@ -189,14 +189,14 @@ class AutomationTriggersTest extends TestCase
     public function test_the_not_opened_trigger_finds_the_right_people_and_waits_before_repeating(): void
     {
         $tag = $this->tag('Dormant');
-        $silent = $this->contact();                       // got an email 40 days ago, never opened anything
+        $silent = $this->person();                       // got an email 40 days ago, never opened anything
         $this->sentEmail($silent, 't1', ['sent_at' => now()->subDays(40)]);
-        $engaged = $this->contact();                      // got one 40 days ago but opened a recent one
+        $engaged = $this->person();                      // got one 40 days ago but opened a recent one
         $this->sentEmail($engaged, 't2', ['sent_at' => now()->subDays(40)]);
         $this->sentEmail($engaged, 't3', ['sent_at' => now()->subDays(6), 'opened_at' => now()->subDays(5)]);
-        $new = $this->contact();                          // only got an email 5 days ago: has had no time to open
+        $new = $this->person();                          // only got an email 5 days ago: has had no time to open
         $this->sentEmail($new, 't4', ['sent_at' => now()->subDays(5)]);
-        $unsub = $this->contact(['is_subscribed' => false]); // would qualify, but cannot be emailed any more
+        $unsub = $this->person(['is_subscribed' => false]); // would qualify, but cannot be emailed any more
         $this->sentEmail($unsub, 't5', ['sent_at' => now()->subDays(40)]);
         $this->workflow('inactive', ['days' => 30], $tag);
 
@@ -214,9 +214,9 @@ class AutomationTriggersTest extends TestCase
         $post = fn (array $w) => $this->postJson('/api/workflows', $w + ['name' => 'W', 'steps' => []], $this->h);
 
         $post(['trigger_type' => 'date_reached', 'trigger_config' => []])->assertStatus(422)->assertJsonFragment(['message' => 'Choose the date field this workflow follows (a custom field of the type Date).']);
-        $text = $this->postJson('/api/contact-fields', ['label' => 'Nickname', 'type' => 'text'], $this->h)->json('id');
+        $text = $this->postJson('/api/person-fields', ['label' => 'Nickname', 'type' => 'text'], $this->h)->json('id');
         $post(['trigger_type' => 'date_reached', 'trigger_config' => ['field_id' => $text]])->assertStatus(422); // not a date field
-        $date = $this->postJson('/api/contact-fields', ['label' => 'Joined', 'type' => 'date'], $this->h)->json('id');
+        $date = $this->postJson('/api/person-fields', ['label' => 'Joined', 'type' => 'date'], $this->h)->json('id');
         $post(['trigger_type' => 'date_reached', 'trigger_config' => ['field_id' => $date, 'when' => 'before', 'days' => 0]])->assertStatus(422); // "before" needs a number of days
         $post(['trigger_type' => 'date_reached', 'trigger_config' => ['field_id' => $date, 'when' => 'before', 'days' => 2, 'yearly' => true]])->assertCreated();
 

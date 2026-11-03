@@ -3,38 +3,38 @@
 namespace App\Services;
 
 use App\Models\Company;
-use App\Models\Contact;
+use App\Models\Person;
 use App\Models\EmailLog;
 use App\Models\Media;
 
 /**
- * Turns a template body into the final message for one contact:
+ * Turns a template body into the final message for one person:
  * merge tags, unsubscribe link, open pixel and click tracking.
  */
 class MessageRenderer
 {
     public const TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'unsubscribe_url'];
 
-    public function vars(Company $company, ?Contact $contact, string $channel): array
+    public function vars(Company $company, ?Person $person, string $channel): array
     {
         $vars = [
-            'first_name' => $contact?->first_name ?? 'there',
-            'last_name' => $contact?->last_name ?? '',
-            'full_name' => $contact?->full_name ?: 'there',
-            'email' => $contact?->email ?? '',
-            'phone' => $contact?->phone ?? '',
+            'first_name' => $person?->first_name ?? 'there',
+            'last_name' => $person?->last_name ?? '',
+            'full_name' => $person?->full_name ?: 'there',
+            'email' => $person?->email ?? '',
+            'phone' => $person?->phone ?? '',
             'company_name' => $company->name,
             'business_name' => $company->name, // legacy alias: templates written before the rename keep working
             'company_phone' => (string) $company->setting('profile.phone', ''),
             'company_website' => (string) $company->setting('profile.website', ''),
             'company_email' => (string) $company->setting('profile.support_email', ''),
             'company_logo' => (string) Media::logoUrl($company), // the logo chosen from Media (Settings → Company profile)
-            'unsubscribe_url' => $contact
-                ? url("/api/unsubscribe/{$contact->unsubscribe_token}?channel={$channel}")
+            'unsubscribe_url' => $person
+                ? url("/api/unsubscribe/{$person->unsubscribe_token}?channel={$channel}")
                 : '#',
         ];
 
-        foreach (($contact?->customMap() ?? []) as $k => $v) {
+        foreach (($person?->customMap() ?? []) as $k => $v) {
             if (is_scalar($v)) {
                 $vars[$k] ??= (string) $v;
             }
@@ -48,9 +48,9 @@ class MessageRenderer
         return preg_replace_callback('/\{\{\s*([\w.]+)\s*\}\}/', fn ($m) => $vars[$m[1]] ?? '', $text);
     }
 
-    public function renderEmail(string $subject, string $html, Company $company, ?Contact $contact, ?EmailLog $log = null): array
+    public function renderEmail(string $subject, string $html, Company $company, ?Person $person, ?EmailLog $log = null): array
     {
-        $vars = $this->vars($company, $contact, 'email');
+        $vars = $this->vars($company, $person, 'email');
         $escaped = array_map(fn ($v) => e($v), $vars);
         $escaped['unsubscribe_url'] = $vars['unsubscribe_url'];
 
@@ -93,9 +93,9 @@ class MessageRenderer
         return trim($t);
     }
 
-    public function renderSms(string $body, Company $company, ?Contact $contact): string
+    public function renderSms(string $body, Company $company, ?Person $person): string
     {
-        return $this->replace($body, $this->vars($company, $contact, 'sms'));
+        return $this->replace($body, $this->vars($company, $person, 'sms'));
     }
 
     protected function trackClicks(string $html, EmailLog $log): string

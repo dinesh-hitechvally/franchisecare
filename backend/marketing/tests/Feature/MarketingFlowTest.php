@@ -26,11 +26,11 @@ class MarketingFlowTest extends TestCase
         $h = ['Authorization' => 'Bearer '.$this->register()];
 
         $list = $this->postJson('/api/lists', ['name' => 'VIP'], $h)->assertCreated()->json('id');
-        $this->postJson('/api/contacts', ['first_name' => 'Ann', 'email' => 'ann@x.com', 'phone' => '+61400000001', 'list_ids' => [$list]], $h)->assertCreated();
-        $this->postJson('/api/contacts', ['first_name' => 'Bob', 'email' => 'bob@x.com', 'list_ids' => [$list]], $h)->assertCreated();
+        $this->postJson('/api/people', ['first_name' => 'Ann', 'email' => 'ann@x.com', 'phone' => '+61400000001', 'list_ids' => [$list]], $h)->assertCreated();
+        $this->postJson('/api/people', ['first_name' => 'Bob', 'email' => 'bob@x.com', 'list_ids' => [$list]], $h)->assertCreated();
 
         $email = $this->postJson('/api/campaigns', [
-            'name' => 'Hello', 'type' => 'email', 'contact_list_id' => $list, 'subject' => 'Hi {{first_name}}',
+            'name' => 'Hello', 'type' => 'email', 'people_list_id' => $list, 'subject' => 'Hi {{first_name}}',
             'body' => '<p>Hello {{first_name}} <a href="https://example.com">link</a></p>',
         ], $h)->assertCreated()->json('id');
 
@@ -44,7 +44,7 @@ class MarketingFlowTest extends TestCase
         $this->assertStringContainsString('Unsubscribe', $logs[0]->body);
 
         // SMS: Bob has no phone -> left out (counted), Ann 'logged' (test mode: written to the log, not delivered)
-        $sms = $this->postJson('/api/campaigns', ['name' => 'Txt', 'type' => 'sms', 'contact_list_id' => $list, 'body' => 'Hi {{first_name}}'], $h)->json('id');
+        $sms = $this->postJson('/api/campaigns', ['name' => 'Txt', 'type' => 'sms', 'people_list_id' => $list, 'body' => 'Hi {{first_name}}'], $h)->json('id');
         $this->postJson("/api/campaigns/$sms/send", [], $h)->assertOk();
         $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'logged')->count());
         $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'sent')->count()); // nothing was really sent
@@ -58,7 +58,7 @@ class MarketingFlowTest extends TestCase
     public function test_tracking_and_unsubscribe(): void
     {
         $h = ['Authorization' => 'Bearer '.$this->register()];
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h);
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h);
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 's', 'body' => '<a href="https://example.com">x</a>'], $h)->json('id');
         $this->postJson("/api/campaigns/$id/send", [], $h);
 
@@ -69,23 +69,23 @@ class MarketingFlowTest extends TestCase
         // unsigned redirect must be rejected (open-redirect guard)
         $this->get("/api/t/c/{$log->track_token}?u=https://evil.com&s=bad")->assertNotFound();
 
-        $contact = \App\Models\Contact::withoutGlobalScopes()->first();
-        $this->get("/api/unsubscribe/{$contact->unsubscribe_token}")->assertOk();
-        $this->assertFalse($contact->fresh()->is_subscribed);
+        $person = \App\Models\Person::withoutGlobalScopes()->first();
+        $this->get("/api/unsubscribe/{$person->unsubscribe_token}")->assertOk();
+        $this->assertFalse($person->fresh()->is_subscribed);
     }
 
     public function test_tenants_are_isolated(): void
     {
         $a = ['Authorization' => 'Bearer '.$this->register('a@x.com', 'A')];
-        $contactId = $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $a)->json('id');
+        $personId = $this->postJson('/api/people', ['email' => 'ann@x.com'], $a)->json('id');
 
         $this->app['auth']->forgetGuards();
         $b = ['Authorization' => 'Bearer '.$this->register('b@x.com', 'B')];
         $this->app['auth']->forgetGuards();
 
-        $this->getJson('/api/contacts', $b)->assertJsonPath('total', 0);
-        $this->putJson("/api/contacts/$contactId", ['email' => 'hack@x.com'], $b)->assertNotFound();
-        $this->deleteJson("/api/contacts/$contactId", [], $b)->assertNotFound();
+        $this->getJson('/api/people', $b)->assertJsonPath('total', 0);
+        $this->putJson("/api/people/$personId", ['email' => 'hack@x.com'], $b)->assertNotFound();
+        $this->deleteJson("/api/people/$personId", [], $b)->assertNotFound();
     }
 
     public function test_visual_design_is_saved_and_sent(): void
@@ -98,7 +98,7 @@ class MarketingFlowTest extends TestCase
         $t->assertJsonPath('design.blocks.0.id', 'a1');
         $this->getJson('/api/templates', $h)->assertJsonPath('0.design.settings.bg', '#fff');
 
-        $this->postJson('/api/contacts', ['first_name' => 'Ann', 'email' => 'ann@x.com'], $h);
+        $this->postJson('/api/people', ['first_name' => 'Ann', 'email' => 'ann@x.com'], $h);
         $c = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => $html, 'design' => $design], $h)->assertCreated()->json('id');
         $this->postJson("/api/campaigns/$c/send", [], $h)->assertOk();
 

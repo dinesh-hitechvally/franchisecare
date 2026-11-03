@@ -42,9 +42,9 @@ class DateStorageTest extends TestCase
     {
         $h = $this->owner();
         $this->travelTo(now()->setDate(2026, 11, 1)->setTime(8, 6, 13));
-        $this->postJson('/api/contacts', ['email' => 'a@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'a@x.com'], $h)->assertCreated();
 
-        $this->assertStringStartsWith('2026-11-01 08:06:13', (string) DB::table('contacts')->value('created_at')); // the UTC wall clock, as written
+        $this->assertStringStartsWith('2026-11-01 08:06:13', (string) DB::table('people')->value('created_at')); // the UTC wall clock, as written
     }
 
     public function test_a_time_typed_by_the_user_is_stored_exactly_as_typed(): void
@@ -65,7 +65,7 @@ class DateStorageTest extends TestCase
     public function test_a_scheduled_campaign_goes_out_when_the_utc_clock_reaches_the_typed_time(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $this->travelTo(now()->setDate(2026, 11, 1)->setTime(8, 0, 0));
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => '<p>x</p>', 'scheduled_at' => '2026-11-01 09:00:00'], $h)->json('id');
         $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk()->assertJsonPath('status', 'scheduled');
@@ -81,7 +81,7 @@ class DateStorageTest extends TestCase
     public function test_sent_opened_and_click_times_are_all_saved_as_utc(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => '<a href="https://example.com/a">a</a>'], $h)->json('id');
 
         $this->travelTo(now()->setDate(2026, 11, 1)->setTime(8, 0, 0));

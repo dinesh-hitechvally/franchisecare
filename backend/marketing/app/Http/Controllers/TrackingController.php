@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ClickEvent;
-use App\Models\Contact;
+use App\Models\Person;
 use App\Models\EmailLog;
 use App\Services\Automation;
 use App\Services\MessageRenderer;
@@ -31,9 +31,9 @@ class TrackingController extends Controller
     protected function fire(string $type, string $token, array $ctx = []): void
     {
         $log = EmailLog::withoutGlobalScope('company')->where('track_token', $token)->first();
-        $contact = $log?->contact_id ? Contact::withoutGlobalScope('company')->find($log->contact_id) : null;
-        if ($contact) {
-            Automation::fire($type, $contact, $ctx + ['campaign_id' => $log->campaign_id]);
+        $person = $log?->person_id ? Person::withoutGlobalScope('company')->find($log->person_id) : null;
+        if ($person) {
+            Automation::fire($type, $person, $ctx + ['campaign_id' => $log->campaign_id]);
         }
     }
 
@@ -59,10 +59,10 @@ class TrackingController extends Controller
 
     public function unsubscribe(Request $request, string $token)
     {
-        $contact = Contact::withoutGlobalScope('company')->where('unsubscribe_token', $token)->first();
+        $person = Person::withoutGlobalScope('company')->where('unsubscribe_token', $token)->first();
         // links in messages sent earlier still carry ?channel=; it makes no difference any more
-        if ($contact) {
-            Subscriptions::set($contact, false);
+        if ($person) {
+            Subscriptions::set($person, false);
         }
 
         return response('<!doctype html><meta name="viewport" content="width=device-width,initial-scale=1"><body style="font-family:Arial,sans-serif;text-align:center;padding:64px 16px;color:#111"><h2>You\'ve been unsubscribed</h2><p>You will no longer receive email or SMS messages from us.</p></body>');

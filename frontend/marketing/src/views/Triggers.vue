@@ -54,7 +54,7 @@ onMounted(async () => { rows.value = (await api.get('/automation/triggers')).dat
 .d { color: #555; font-size: 13px; max-width: 420px; }
 .none { color: #6b7280; }
 .pill { display: inline-block; background: #f4f5f7; border-radius: 99px; padding: 3px 10px; font-size: 13px; color: #333; text-decoration: none; margin: 0 6px 4px 0; }
-.badge.g-contact { background: #e8eaf6; color: #3f51b5; }
+.badge.g-people { background: #e8eaf6; color: #3f51b5; }
 .badge.g-email { background: #e0f2f1; color: #00796b; }
 .badge.g-time { background: #fff3e0; color: #e65100; }
 </style>

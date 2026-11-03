@@ -67,7 +67,7 @@ async function save() {
 }
 
 async function remove(s) {
-  if (!confirm(`Delete segment "${s.name}"? Campaigns using it fall back to all contacts.`)) return
+  if (!confirm(`Delete segment "${s.name}"? Campaigns using it fall back to all people.`)) return
   await api.delete(`/segments/${s.id}`)
   load()
 }
@@ -83,7 +83,7 @@ onMounted(async () => {
 
 <template>
   <div class="head"><h1>Segments</h1><div class="row"><router-link to="/segments/history" class="btn ghost">Segment histories</router-link><button class="btn" :disabled="!fields.length" @click="open(null)">New segment</button></div></div>
-  <p class="intro">A segment is a saved group of contacts that updates itself — e.g. “gmail users tagged VIP who opened an email this month”. Use it as the audience for a campaign.</p>
+  <p class="intro">A segment is a saved group of people that updates itself — e.g. “gmail users tagged VIP who opened an email this month”. Use it as the audience for a campaign.</p>
 
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="flt.q" type="search" placeholder="Search segments…" />
@@ -93,11 +93,11 @@ onMounted(async () => {
     <p v-if="!rows.length" class="empty">No segments yet.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Name</th><th>Rules</th><th>Contacts now</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Rules</th><th>People now</th><th class="act">Actions</th></tr></thead>
       <tr v-for="s in visible" :key="s.id">
         <td><b>{{ s.name }}</b><br /><small>{{ s.description }}</small></td>
         <td>{{ summary(s) }}</td>
-        <td><router-link :to="`/contacts?segment_id=${s.id}`">{{ s.contacts_count }}</router-link></td>
+        <td><router-link :to="`/people?segment_id=${s.id}`">{{ s.people_count }}</router-link></td>
         <td class="act"><RowMenu :history="{ type: 'segment', id: s.id, title: s.name }" :items="[{ label: 'Send campaign', to: `/campaigns/new?segment_id=${s.id}` }, { label: 'Edit', run: () => open(s) }, { label: 'Delete', run: () => remove(s), danger: true }]" /></td>
       </tr>
     </table>
@@ -112,7 +112,7 @@ onMounted(async () => {
       </div>
 
       <div class="row" style="margin-bottom: 10px">
-        Contacts must match
+        People must match
         <select v-model="form.match" style="width: 130px"><option value="all">ALL rules</option><option value="any">ANY rule</option></select>
       </div>
 
@@ -134,7 +134,7 @@ onMounted(async () => {
 
       <div class="pv">
         <template v-if="preview">
-          <b>{{ preview.count }}</b> contact(s) match right now
+          <b>{{ preview.count }}</b> person(s) match right now
           <span v-if="preview.sample.length" class="muted"> — e.g. {{ preview.sample.map((c) => c.email || c.phone).join(', ') }}</span>
         </template>
         <span v-else class="muted">Calculating…</span>

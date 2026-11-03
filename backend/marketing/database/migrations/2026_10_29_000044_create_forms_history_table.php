@@ -25,7 +25,7 @@ return new class extends Migration
             $table->string('existing_message', 500)->nullable();
             $table->text('style')->nullable();
             $table->string('redirect_url', 500)->nullable();
-            $table->boolean('save_contact')->nullable();
+            $table->boolean('save_person')->nullable();
             $table->boolean('subscribe')->nullable();
             $table->text('notify_emails')->nullable();
             $table->boolean('autoreply')->nullable();

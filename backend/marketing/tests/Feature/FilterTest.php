@@ -22,22 +22,22 @@ class FilterTest extends TestCase
     public function test_the_form_inbox_can_be_searched_and_filtered(): void
     {
         $h = $this->owner();
-        $form = $this->postJson('/api/forms', ['name' => 'F', 'type' => 'contact', 'save_contact' => false], $h)->json();
+        $form = $this->postJson('/api/forms', ['name' => 'F', 'type' => 'contact', 'save_person' => false], $h)->json();
         $this->postJson('/api/public/forms/'.$form['slug'], ['email' => 'ann@x.com', 'first_name' => 'Ann'])->assertOk();
         $this->postJson('/api/public/forms/'.$form['slug'], ['email' => 'bob@x.com', 'first_name' => 'Bob'])->assertOk();
 
         $this->assertSame(2, $this->getJson("/api/forms/{$form['id']}/submissions", $h)->json('total'));
         $this->assertSame(1, $this->getJson("/api/forms/{$form['id']}/submissions?search=bob", $h)->json('total'));
         $this->assertSame(0, $this->getJson("/api/forms/{$form['id']}/submissions?search=nobody", $h)->json('total'));
-        $this->assertSame(2, $this->getJson("/api/forms/{$form['id']}/submissions?contact=no", $h)->json('total'));
-        $this->assertSame(0, $this->getJson("/api/forms/{$form['id']}/submissions?contact=yes", $h)->json('total'));
+        $this->assertSame(2, $this->getJson("/api/forms/{$form['id']}/submissions?person=no", $h)->json('total'));
+        $this->assertSame(0, $this->getJson("/api/forms/{$form['id']}/submissions?person=yes", $h)->json('total'));
         $this->assertSame(0, $this->getJson("/api/forms/{$form['id']}/submissions?from=2999-01-01", $h)->json('total'));
     }
 
     public function test_campaign_reports_can_be_searched_and_filtered(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'a@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'a@x.com'], $h)->assertCreated();
         foreach (['Spring sale', 'Welcome'] as $name) {
             $id = $this->postJson('/api/campaigns', ['name' => $name, 'type' => 'email', 'subject' => 'S', 'body' => '<p>x</p>'], $h)->json('id');
             $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk();

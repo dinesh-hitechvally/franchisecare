@@ -6,7 +6,7 @@ import { useFilters } from '../composables/useFilters'
 import RowMenu from '../components/RowMenu.vue'
 import Modal from '../components/Modal.vue'
 
-// Extra data a company keeps on its contacts, beyond the built-in name, email and mobile.
+// Extra data a company keeps on its people, beyond the built-in name, email and mobile.
 const rows = ref([])
 const { f: flt, shown: visible, dirty: fDirty, clear: fClear } = useFilters(rows, { text: (x) => [x.label, x.key], match: { type: (x) => x.type } })
 const editing = ref(null) // id | 'new'
@@ -19,7 +19,7 @@ const TYPES = {
 const hasOptions = computed(() => ['dropdown', 'radio'].includes(form.type))
 const tag = (k) => '{{' + k + '}}'
 
-const load = async () => { rows.value = (await api.get('/contact-fields')).data }
+const load = async () => { rows.value = (await api.get('/person-fields')).data }
 
 function open(f) {
   Object.assign(form, { label: f?.label || '', type: f?.type || 'text', optionsText: (f?.options || []).join('\n') })
@@ -32,8 +32,8 @@ async function save() {
   const options = hasOptions.value ? form.optionsText.split('\n') : null
   try {
     editing.value === 'new'
-      ? await api.post('/contact-fields', { label: form.label, type: form.type, options })
-      : await api.put(`/contact-fields/${editing.value}`, { label: form.label, options })
+      ? await api.post('/person-fields', { label: form.label, type: form.type, options })
+      : await api.put(`/person-fields/${editing.value}`, { label: form.label, options })
     editing.value = null
     load()
   } catch (e) { error.value = errorMessage(e) }
@@ -41,8 +41,8 @@ async function save() {
 
 async function remove(f) {
   const n = f.values_count
-  if (!confirm(`Delete the field "${f.label}"?${n ? ` The answers saved on ${n} contact(s) are deleted too.` : ''} Forms that ask this question keep working, but stop saving it on contacts.`)) return
-  await api.delete(`/contact-fields/${f.id}`)
+  if (!confirm(`Delete the field "${f.label}"?${n ? ` The answers saved on ${n} people are deleted too.` : ''} Forms that ask this question keep working, but stop saving it on people.`)) return
+  await api.delete(`/person-fields/${f.id}`)
   load()
 }
 
@@ -51,7 +51,7 @@ onMounted(load)
 
 <template>
   <div class="head"><h1>Custom Fields</h1><button class="btn" @click="open(null)">New field</button></div>
-  <p class="intro">Every contact has a first name, last name, email and mobile. Custom fields hold anything else you want to know about them — company, plan, birthday… Fill them in on a contact, from a sign-up form question, or through the API, and use them as merge tags in emails and SMS.</p>
+  <p class="intro">Every person has a first name, last name, email and mobile. Custom fields hold anything else you want to know about them — company, plan, birthday… Fill them in on a person, from a sign-up form question, or through the API, and use them as merge tags in emails and SMS.</p>
 
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="flt.q" type="search" placeholder="Search custom fields…" />
@@ -59,17 +59,17 @@ onMounted(load)
   </FilterBar>
 
   <div class="card">
-    <p v-if="!rows.length" class="empty">No custom fields yet. They are also created automatically when a form question is set to “Also save this answer on the contact”.</p>
+    <p v-if="!rows.length" class="empty">No custom fields yet. They are also created automatically when a form question is set to “Also save this answer on the person”.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Name</th><th>Merge tag</th><th>Type</th><th>Choices</th><th>Contacts with a value</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>Merge tag</th><th>Type</th><th>Choices</th><th>People with a value</th><th class="act">Actions</th></tr></thead>
       <tr v-for="f in visible" :key="f.id">
         <td><b>{{ f.label }}</b></td>
         <td><code>{{ tag(f.key) }}</code></td>
         <td>{{ TYPES[f.type] }}</td>
         <td><small>{{ (f.options || []).join(', ') }}</small></td>
         <td>{{ f.values_count }}</td>
-        <td class="act"><RowMenu :history="{ type: 'contact_field', id: f.id, title: f.label }" :items="[{ label: 'Edit', run: () => open(f) }, { label: 'Delete', run: () => remove(f), danger: true }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'person_field', id: f.id, title: f.label }" :items="[{ label: 'Edit', run: () => open(f) }, { label: 'Delete', run: () => remove(f), danger: true }]" /></td>
       </tr>
     </table>
   </div>

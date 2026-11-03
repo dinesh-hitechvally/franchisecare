@@ -79,8 +79,8 @@ class HistoryViewTest extends TestCase
     public function test_an_old_saved_copy_of_a_form_opens_as_the_builder_expects_it(): void
     {
         $h = $this->owner();
-        $form = $this->postJson('/api/forms', ['name' => 'Newsletter', 'type' => 'newsletter', 'subscribe' => true, 'save_contact' => true, 'button_text' => 'Join', 'notify_emails' => ['a@x.com']], $h)->assertCreated()->json();
-        $this->putJson('/api/forms/'.$form['id'], ['name' => 'Newsletter v2', 'type' => 'newsletter', 'subscribe' => true, 'save_contact' => true, 'button_text' => 'Subscribe now', 'notify_emails' => []], $h)->assertOk();
+        $form = $this->postJson('/api/forms', ['name' => 'Newsletter', 'type' => 'newsletter', 'subscribe' => true, 'save_person' => true, 'button_text' => 'Join', 'notify_emails' => ['a@x.com']], $h)->assertCreated()->json();
+        $this->putJson('/api/forms/'.$form['id'], ['name' => 'Newsletter v2', 'type' => 'newsletter', 'subscribe' => true, 'save_person' => true, 'button_text' => 'Subscribe now', 'notify_emails' => []], $h)->assertOk();
 
         $versions = collect($this->getJson('/api/history/form/'.$form['id'], $h)->assertOk()->json());
         $this->assertCount(2, $versions);

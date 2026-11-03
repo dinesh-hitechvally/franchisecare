@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Contact;
+use App\Models\Person;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -28,7 +28,7 @@ class FormSubscribeFieldTest extends TestCase
             ['type' => 'email', 'label' => 'Email', 'required' => true],
             ['type' => 'subscribe', 'label' => 'Subscribe me to the newsletter', 'required' => $required],
         ];
-        $slug = $this->postJson('/api/forms', ['name' => 'News', 'type' => 'newsletter', 'subscribe' => true, 'save_contact' => true, 'fields' => $fields], $this->h)->assertCreated()->json('slug');
+        $slug = $this->postJson('/api/forms', ['name' => 'News', 'type' => 'newsletter', 'subscribe' => true, 'save_person' => true, 'fields' => $fields], $this->h)->assertCreated()->json('slug');
         $this->app['auth']->forgetGuards();
 
         return $slug;
@@ -41,8 +41,8 @@ class FormSubscribeFieldTest extends TestCase
         $this->postJson("/api/public/forms/$slug", ['email' => 'yes@x.com', 'subscribe' => true])->assertOk();
         $this->postJson("/api/public/forms/$slug", ['email' => 'no@x.com'])->assertOk();
 
-        $this->assertTrue((bool) Contact::withoutGlobalScopes()->where('email', 'yes@x.com')->value('is_subscribed'));
-        $this->assertFalse((bool) Contact::withoutGlobalScopes()->where('email', 'no@x.com')->value('is_subscribed'));
+        $this->assertTrue((bool) Person::withoutGlobalScopes()->where('email', 'yes@x.com')->value('is_subscribed'));
+        $this->assertFalse((bool) Person::withoutGlobalScopes()->where('email', 'no@x.com')->value('is_subscribed'));
     }
 
     public function test_a_required_box_must_be_ticked_and_a_returning_opt_out_is_never_re_subscribed(): void
@@ -51,9 +51,9 @@ class FormSubscribeFieldTest extends TestCase
         $this->postJson("/api/public/forms/$slug", ['email' => 'a@x.com'])->assertStatus(422);
 
         $this->postJson("/api/public/forms/$slug", ['email' => 'a@x.com', 'subscribe' => true])->assertOk();
-        Contact::withoutGlobalScopes()->where('email', 'a@x.com')->update(['is_subscribed' => false]);
+        Person::withoutGlobalScopes()->where('email', 'a@x.com')->update(['is_subscribed' => false]);
         $this->postJson("/api/public/forms/$slug", ['email' => 'a@x.com', 'subscribe' => true])->assertOk();
-        $this->assertFalse((bool) Contact::withoutGlobalScopes()->where('email', 'a@x.com')->value('is_subscribed'));
+        $this->assertFalse((bool) Person::withoutGlobalScopes()->where('email', 'a@x.com')->value('is_subscribed'));
     }
 
     public function test_the_box_can_only_be_added_once_and_shows_on_the_hosted_form(): void

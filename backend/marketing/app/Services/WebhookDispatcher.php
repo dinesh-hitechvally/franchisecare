@@ -8,12 +8,12 @@ use App\Models\Webhook;
 class WebhookDispatcher
 {
     public const EVENTS = [
-        'contact.created' => 'A contact is added',
-        'contact.unsubscribed' => 'A contact unsubscribes',
+        'person.created' => 'A person is added',
+        'person.unsubscribed' => 'A person unsubscribes',
         'campaign.sent' => 'A campaign finishes sending',
         'form.submitted' => 'A sign-up form is submitted',
         'message.failed' => 'A message fails to send',
-        'workflow.completed' => 'A contact finishes a workflow',
+        'workflow.completed' => 'A person finishes a workflow',
     ];
 
     /** Queue a delivery for every active webhook of the company that listens to $event. */

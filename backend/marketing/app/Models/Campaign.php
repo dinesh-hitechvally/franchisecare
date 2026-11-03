@@ -25,7 +25,7 @@ class Campaign extends Model
 
     public function list()
     {
-        return $this->belongsTo(ContactList::class, 'contact_list_id');
+        return $this->belongsTo(PeopleList::class, 'people_list_id');
     }
 
     public function segment()
@@ -54,7 +54,7 @@ class Campaign extends Model
         return $this->type === 'sms' ? $this->smsLogs() : $this->emailLogs();
     }
 
-    /** Everyone this campaign goes to (before unsubscribed / missing-address people are left out): its segment, its list, or all contacts. */
+    /** Everyone this campaign goes to (before unsubscribed / missing-address people are left out): its segment, its list, or all people. */
     public function audienceQuery()
     {
         if ($this->segment_id && ($segment = Segment::withoutGlobalScope('company')->where('company_id', $this->company_id)->find($this->segment_id))) {
@@ -62,13 +62,13 @@ class Campaign extends Model
         }
 
         if ($this->tag_id) {
-            return Contact::withoutGlobalScope('company')->where('company_id', $this->company_id)
+            return Person::withoutGlobalScope('company')->where('company_id', $this->company_id)
                 ->whereHas('tags', fn ($q) => $q->where('tags.id', $this->tag_id));
         }
 
-        $query = $this->contact_list_id
-            ? Contact::withoutGlobalScope('company')->whereHas('lists', fn ($q) => $q->where('contact_lists.id', $this->contact_list_id))
-            : Contact::withoutGlobalScope('company');
+        $query = $this->people_list_id
+            ? Person::withoutGlobalScope('company')->whereHas('lists', fn ($q) => $q->where('people_lists.id', $this->people_list_id))
+            : Person::withoutGlobalScope('company');
 
         return $query->where('company_id', $this->company_id);
     }

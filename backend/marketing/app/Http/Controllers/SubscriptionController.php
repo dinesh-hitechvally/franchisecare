@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Contact;
+use App\Models\Person;
 use App\Services\Subscriptions;
 use Illuminate\Http\Request;
 
 class SubscriptionController extends Controller
 {
-    /** Summary counts + a filterable contact list for subscription management. */
+    /** Summary counts + a filterable person list for subscription management. */
     public function index(Request $request)
     {
-        $q = Contact::query();
+        $q = Person::query();
         match ($request->query('status')) {
             'unsubscribed' => $q->where('is_subscribed', false),
             'subscribed' => $q->where('is_subscribed', true),
@@ -23,8 +23,8 @@ class SubscriptionController extends Controller
         }
 
         return [
-            'summary' => ['subscribed' => Contact::where('is_subscribed', true)->count(), 'unsubscribed' => Contact::where('is_subscribed', false)->count()],
-            'contacts' => $q->orderByDesc('id')->paginate(25, ['id', 'first_name', 'last_name', 'email', 'phone', 'is_subscribed', 'subscribed_at']),
+            'summary' => ['subscribed' => Person::where('is_subscribed', true)->count(), 'unsubscribed' => Person::where('is_subscribed', false)->count()],
+            'people' => $q->orderByDesc('id')->paginate(25, ['id', 'first_name', 'last_name', 'email', 'phone', 'is_subscribed', 'subscribed_at']),
         ];
     }
 
@@ -37,7 +37,7 @@ class SubscriptionController extends Controller
         ]);
 
         $changed = 0;
-        foreach (Contact::whereIn('id', $data['ids'])->get() as $c) {
+        foreach (Person::whereIn('id', $data['ids'])->get() as $c) {
             $changed += Subscriptions::set($c, (bool) $data['subscribed']) ? 1 : 0;
         }
 

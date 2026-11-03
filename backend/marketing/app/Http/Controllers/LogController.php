@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Campaign;
-use App\Models\Contact;
-use App\Models\ContactList;
+use App\Models\Person;
+use App\Models\PeopleList;
 use App\Models\EmailLog;
 use App\Models\SmsLog;
 use App\Models\Template;
@@ -81,21 +81,21 @@ class LogController extends Controller
         $emailSent = max(1, EmailLog::where('status', 'sent')->count());
 
         return [
-            'contacts' => Contact::count(),
+            'people' => Person::count(),
             'campaigns' => Campaign::count(),
             'email' => $stat(EmailLog::class) + [
                 'open_rate' => round(EmailLog::whereNotNull('opened_at')->count() / $emailSent * 100, 1),
                 'clicked' => EmailLog::where('clicks', '>', 0)->count(),
             ],
             'sms' => $stat(SmsLog::class),
-            'lists' => ContactList::count(),
+            'lists' => PeopleList::count(),
             'templates' => Template::count(),
-            'unsubscribed' => Contact::where('is_subscribed', false)->count(),
+            'unsubscribed' => Person::where('is_subscribed', false)->count(),
             'drafts' => Campaign::where('status', 'draft')->count(),
             'scheduled' => Campaign::where('status', 'scheduled')->count(),
             'daily' => $this->daily(),
             'upcoming' => Campaign::with('list:id,name')->where('status', 'scheduled')->orderBy('scheduled_at')->limit(5)
-                ->get(['id', 'name', 'type', 'contact_list_id', 'scheduled_at']),
+                ->get(['id', 'name', 'type', 'people_list_id', 'scheduled_at']),
             'recent_logs' => EmailLog::latest('id')->limit(5)->get(['id', 'recipient', 'status', 'created_at'])
                 ->concat(SmsLog::latest('id')->limit(5)->get(['id', 'recipient', 'status', 'created_at']))
                 ->sortByDesc('created_at')->take(5)->values(),

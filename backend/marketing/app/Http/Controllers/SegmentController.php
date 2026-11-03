@@ -10,7 +10,7 @@ class SegmentController extends Controller
 {
     public function index()
     {
-        return Segment::latest()->get()->each(fn ($s) => $s->setAttribute('contacts_count', SegmentQuery::forSegment($s)->count()));
+        return Segment::latest()->get()->each(fn ($s) => $s->setAttribute('people_count', SegmentQuery::forSegment($s)->count()));
     }
 
     /** Field catalogue for the rule builder. */
@@ -38,7 +38,7 @@ class SegmentController extends Controller
         return response()->noContent();
     }
 
-    /** Live count + a few sample contacts for rules that are still being edited. */
+    /** Live count + a few sample people for rules that are still being edited. */
     public function preview(Request $request)
     {
         $data = $this->validated($request, false);
@@ -46,7 +46,7 @@ class SegmentController extends Controller
 
         return [
             'count' => (clone $q)->count(),
-            'sample' => $q->orderBy('contacts.id')->limit(5)->get(['id', 'first_name', 'last_name', 'email', 'phone']),
+            'sample' => $q->orderBy('people.id')->limit(5)->get(['id', 'first_name', 'last_name', 'email', 'phone']),
         ];
     }
 

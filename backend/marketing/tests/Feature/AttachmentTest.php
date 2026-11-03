@@ -41,7 +41,7 @@ class AttachmentTest extends TestCase
     public function test_marked_files_are_attached_to_the_sent_email_and_other_companies_cannot_use_them(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $token = $this->post('/api/attachments', ['file' => UploadedFile::fake()->createWithContent('guide.pdf', '%PDF-1.4 hello')], $h + ['Accept' => 'application/json'])->json('token');
 
         $send = function (array $h, string $tok) {
@@ -55,7 +55,7 @@ class AttachmentTest extends TestCase
         // a second company pointing at the same token gets no attachment
         $this->app['auth']->forgetGuards();
         $h2 = $this->owner('p@y.com');
-        $this->postJson('/api/contacts', ['email' => 'bob@y.com'], $h2)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'bob@y.com'], $h2)->assertCreated();
         Mail::mailer()->getSymfonyTransport()->flush();
         $send($h2, $token);
         $raw2 = Mail::mailer()->getSymfonyTransport()->messages()->map(fn ($m) => $m->toString())->implode("\n");
@@ -82,7 +82,7 @@ class AttachmentTest extends TestCase
     public function test_campaign_attachments_go_with_the_campaign_and_the_test_email(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $up = $this->post('/api/attachments', ['file' => UploadedFile::fake()->createWithContent('offer.pdf', '%PDF-1.4 offer')], $h + ['Accept' => 'application/json'])->json();
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => '<p>Hi</p>', 'attachments' => [$up, ['token' => str_repeat('b', 32), 'name' => 'ghost']]], $h)->assertCreated();
         $this->assertSame(['offer.pdf'], array_column($id->json('attachments'), 'name'));

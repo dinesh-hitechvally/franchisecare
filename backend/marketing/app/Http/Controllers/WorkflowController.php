@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AutomationHistory;
-use App\Models\ContactList;
+use App\Models\PeopleList;
 use App\Models\Form;
 use App\Models\Tag;
 use App\Models\Template;
@@ -68,7 +68,7 @@ class WorkflowController extends Controller
 
     public function runs(Request $request)
     {
-        return WorkflowRun::with('workflow:id,name', 'contact:id,first_name,last_name,email')
+        return WorkflowRun::with('workflow:id,name', 'person:id,first_name,last_name,email')
             ->when($request->query('workflow_id'), fn ($q, $v) => $q->where('workflow_id', $v))
             ->when($request->query('status'), fn ($q, $v) => $q->where('status', $v))
             ->latest('id')->paginate(25);
@@ -86,7 +86,7 @@ class WorkflowController extends Controller
     /** Step-by-step audit trail. */
     public function history(Request $request)
     {
-        return AutomationHistory::with('workflow:id,name', 'contact:id,first_name,last_name,email')
+        return AutomationHistory::with('workflow:id,name', 'person:id,first_name,last_name,email')
             ->when($request->query('workflow_id'), fn ($q, $v) => $q->where('workflow_id', $v))
             ->when($request->query('run_id'), fn ($q, $v) => $q->where('workflow_run_id', $v))
             ->when($request->query('status'), fn ($q, $v) => $q->where('status', $v))
@@ -120,11 +120,11 @@ class WorkflowController extends Controller
 
         // every id must belong to this company
         $cfg = $data['trigger_config'] ?? [];
-        abort_if(! empty($cfg['list_id']) && ! ContactList::whereKey($cfg['list_id'])->exists(), 422, 'Trigger list not found.');
+        abort_if(! empty($cfg['list_id']) && ! PeopleList::whereKey($cfg['list_id'])->exists(), 422, 'Trigger list not found.');
         abort_if(! empty($cfg['tag_id']) && ! Tag::whereKey($cfg['tag_id'])->exists(), 422, 'Trigger tag not found.');
         abort_if(! empty($cfg['form_id']) && ! Form::whereKey($cfg['form_id'])->exists(), 422, 'Trigger form not found.');
         if ($data['trigger_type'] === 'date_reached') {
-            abort_unless(! empty($cfg['field_id']) && \App\Models\ContactField::whereKey($cfg['field_id'])->where('type', 'date')->exists(), 422, 'Choose the date field this workflow follows (a custom field of the type Date).');
+            abort_unless(! empty($cfg['field_id']) && \App\Models\PersonField::whereKey($cfg['field_id'])->where('type', 'date')->exists(), 422, 'Choose the date field this workflow follows (a custom field of the type Date).');
             abort_if(($cfg['when'] ?? 'on') !== 'on' && (int) ($cfg['days'] ?? 0) < 1, 422, 'Say how many days before or after the date it should start.');
         }
         abort_if($data['trigger_type'] === 'inactive' && (int) ($cfg['days'] ?? 0) < 1, 422, 'Say after how many days without an opened email the workflow starts.');
@@ -146,7 +146,7 @@ class WorkflowController extends Controller
                     abort_if(empty($s['tag_id']) || ! Tag::whereKey($s['tag_id'])->exists(), 422, "Step {$n}: choose a tag.");
                     break;
                 case 'add_to_list':
-                    abort_if(empty($s['list_id']) || ! ContactList::whereKey($s['list_id'])->exists(), 422, "Step {$n}: choose a list.");
+                    abort_if(empty($s['list_id']) || ! PeopleList::whereKey($s['list_id'])->exists(), 422, "Step {$n}: choose a list.");
                     break;
             }
         }

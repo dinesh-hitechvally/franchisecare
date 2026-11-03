@@ -52,7 +52,7 @@ class HistoryController extends Controller
         return $page;
     }
 
-    /** The full history of one record (a contact's also includes its list and tag changes). */
+    /** The full history of one record (a person's also includes its list and tag changes). */
     public function record(Request $request, string $type, int $id)
     {
         $type = $this->type($type);
@@ -63,9 +63,9 @@ class HistoryController extends Controller
             ->selectRaw("'$type' as type, history_id, id as row_id, change_action, record_label, changed_by_name, change_source, change_ip, changed_at, changed_fields")
             ->get();
 
-        if ($type === 'contact') {
-            foreach (['list_membership' => 'contact_list_members', 'contact_tag' => 'contact_tag'] as $t => $src) {
-                $rows = $rows->concat(DB::table(History::historyTable($src))->where('history_company_id', $company)->where('contact_id', $id)
+        if ($type === 'person') {
+            foreach (['list_membership' => 'people_list_members', 'person_tag' => 'person_tag'] as $t => $src) {
+                $rows = $rows->concat(DB::table(History::historyTable($src))->where('history_company_id', $company)->where('person_id', $id)
                     ->selectRaw("'$t' as type, history_id, NULL as row_id, change_action, record_label, changed_by_name, change_source, change_ip, changed_at, changed_fields")->get());
             }
         }
@@ -79,7 +79,7 @@ class HistoryController extends Controller
         'template' => ['name', 'type', 'subject', 'body', 'design', 'attachments'],
         'campaign' => ['name', 'type', 'subject', 'body', 'design', 'attachments'],
         'landing_page' => ['name', 'slug', 'title', 'html', 'design'],
-        'form' => ['name', 'type', 'title', 'description', 'fields', 'style', 'button_text', 'success_message', 'existing_message', 'redirect_url', 'save_contact', 'subscribe',
+        'form' => ['name', 'type', 'title', 'description', 'fields', 'style', 'button_text', 'success_message', 'existing_message', 'redirect_url', 'save_person', 'subscribe',
             'notify_emails', 'autoreply', 'autoreply_subject', 'autoreply_body', 'autoreply_attachments', 'list_ids', 'tag_ids', 'active'],
     ];
 

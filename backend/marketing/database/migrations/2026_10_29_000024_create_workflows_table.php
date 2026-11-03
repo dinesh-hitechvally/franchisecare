@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->string('trigger_type', 40); // contact_created | list_joined | tag_added | form_submitted
+            $table->string('trigger_type', 40); // person_created | list_joined | tag_added | form_submitted
             $table->text('trigger_config')->nullable();
             $table->longText('steps');          // JSON
             $table->string('status', 10)->default('draft'); // draft | active | paused

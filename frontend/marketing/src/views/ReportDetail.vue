@@ -20,7 +20,7 @@ const series = computed(() => [
   { name: 'Opens', color: '#3f51b5', points: r.value.timeline.opens },
   { name: 'Clicks', color: '#e91e63', points: r.value.timeline.clicks },
 ])
-const audience = computed(() => (r.value.campaign.segment ? `Segment: ${r.value.campaign.segment.name}` : r.value.campaign.list?.name || 'All contacts'))
+const audience = computed(() => (r.value.campaign.segment ? `Segment: ${r.value.campaign.segment.name}` : r.value.campaign.list?.name || 'All people'))
 
 async function exportCsv() {
   try { await download(`/reports/campaigns/${route.params.id}/export`, `campaign-${route.params.id}-recipients.csv`) } catch (e) { error.value = errorMessage(e) }

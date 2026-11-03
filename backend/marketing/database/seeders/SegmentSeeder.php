@@ -14,7 +14,7 @@ class SegmentSeeder extends DemoSeeder
         $vip = Tag::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => TagSeeder::VIP])->first();
 
         Segment::withoutGlobalScopes()->firstOrCreate(['company_id' => $biz, 'name' => 'Gmail VIPs'], [
-            'description' => 'VIP-tagged contacts on gmail',
+            'description' => 'VIP-tagged people on gmail',
             'match' => 'all',
             'rules' => [['field' => 'tag', 'op' => 'in', 'value' => $vip->id], ['field' => 'email_domain', 'op' => 'equals', 'value' => 'gmail.com']],
         ]);

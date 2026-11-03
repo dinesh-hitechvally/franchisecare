@@ -8,8 +8,8 @@ use Illuminate\Support\Str;
  * The form builder's field model.
  *
  * A field is { id, key, type, label, placeholder, help, required, options }.
- *  - standard types (first_name, last_name, email, phone) fill the matching contact column
- *  - input types (text, textarea, number, date, dropdown, radio, checkbox) are saved on the contact as a custom field named `key`
+ *  - standard types (first_name, last_name, email, phone) fill the matching person column
+ *  - input types (text, textarea, number, date, dropdown, radio, checkbox) are saved on the person as a custom field named `key`
  *  - content blocks (heading, paragraph) only display text
  * Forms made before the builder stored [{key, label, enabled, required}]; normalize() upgrades those on the fly.
  */
@@ -21,8 +21,11 @@ class FormFields
 
     public const BLOCKS = ['heading', 'paragraph'];
 
-    /** A tick box ("Subscribe me to the newsletter") that decides whether a new contact is subscribed. Not saved on the contact. */
+    /** A tick box ("Subscribe me to the newsletter") that decides whether a new person is subscribed. Not saved on the person. */
     public const SUBSCRIBE = 'subscribe';
+
+    /** A small built-in human check ("7 + 4 = ?"): never saved with the answers or on the person. */
+    public const CAPTCHA = 'captcha';
 
     /** What the form is for. It only picks sensible defaults; each action is its own setting. */
     public const FORM_TYPES = ['newsletter', 'contact', 'other'];
@@ -30,8 +33,8 @@ class FormFields
     /** Column layout: fields flow left to right and wrap, so two 'half' fields share a row. */
     public const WIDTHS = ['full', 'two_thirds', 'half', 'third', 'quarter'];
 
-    /** Names a custom field may not use (they collide with contact columns or the honeypot). */
-    public const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'subscribe', 'website', 'id', 'company_id'];
+    /** Names a custom field may not use (they collide with person columns or the honeypot). */
+    public const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'subscribe', 'captcha', 'captcha_token', 'website', 'id', 'company_id'];
 
     public const FONTS = [
         'sans' => 'Arial, Helvetica, sans-serif',
@@ -41,12 +44,67 @@ class FormFields
 
     public static function types(): array
     {
-        return array_merge(array_keys(self::STANDARD), self::INPUTS, [self::SUBSCRIBE], self::BLOCKS);
+        return array_merge(array_keys(self::STANDARD), self::INPUTS, [self::SUBSCRIBE, self::CAPTCHA], self::BLOCKS);
     }
 
     public static function isInput(string $type): bool
     {
-        return isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || in_array($type, self::INPUTS, true);
+        return isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || $type === self::CAPTCHA || in_array($type, self::INPUTS, true);
+    }
+
+    /** A pattern is written without delimiters; this makes it a PCRE pattern (unicode). */
+    public static function delimited(string $pattern): string
+    {
+        return '~'.str_replace('~', '\\~', $pattern).'~u';
+    }
+
+    /**
+     * The checks a field carries, cleaned for its type (blank or zero = no rule):
+     * text types: min_length / max_length, pattern; number: min / max; date: min / max; email: allowed_domains; plus a custom error message.
+     */
+    public static function rules(string $type, $r): array
+    {
+        $r = is_array($r) ? $r : [];
+        $out = [];
+        $length = fn ($v) => is_numeric($v) && (int) $v > 0 ? min(2000, (int) $v) : null;
+
+        if (in_array($type, ['first_name', 'last_name', 'phone', 'text', 'textarea'], true)) {
+            foreach (['min_length', 'max_length'] as $k) {
+                if (($n = $length($r[$k] ?? null)) !== null) {
+                    $out[$k] = $n;
+                }
+            }
+        }
+        if (in_array($type, ['first_name', 'last_name', 'phone', 'text', 'email'], true) && trim((string) ($r['pattern'] ?? '')) !== '') {
+            $out['pattern'] = mb_substr(trim((string) $r['pattern']), 0, 200);
+        }
+        if ($type === 'number') {
+            foreach (['min', 'max'] as $k) {
+                if (isset($r[$k]) && $r[$k] !== '' && is_numeric($r[$k])) {
+                    $out[$k] = $r[$k] + 0;
+                }
+            }
+        }
+        if ($type === 'date') {
+            foreach (['min', 'max'] as $k) {
+                $v = trim((string) ($r[$k] ?? ''));
+                if ($v !== '' && strtotime($v) !== false) {
+                    $out[$k] = date('Y-m-d', strtotime($v));
+                }
+            }
+        }
+        if ($type === 'email') {
+            $list = is_array($r['allowed_domains'] ?? null) ? $r['allowed_domains'] : preg_split('/[\s,;]+/', (string) ($r['allowed_domains'] ?? ''), -1, PREG_SPLIT_NO_EMPTY);
+            $list = array_values(array_unique(array_filter(array_map(fn ($d) => ltrim(strtolower(trim((string) $d)), '@'), $list))));
+            if ($list) {
+                $out['allowed_domains'] = array_slice($list, 0, 20);
+            }
+        }
+        if ($out && trim((string) ($r['message'] ?? '')) !== '') {
+            $out['message'] = mb_substr(trim((string) $r['message']), 0, 200);
+        }
+
+        return $out;
     }
 
     public static function field(array $f): array
@@ -55,16 +113,19 @@ class FormFields
 
         return [
             'id' => $f['id'] ?? Str::lower(Str::random(8)),
-            'key' => isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE ? $type : ($f['key'] ?? null),
+            'key' => isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || $type === self::CAPTCHA ? $type : ($f['key'] ?? null),
             'type' => $type,
             'label' => (string) ($f['label'] ?? ''),
             'placeholder' => (string) ($f['placeholder'] ?? ''),
             'help' => (string) ($f['help'] ?? ''),
-            'required' => (bool) ($f['required'] ?? false),
+            'required' => $type === self::CAPTCHA || (bool) ($f['required'] ?? false), // a captcha that can be skipped checks nothing
             'options' => array_values($f['options'] ?? []),
+            // what the field is filled in with when the form opens (blank for headings and paragraphs); a tick box is ticked when it is set
+            'rules' => in_array($type, self::BLOCKS, true) ? [] : self::rules($type, $f['rules'] ?? []),
+            'default' => in_array($type, [...self::BLOCKS, self::CAPTCHA], true) ? '' : mb_substr(trim((string) ($f['default'] ?? '')), 0, 500),
             // headings and paragraphs always take the whole row; forms from before columns existed are all 'full'
-            // standard fields always fill the contact's own columns; headings never; custom questions default to "yes" except long free text (usually a message, which belongs in the inbox)
-            'to_contact' => isset(self::STANDARD[$type]) ? true : (in_array($type, [...self::BLOCKS, self::SUBSCRIBE], true) ? false : (bool) ($f['to_contact'] ?? $type !== 'textarea')),
+            // standard fields always fill the person's own columns; headings never; custom questions default to "yes" except long free text (usually a message, which belongs in the inbox)
+            'to_person' => isset(self::STANDARD[$type]) ? true : (in_array($type, [...self::BLOCKS, self::SUBSCRIBE, self::CAPTCHA], true) ? false : (bool) ($f['to_person'] ?? $type !== 'textarea')),
             'width' => in_array($type, self::BLOCKS, true) || ! in_array($f['width'] ?? 'full', self::WIDTHS, true) ? 'full' : ($f['width'] ?? 'full'),
         ];
     }
@@ -119,8 +180,8 @@ class FormFields
     {
         $base = Str::slug($label, '_') ?: 'field';
         $base = preg_match('/^[a-z]/', $base) ? $base : 'f_'.$base;
-        // a label like "Company name" would collide with the built-in {{company_name}} (your own company), so it becomes contact_company_name
-        $base = in_array($base, self::RESERVED, true) ? 'contact_'.$base : $base;
+        // a label like "Company name" would collide with the built-in {{company_name}} (your own company), so it becomes person_company_name
+        $base = in_array($base, self::RESERVED, true) ? 'person_'.$base : $base;
         $base = mb_substr($base, 0, 36);
         $key = $base;
         for ($i = 2; in_array($key, $taken, true) || in_array($key, self::RESERVED, true); $i++) {

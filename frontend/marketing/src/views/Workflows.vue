@@ -21,7 +21,7 @@ const dateFields = computed(() => customFields.value.filter((c) => c.type === 'd
 const editing = ref(null)
 const error = ref('')
 const msg = ref('')
-const form = reactive({ name: '', trigger_type: 'contact_created', trigger_config: {}, steps: [] })
+const form = reactive({ name: '', trigger_type: 'person_created', trigger_config: {}, steps: [] })
 
 const STEP_TYPES = [
   ['send_email', 'Send email', 'email'], ['send_sms', 'Send SMS', 'sms'], ['wait', 'Wait', 'schedule'],
@@ -43,7 +43,7 @@ function blankStep(type) {
 }
 
 function open(w, trigger) {
-  Object.assign(form, { name: w?.name || '', trigger_type: w?.trigger_type || trigger || 'contact_created', trigger_config: w ? { ...(w.trigger_config || {}) } : defaults(trigger || 'contact_created'), steps: w ? JSON.parse(JSON.stringify(w.steps)) : [] })
+  Object.assign(form, { name: w?.name || '', trigger_type: w?.trigger_type || trigger || 'person_created', trigger_config: w ? { ...(w.trigger_config || {}) } : defaults(trigger || 'person_created'), steps: w ? JSON.parse(JSON.stringify(w.steps)) : [] })
   editing.value = w ? w.id : 'new'
   error.value = ''
 }
@@ -79,7 +79,7 @@ async function toggle(w) {
   error.value = msg.value = ''
   try {
     const { data } = await api.post(`/workflows/${w.id}/toggle`)
-    msg.value = data.status === 'active' ? `“${w.name}” is now active — new matching contacts will enter it.` : `“${w.name}” paused. Contacts already inside stay where they are.`
+    msg.value = data.status === 'active' ? `“${w.name}” is now active — new matching people will enter it.` : `“${w.name}” paused. People already inside stay where they are.`
     load()
   } catch (e) { error.value = errorMessage(e) }
 }
@@ -101,7 +101,7 @@ const describe = (s) => {
 
 onMounted(async () => {
   ;[triggers.value, templates.value, tags.value, lists.value, forms.value, customFields.value] = (await Promise.all([
-    api.get('/automation/triggers'), api.get('/templates'), api.get('/tags'), api.get('/lists'), api.get('/forms'), api.get('/contact-fields'),
+    api.get('/automation/triggers'), api.get('/templates'), api.get('/tags'), api.get('/lists'), api.get('/forms'), api.get('/person-fields'),
   ])).map((r) => r.data)
   load()
   if (route.query.trigger) open(null, route.query.trigger) // arrived from the Triggers page
@@ -110,7 +110,7 @@ onMounted(async () => {
 
 <template>
   <div class="head"><h1>Workflows</h1><div class="row"><router-link to="/workflows/history" class="btn ghost">Workflow histories</router-link><button class="btn" @click="open(null)">New workflow</button></div></div>
-  <p class="intro">A workflow runs automatically for each contact when its trigger happens: send emails or texts, wait, then tag or move them.</p>
+  <p class="intro">A workflow runs automatically for each person when its trigger happens: send emails or texts, wait, then tag or move them.</p>
   <div v-if="msg" class="alert ok">{{ msg }}</div>
   <div v-if="error && !editing" class="alert err">{{ error }}</div>
 
@@ -121,7 +121,7 @@ onMounted(async () => {
   </FilterBar>
 
   <div class="card">
-    <p v-if="!rows.length" class="empty">No workflows yet. Try “Welcome new contacts”: trigger <i>Contact is added</i> → send email → wait 3 days → send follow-up.</p>
+    <p v-if="!rows.length" class="empty">No workflows yet. Try “Welcome new people”: trigger <i>Person is added</i> → send email → wait 3 days → send follow-up.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
       <thead><tr><th>Name</th><th>Trigger</th><th>Steps</th><th>In progress</th><th>Completed</th><th>Status</th><th class="act">Actions</th></tr></thead>

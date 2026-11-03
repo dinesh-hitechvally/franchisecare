@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Concerns\BelongsToCompany;
 use Illuminate\Database\Eloquent\Model;
 
-/** One filled-in form: kept so contact-style forms have an inbox, not just a contact record. */
+/** One filled-in form: kept so person-style forms have an inbox, not just a person record. */
 class FormSubmission extends Model
 {
     use BelongsToCompany, SoftDeletes, Auditable;
@@ -24,7 +24,7 @@ class FormSubmission extends Model
 
     protected function casts(): array
     {
-        return ['data' => 'array', 'contact_existed' => 'boolean']; // null stays null: no contact was linked
+        return ['data' => 'array', 'person_existed' => 'boolean']; // null stays null: no person was linked
     }
 
     public function form()
@@ -32,8 +32,8 @@ class FormSubmission extends Model
         return $this->belongsTo(Form::class);
     }
 
-    public function contact()
+    public function person()
     {
-        return $this->belongsTo(Contact::class);
+        return $this->belongsTo(Person::class);
     }
 }

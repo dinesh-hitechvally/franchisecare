@@ -15,8 +15,8 @@ class WorkflowSeeder extends DemoSeeder
         $welcome = Template::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => TemplateSeeder::WELCOME_EMAIL])->first();
         $web = Tag::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => TagSeeder::WEBSITE_LEAD])->first();
 
-        Workflow::withoutGlobalScopes()->firstOrCreate(['company_id' => $biz, 'name' => 'Welcome new contacts'], [
-            'trigger_type' => 'contact_created', 'trigger_config' => [],
+        Workflow::withoutGlobalScopes()->firstOrCreate(['company_id' => $biz, 'name' => 'Welcome new people'], [
+            'trigger_type' => 'person_created', 'trigger_config' => [],
             'status' => 'draft',
             'steps' => [
                 ['type' => 'send_email', 'template_id' => $welcome->id],

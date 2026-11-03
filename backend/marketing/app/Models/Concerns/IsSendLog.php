@@ -3,9 +3,9 @@
 namespace App\Models\Concerns;
 
 use App\Models\Campaign;
-use App\Models\Contact;
+use App\Models\Person;
 
-/** What EmailLog and SmsLog share: the campaign / contact they belong to, and the "real" statistics scope. */
+/** What EmailLog and SmsLog share: the campaign / person they belong to, and the "real" statistics scope. */
 trait IsSendLog
 {
     public static function bootIsSendLog(): void
@@ -19,8 +19,8 @@ trait IsSendLog
         return $this->belongsTo(Campaign::class);
     }
 
-    public function contact()
+    public function person()
     {
-        return $this->belongsTo(Contact::class);
+        return $this->belongsTo(Person::class);
     }
 }

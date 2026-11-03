@@ -2,7 +2,7 @@
 
 namespace Tests\Feature;
 
-use App\Models\Contact;
+use App\Models\Person;
 use App\Models\EmailLog;
 use App\Services\FormFields;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -50,14 +50,14 @@ class FormBuilderTest extends TestCase
         ], $h)->assertCreated();
 
         $fields = collect($res->json('fields'));
-        $this->assertSame('contact_company_name', $fields->firstWhere('type', 'text')['key']); // key derived from the label, kept clear of the built-in {{company_name}}
+        $this->assertSame('person_company_name', $fields->firstWhere('type', 'text')['key']); // key derived from the label, kept clear of the built-in {{company_name}}
         $this->assertSame('plan', $fields->firstWhere('type', 'dropdown')['key']);
         $this->assertSame(['Basic', 'Pro'], $fields->firstWhere('type', 'dropdown')['options']); // trimmed, de-duplicated, blanks dropped
         $this->assertNull($fields->firstWhere('type', 'heading')['key']);
         $res->assertJsonPath('style.accent', '#ff0000')->assertJsonPath('style.font', 'serif')->assertJsonPath('redirect_url', 'https://example.com/thanks');
 
         $html = $this->get('/f/'.$res->json('slug'))->assertOk()->getContent();
-        foreach (['<h3 class="fc-h">About you', 'name="contact_company_name"', '<textarea name="anything_else"', '<select name="plan"', 'type="radio" name="contact_me_by"', 'type="checkbox" name="i_agree"', 'We never share', 'type="date"', 'type="number"'] as $needle) {
+        foreach (['<h3 class="fc-h">About you', 'name="person_company_name"', '<textarea name="anything_else"', '<select name="plan"', 'type="radio" name="contact_me_by"', 'type="checkbox" name="i_agree"', 'We never share', 'type="date"', 'type="number"'] as $needle) {
             $this->assertStringContainsString($needle, $html, "missing: $needle");
         }
         $this->assertStringContainsString('#ff0000', $html); // accent colour reached the page
@@ -85,13 +85,13 @@ class FormBuilderTest extends TestCase
         $this->postJson("/api/public/forms/$slug", array_merge($ok, ['start' => 'soon']))->assertStatus(422)->assertJsonValidationErrors('start');
         $this->postJson("/api/public/forms/$slug", array_merge($ok, ['plan' => 'Enterprise']))->assertStatus(422)->assertJsonValidationErrors('plan'); // not one of the options
         $this->postJson("/api/public/forms/$slug", array_merge($ok, ['terms' => false]))->assertStatus(422)->assertJsonValidationErrors('terms'); // required consent
-        $this->assertSame(0, Contact::withoutGlobalScopes()->count());
+        $this->assertSame(0, Person::withoutGlobalScopes()->count());
 
         $this->postJson("/api/public/forms/$slug", $ok)->assertOk()->assertJsonPath('message', 'Done!')->assertJsonPath('redirect', 'https://example.com/ty');
 
-        $c = Contact::withoutGlobalScopes()->firstOrFail();
+        $c = Person::withoutGlobalScopes()->firstOrFail();
         $this->assertSame('lee@acme.com', $c->email);
-        // custom answers now live in managed contact fields (not a hidden blob on the contact)
+        // custom answers now live in managed person fields (not a hidden blob on the person)
         $this->assertEquals(['company' => 'Acme', 'staff' => '12', 'start' => '2026-12-01', 'plan' => 'Pro', 'newsletter' => 'Yes', 'terms' => 'Yes'], $c->customMap());
 
         // answers are usable as merge tags
@@ -101,8 +101,8 @@ class FormBuilderTest extends TestCase
 
         // a second submission fills blanks only: it can't overwrite what is already known about that person
         $this->postJson("/api/public/forms/$slug", array_merge($ok, ['company' => 'HACKED', 'staff' => '99']))->assertOk();
-        $this->assertSame('Acme', Contact::withoutGlobalScopes()->first()->customMap()['company']);
-        $this->assertSame(1, Contact::withoutGlobalScopes()->count());
+        $this->assertSame('Acme', Person::withoutGlobalScopes()->first()->customMap()['company']);
+        $this->assertSame(1, Person::withoutGlobalScopes()->count());
     }
 
     public function test_builder_rules_are_enforced(): void
@@ -120,7 +120,7 @@ class FormBuilderTest extends TestCase
         $post([$this->f('email', 'Email')], ['style' => ['accent' => 'red;}</style><script>']])->assertStatus(422); // style can't carry CSS/HTML
         $post(array_fill(0, 31, $this->f('text', 'Q')))->assertStatus(422); // max 30 fields
 
-        // custom keys can't shadow contact columns or each other
+        // custom keys can't shadow person columns or each other
         $res = $post([$this->f('email', 'Email'), $this->f('text', 'Email', ['key' => 'email']), $this->f('text', 'Same'), $this->f('text', 'Same')])->assertCreated();
         $keys = array_column($res->json('fields'), 'key');
         $this->assertSame(count($keys), count(array_unique($keys)));
@@ -162,7 +162,7 @@ class FormBuilderTest extends TestCase
         $slug = $form->json('slug');
         $this->get("/f/$slug")->assertOk()->assertSee('name="email"', false);
         $this->postJson("/api/public/forms/$slug", ['email' => 'old@x.com', 'first_name' => 'Old'])->assertOk();
-        $this->assertSame('Old', Contact::withoutGlobalScopes()->where('email', 'old@x.com')->value('first_name'));
+        $this->assertSame('Old', Person::withoutGlobalScopes()->where('email', 'old@x.com')->value('first_name'));
         $this->assertCount(2, FormFields::normalize(null)); // empty/missing -> defaults
     }
 
@@ -217,7 +217,7 @@ class FormBuilderTest extends TestCase
     {
         $h = $this->owner();
         $form = $this->postJson('/api/forms', [
-            'name' => 'Contact us', 'type' => 'contact', 'subscribe' => false, 'save_contact' => true,
+            'name' => 'Contact us', 'type' => 'contact', 'subscribe' => false, 'save_person' => true,
             'notify_emails' => ['Team@Biz.com', 'boss@biz.com', 'team@biz.com'],           // case-insensitive duplicates collapse
             'autoreply' => true, 'autoreply_subject' => 'Got it, {{first_name}}', 'autoreply_body' => "Hi {{first_name}},\n<script>x</script>\nWe'll reply soon.",
             'fields' => [
@@ -230,15 +230,15 @@ class FormBuilderTest extends TestCase
 
         $this->postJson('/api/public/forms/'.$form->json('slug'), ['first_name' => 'Sam', 'email' => 'sam@x.com', 'message' => '<b>Hello</b> & welcome'])->assertOk();
 
-        // 1. a contact exists, but was NOT opted in to marketing (they only asked a question)
-        $c = Contact::withoutGlobalScopes()->where('email', 'sam@x.com')->firstOrFail();
+        // 1. a person exists, but was NOT opted in to marketing (they only asked a question)
+        $c = Person::withoutGlobalScopes()->where('email', 'sam@x.com')->firstOrFail();
         $this->assertFalse((bool) $c->is_subscribed);
         $this->assertNull($c->subscribed_at);
         $this->assertSame('form', $c->source);
 
         // 2. the submission is in the form's inbox
         $inbox = $this->getJson('/api/forms/'.$form->json('id').'/submissions', $h)->assertOk();
-        $inbox->assertJsonPath('total', 1)->assertJsonPath('data.0.contact.email', 'sam@x.com');
+        $inbox->assertJsonPath('total', 1)->assertJsonPath('data.0.person.email', 'sam@x.com');
         $this->assertSame(['First name' => 'Sam', 'Email' => 'sam@x.com', 'Message' => '<b>Hello</b> & welcome'], collect($inbox->json('data.0.data'))->pluck('value', 'label')->all());
 
         // 3. each notify address got the answers, Reply-To is the visitor, and visitor text is escaped
@@ -263,21 +263,21 @@ class FormBuilderTest extends TestCase
         $news = $this->postJson('/api/forms', ['name' => 'News', 'type' => 'newsletter'], $h)->assertCreated();
         $news->assertJsonPath('subscribe', true);
         $this->postJson('/api/public/forms/'.$news->json('slug'), ['email' => 'fan@x.com'])->assertOk();
-        $this->assertTrue((bool) Contact::withoutGlobalScopes()->where('email', 'fan@x.com')->value('is_subscribed'));
+        $this->assertTrue((bool) Person::withoutGlobalScopes()->where('email', 'fan@x.com')->value('is_subscribed'));
     }
 
-    public function test_a_form_can_skip_saving_contacts_and_just_be_an_inbox(): void
+    public function test_a_form_can_skip_saving_people_and_just_be_an_inbox(): void
     {
         $h = $this->owner();
-        $form = $this->postJson('/api/forms', ['name' => 'Feedback', 'type' => 'other', 'save_contact' => false, 'notify_emails' => ['me@biz.com'], 'fields' => [
+        $form = $this->postJson('/api/forms', ['name' => 'Feedback', 'type' => 'other', 'save_person' => false, 'notify_emails' => ['me@biz.com'], 'fields' => [
             $this->f('text', 'Your name'),
             $this->f('textarea', 'Feedback', ['required' => true]),    // no email or phone field needed
         ]], $h)->assertCreated();
 
         $this->postJson('/api/public/forms/'.$form->json('slug'), ['your_name' => 'Anon', 'feedback' => 'Love it'])->assertOk();
 
-        $this->assertSame(0, Contact::withoutGlobalScopes()->count());                     // nobody was added to contacts
-        $this->getJson('/api/forms/'.$form->json('id').'/submissions', $h)->assertJsonPath('total', 1)->assertJsonPath('data.0.contact', null);
+        $this->assertSame(0, Person::withoutGlobalScopes()->count());                     // nobody was added to people
+        $this->getJson('/api/forms/'.$form->json('id').'/submissions', $h)->assertJsonPath('total', 1)->assertJsonPath('data.0.person', null);
         $this->assertCount(1, $this->sentMails());                                          // the notification still goes out
         $this->getJson('/api/forms', $h)->assertJsonPath('0.submissions', 1);
     }
@@ -292,8 +292,8 @@ class FormBuilderTest extends TestCase
         $post(['notify_emails' => array_map(fn ($i) => "a$i@x.com", range(1, 6))])->assertStatus(422);          // max 5 addresses
         $post(['autoreply' => true])->assertStatus(422);                                                         // needs subject + message
         $post(['autoreply' => true, 'autoreply_subject' => 'Hi', 'autoreply_body' => 'Thanks'], [$this->f('phone', 'Mobile')])->assertStatus(422); // needs an email field
-        $post(['save_contact' => true], [$this->f('text', 'Just text')])->assertStatus(422);                     // saving contacts needs email/phone
-        $post(['save_contact' => false], [$this->f('text', 'Just text')])->assertCreated();                      // ...but a pure inbox does not
+        $post(['save_person' => true], [$this->f('text', 'Just text')])->assertStatus(422);                     // saving people needs email/phone
+        $post(['save_person' => false], [$this->f('text', 'Just text')])->assertCreated();                      // ...but a pure inbox does not
         $post(['autoreply' => true, 'autoreply_subject' => 'Hi', 'autoreply_body' => 'Thanks'])->assertCreated()->assertJsonPath('autoreply', true);
     }
 
@@ -306,7 +306,7 @@ class FormBuilderTest extends TestCase
         $this->postJson("/api/public/forms/$slug", ['email' => 'two@x.com', 'note' => 'fine'])->assertOk();
 
         $csv = $this->get('/api/forms/'.$form->json('id').'/submissions/export', $a)->assertOk()->streamedContent();
-        $this->assertStringContainsString('"Submitted at","Contact email",Email,Note', $csv);
+        $this->assertStringContainsString('"Submitted at","Person email",Email,Note', $csv);
         $this->assertStringContainsString('one@x.com', $csv);
         $this->assertStringNotContainsString(',=HYPERLINK', $csv);          // formula is neutralised with a leading quote
         $this->assertStringContainsString("'=HYPERLINK", $csv);

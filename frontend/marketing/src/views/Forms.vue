@@ -27,7 +27,7 @@ const fieldSummary = (f) => f.fields.filter((x) => x.type !== 'heading' && x.typ
 // one line saying what happens on submit, so the list shows how each form behaves
 function actions(f) {
   const a = []
-  if (f.save_contact) a.push(f.subscribe ? 'Saved & subscribed' : 'Saved to contacts')
+  if (f.save_person) a.push(f.subscribe ? 'Saved & subscribed' : 'Saved to People')
   else a.push('Kept as a submission')
   if (f.notify_emails?.length) a.push(`emails ${f.notify_emails.length} ${f.notify_emails.length === 1 ? 'person' : 'people'}`)
   if (f.autoreply) a.push('auto-reply')
@@ -56,7 +56,7 @@ onMounted(load)
 <template>
   <div class="head"><h1>Forms</h1><div class="row"><router-link to="/forms/history" class="btn ghost">Form histories</router-link><router-link to="/submissions" class="btn ghost">All submissions</router-link><router-link to="/forms/new" class="btn">New form</router-link></div></div>
   <div v-if="error" class="alert err">{{ error }}</div>
-  <p class="intro">Build newsletter sign-ups, contact forms and more. Each form decides what happens when someone submits: save them to contacts and lists, email you the message, send them an auto-reply, or just collect answers in its inbox.</p>
+  <p class="intro">Build newsletter sign-ups, contact forms and more. Each form decides what happens when someone submits: save them to People and lists, email you the message, send them an auto-reply, or just collect answers in its inbox.</p>
 
   <FilterBar :dirty="dirty" @clear="clear">
     <input v-model="q" type="search" placeholder="Search forms…" />

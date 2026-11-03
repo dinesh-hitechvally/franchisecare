@@ -18,7 +18,7 @@ watch(() => auth.company?.logo_url, () => (logoBroken.value = false))
 const sections = [
   {
     title: 'Audience', icon: 'people',
-    items: [['Contacts', '/contacts'], ['Lists', '/lists'], ['Tags', '/tags'], ['Segments', '/segments'], ['Subscriptions', '/subscriptions'], ['Custom Fields', '/custom-fields']],
+    items: [['People', '/people'], ['Lists', '/lists'], ['Tags', '/tags'], ['Segments', '/segments'], ['Subscriptions', '/subscriptions'], ['Custom Fields', '/custom-fields']],
   },
   {
     title: 'Campaigns', icon: 'campaign',
@@ -34,7 +34,7 @@ const sections = [
   },
   {
     title: 'Analytics', icon: 'chart',
-    items: [['Overview', '/analytics/overview'], ['Email', '/analytics/email'], ['SMS', '/analytics/sms'], ['Delivery & errors', '/analytics/delivery'], ['Message logs', '/message-logs'], ['Contacts', '/analytics/contacts'], ['Forms & pages', '/analytics/conversions'], ['Automation', '/analytics/automation']],
+    items: [['Overview', '/analytics/overview'], ['Email', '/analytics/email'], ['SMS', '/analytics/sms'], ['Delivery & errors', '/analytics/delivery'], ['Message logs', '/message-logs'], ['People', '/analytics/people'], ['Forms & pages', '/analytics/conversions'], ['Automation', '/analytics/automation']],
   },
 ]
 
@@ -42,8 +42,8 @@ const top = [
   ['Campaigns', 'campaign', '/campaigns'],
   ['New Campaign', 'add', '/campaigns/new'],
   ['Templates', 'template', '/templates'],
-  ['List Contacts', 'people', '/contacts'],
-  ['Add Contact', 'add', '/contacts?new=1'],
+  ['People', 'people', '/people'],
+  ['Add Person', 'add', '/people?new=1'],
 ]
 
 // An item is active when the path matches and every query key it names matches too;

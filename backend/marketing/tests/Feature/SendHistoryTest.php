@@ -67,7 +67,7 @@ class SendHistoryTest extends TestCase
     public function test_campaign_sends_and_campaign_test_sends_are_both_listed_but_only_real_ones_are_counted(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'Hello', 'body' => '<p>Hi</p>'], $h)->json('id');
         $this->postJson("/api/campaigns/$id/test", ['to' => 'test@x.com'], $h)->assertOk();
         $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk();
@@ -173,7 +173,7 @@ class SendHistoryTest extends TestCase
 
         // campaign counts and reports keep "logged" apart from "sent"
         $this->putJson('/api/config/sms', ['active' => 'log'], $h)->assertOk();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com', 'phone' => '+61400000009'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com', 'phone' => '+61400000009'], $h)->assertCreated();
         $id = $this->postJson('/api/campaigns', ['name' => 'T', 'type' => 'sms', 'body' => 'Hi'], $h)->json('id');
         $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk();
         $this->getJson("/api/campaigns/$id", $h)->assertJsonPath('sent_count', 0)->assertJsonPath('logged_count', 1)->assertJsonPath('status', 'sent');
@@ -184,7 +184,7 @@ class SendHistoryTest extends TestCase
     public function test_a_campaign_sent_through_a_default_server_without_a_mail_program_fails_instead_of_logging(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         config(['mail.default' => 'log', 'mail.server_command' => '/nonexistent/sendmail']);
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => '<p>x</p>'], $h)->json('id');
         $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk();
@@ -221,9 +221,9 @@ class SendHistoryTest extends TestCase
         $this->assertStringContainsString('international format', $sms->json('hint'));
 
         // skipped messages say why too; a successful one has no hint
-        EmailLog::create(['company_id' => $company->id, 'recipient' => 'u@x.com', 'status' => 'skipped', 'error' => 'Contact unsubscribed']);
+        EmailLog::create(['company_id' => $company->id, 'recipient' => 'u@x.com', 'status' => 'skipped', 'error' => 'Person unsubscribed']);
         $skipped = collect($this->history($h, '?status=skipped'))->first();
-        $this->assertSame('Contact unsubscribed', $skipped['error']);
+        $this->assertSame('Person unsubscribed', $skipped['error']);
         $this->assertStringContainsString('skipped on purpose', $this->getJson('/api/logs/email/'.$skipped['id'], $h)->json('hint'));
         $this->postJson('/api/config/sms/test', ['to' => '+977 9806064921'], $h)->assertOk();
         $ok = collect($this->history($h, '?channel=sms&status=logged'))->first();

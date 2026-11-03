@@ -15,7 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('id')->nullable();
             $table->unsignedBigInteger('company_id')->nullable();
             $table->unsignedBigInteger('template_id')->nullable();
-            $table->unsignedBigInteger('contact_list_id')->nullable();
+            $table->unsignedBigInteger('people_list_id')->nullable();
             $table->unsignedBigInteger('segment_id')->nullable();
             $table->unsignedBigInteger('tag_id')->nullable();
             $table->string('name', 255)->nullable();

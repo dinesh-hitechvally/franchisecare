@@ -23,12 +23,12 @@ class FormSubmissionController extends Controller
 
     protected function query(Request $request, $base)
     {
-        return $base->with('contact:id,first_name,last_name,email')
-            // search looks through the answers and the linked contact
+        return $base->with('person:id,first_name,last_name,email')
+            // search looks through the answers and the linked person
             ->when($request->query('search'), fn ($q, $v) => $q->where(fn ($w) => $w->where('data', 'like', '%'.str_replace(['%', '_'], ['\%', '\_'], $v).'%')
-                ->orWhereHas('contact', fn ($c) => $c->where('email', 'like', "%$v%")->orWhere('first_name', 'like', "%$v%")->orWhere('last_name', 'like', "%$v%"))))
-            ->when($request->query('contact') === 'yes', fn ($q) => $q->whereNotNull('contact_id'))
-            ->when($request->query('contact') === 'no', fn ($q) => $q->whereNull('contact_id'))
+                ->orWhereHas('person', fn ($c) => $c->where('email', 'like', "%$v%")->orWhere('first_name', 'like', "%$v%")->orWhere('last_name', 'like', "%$v%"))))
+            ->when($request->query('person') === 'yes', fn ($q) => $q->whereNotNull('person_id'))
+            ->when($request->query('person') === 'no', fn ($q) => $q->whereNull('person_id'))
             ->when($request->query('from'), fn ($q, $v) => $q->where('created_at', '>=', $v.' 00:00:00'))
             ->when($request->query('to'), fn ($q, $v) => $q->where('created_at', '<=', $v.' 23:59:59'));
     }
@@ -52,14 +52,14 @@ class FormSubmissionController extends Controller
             });
 
             $out = fopen('php://output', 'w');
-            fputcsv($out, array_merge(['Submitted at', 'Contact email'], array_map([self::class, 'safe'], array_keys($labels))));
-            FormSubmission::where('form_id', $form->id)->with('contact:id,email')->orderBy('id')->chunkById(500, function ($rows) use ($out, $labels) {
+            fputcsv($out, array_merge(['Submitted at', 'Person email'], array_map([self::class, 'safe'], array_keys($labels))));
+            FormSubmission::where('form_id', $form->id)->with('person:id,email')->orderBy('id')->chunkById(500, function ($rows) use ($out, $labels) {
                 foreach ($rows as $s) {
                     $line = array_fill(0, count($labels), '');
                     foreach ($s->data as $a) {
                         $line[$labels[$a['label']]] = self::safe((string) ($a['value'] ?? ''));
                     }
-                    fputcsv($out, array_merge([$s->created_at, self::safe((string) $s->contact?->email)], $line));
+                    fputcsv($out, array_merge([$s->created_at, self::safe((string) $s->person?->email)], $line));
                 }
             });
             fclose($out);

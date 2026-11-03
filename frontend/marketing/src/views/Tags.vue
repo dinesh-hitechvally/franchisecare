@@ -7,7 +7,7 @@ import RowMenu from '../components/RowMenu.vue'
 import Modal from '../components/Modal.vue'
 
 const rows = ref([])
-const { f: flt, shown: visible, dirty: fDirty, clear: fClear } = useFilters(rows, { text: (t) => t.name, match: { use: (t) => (t.contacts_count ? 'used' : 'unused') } })
+const { f: flt, shown: visible, dirty: fDirty, clear: fClear } = useFilters(rows, { text: (t) => t.name, match: { use: (t) => (t.people_count ? 'used' : 'unused') } })
 const editing = ref(null)
 const error = ref('')
 const form = reactive({ name: '', color: '#3f51b5' })
@@ -30,7 +30,7 @@ async function save() {
 }
 
 async function remove(t) {
-  if (!confirm(`Delete tag "${t.name}"? It is removed from ${t.contacts_count} contact(s); the contacts themselves are kept.`)) return
+  if (!confirm(`Delete tag "${t.name}"? It is removed from ${t.people_count} person(s); the people themselves are kept.`)) return
   await api.delete(`/tags/${t.id}`)
   load()
 }
@@ -46,13 +46,13 @@ onMounted(load)
   </FilterBar>
 
   <div class="card">
-    <p v-if="!rows.length" class="empty">No tags yet. Tags label contacts (e.g. “VIP”, “Wholesale”) so you can filter, segment and automate.</p>
+    <p v-if="!rows.length" class="empty">No tags yet. Tags label people (e.g. “VIP”, “Wholesale”) so you can filter, segment and automate.</p>
     <p v-else-if="!visible.length" class="empty">Nothing matches these filters.</p>
     <table v-else>
-      <thead><tr><th>Name</th><th>Contacts</th><th class="act">Actions</th></tr></thead>
+      <thead><tr><th>Name</th><th>People</th><th class="act">Actions</th></tr></thead>
       <tr v-for="t in visible" :key="t.id">
         <td><span class="chip" :style="{ background: t.color + '22', color: t.color }">{{ t.name }}</span></td>
-        <td><router-link :to="`/contacts?tag_id=${t.id}`">{{ t.contacts_count }}</router-link></td>
+        <td><router-link :to="`/people?tag_id=${t.id}`">{{ t.people_count }}</router-link></td>
         <td class="act"><RowMenu :history="{ type: 'tag', id: t.id, title: t.name }" :items="[{ label: 'Edit', run: () => edit(t) }, { label: 'Delete', run: () => remove(t), danger: true }]" /></td>
       </tr>
     </table>

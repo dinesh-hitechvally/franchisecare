@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('campaign_id')->nullable()->constrained()->cascadeOnDelete();
             $table->unsignedBigInteger('workflow_id')->nullable()->index(); // set for emails sent by an automation workflow
-            $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('person_id')->nullable()->constrained()->nullOnDelete();
             $table->string('recipient');
             $table->string('subject')->nullable();
             $table->longText('body')->nullable();

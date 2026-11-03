@@ -23,7 +23,7 @@ const busy = ref(false)
 const testTo = ref('')
 const when = ref('now')
 
-const form = reactive({ name: '', type: route.query.type === 'sms' ? 'sms' : 'email', template_id: '', contact_list_id: '', segment_id: '', tag_id: '', subject: '', body: '', design: null, attachments: [], scheduled_at: '' })
+const form = reactive({ name: '', type: route.query.type === 'sms' ? 'sms' : 'email', template_id: '', people_list_id: '', segment_id: '', tag_id: '', subject: '', body: '', design: null, attachments: [], scheduled_at: '' })
 const designer = ref(false)
 const startVersion = ref(null) // history_id to show as soon as the designer opens (coming from a history list)
 function closeDesigner() { designer.value = false; startVersion.value = null; setQuery({ history: null }) }
@@ -40,19 +40,19 @@ function useRaw() {
 const locked = computed(() => campaign.value && !['draft', 'scheduled'].includes(campaign.value.status))
 const segments = ref([])
 const tags = ref([])
-const allContacts = ref(0)
+const allPeople = ref(0)
 const subCounts = ref({ all: 0, subscribed: 0, unsubscribed: 0 })
-const subscription = ref('') // narrows the audience shown below; unsubscribed contacts are never sent to either way
+const subscription = ref('') // narrows the audience shown below; unsubscribed people are never sent to either way
 const audience = computed({
-  get: () => (form.segment_id ? 'segment:' + form.segment_id : form.tag_id ? 'tag:' + form.tag_id : form.contact_list_id ? 'list:' + form.contact_list_id : ''),
+  get: () => (form.segment_id ? 'segment:' + form.segment_id : form.tag_id ? 'tag:' + form.tag_id : form.people_list_id ? 'list:' + form.people_list_id : ''),
   set: (v) => {
     const [kind, id] = v.split(':')
-    form.contact_list_id = kind === 'list' ? Number(id) : ''
+    form.people_list_id = kind === 'list' ? Number(id) : ''
     form.segment_id = kind === 'segment' ? Number(id) : ''
     form.tag_id = kind === 'tag' ? Number(id) : ''
   },
 })
-const audienceName = computed(() => (form.segment_id ? 'segment "' + segments.value.find((x) => x.id === form.segment_id)?.name + '"' : form.tag_id ? 'tag "' + tags.value.find((x) => x.id === form.tag_id)?.name + '"' : form.contact_list_id ? 'list "' + lists.value.find((l) => l.id === form.contact_list_id)?.name + '"' : 'ALL contacts'))
+const audienceName = computed(() => (form.segment_id ? 'segment "' + segments.value.find((x) => x.id === form.segment_id)?.name + '"' : form.tag_id ? 'tag "' + tags.value.find((x) => x.id === form.tag_id)?.name + '"' : form.people_list_id ? 'list "' + lists.value.find((l) => l.id === form.people_list_id)?.name + '"' : 'ALL people'))
 const typeTemplates = computed(() => templates.value.filter((t) => t.type === form.type))
 
 // <input type=datetime-local> works in local time without a timezone
@@ -74,7 +74,7 @@ function importTemplate(t) {
 watch(() => form.type, () => { form.template_id = '' })
 
 function payload() {
-  return { ...form, template_id: form.template_id || null, contact_list_id: form.contact_list_id || null, segment_id: form.segment_id || null, tag_id: form.tag_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? form.scheduled_at.replace('T', ' ') + ':00' : null }
+  return { ...form, template_id: form.template_id || null, people_list_id: form.people_list_id || null, segment_id: form.segment_id || null, tag_id: form.tag_id || null, scheduled_at: when.value === 'later' && form.scheduled_at ? form.scheduled_at.replace('T', ' ') + ':00' : null }
 }
 
 async function save() {
@@ -98,7 +98,7 @@ async function onSend() {
     await save()
     // what sending would really do, and anything worth fixing first
     const c = (await api.get(`/campaigns/${id.value}/check`)).data
-    if (!c.reach) { error.value = c.audience ? `Nobody in ${audienceName.value} can receive this: ${c.unsubscribed} unsubscribed, the rest have no ${form.type === 'sms' ? 'phone number' : 'email address'}.` : `${audienceName.value} has no contacts yet.`; return }
+    if (!c.reach) { error.value = c.audience ? `Nobody in ${audienceName.value} can receive this: ${c.unsubscribed} unsubscribed, the rest have no ${form.type === 'sms' ? 'phone number' : 'email address'}.` : `${audienceName.value} has no people yet.`; return }
     const lines = [`${when.value === 'later' ? 'Schedule' : 'Send'} this ${form.type} campaign to ${c.reach} ${c.reach === 1 ? 'person' : 'people'} (${audienceName.value})?`]
     if (c.skipped) lines.push(`${c.skipped} more will be skipped: unsubscribed, or no ${form.type === 'sms' ? 'phone number' : 'email address'}.`)
     if (c.warnings.length) lines.push('', 'Worth a look first:', ...c.warnings.map((w) => '• ' + w), '', 'Send anyway?')
@@ -128,13 +128,13 @@ onMounted(async () => {
   lists.value = (await api.get('/lists')).data
   segments.value = (await api.get('/segments')).data
   tags.value = (await api.get('/tags')).data
-  allContacts.value = (await api.get('/contacts', { params: { per_page: 1 } })).data.total
+  allPeople.value = (await api.get('/people', { params: { per_page: 1 } })).data.total
   if (route.query.segment_id) form.segment_id = Number(route.query.segment_id) // coming from Segments → Send campaign
   templates.value = (await api.get('/templates')).data
   if (id.value) {
     const { data } = await api.get(`/campaigns/${id.value}`)
     campaign.value = data
-    Object.assign(form, { name: data.name, type: data.type, template_id: data.template_id || '', contact_list_id: data.contact_list_id || '', segment_id: data.segment_id || '', tag_id: data.tag_id || '', subject: data.subject || '', body: data.body, design: data.design || null, attachments: data.attachments || [], scheduled_at: toLocal(data.scheduled_at) })
+    Object.assign(form, { name: data.name, type: data.type, template_id: data.template_id || '', people_list_id: data.people_list_id || '', segment_id: data.segment_id || '', tag_id: data.tag_id || '', subject: data.subject || '', body: data.body, design: data.design || null, attachments: data.attachments || [], scheduled_at: toLocal(data.scheduled_at) })
     if (data.scheduled_at) when.value = 'later'
     // coming from a history list: the email designer opens on that saved version, with History open
     if (route.query.history && !locked.value && form.type === 'email') { startVersion.value = Number(route.query.history); designer.value = true }
@@ -175,10 +175,10 @@ onMounted(async () => {
         <div class="field">
           <label>Audience</label>
           <select v-model="audience">
-            <option value="">All contacts ({{ allContacts }})</option>
-            <optgroup v-if="lists.length" label="Lists"><option v-for="l in lists" :key="'l' + l.id" :value="'list:' + l.id">{{ l.name }} ({{ l.contacts_count }})</option></optgroup>
-            <optgroup v-if="tags.length" label="Tags"><option v-for="t in tags" :key="'t' + t.id" :value="'tag:' + t.id">{{ t.name }} ({{ t.contacts_count }})</option></optgroup>
-            <optgroup v-if="segments.length" label="Segments"><option v-for="g in segments" :key="'s' + g.id" :value="'segment:' + g.id">{{ g.name }} ({{ g.contacts_count }})</option></optgroup>
+            <option value="">All people ({{ allPeople }})</option>
+            <optgroup v-if="lists.length" label="Lists"><option v-for="l in lists" :key="'l' + l.id" :value="'list:' + l.id">{{ l.name }} ({{ l.people_count }})</option></optgroup>
+            <optgroup v-if="tags.length" label="Tags"><option v-for="t in tags" :key="'t' + t.id" :value="'tag:' + t.id">{{ t.name }} ({{ t.people_count }})</option></optgroup>
+            <optgroup v-if="segments.length" label="Segments"><option v-for="g in segments" :key="'s' + g.id" :value="'segment:' + g.id">{{ g.name }} ({{ g.people_count }})</option></optgroup>
           </select>
         </div>
         <div v-if="!locked" class="field">
@@ -186,8 +186,8 @@ onMounted(async () => {
           <select v-model="subscription"><option value="">All Status ({{ subCounts.all }})</option><option value="subscribed">Subscribed ({{ subCounts.subscribed }})</option><option value="unsubscribed">Unsubscribed ({{ subCounts.unsubscribed }})</option></select>
         </div>
       </div>
-      <p v-if="locked" class="aud-note"><b>{{ campaign.audience_total ?? 0 }} contact{{ campaign.audience_total === 1 ? '' : 's' }}</b> in this audience when it was sent. Contacts added or changed later are not included. <router-link :to="`/reports/${campaign.id}`">See who received it →</router-link></p>
-      <AudiencePreview v-else @counts="(c) => (subCounts = c)" :list-id="form.contact_list_id" :segment-id="form.segment_id" :tag-id="form.tag_id" :status="subscription" :type="form.type" />
+      <p v-if="locked" class="aud-note"><b>{{ campaign.audience_total ?? 0 }} {{ campaign.audience_total === 1 ? 'person' : 'people' }}</b> in this audience when it was sent. People added or changed later are not included. <router-link :to="`/reports/${campaign.id}`">See who received it →</router-link></p>
+      <AudiencePreview v-else @counts="(c) => (subCounts = c)" :list-id="form.people_list_id" :segment-id="form.segment_id" :tag-id="form.tag_id" :status="subscription" :type="form.type" />
     </div>
 
     <div v-if="form.type === 'email' && !rawHtml" class="card">

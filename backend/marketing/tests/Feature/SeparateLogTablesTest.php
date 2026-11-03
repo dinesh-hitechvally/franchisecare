@@ -36,7 +36,7 @@ class SeparateLogTablesTest extends TestCase
     public function test_each_campaign_writes_to_the_table_of_its_own_channel(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com', 'phone' => '+61400000001'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com', 'phone' => '+61400000001'], $h)->assertCreated();
         $email = $this->postJson('/api/campaigns', ['name' => 'Mail', 'type' => 'email', 'subject' => 'Hi', 'body' => '<p>x</p>'], $h)->json('id');
         $sms = $this->postJson('/api/campaigns', ['name' => 'Text', 'type' => 'sms', 'body' => 'Hello'], $h)->json('id');
         $this->postJson("/api/campaigns/$email/send", [], $h)->assertOk();
@@ -82,7 +82,7 @@ class SeparateLogTablesTest extends TestCase
     public function test_dashboard_and_clicks_still_work_on_the_split_tables(): void
     {
         $h = $this->owner();
-        $this->postJson('/api/contacts', ['email' => 'ann@x.com', 'phone' => '+61400000001'], $h)->assertCreated();
+        $this->postJson('/api/people', ['email' => 'ann@x.com', 'phone' => '+61400000001'], $h)->assertCreated();
         foreach ([['email', ['subject' => 's', 'body' => '<a href="https://example.com/a">a</a>']], ['sms', ['body' => 'hi']]] as [$type, $extra]) {
             $id = $this->postJson('/api/campaigns', ['name' => $type, 'type' => $type] + $extra, $h)->json('id');
             $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk();

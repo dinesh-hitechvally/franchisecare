@@ -10,9 +10,9 @@ use App\Http\Controllers\AnalyticsController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\ConfigController;
-use App\Http\Controllers\ContactController;
-use App\Http\Controllers\ContactFieldController;
-use App\Http\Controllers\ContactListController;
+use App\Http\Controllers\PersonController;
+use App\Http\Controllers\PersonFieldController;
+use App\Http\Controllers\PeopleListController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\FormSubmissionController;
 use App\Http\Controllers\ImageController;
@@ -47,9 +47,9 @@ Route::post('public/forms/{slug}', [PublicController::class, 'submit'])->middlew
 
 // ---------------------------------------------------------------- integration API (API-key authenticated)
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
-    Route::get('contacts', [ApiV1Controller::class, 'show']);
-    Route::post('contacts', [ApiV1Controller::class, 'upsert']);
-    Route::post('contacts/unsubscribe', [ApiV1Controller::class, 'unsubscribe']);
+    Route::get('people', [ApiV1Controller::class, 'show']);
+    Route::post('people', [ApiV1Controller::class, 'upsert']);
+    Route::post('people/unsubscribe', [ApiV1Controller::class, 'unsubscribe']);
 });
 
 // ---------------------------------------------------------------- dashboard API (all data is scoped to the user's company)
@@ -66,12 +66,12 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::apiResource('media', MediaController::class)->only(['index', 'update', 'destroy'])->parameters(['media' => 'media']);
 
     // Audience
-    Route::get('contacts/export', [ContactController::class, 'export']);
-    Route::post('contacts/import', [ContactController::class, 'import']);
-    Route::post('contacts/bulk', [ContactController::class, 'bulk']);
-    Route::apiResource('contacts', ContactController::class)->except('show');
-    Route::apiResource('lists', ContactListController::class)->except('show')->parameters(['lists' => 'list']);
-    Route::apiResource('contact-fields', ContactFieldController::class)->except('show')->parameters(['contact-fields' => 'field']);
+    Route::get('people/export', [PersonController::class, 'export']);
+    Route::post('people/import', [PersonController::class, 'import']);
+    Route::post('people/bulk', [PersonController::class, 'bulk']);
+    Route::apiResource('people', PersonController::class)->except('show');
+    Route::apiResource('lists', PeopleListController::class)->except('show')->parameters(['lists' => 'list']);
+    Route::apiResource('person-fields', PersonFieldController::class)->except('show')->parameters(['person-fields' => 'field']);
     Route::apiResource('tags', TagController::class)->except('show');
     Route::get('segments/fields', [SegmentController::class, 'fields']);
     Route::post('segments/preview', [SegmentController::class, 'preview']);
@@ -120,7 +120,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
 
     // Analytics
     Route::get('analytics/campaigns', [ReportController::class, 'campaignAnalytics']);
-    Route::get('analytics/contacts', [ReportController::class, 'contactAnalytics']);
+    Route::get('analytics/people', [ReportController::class, 'personAnalytics']);
     Route::get('analytics/conversions', [ReportController::class, 'conversionAnalytics']);
     Route::get('analytics/overview', [AnalyticsController::class, 'overview']);
     Route::get('analytics/email', [AnalyticsController::class, 'email']);

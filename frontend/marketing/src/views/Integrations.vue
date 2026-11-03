@@ -13,7 +13,7 @@ const error = ref('')
 const copied = ref(false)
 
 const base = computed(() => (api.defaults.baseURL || '').replace(/\/$/, ''))
-const curl = computed(() => `curl -X POST ${base.value}/v1/contacts \\
+const curl = computed(() => `curl -X POST ${base.value}/v1/people \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{"email":"jane@example.com","first_name":"Jane","tags":["website"],"lists":["Newsletter"]}'`)
@@ -44,7 +44,7 @@ onMounted(load)
 
 <template>
   <div class="head"><h1>API Integrations</h1></div>
-  <p class="intro">Connect other systems (your website, Zapier, a CRM) so they can add and update contacts here. Each system gets its own key, which you can revoke at any time.</p>
+  <p class="intro">Connect other systems (your website, Zapier, a CRM) so they can add and update people here. Each system gets its own key, which you can revoke at any time.</p>
   <div v-if="error" class="alert err">{{ error }}</div>
 
   <div class="card">
@@ -78,9 +78,9 @@ onMounted(load)
     <h2>Using the API</h2>
     <p class="hint">Send the key as a Bearer token. Base URL: <code>{{ base }}</code>. A key can only use these <code>/v1</code> endpoints — it cannot open the dashboard.</p>
     <table class="docs">
-      <tr><td><code>POST /v1/contacts</code></td><td>Create or update a contact by email (or phone). Optional: <code>first_name, last_name, phone, tags[], lists[], custom_fields</code>. Tags and lists are matched by name and created if missing. Triggers workflows and webhooks.</td></tr>
-      <tr><td><code>GET /v1/contacts?email=</code></td><td>Look up a contact, with its lists and tags.</td></tr>
-      <tr><td><code>POST /v1/contacts/unsubscribe</code></td><td>Opt a contact out: <code>email</code>, optional <code>channel</code> (email or sms).</td></tr>
+      <tr><td><code>POST /v1/people</code></td><td>Create or update a person by email (or phone). Optional: <code>first_name, last_name, phone, tags[], lists[], custom_fields</code>. Tags and lists are matched by name and created if missing. Triggers workflows and webhooks.</td></tr>
+      <tr><td><code>GET /v1/people?email=</code></td><td>Look up a person, with its lists and tags.</td></tr>
+      <tr><td><code>POST /v1/people/unsubscribe</code></td><td>Opt a person out: <code>email</code>, optional <code>channel</code> (email or sms).</td></tr>
     </table>
     <pre>{{ curl }}</pre>
   </div>

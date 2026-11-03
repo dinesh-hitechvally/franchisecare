@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\ContactList;
+use App\Models\PeopleList;
 use App\Models\Form;
 use App\Models\Tag;
 use Illuminate\Support\Str;
@@ -13,7 +13,7 @@ class FormSeeder extends DemoSeeder
     public function run(): void
     {
         $biz = $this->companyId();
-        $list = ContactList::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => ContactListSeeder::NEWSLETTER])->first();
+        $list = PeopleList::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => PeopleListSeeder::NEWSLETTER])->first();
         $web = Tag::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => TagSeeder::WEBSITE_LEAD])->first();
 
         Form::withoutGlobalScopes()->firstOrCreate(['company_id' => $biz, 'name' => 'Website newsletter'], [
@@ -47,7 +47,7 @@ class FormSeeder extends DemoSeeder
             ],
             'style' => ['pageBg' => '#f4f5f7', 'cardBg' => '#ffffff', 'text' => '#333333', 'accent' => '#00897b', 'btnText' => '#ffffff', 'radius' => 6, 'font' => 'sans', 'width' => 480],
             'button_text' => 'Send message', 'success_message' => "Thanks — we'll be in touch soon.",
-            'save_contact' => false, 'subscribe' => false, // an inbox: answers are kept with the form, nobody is added to contacts
+            'save_person' => false, 'subscribe' => false, // an inbox: answers are kept with the form, nobody is added to people
             'notify_emails' => ['hello@demo.test'],
             'autoreply' => true, 'autoreply_subject' => 'We got your message',
             'autoreply_body' => "Hi {{first_name}},\n\nThanks for getting in touch with {{company_name}}. We'll reply within one business day.",

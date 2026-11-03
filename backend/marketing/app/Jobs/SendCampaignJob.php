@@ -32,31 +32,31 @@ class SendCampaignJob implements ShouldQueue
         $perMinute = SendLog::perMinute(Company::find($campaign->company_id));
         $gap = $perMinute > 0 ? 60 / $perMinute : 0;
         $n = 0;
-        $total = 0; // everyone the audience had at this moment: kept so the campaign page does not change when contacts are added later
-        $left = 0; // contacts without an address: nothing can be sent, so they are only counted (nothing is written to the message log)
+        $total = 0; // everyone the audience had at this moment: kept so the campaign page does not change when people are added later
+        $left = 0; // people without an address: nothing can be sent, so they are only counted (nothing is written to the message log)
 
-        $campaign->audienceQuery()->chunkById(200, function ($contacts) use ($campaign, $isEmail, $gap, &$n, &$left, &$total) {
+        $campaign->audienceQuery()->chunkById(200, function ($people) use ($campaign, $isEmail, $gap, &$n, &$left, &$total) {
             // stopped by a person while the list was still being expanded: create nothing more
             if (Campaign::withoutGlobalScope('company')->whereKey($campaign->id)->value('status') === 'cancelled') {
                 return false;
             }
 
-            foreach ($contacts as $contact) {
+            foreach ($people as $person) {
                 $total++;
-                $recipient = $isEmail ? $contact->email : $contact->phone;
+                $recipient = $isEmail ? $person->email : $person->phone;
                 if (! $recipient) {
                     $left++;
 
                     continue;
                 }
-                if (! $contact->is_subscribed) {
+                if (! $person->is_subscribed) {
                     continue; // opted out: never sent to, and not a "skipped" message either
                 }
 
                 $log = $campaign->logModel()::create([
                     'company_id' => $campaign->company_id,
                     'campaign_id' => $campaign->id,
-                    'contact_id' => $contact->id,
+                    'person_id' => $person->id,
                     'recipient' => $recipient,
                     'status' => 'queued',
                 ]);

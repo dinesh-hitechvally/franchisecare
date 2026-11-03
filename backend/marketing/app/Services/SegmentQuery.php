@@ -2,11 +2,11 @@
 
 namespace App\Services;
 
-use App\Models\Contact;
+use App\Models\Person;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Turns segment rules into a Contact query.
+ * Turns segment rules into a Person query.
  * A rule is { field, op, value }; the segment's `match` (all|any) decides AND / OR.
  */
 class SegmentQuery
@@ -30,7 +30,7 @@ class SegmentQuery
 
     public static function query(array $rules, string $match, int $companyId): Builder
     {
-        $q = Contact::withoutGlobalScope('company')->where('contacts.company_id', $companyId);
+        $q = Person::withoutGlobalScope('company')->where('people.company_id', $companyId);
         $rules = array_values(array_filter($rules, fn ($r) => isset($r['field']) && isset(self::FIELDS[$r['field']])));
 
         if ($rules) {
@@ -74,8 +74,8 @@ class SegmentQuery
                 break;
             case 'list':
                 $op === 'not_in'
-                    ? $q->{$doesnt}('lists', fn ($t) => $t->where('contact_lists.id', (int) $v))
-                    : $q->{$has}('lists', fn ($t) => $t->where('contact_lists.id', (int) $v));
+                    ? $q->{$doesnt}('lists', fn ($t) => $t->where('people_lists.id', (int) $v))
+                    : $q->{$has}('lists', fn ($t) => $t->where('people_lists.id', (int) $v));
                 break;
             case 'first_name':
             case 'last_name':
@@ -98,8 +98,8 @@ class SegmentQuery
             case 'created':
                 $date = date_create((string) $v) ?: now();
                 $op === 'before'
-                    ? $q->where('contacts.created_at', '<', $date->format('Y-m-d 00:00:00'), $bool)
-                    : $q->where('contacts.created_at', '>=', $date->format('Y-m-d 00:00:00'), $bool);
+                    ? $q->where('people.created_at', '<', $date->format('Y-m-d 00:00:00'), $bool)
+                    : $q->where('people.created_at', '>=', $date->format('Y-m-d 00:00:00'), $bool);
                 break;
             case 'opened_recently':
                 $since = now()->subDays(max(1, (int) $v));

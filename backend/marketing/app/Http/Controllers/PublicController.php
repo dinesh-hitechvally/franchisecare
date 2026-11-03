@@ -3,8 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Company;
-use App\Models\Contact;
-use App\Models\ContactList;
+use App\Models\Person;
+use App\Models\PeopleList;
 use App\Models\Form;
 use App\Models\FormSubmission;
 use App\Models\LandingPage;
@@ -13,6 +13,7 @@ use App\Models\Tag;
 use App\Services\Automation;
 use App\Jobs\SendFormNotificationJob;
 use App\Jobs\SendMessageJob;
+use App\Services\Captcha;
 use App\Services\FormFields;
 use App\Services\FormRenderer;
 use App\Services\MessageRenderer;
@@ -98,6 +99,69 @@ class PublicController extends Controller
         return $this->html($html, $nonce);
     }
 
+    /** Adds the field's own checks (length, range, pattern, allowed email domains) to its validation rules; one custom message can replace the defaults. */
+    protected function withFieldRules(array $rules, array $f, array &$messages): array
+    {
+        $r = $f['rules'] ?? [];
+        if (! $r) {
+            return $rules;
+        }
+        $key = $f['key'];
+        $custom = $r['message'] ?? null;
+        $say = function (string $rule) use ($custom, $key, &$messages) {
+            if ($custom) {
+                $messages["$key.$rule"] = $custom;
+            }
+        };
+
+        if (isset($r['max_length'])) {
+            $rules = array_values(array_filter($rules, fn ($x) => ! (is_string($x) && str_starts_with($x, 'max:')))); // replaces the built-in cap
+            $rules[] = 'max:'.$r['max_length'];
+            $say('max');
+        }
+        if (isset($r['min_length'])) {
+            $rules[] = 'min:'.$r['min_length'];
+            $say('min');
+        }
+        if ($f['type'] === 'number') {
+            foreach (['min', 'max'] as $k) {
+                if (isset($r[$k])) {
+                    $rules[] = $k.':'.$r[$k];
+                    $say($k);
+                }
+            }
+        }
+        if ($f['type'] === 'date') {
+            if (isset($r['min'])) {
+                $rules[] = 'after_or_equal:'.$r['min'];
+                $say('after_or_equal');
+            }
+            if (isset($r['max'])) {
+                $rules[] = 'before_or_equal:'.$r['max'];
+                $say('before_or_equal');
+            }
+        }
+        if (isset($r['pattern'])) {
+            $pattern = FormFields::delimited($r['pattern']);
+            $rules[] = function ($attribute, $value, $fail) use ($pattern, $custom) {
+                if (@preg_match($pattern, (string) $value) !== 1) {
+                    $fail($custom ?: 'The :attribute is not in the expected format.');
+                }
+            };
+        }
+        if (isset($r['allowed_domains'])) {
+            $domains = $r['allowed_domains'];
+            $rules[] = function ($attribute, $value, $fail) use ($domains, $custom) {
+                $domain = strtolower(substr(strrchr((string) $value, '@') ?: '', 1));
+                if (! in_array($domain, $domains, true)) {
+                    $fail($custom ?: 'The :attribute must be an address at '.implode(', ', $domains).'.');
+                }
+            };
+        }
+
+        return $rules;
+    }
+
     public function submit(Request $request, string $slug)
     {
         $form = Form::withoutGlobalScope('company')->where('slug', $slug)->where('active', true)->firstOrFail();
@@ -111,6 +175,7 @@ class PublicController extends Controller
         $fields = collect($form->builderFields())->filter(fn ($f) => FormFields::isInput($f['type']))->values();
         $rules = [];
         $names = [];
+        $messages = [];
         foreach ($fields as $f) {
             $type = $f['type'];
             $rules[$f['key']] = in_array($type, ['checkbox', 'subscribe'], true)
@@ -124,22 +189,36 @@ class PublicController extends Controller
                     'dropdown', 'radio' => ['string', Rule::in($f['options'])],
                     default => ['string', 'max:255'], // first_name, last_name, text
                 });
+            if ($type === FormFields::CAPTCHA) {
+                $token = (string) $request->input('captcha_token');
+                $rules['captcha'] = ['required', function ($attribute, $value, $fail) use ($token) {
+                    if ($problem = Captcha::check($token, $value)) {
+                        $fail($problem);
+                    }
+                }];
+                $names['captcha'] = 'answer';
+
+                continue;
+            }
+            $rules[$f['key']] = $this->withFieldRules($rules[$f['key']], $f, $messages);
             $names[$f['key']] = mb_strtolower($f['label']); // error messages read "The email field…" instead of the internal key
         }
-        $data = $request->validate($rules, [], $names);
+        $messages['captcha.required'] = 'Please answer the small sum to show you are human.';
+        $data = $request->validate($rules, $messages, $names);
+        Captcha::consume($request->input('captcha_token')); // the sum is solved: it cannot be used again
 
         // what was submitted, in form order: this is what the inbox and the notification email show
         $answers = [];
-        foreach ($fields as $f) {
+        foreach ($fields->where('type', '!=', FormFields::CAPTCHA) as $f) { // the captcha is a check, not an answer
             $v = $data[$f['key']] ?? null;
             $answers[] = ['label' => $f['label'], 'type' => $f['type'], 'value' => in_array($f['type'], ['checkbox', 'subscribe'], true) ? ($v ? 'Yes' : 'No') : (string) ($v ?? '')];
         }
 
-        // questions marked "save on the contact" fill that contact's custom fields (usable as merge tags);
+        // questions marked "save on the person" fill that person's custom fields (usable as merge tags);
         // everything else stays in the form's inbox only
         $custom = [];
         foreach ($fields as $f) {
-            if ($form->save_contact && $f['to_contact'] && ! isset(FormFields::STANDARD[$f['type']]) && isset($data[$f['key']]) && $data[$f['key']] !== '') {
+            if ($form->save_person && $f['to_person'] && ! isset(FormFields::STANDARD[$f['type']]) && isset($data[$f['key']]) && $data[$f['key']] !== '') {
                 $custom[$f['key']] = $f['type'] === 'checkbox' ? ($data[$f['key']] ? 'Yes' : 'No') : (string) $data[$f['key']];
             }
         }
@@ -147,61 +226,62 @@ class PublicController extends Controller
         $phone = $data['phone'] ?? null;
 
         // with a "Subscribe me to the newsletter" tick box, only people who ticked it are subscribed (it never re-subscribes someone who opted out)
-        $optedIn = ! $fields->contains('type', FormFields::SUBSCRIBE) || ! empty($data[FormFields::SUBSCRIBE]);
+        $hasBox = $fields->contains('type', FormFields::SUBSCRIBE);
+        $optedIn = ! $hasBox || ! empty($data[FormFields::SUBSCRIBE]);
 
         $biz = $form->company_id;
-        $contact = null;
+        $person = null;
         $created = false;
         $newLists = $newTags = [];
 
-        // "Save to contacts" is optional: a contact form can simply be an inbox
-        if ($form->save_contact) {
+        // "Save to people" is optional: a contact form can simply be an inbox
+        if ($form->save_person) {
             abort_if(! $email && ! $phone, 422, 'Please enter an email address or phone number.');
 
-            $contact = Contact::withoutGlobalScope('company')->where('company_id', $biz)
+            $person = Person::withoutGlobalScope('company')->where('company_id', $biz)
                 ->where(fn ($q) => $email ? $q->where('email', $email) : $q->where('phone', $phone))->first();
-            $created = ! $contact;
+            $created = ! $person;
 
             if ($created) {
                 // company_id is a guarded attribute, so set it explicitly (this request has no signed-in user to stamp it).
                 // email/SMS marketing consent follows the form: a newsletter sign-up opts people in, a contact form does not.
-                $contact = (new Contact)->forceFill([
+                $person = (new Person)->forceFill([
                     'company_id' => $biz, 'email' => $email, 'phone' => $phone, 'source' => 'form',
                     'first_name' => $data['first_name'] ?? null, 'last_name' => $data['last_name'] ?? null,
-                    'is_subscribed' => (bool) $form->subscribe && $optedIn,
+                    'is_subscribed' => $hasBox ? $optedIn : (bool) $form->subscribe, // the tick box decides; without one the form's own default applies
                 ]);
-                $contact->save();
+                $person->save();
             } else {
                 // fill blanks only; never overwrite what we already know, and never re-subscribe someone who opted out
-                $contact->fill(array_filter([
-                    'first_name' => $contact->first_name ?: ($data['first_name'] ?? null),
-                    'last_name' => $contact->last_name ?: ($data['last_name'] ?? null),
-                    'phone' => $contact->phone ?: $phone,
+                $person->fill(array_filter([
+                    'first_name' => $person->first_name ?: ($data['first_name'] ?? null),
+                    'last_name' => $person->last_name ?: ($data['last_name'] ?? null),
+                    'phone' => $person->phone ?: $phone,
                 ]));
-                $contact->save();
+                $person->save();
             }
-            $contact->setCustom($custom, blanksOnly: ! $created); // a repeat submission never overwrites what we already know
+            $person->setCustom($custom, blanksOnly: ! $created); // a repeat submission never overwrites what we already know
 
-            $listIds = ContactList::withoutGlobalScope('company')->where('company_id', $biz)->whereIn('id', $form->list_ids ?? [])->pluck('id')->all();
+            $listIds = PeopleList::withoutGlobalScope('company')->where('company_id', $biz)->whereIn('id', $form->list_ids ?? [])->pluck('id')->all();
             $tagIds = Tag::withoutGlobalScope('company')->where('company_id', $biz)->whereIn('id', $form->tag_ids ?? [])->pluck('id')->all();
-            $newLists = array_diff($listIds, $contact->lists()->pluck('contact_lists.id')->all());
-            $newTags = array_diff($tagIds, $contact->tags()->pluck('tags.id')->all());
-            $contact->lists()->syncWithoutDetaching($listIds);
-            $contact->tags()->syncWithoutDetaching($tagIds);
+            $newLists = array_diff($listIds, $person->lists()->pluck('people_lists.id')->all());
+            $newTags = array_diff($tagIds, $person->tags()->pluck('tags.id')->all());
+            $person->lists()->syncWithoutDetaching($listIds);
+            $person->tags()->syncWithoutDetaching($tagIds);
         }
 
-        // whether this person was already a contact (null when the form does not save contacts): shown in the submissions list
-        $existed = $contact ? ! $created : null;
-        $submission = FormSubmission::create(['company_id' => $biz, 'form_id' => $form->id, 'contact_id' => $contact?->id, 'contact_existed' => $existed, 'data' => $answers]);
+        // whether this person was already a person (null when the form does not save people): shown in the submissions list
+        $existed = $person ? ! $created : null;
+        $submission = FormSubmission::create(['company_id' => $biz, 'form_id' => $form->id, 'person_id' => $person?->id, 'person_existed' => $existed, 'data' => $answers]);
         $form->increment('submissions');
 
-        if ($contact) {
-            Automation::contactChanged($contact, $created, $newLists, $newTags);
-            Automation::fire('form_submitted', $contact, ['id' => $form->id]);
+        if ($person) {
+            Automation::personChanged($person, $created, $newLists, $newTags);
+            Automation::fire('form_submitted', $person, ['id' => $form->id]);
         }
         WebhookDispatcher::dispatch($biz, 'form.submitted', [
             'form' => $form->name, 'type' => $form->type,
-            'contact' => $contact ? Automation::contactPayload($contact) : null, 'answers' => $answers,
+            'person' => $person ? Automation::personPayload($person) : null, 'answers' => $answers,
         ]);
 
         // email the submission to the people who should see it (queued, so a slow mail server never slows the visitor)
@@ -213,8 +293,8 @@ class PublicController extends Controller
         if ($form->autoreply && $email) {
             $subject = $form->autoreply_subject;
             $text = $form->autoreply_body;
-            if (! $contact) {
-                // no contact record to read the name from: fill the personal tags from what they just typed
+            if (! $person) {
+                // no person record to read the name from: fill the personal tags from what they just typed
                 $typed = ['first_name' => $data['first_name'] ?? '', 'last_name' => $data['last_name'] ?? '', 'email' => $email, 'phone' => $phone ?? ''];
                 $typed['full_name'] = trim($typed['first_name'].' '.$typed['last_name']) ?: 'there';
                 $typed['first_name'] = $typed['first_name'] ?: 'there';
@@ -222,13 +302,13 @@ class PublicController extends Controller
                 $text = (new MessageRenderer)->replace($text, $typed);
             }
             $log = EmailLog::create([
-                'company_id' => $biz, 'contact_id' => $contact?->id, 'source' => 'form', 'recipient' => $email,
+                'company_id' => $biz, 'person_id' => $person?->id, 'source' => 'form', 'recipient' => $email,
                 'subject' => $subject, 'body' => nl2br(e($text)).($form->autoreply_attachments ? '<!--fc-attach:'.implode(',', array_column($form->autoreply_attachments, 'token')).'-->' : ''), 'status' => 'queued', // the marker makes SendMessageJob attach the files
             ]);
             SendMessageJob::dispatch($log->id);
         }
 
-        // Telling a visitor "you are already one of our contacts" shows anyone who is on the list, so it is only said when the form's owner
+        // Telling a visitor "you are already one of our people" shows anyone who is on the list, so it is only said when the form's owner
         // wrote a message for it. Without one, everybody gets the same thank-you.
         $known = $existed === true && filled($form->existing_message);
 

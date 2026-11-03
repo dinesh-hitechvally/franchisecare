@@ -60,7 +60,7 @@ onMounted(async () => { d.value = (await api.get('/analytics/conversions')).data
       </div>
     </div>
 
-    <div class="card"><h2>New contacts by source <small>(last 30 days)</small></h2><BarList :items="d.by_source_30d.map((s) => ({ label: SRC[s.label] || s.label, value: s.value }))" color="#9c27b0" /></div>
+    <div class="card"><h2>New people by source <small>(last 30 days)</small></h2><BarList :items="d.by_source_30d.map((s) => ({ label: SRC[s.label] || s.label, value: s.value }))" color="#9c27b0" /></div>
   </template>
 </template>
 

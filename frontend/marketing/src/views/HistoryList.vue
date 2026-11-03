@@ -7,9 +7,9 @@ import DateInput from '../components/DateInput.vue'
 import Pager from '../components/Pager.vue'
 import HistoryVersion from '../components/HistoryVersion.vue'
 
-// "Histories" of one kind of record (pages, forms, templates, campaigns, contacts, segments): every change made to any of them,
+// "Histories" of one kind of record (pages, forms, templates, campaigns, people, segments): every change made to any of them,
 // newest first, with filters. Pages, forms, templates and campaigns can open the editor on a saved version ("View this version", read-only);
-// contacts and segments have no editor to open, so "View changes" shows what was different, old -> new.
+// people and segments have no editor to open, so "View changes" shows what was different, old -> new.
 const props = defineProps({ kind: { type: String, required: true } })
 const router = useRouter()
 
@@ -23,7 +23,7 @@ const CONFIG = {
   },
   form: {
     title: 'Form histories', noun: 'Form', back: ['/forms', 'Back to forms'], records: '/forms', all: 'All forms', search: 'Search by form name…',
-    columns: { type: 'Type', fields: 'Fields', style: 'Design', title: 'Form title', button_text: 'Button text', success_message: 'Thank-you message', existing_message: 'Message for existing contacts', redirect_url: 'Redirect', save_contact: 'Save to contacts', subscribe: 'Subscribe', notify_emails: 'Notify by email', autoreply: 'Auto-reply', autoreply_subject: 'Auto-reply subject', autoreply_body: 'Auto-reply message', autoreply_attachments: 'Auto-reply attachments', list_ids: 'Lists', tag_ids: 'Tags', active: 'Active' },
+    columns: { type: 'Type', fields: 'Fields', style: 'Design', title: 'Form title', button_text: 'Button text', success_message: 'Thank-you message', existing_message: 'Message for existing people', redirect_url: 'Redirect', save_person: 'Save to People', subscribe: 'Subscribe', notify_emails: 'Notify by email', autoreply: 'Auto-reply', autoreply_subject: 'Auto-reply subject', autoreply_body: 'Auto-reply message', autoreply_attachments: 'Auto-reply attachments', list_ids: 'Lists', tag_ids: 'Tags', active: 'Active' },
     open: (r, entry) => (entry.exists ? '/forms/' + r.row_id + '?history=' + r.history_id : null), preview: false,
     intro: 'Every change made to your forms, newest first: who changed what, and when. Open a version to see the form exactly as it was. You can only look, nothing changes.',
   },
@@ -35,16 +35,16 @@ const CONFIG = {
   },
   campaign: {
     title: 'Campaign histories', noun: 'Campaign', back: ['/campaigns', 'Back to campaigns'], records: null, all: null, search: 'Search by campaign name…',
-    columns: { type: 'Channel', subject: 'Subject', body: 'Design', design: 'Design', template_id: 'Template', contact_list_id: 'Audience', tag_id: 'Audience tag', segment_id: 'Audience', scheduled_at: 'Schedule', started_at: 'Started', completed_at: 'Finished', status: 'Status', attachments: 'Attachments' },
+    columns: { type: 'Channel', subject: 'Subject', body: 'Design', design: 'Design', template_id: 'Template', people_list_id: 'Audience', tag_id: 'Audience tag', segment_id: 'Audience', scheduled_at: 'Schedule', started_at: 'Started', completed_at: 'Finished', status: 'Status', attachments: 'Attachments' },
     // a campaign that is still a draft or scheduled opens in its editor; one that has gone out can no longer be edited, so it gets the read-only preview
     open: (r, entry) => (entry.exists && entry.data.type === 'email' && ['draft', 'scheduled'].includes(entry.current_status) ? '/campaigns/' + r.row_id + '?history=' + r.history_id : null), preview: true,
     intro: 'Every change made to your campaigns, newest first: who changed what, and when. Open a version to see the campaign content exactly as it was. You can only look, nothing changes.',
   },
-  contact: {
-    title: 'Contact histories', noun: 'Contact', back: ['/contacts', 'Back to contacts'], records: null, all: null, search: 'Search by email, phone or name…',
+  person: {
+    title: 'People histories', noun: 'Person', back: ['/people', 'Back to people'], records: null, all: null, search: 'Search by email, phone or name…',
     columns: { first_name: 'First name', last_name: 'Last name', email: 'Email', phone: 'Phone', source: 'Source', is_subscribed: 'Subscribed', subscribed_at: 'Subscribed on' },
     open: null, details: true,
-    intro: 'Every change made to your contacts, newest first: who changed what, and when. Click View changes to see exactly what was different. Changes to a contact’s lists and tags are in that contact’s own History.',
+    intro: 'Every change made to your people, newest first: who changed what, and when. Click View changes to see exactly what was different. Changes to a person’s lists and tags are in that person’s own History.',
   },
   workflow: {
     title: 'Workflow histories', noun: 'Workflow', back: ['/workflows', 'Back to workflows'], records: '/workflows', all: 'All workflows', search: 'Search by workflow name…',
@@ -73,7 +73,7 @@ const records = ref([])
 const error = ref('')
 const loading = ref(true)
 const opening = ref(0)
-const expanded = ref(null) // history_id whose changes are shown (contacts, segments)
+const expanded = ref(null) // history_id whose changes are shown (people, segments)
 const viewing = ref(null) // a version that has no editor to open (deleted, an SMS, already sent...): shown as a read-only preview
 const f = reactive({ search: '', id: '', action: '', from: '', to: '' })
 const fDirty = computed(() => Object.values(f).some(Boolean))
@@ -84,7 +84,7 @@ const SOURCES = { dashboard: 'Dashboard', api: 'API', public: 'Public page / for
 const nice = (k) => ({ ...COMMON, ...cfg.value.columns })[k] || k.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 const what = (r) => [...new Set(Object.keys(r.changes || {}).map(nice))].join(' · ')
 // columns that are on / off: shown as Yes / No instead of 1 / 0
-const YES_NO = ['active', 'published', 'is_subscribed', 'save_contact', 'subscribe', 'autoreply']
+const YES_NO = ['active', 'published', 'is_subscribed', 'save_person', 'subscribe', 'autoreply']
 const show = (v, k) => (v === null || v === undefined || v === '' ? '—' : YES_NO.includes(k) ? (v === 1 || v === '1' || v === true ? 'Yes' : 'No') : typeof v === 'object' ? JSON.stringify(v) : String(v))
 
 async function load(page = 1) {

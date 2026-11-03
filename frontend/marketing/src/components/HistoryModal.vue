@@ -36,7 +36,7 @@ const error = ref('')
 
 const ACTIONS = { created: 'Created', updated: 'Updated', deleted: 'Deleted', restored: 'Restored', purged: 'Removed for good', baseline: 'Existing record' }
 const SOURCES = { dashboard: 'Dashboard', api: 'API', public: 'Public page / form', system: 'System' }
-const KINDS = { list_membership: 'List', contact_tag: 'Tag' }
+const KINDS = { list_membership: 'List', person_tag: 'Tag' }
 const label = (k) => k.replace(/_/g, ' ').replace(/^./, (c) => c.toUpperCase())
 const show = (v) => (v === null || v === undefined || v === '' ? '—' : v === 1 || v === '1' ? v : String(v))
 

@@ -9,7 +9,7 @@ class RunTimeTriggers extends Command
 {
     protected $signature = 'automation:time-triggers';
 
-    protected $description = 'Start workflows that depend on time: a date arrives, or a contact has not opened emails';
+    protected $description = 'Start workflows that depend on time: a date arrives, or a person has not opened emails';
 
     public function handle(): void
     {

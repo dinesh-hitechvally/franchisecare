@@ -2,22 +2,22 @@
 
 namespace App\Services;
 
-use App\Models\Contact;
+use App\Models\Person;
 
-/** One place that flips a contact's newsletter subscription, so the date and webhooks stay consistent. */
+/** One place that flips a person's newsletter subscription, so the date and webhooks stay consistent. */
 class Subscriptions
 {
-    public static function set(Contact $contact, bool $on): bool
+    public static function set(Person $person, bool $on): bool
     {
-        if ((bool) $contact->is_subscribed === $on) {
+        if ((bool) $person->is_subscribed === $on) {
             return false;
         }
 
-        $contact->forceFill(['is_subscribed' => $on, 'subscribed_at' => $on ? now() : null])->save();
+        $person->forceFill(['is_subscribed' => $on, 'subscribed_at' => $on ? now() : null])->save();
 
         if (! $on) {
-            WebhookDispatcher::dispatch($contact->company_id, 'contact.unsubscribed', Automation::contactPayload($contact));
-            Automation::fire('unsubscribed', $contact);
+            WebhookDispatcher::dispatch($person->company_id, 'person.unsubscribed', Automation::personPayload($person));
+            Automation::fire('unsubscribed', $person);
         }
 
         return true;

@@ -25,7 +25,7 @@ Production: run the worker under Supervisor and add `* * * * * php artisan sched
 
 ## Menu → features
 
-**Audience** — Contacts (search, filters, bulk actions, CSV import) · Contact Lists · **Tags** (coloured labels) · **Custom Fields** (extra data on contacts beyond name/email/mobile: company, plan… — defined once, editable on the contact, usable as merge tags, filled by forms and the API) ·
+**Audience** — **People** (the people you market to: search, filters, bulk actions, CSV import) · Lists · **Tags** (coloured labels) · **Custom Fields** (extra data on people beyond name/email/mobile: company, plan… — defined once, editable on the person, usable as merge tags, filled by forms and the API) ·
 **Segments** (saved rule groups: tag, list, name/email/domain, source, date added, opened-in-last-N-days… match ALL/ANY, live count) ·
 **Subscriptions** (per-channel opt-in/out, dates, bulk re-subscribe).
 
@@ -33,18 +33,18 @@ Production: run the worker under Supervisor and add `* * * * * php artisan sched
 (delivery, open & click rates, opens/clicks over time, top links, failures, CSV export) · Message Logs.
 
 **Content** — Email Templates (visual designer: blocks, ready-made & saved layouts, code editor) · SMS Templates ·
-**Landing Pages** (a dedicated web-page builder, separate from the email designer: full-width responsive sections — navigation, hero, numbers, features, steps, testimonials, pricing, FAQ, sign-up form, footer, custom HTML — with web layouts such as Lead magnet, Product launch, Event, Coming soon and Service business; desktop/tablet/phone preview; free photos with automatic credits; the "Sign-up form" section marks where the attached form appears; own public link; older email-style pages still work) · **Forms** (full-screen form builder: drag-and-drop fields in a column layout, colours & fonts, hosted page + embed code). Pick a **form type** — Newsletter sign-up, Contact form or Other — then choose what happens on submit: save to contacts (and whether they are subscribed to marketing), add to lists/tags, **email the submission to up to 5 addresses**, send the person an **auto-reply**, show a thank-you or redirect. Contact and Other forms start as an **inbox only** (no contact is created) — turn on "Save them to my contacts" when you want one. When a form does save contacts, name/email/mobile fill the contact's own columns and each extra question can be saved as a custom field (or kept in the inbox only). Every submission is kept in the form's **inbox** (view, delete, CSV export). Custom field names that would clash with a built-in tag get a `contact_` prefix (e.g. `{{contact_company_name}}`; `{{company_name}}` is always *your* company).
+**Landing Pages** (a dedicated web-page builder, separate from the email designer: full-width responsive sections — navigation, hero, numbers, features, steps, testimonials, pricing, FAQ, sign-up form, footer, custom HTML — with web layouts such as Lead magnet, Product launch, Event, Coming soon and Service business; desktop/tablet/phone preview; free photos with automatic credits; the "Sign-up form" section marks where the attached form appears; own public link; older email-style pages still work) · **Forms** (full-screen form builder: drag-and-drop fields in a column layout, colours & fonts, hosted page + embed code). Pick a **form type** — Newsletter sign-up, Contact form or Other — then choose what happens on submit: save to people (and whether they are subscribed to marketing), add to lists/tags, **email the submission to up to 5 addresses**, send the person an **auto-reply**, show a thank-you or redirect. Person and Other forms start as an **inbox only** (no person is created) — turn on "Save them to my people" when you want one. When a form does save people, name/email/mobile fill the person's own columns and each extra question can be saved as a custom field (or kept in the inbox only). Every submission is kept in the form's **inbox** (view, delete, CSV export). Custom field names that would clash with a built-in tag get a `person_` prefix (e.g. `{{person_company_name}}`; `{{company_name}}` is always *your* company).
 
 **Automation** — **Workflows** (trigger → send email/SMS, wait, add/remove tag, add to list) · **Triggers** (catalogue) · **Webhooks** (send events to other systems; moved here from Settings, the old `/settings/webhooks` and `/webhooks` addresses redirect) ·
-**Automation History** (contacts in flight with cancel, and a step-by-step log).
+**Automation History** (people in flight with cancel, and a step-by-step log).
 Triggers (Automation → Triggers, a table with filters; each row has **Create workflow**):
-- **Contact:** is added · joins a list · leaves a list · tag is added · tag is removed · submits a form · unsubscribes (workflows never email or text unsubscribed people, so use this to tag them or move lists).
+- **Person:** is added · joins a list · leaves a list · tag is added · tag is removed · submits a form · unsubscribes (workflows never email or text unsubscribed people, so use this to tag them or move lists).
 - **Email activity:** clicks a link (any link, or only links containing some text) · opens an email (the first open of each message).
 - **Time** (checked once a day at 00:15 server time, command `automation:time-triggers`, needs the scheduler running): a date arrives (a Date custom field such as a birthday or renewal: on the day, N days before or after, once or every year; dates are matched as YYYY-MM-DD) · has not opened emails for N days (received our email at least N days ago, opened none since, still subscribed; not started again within N days).
 
 A person is never in the same workflow twice at once, a date trigger never starts the same person twice in a day, and a workflow that removes the tag it listens for cannot loop. Workflows start as drafts; activate them when ready.
 
-**Analytics** — seven reports, each with a 7 / 14 / 30 / 60 / 90 day period: **Overview** (headline numbers compared with the previous period) · **Email** (opens, clicks, per-campaign table, top links) · **SMS** (sent, failed, by provider, per-campaign table) · **Delivery & errors** (sent / failed / skipped, failure and skip reasons grouped, success rate per service, latest failures) · **Contacts** (growth, subscriptions, engagement, sources) · **Forms & pages** (views → submissions) · **Automation** (workflow runs, completion, messages sent, step results). Tables have an Export CSV button. Per-campaign detail stays under Campaigns → Reports. API: `GET /api/analytics/{overview,email,sms,delivery,automation,contacts,conversions}?days=`.
+**Analytics** — seven reports, each with a 7 / 14 / 30 / 60 / 90 day period: **Overview** (headline numbers compared with the previous period) · **Email** (opens, clicks, per-campaign table, top links) · **SMS** (sent, failed, by provider, per-campaign table) · **Delivery & errors** (sent / failed / skipped, failure and skip reasons grouped, success rate per service, latest failures) · **People** (growth, subscriptions, engagement, sources) · **Forms & pages** (views → submissions) · **Automation** (workflow runs, completion, messages sent, step results). Tables have an Export CSV button. Per-campaign detail stays under Campaigns → Reports. API: `GET /api/analytics/{overview,email,sms,delivery,automation,people,conversions}?days=`.
 
 **System Settings** — Company Profile · **Email Configuration** (sender + your own SMTP, test send) ·
 **SMS Configuration** (Twilio and other SMS services, or Log only; test send) · **API Integrations** · **Webhooks** · **Users** · **Activity Logs**.
@@ -54,14 +54,14 @@ A person is never in the same workflow twice at once, a date trigger never start
 - Signing up (**Create a company account**) creates a new company and its first user.
 - A company has many users. Every user has full access — there are no roles — and all of them see the same company data.
 - **System Settings → Users** adds people to *your* company: a new user always joins the company of the person who creates them.
-- Companies are completely separate: one company can never see another's contacts, campaigns, templates, users or settings.
+- Companies are completely separate: one company can never see another's people, campaigns, templates, users or settings.
 - A login email belongs to exactly one company.
 
 ## Integrations
 
-- **API keys** (Settings → API Integrations): `POST /api/v1/contacts` upserts a contact (tags/lists matched by name),
-  `GET /api/v1/contacts?email=`, `POST /api/v1/contacts/unsubscribe`. A key only works on `/api/v1`.
-- **Webhooks**: `contact.created`, `contact.unsubscribed`, `campaign.sent`, `form.submitted`, `message.failed`, `workflow.completed`.
+- **API keys** (Settings → API Integrations): `POST /api/v1/people` upserts a person (tags/lists matched by name),
+  `GET /api/v1/people?email=`, `POST /api/v1/people/unsubscribe`. A key only works on `/api/v1`.
+- **Webhooks**: `person.created`, `person.unsubscribed`, `campaign.sent`, `form.submitted`, `message.failed`, `workflow.completed`.
   Each POST carries `X-Webhook-Signature: sha256=<HMAC of the raw body>` keyed with the webhook's secret (shown once).
 - Webhook URLs and SMTP hosts may not point at private/local addresses unless `OUTBOUND_ALLOW_PRIVATE=true` (dev only).
 
@@ -74,13 +74,13 @@ A person is never in the same workflow twice at once, a date trigger never start
 
 ## Deleting is soft
 
-Deleting a contact, list, tag, segment, template, campaign, form, landing page, workflow, webhook, custom field, user… only sets `deleted_at`; the row stays in the database and is hidden everywhere in the app (restore with `Model::onlyTrashed()->find($id)->restore()`). A deleted email, tag name or custom-field key can be used again (uniqueness only applies to rows that are not deleted, via the generated `email_active` / `name_active` / `key_active` columns). Queued messages whose campaign or contact was deleted are marked *skipped*. Contacts' list memberships live in `contact_list_members`; list/tag memberships and framework tables (jobs, cache, tokens) are not soft-deleted.
+Deleting a person, list, tag, segment, template, campaign, form, landing page, workflow, webhook, custom field, user… only sets `deleted_at`; the row stays in the database and is hidden everywhere in the app (restore with `Model::onlyTrashed()->find($id)->restore()`). A deleted email, tag name or custom-field key can be used again (uniqueness only applies to rows that are not deleted, via the generated `email_active` / `name_active` / `key_active` columns). Queued messages whose campaign or person was deleted are marked *skipped*. People' list memberships live in `people_list_members`; list/tag memberships and framework tables (jobs, cache, tokens) are not soft-deleted.
 
 Form builder: the left panel has **Custom fields** (right under Contact details; the other inputs are under **Other fields**) — drag one in and the question is tied to that field (same merge tag, same choices); questions you invent still create a custom field automatically.
 
 ## Change history (data mirroring)
 
-Every tracked table has a mirror, `<table>_history` (`contacts_history`, `campaigns_history`, …): after each create, update, delete or restore a **full copy of the row** is written there, plus who changed it (`changed_by`, `changed_by_name`), where from (`change_source`: dashboard / api / public / system), when (`changed_at`) and which columns differ from the previous copy (`changed_fields`). Tracked: companies, users, contacts, lists, list memberships, tags, contact tags, segments, templates, layouts, campaigns, forms, landing pages, workflows, webhooks, custom fields and their values, form submissions. Message logs, click events, workflow runs, webhook deliveries and the activity log are logs themselves and are not mirrored.
+Every tracked table has a mirror, `<table>_history` (`people_history`, `campaigns_history`, …): after each create, update, delete or restore a **full copy of the row** is written there, plus who changed it (`changed_by`, `changed_by_name`), where from (`change_source`: dashboard / api / public / system), when (`changed_at`) and which columns differ from the previous copy (`changed_fields`). Tracked: companies, users, people, lists, list memberships, tags, person tags, segments, templates, layouts, campaigns, forms, landing pages, workflows, webhooks, custom fields and their values, form submissions. Message logs, click events, workflow runs, webhook deliveries and the activity log are logs themselves and are not mirrored.
 
 * **In the app:** every table has an **Actions** column with a ⋮ menu; its last item, **Change history**, shows that row's full timeline (old → new). System Settings → Activity Logs → **Change history** is the feed across all tables, with filters.
 * Passwords, keys and other secrets are never copied (shown as ••••••); history can't be edited or removed through the app; view counters don't create copies.
@@ -89,7 +89,7 @@ Every tracked table has a mirror, `<table>_history` (`contacts_history`, `campai
 
 ## Filters
 
-Every table page has a filter bar **above** the table card (search plus the filters that make sense for that table, and a "Clear filters" link when any is active). Short lists filter in the browser (`composables/useFilters.js`); long, paged lists (contacts, campaigns, reports, logs, form inbox, subscriptions, change history) filter on the server. New table pages should use `components/FilterBar.vue` the same way.
+Every table page has a filter bar **above** the table card (search plus the filters that make sense for that table, and a "Clear filters" link when any is active). Short lists filter in the browser (`composables/useFilters.js`); long, paged lists (people, campaigns, reports, logs, form inbox, subscriptions, change history) filter on the server. New table pages should use `components/FilterBar.vue` the same way.
 
 ## Settings
 
@@ -146,18 +146,26 @@ You do not have to: a controller that simply returns a model, a list or a pagina
 
 **Tests:** `json()` and `assertJson*()` see the payload inside the envelope. To check the envelope itself read the raw body: `json_decode($response->getContent(), true)` (see `ApiResponseTest`).
 
-## Forms: what the visitor sees, and people who are already contacts
+## Forms: what the visitor sees, and people who are already in People
 
 - **After sending** the hosted form is replaced by a thank-you panel (a tick, the form's own thank-you message, and "Your form has been submitted successfully."), with **Send another response**, or a short pause before the redirect when the form has one. The button says "Sending…" and cannot be pressed twice. A problem shows a red message and focuses the field to fix.
-- **A form that saves contacts** matches an existing contact by email (or phone when there is no email): no duplicate is made, names, phone and custom fields are only filled where empty, subscription is never changed, and the form's lists and tags are added. The submission is linked to that contact.
-- **Subscribe to newsletter** (form builder → Contact details) is a tick box that decides whether a new contact is subscribed: only people who tick it are. Leave it required on a sign-up form, or optional to let people save their details without subscribing. It is kept in the submission, not on the contact, and it never re-subscribes someone who opted out. A form can have one.
-- **A notice for people who are already contacts** is optional: write it under the form's Settings → *Message for people who are already your contacts*. It is shown instead of the thank-you (with "We already have you in our records."). Left empty, everybody sees the same thank-you, so a visitor can never find out who is in your contacts. In the submissions lists the **From** column always shows **New contact** or **Existing contact** under the person's name.
+- **A form that saves people** matches an existing person by email (or phone when there is no email): no duplicate is made, names, phone and custom fields are only filled where empty, subscription is never changed, and the form's lists and tags are added. The submission is linked to that person.
+- **Form builder sidebar:** three tabs, **General**, **Design** and **Settings**. With nothing selected they edit the whole form (General: heading, description, button, thank-you message; Design: colours, font, width; Settings: type, redirect, what happens on submit, notifications, auto-reply, active). Click a field in the form and the same tabs edit just that field (General: label, placeholder, **default value**, options, help, required; Design: width in the row; Settings: save the answer on the person). Click the form card or the page background to go back to the whole form. A **default value** is filled in when the form opens: text, a chosen option, or a ticked box.
+- **Validation:** select a field and open **Settings → Validation**: minimum / maximum length and a **Format** (text, mobile, names, email): pick a ready-made one (stricter email, three phone formats, Australian postcode, US ZIP, letters only, numbers only, letters and numbers, web address) or choose *Custom pattern* and type your own regular expression, smallest / largest number, earliest / latest date, allowed email domains, and one custom error message. **Try a value** shows at once whether a sample answer passes. The rules are saved with the form, checked again by the server when someone submits (with your custom message), and the hosted form passes the limits to the browser. The left palette group of fields that fill the person's record is called **People fields**.
+- **Captcha** (form builder → Other fields): a small built-in human check, a sum such as `7 + 4 = ?`, with no outside service and no keys. The answer travels inside an encrypted token that expires after 6 hours, allows 5 wrong tries and works once; it is always required, only one per form, and it is never stored with the answers or on the person. A hidden trap field and rate limits still work as before. For a stricter service (reCAPTCHA, Turnstile) a site key would be needed, which this does not use.
+- **Subscription:** there is no separate "subscribe them" switch any more. With a **Subscribe to newsletter** box on the form, only people who tick it are subscribed (even on a form that would not subscribe by default). Without a box, a newsletter sign-up subscribes new people and other form types do not.
+- **Help text:** a field's help text is shown under the field; when it is longer than 60 characters it becomes an **i** icon beside the label and the text appears on hover or keyboard focus (builder preview and hosted form).
+- **Demo templates (seeder):** `TemplateSeeder` creates a designed **Welcome email** for people who just registered (hero, what to expect, a `WELCOME10` gift code, sign-off, footer with unsubscribe; it opens in the visual designer), a **Welcome SMS** and a **Promo SMS** (`SAVE10`), both under 160 characters with an opt-out. The email's design and rendered HTML are in `database/seeders/data/`. Re-running the seeder restores these three templates. The Templates grid shows sample names in its previews instead of raw merge tags.
+- **Sidebar notes:** in the builder's side panels an explanation longer than 60 characters is an **i** icon placed right after the label or title it explains (never on a line of its own); the text appears on hover or keyboard focus and always stays inside the panel. A short explanation (60 characters or fewer) stays as text. Clicking the icon never ticks the checkbox it sits next to.
+- **Hover help:** the **i** next to *People fields*, *Custom people fields*, *Other fields* and *Content* in the form builder's left panel explains what each group is for.
+- **Subscribe to newsletter** (form builder → Contact details) is a tick box that decides whether a new person is subscribed: only people who tick it are. Leave it required on a sign-up form, or optional to let people save their details without subscribing. It is kept in the submission, not on the person, and it never re-subscribes someone who opted out. A form can have one.
+- **A notice for people who are already in People** is optional: write it under the form's Settings → *Message for people who are already in People*. It is shown instead of the thank-you (with "We already have you in our records."). Left empty, everybody sees the same thank-you, so a visitor can never find out who is in your people. In the submissions lists the **From** column always shows **New person** or **Existing person** under the person's name.
 
 ## Campaign audience: lists, tags, segments and subscription
 
-- The campaign's **Audience** dropdown offers *All contacts*, **Lists**, **Tags** and **Segments**. One source is used at a time (segment, then tag, then list).
-- Next to Audience, a **Subscription** dropdown (All, Subscribed, Unsubscribed) narrows the preview below it. The table lists name, email (and phone for SMS), and a **Subscription** status per contact. The five-row preview and *Show all* follow the dropdown.
-- Unsubscribed contacts are never sent to, whichever audience is chosen: they are simply not sent to. Contacts with no email address or phone number cannot be sent to either: those are **Skipped** (a count kept on the campaign, listed with their names in the campaign report). Nothing is written to Message logs for either.
+- The campaign's **Audience** dropdown offers *All people*, **Lists**, **Tags** and **Segments**. One source is used at a time (segment, then tag, then list).
+- Next to Audience, a **Subscription** dropdown (All, Subscribed, Unsubscribed) narrows the preview below it. The table lists name, email (and phone for SMS), and a **Subscription** status per person. The five-row preview and *Show all* follow the dropdown.
+- Unsubscribed people are never sent to, whichever audience is chosen: they are simply not sent to. People with no email address or phone number cannot be sent to either: those are **Skipped** (a count kept on the campaign, listed with their names in the campaign report). Nothing is written to Message logs for either.
 
 ## Sending safety
 
@@ -166,7 +174,7 @@ You do not have to: a controller that simply returns a model, a list or a pagina
 - **Stop sending:** a campaign that is sending can be stopped (Campaigns list menu, or the campaign page). What went out stays sent; everything still waiting is skipped; the status is shown as "stopped".
 - **Every email** carries a plain-text copy beside the HTML, and `List-Unsubscribe` / `List-Unsubscribe-Post` headers (the one-click Unsubscribe button in Gmail, Apple Mail and others; `POST /api/unsubscribe/{token}`).
 - **Before sending**, the campaign page checks the audience (how many will receive it, how many are skipped) and warns about a long subject, a localhost link, a missing sender address, or an SMS that is split into several parts. Nobody to send to blocks the send.
-- **Duplicate** a campaign or a template from its menu; **Export CSV** on Contacts downloads the contacts the list is showing (with their custom fields).
+- **Duplicate** a campaign or a template from its menu; **Export CSV** on People downloads the people the list is showing (with their custom fields).
 
 ## Message logs
 
@@ -197,3 +205,5 @@ Things that need an image **pick it from Media** instead of asking for a web add
 The server downloads these images, so imports are restricted: only addresses the image search just returned for that company (remembered 1 hour) can be imported, hosts must be public (also after redirects), downloads are capped at 8 MB, and the bytes must really be PNG/JPG/GIF/WebP. Adding the same photo twice returns the existing copy.
 
 Tables: `media` (+ `media_history`, so every change to a file is mirrored like the other tables). Columns `source` (`upload` or the free source), `credit`, `credit_url`, `license`, `source_url` describe where an image came from.
+
+> **Naming:** the people you market to used to be called "contacts". Everything now says **people / person**: the `people` table (and `people_lists`, `people_list_members`, `person_tag`, `person_fields`, `person_field_values`, with `person_id` / `people_list_id` columns), the `Person` model, the `/api/people` and `/api/v1/people` paths and the `/people` address. The old `/contacts` front-end addresses redirect. Integrations that called `/api/v1/contacts`, or read `contact` in webhook payloads and `contact.created` / `contact.unsubscribed` events, must switch to `people`, `person`, `person.created` and `person.unsubscribed`. A form of type **Contact form** is a kind of form, not the people list, so it keeps its name.

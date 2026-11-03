@@ -41,7 +41,7 @@ class CloneTest extends TestCase
     public function test_a_form_is_cloned_with_its_fields_but_none_of_its_numbers(): void
     {
         $h = $this->owner();
-        $form = $this->postJson('/api/forms', ['name' => 'Newsletter', 'type' => 'newsletter', 'subscribe' => true, 'save_contact' => true, 'button_text' => 'Join'], $h)->assertCreated()->json();
+        $form = $this->postJson('/api/forms', ['name' => 'Newsletter', 'type' => 'newsletter', 'subscribe' => true, 'save_person' => true, 'button_text' => 'Join'], $h)->assertCreated()->json();
         Form::withoutGlobalScopes()->whereKey($form['id'])->update(['views' => 10, 'submissions' => 3]);
 
         $copy = $this->postJson('/api/forms/'.$form['id'].'/duplicate', [], $h)->assertCreated()->json();

@@ -12,8 +12,8 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('form_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('contact_id')->nullable()->constrained()->nullOnDelete();
-            $table->boolean('contact_existed')->nullable(); // null = no contact linked; true = they were already a contact; false = this submission created the contact
+            $table->foreignId('person_id')->nullable()->constrained()->nullOnDelete();
+            $table->boolean('person_existed')->nullable(); // null = no person linked; true = they were already a person; false = this submission created the person
             $table->longText('data'); // JSON: [{label, value}] — what was submitted, in form order
             $table->dateTime('created_at')->useCurrent();
             $table->dateTime('deleted_at')->nullable();
