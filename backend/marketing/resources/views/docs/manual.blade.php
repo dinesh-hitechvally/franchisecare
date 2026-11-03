@@ -5,7 +5,6 @@
 
 @section('content')
   @include('docs.manual._overview')
-  @include('docs.manual._start')
   @include('docs.manual._guide', ['tags' => $tags, 'fieldTypes' => $fieldTypes, 'formTypes' => $formTypes])
 
   <section id="triggers" data-nav="Triggers" data-group="Automation">

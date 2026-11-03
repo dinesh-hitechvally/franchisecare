@@ -39,7 +39,7 @@
     <a class="doc" href="{{ url('/docs/api') }}">
       <small>For the systems that connect to it</small>
       <h2>API</h2>
-      <p>Create an API key in <b>Settings → API Integrations</b> and connect another system.</p>
+      <p>Create an API key in <b>Settings → API keys</b> and connect another system.</p>
       <ul>
         <li>Creating and revoking API keys</li>
         <li>The integration API, with examples</li>

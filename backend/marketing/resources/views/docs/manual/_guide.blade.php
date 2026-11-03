@@ -70,7 +70,7 @@
     <li>Every change to an audited record is mirrored in a history table: who, when, what. The <b>History</b> screens show a timeline, and the page, form, template and campaign editors can open any earlier version read-only.</li>
   </ul>
 
-  <div class="note"><b>People, not Contacts.</b> This screen used to be called Contacts. Everything now says people / person: the <code>people</code> table, <code>person_id</code> columns, the <code>/api/people</code> paths and the <code>/people</code> address. The old front-end <code>/contacts</code> addresses redirect. A form of type <b>Contact form</b> is a kind of form, not the people list, so it keeps its name.</div>
+  <div class="note"><b>People, not Contacts.</b> This screen used to be called Contacts. Everything now says <b>people</b> / <b>person</b>: the menu, the reports and the documentation. Old web addresses that contain <code>/contacts</code> still work and take you to People. A form of type <b>Contact form</b> is a kind of form (a message from a visitor), not the People screen, so it keeps its name.</div>
 </section>
 
 <section id="forms" data-nav="Forms" data-group="Using the app">

@@ -2,7 +2,7 @@
 
 Multi-tenant email + SMS marketing. `backend/marketing/` = Laravel 13 API (Sanctum tokens), `frontend/marketing/` = Vue 3 SPA (Vite, Pinia).
 
-**Full documentation:** run the backend and open `http://localhost:8000/`. It is one page (contents, search, light/dark): quick start, architecture, every screen, forms, messaging, automation, the API with an endpoint list read from the running app, webhooks, operations and troubleshooting. It is on everywhere except production; set `DOCS_ENABLED=true` to publish it there. API clients that ask for JSON still get `{"app": …}` at `/`.
+**Documentation** (run the backend, then open): `http://localhost:8000/` is a hub linking three separate guides: **`/docs/manual`** (the project manual: every screen, forms, templates, automation, reports, settings, common problems), **`/docs/developer`** (installation, settings, architecture, a map of the code, the data model, how to extend it, deployment, troubleshooting) and **`/docs/api`** (creating API keys in Settings → API keys, the integration API with examples, webhooks and signatures, public endpoints, the dashboard API and every endpoint). Endpoints, triggers, webhook events, merge tags, field types and tables on those pages are read from the running app. They are on everywhere except production; set `DOCS_ENABLED=true` to publish them there. API clients that ask for JSON at `/` still get `{"app": …}`.
 
 ## Run
 
