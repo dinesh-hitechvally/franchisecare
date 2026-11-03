@@ -32,20 +32,25 @@ class SendCampaignJob implements ShouldQueue
         $perMinute = SendLog::perMinute(Company::find($campaign->company_id));
         $gap = $perMinute > 0 ? 60 / $perMinute : 0;
         $n = 0;
-        $left = 0; // unsubscribed or without an address: not messages, so nothing is written to the message log for them
+        $total = 0; // everyone the audience had at this moment: kept so the campaign page does not change when contacts are added later
+        $left = 0; // contacts without an address: nothing can be sent, so they are only counted (nothing is written to the message log)
 
-        $campaign->audienceQuery()->chunkById(200, function ($contacts) use ($campaign, $isEmail, $gap, &$n, &$left) {
+        $campaign->audienceQuery()->chunkById(200, function ($contacts) use ($campaign, $isEmail, $gap, &$n, &$left, &$total) {
             // stopped by a person while the list was still being expanded: create nothing more
             if (Campaign::withoutGlobalScope('company')->whereKey($campaign->id)->value('status') === 'cancelled') {
                 return false;
             }
 
             foreach ($contacts as $contact) {
+                $total++;
                 $recipient = $isEmail ? $contact->email : $contact->phone;
-                if (! $recipient || ! $contact->is_subscribed) {
+                if (! $recipient) {
                     $left++;
 
                     continue;
+                }
+                if (! $contact->is_subscribed) {
+                    continue; // opted out: never sent to, and not a "skipped" message either
                 }
 
                 $log = $campaign->logModel()::create([
@@ -62,7 +67,7 @@ class SendCampaignJob implements ShouldQueue
         });
 
         // kept on the campaign so the reports can still say how many people were left out
-        Campaign::withoutGlobalScope('company')->whereKey($campaign->id)->update(['audience_skipped' => $left]);
+        Campaign::withoutGlobalScope('company')->whereKey($campaign->id)->update(['audience_skipped' => $left, 'audience_total' => $total]);
 
         FinalizeCampaign::check($campaign->id);
     }

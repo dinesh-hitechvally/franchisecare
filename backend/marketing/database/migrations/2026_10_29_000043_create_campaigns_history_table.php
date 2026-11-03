@@ -23,6 +23,7 @@ return new class extends Migration
             $table->string('subject', 255)->nullable();
             $table->longText('body')->nullable();
             $table->longText('design')->nullable();
+            $table->unsignedInteger('audience_total')->nullable();
             $table->unsignedInteger('audience_skipped')->nullable();
             $table->json('attachments')->nullable();
             $table->string('status', 30)->nullable();

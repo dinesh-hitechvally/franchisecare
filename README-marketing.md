@@ -156,7 +156,7 @@ You do not have to: a controller that simply returns a model, a list or a pagina
 
 - The campaign's **Audience** dropdown offers *All contacts*, **Lists**, **Tags** and **Segments**. One source is used at a time (segment, then tag, then list).
 - Next to Audience, a **Subscription** dropdown (All, Subscribed, Unsubscribed) narrows the preview below it. The table lists name, email (and phone for SMS), and a **Subscription** status per contact. The five-row preview and *Show all* follow the dropdown.
-- Unsubscribed contacts are never sent to, whichever audience is chosen: they are left out, and so are contacts with no email address or phone number. Nothing is written to Message logs for them; the campaign only keeps the count, shown as **Skipped** in Reports.
+- Unsubscribed contacts are never sent to, whichever audience is chosen: they are simply not sent to. Contacts with no email address or phone number cannot be sent to either: those are **Skipped** (a count kept on the campaign, listed with their names in the campaign report). Nothing is written to Message logs for either.
 
 ## Sending safety
 

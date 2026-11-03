@@ -90,6 +90,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::post('campaigns/{campaign}/test', [CampaignController::class, 'test']);
     Route::get('reports/campaigns', [ReportController::class, 'campaigns']);
     Route::get('reports/campaigns/{campaign}', [ReportController::class, 'campaign']);
+    Route::get('reports/campaigns/{campaign}/deliveries', [ReportController::class, 'deliveries']);
     Route::get('reports/campaigns/{campaign}/export', [ReportController::class, 'export']);
     Route::get('logs', [LogController::class, 'index']);
     Route::get('logs/{channel}/{id}', [LogController::class, 'show'])->whereNumber('id');

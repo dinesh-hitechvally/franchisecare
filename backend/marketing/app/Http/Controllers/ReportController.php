@@ -13,6 +13,7 @@ use App\Models\EmailLog;
 use App\Models\SmsLog;
 use App\Models\Tag;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /** Campaign reports (per campaign) and the three analytics dashboards. */
 class ReportController extends Controller
@@ -70,33 +71,53 @@ class ReportController extends Controller
             'timeline' => ['opens' => $this->series($opens, $span), 'clicks' => $this->series($clickRows, $span)],
             'top_links' => ClickEvent::where('company_id', $campaign->company_id)->where('campaign_id', $campaign->id)
                 ->selectRaw('url, COUNT(*) as clicks, COUNT(DISTINCT email_log_id) as unique_clicks')->groupBy('url')->orderByDesc('clicks')->limit(10)->get(),
-            'problems' => $this->problems(clone $logs, $campaign, $isEmail),
         ];
     }
 
     /**
-     * Failed messages (from the message log) and the people left out at send time, with the contact's name beside the address.
-     * Skipped people have no log rows, so they are worked out from the campaign's audience: unsubscribed, or without an address.
+     * Every recipient of a campaign with how it went, one page at a time: delivered, logged only, failed, queued (from the message log),
+     * and skipped (contacts with no email address / phone number). Skipped people have no log rows, so they are worked out from the
+     * campaign's audience and listed after the logged messages.
      */
-    protected function problems($logs, Campaign $campaign, bool $isEmail)
+    public function deliveries(Request $request, Campaign $campaign)
     {
-        $failed = $logs->where('status', 'failed')->latest('id')->limit(20)->get(['recipient', 'status', 'error', 'contact_id']);
-        $names = Contact::whereIn('id', $failed->pluck('contact_id')->filter())->get(['id', 'first_name', 'last_name'])
-            ->mapWithKeys(fn ($c) => [$c->id => trim($c->first_name.' '.$c->last_name)]);
-        $rows = $failed->map(fn ($l) => ['name' => $names[$l->contact_id] ?? '', 'recipient' => $l->recipient, 'status' => 'failed', 'error' => $l->error]);
-
+        $isEmail = $campaign->type !== 'sms';
+        $status = (string) $request->query('status', '');
+        $search = trim((string) $request->query('search', ''));
+        $per = 20;
+        $page = max(1, (int) $request->query('page', 1));
+        $offset = ($page - 1) * $per;
         $col = $isEmail ? 'contacts.email' : 'contacts.phone';
-        $left = $campaign->audienceQuery()
-            ->where(fn ($q) => $q->where('contacts.is_subscribed', false)->orWhereNull($col)->orWhere($col, ''))
-            ->orderBy('contacts.id')->limit(20)->get(['contacts.id', 'first_name', 'last_name', 'email', 'phone', 'is_subscribed'])
-            ->map(fn ($c) => [
-                'name' => trim($c->first_name.' '.$c->last_name),
-                'recipient' => (string) ($isEmail ? $c->email : $c->phone),
-                'status' => 'skipped',
-                'error' => ! ($isEmail ? $c->email : $c->phone) ? ($isEmail ? 'No email address found for this contact' : 'No phone number found for this contact') : 'Contact unsubscribed',
-            ]);
 
-        return $rows->concat($left)->values();
+        $logs = $campaign->logModel()::where('campaign_id', $campaign->id)
+            ->when(in_array($status, ['sent', 'logged', 'failed', 'queued'], true), fn ($q) => $q->where('status', $status))
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('recipient', 'like', "%$search%")
+                ->orWhereIn('contact_id', Contact::where(fn ($c) => $c->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%"))->select('id'))));
+        $left = $campaign->audienceQuery()->where('contacts.is_subscribed', true)->where(fn ($q) => $q->whereNull($col)->orWhere($col, ''))
+            ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%")));
+
+        $wantLogs = $status !== 'skipped';
+        $wantLeft = $status === '' || $status === 'skipped';
+        $logsTotal = $wantLogs ? (clone $logs)->count() : 0;
+        $leftTotal = $wantLeft ? (clone $left)->count() : 0;
+
+        $items = collect();
+        if ($wantLogs && $offset < $logsTotal) {
+            $rows = (clone $logs)->orderBy('id')->offset($offset)->limit($per)->get(['recipient', 'status', 'error', 'contact_id', 'sent_at']);
+            $names = Contact::whereIn('id', $rows->pluck('contact_id')->filter())->get(['id', 'first_name', 'last_name'])
+                ->mapWithKeys(fn ($c) => [$c->id => trim($c->first_name.' '.$c->last_name)]);
+            $items = $rows->map(fn ($l) => ['name' => $names[$l->contact_id] ?? '', 'recipient' => $l->recipient, 'status' => $l->status, 'error' => $l->error, 'at' => $l->sent_at]);
+        }
+        if ($wantLeft && $items->count() < $per) {
+            $skip = max(0, $offset - $logsTotal);
+            $items = $items->concat((clone $left)->orderBy('contacts.id')->offset($skip)->limit($per - $items->count())->get(['contacts.id', 'first_name', 'last_name', 'email', 'phone'])
+                ->map(fn ($c) => [
+                    'name' => trim($c->first_name.' '.$c->last_name), 'recipient' => '', 'status' => 'skipped', 'at' => null,
+                    'error' => $isEmail ? 'No email address found for this contact' : 'No phone number found for this contact',
+                ]));
+        }
+
+        return new LengthAwarePaginator($items->values(), $logsTotal + $leftTotal, $per, $page);
     }
 
     /** CSV of every recipient with delivery + engagement status. */

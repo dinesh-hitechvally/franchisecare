@@ -27,18 +27,32 @@ class SkippedReportTest extends TestCase
 
         // only the one real recipient is in the message log
         $this->assertSame(1, EmailLog::withoutGlobalScopes()->count());
-        $this->assertSame(2, Campaign::withoutGlobalScopes()->find($id)->audience_skipped);
+        $this->assertSame(1, Campaign::withoutGlobalScopes()->find($id)->audience_skipped); // only the contact without an email: the unsubscribed one is simply not sent to
+
+        // the size of the audience is kept when it is sent: contacts added later do not change it
+        $this->assertSame(3, Campaign::withoutGlobalScopes()->find($id)->audience_total);
+        $this->postJson('/api/contacts', ['email' => 'late@x.com', 'is_subscribed' => true], $h)->assertCreated();
+        $this->getJson("/api/campaigns/$id", $h)->assertJsonPath('audience_total', 3);
 
         // the campaigns report counts them ...
         $row = collect($this->getJson('/api/reports/campaigns', $h)->assertOk()->json('data'))->firstWhere('id', $id);
-        $this->assertSame(2, $row['skipped_count']);
+        $this->assertSame(1, $row['skipped_count']);
 
-        // ... and the campaign's own report names them with the reason
-        $report = $this->getJson("/api/reports/campaigns/$id", $h)->assertOk()->json();
-        $this->assertSame(2, $report['stats']['skipped']);
-        $skipped = collect($report['problems'])->where('status', 'skipped')->keyBy('name');
-        $this->assertSame('Contact unsubscribed', $skipped['Opted Out']['error']);
-        $this->assertSame('off@x.com', $skipped['Opted Out']['recipient']);
-        $this->assertSame('No email address found for this contact', $skipped['No Email']['error']);
+        // ... and the campaign's own report counts them
+        $this->assertSame(1, $this->getJson("/api/reports/campaigns/$id", $h)->assertOk()->json('stats.skipped'));
+
+        // Delivery Reports lists everyone, newest filters first: the sent message, then the contact without an email
+        $all = $this->getJson("/api/reports/campaigns/$id/deliveries", $h)->assertOk()->json();
+        $this->assertSame(2, $all['total']);
+        $this->assertSame(['sent', 'skipped'], collect($all['data'])->pluck('status')->all());
+
+        $skipped = $this->getJson("/api/reports/campaigns/$id/deliveries?status=skipped", $h)->json();
+        $this->assertSame(1, $skipped['total']);
+        $this->assertSame('No Email', $skipped['data'][0]['name']);
+        $this->assertSame('No email address found for this contact', $skipped['data'][0]['error']);
+
+        $this->assertSame(1, $this->getJson("/api/reports/campaigns/$id/deliveries?status=sent", $h)->json('total'));
+        $this->assertSame(0, $this->getJson("/api/reports/campaigns/$id/deliveries?status=failed", $h)->json('total'));
+        $this->assertSame('ok@x.com', $this->getJson("/api/reports/campaigns/$id/deliveries?search=ok@", $h)->json('data.0.recipient'));
     }
 }

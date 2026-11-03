@@ -158,7 +158,7 @@ onMounted(async () => {
     <div class="grid g4">
       <div class="stat"><div class="n">{{ campaign.sent_count }}</div><div class="l">Sent</div></div>
       <div class="stat"><div class="n">{{ campaign.failed_count }}</div><div class="l">Failed</div></div>
-      <div class="stat"><div class="n">{{ campaign.skipped_count }}</div><div class="l">Skipped (unsubscribed / missing)</div></div>
+      <div class="stat"><div class="n">{{ campaign.skipped_count }}</div><div class="l">Skipped (no email / phone)</div></div>
       <div class="stat" v-if="campaign.type === 'email'"><div class="n">{{ campaign.opened_count }}</div><div class="l">Opened</div></div>
     </div>
     <p style="margin-bottom: 0"><router-link :to="`/message-logs?campaign_id=${campaign.id}`">View message logs →</router-link></p>
@@ -181,12 +181,13 @@ onMounted(async () => {
             <optgroup v-if="segments.length" label="Segments"><option v-for="g in segments" :key="'s' + g.id" :value="'segment:' + g.id">{{ g.name }} ({{ g.contacts_count }})</option></optgroup>
           </select>
         </div>
-        <div class="field">
+        <div v-if="!locked" class="field">
           <label>Subscription</label>
           <select v-model="subscription"><option value="">All Status ({{ subCounts.all }})</option><option value="subscribed">Subscribed ({{ subCounts.subscribed }})</option><option value="unsubscribed">Unsubscribed ({{ subCounts.unsubscribed }})</option></select>
         </div>
       </div>
-      <AudiencePreview @counts="(c) => (subCounts = c)" :list-id="form.contact_list_id" :segment-id="form.segment_id" :tag-id="form.tag_id" :status="subscription" :type="form.type" />
+      <p v-if="locked" class="aud-note"><b>{{ campaign.audience_total ?? 0 }} contact{{ campaign.audience_total === 1 ? '' : 's' }}</b> in this audience when it was sent. Contacts added or changed later are not included. <router-link :to="`/reports/${campaign.id}`">See who received it →</router-link></p>
+      <AudiencePreview v-else @counts="(c) => (subCounts = c)" :list-id="form.contact_list_id" :segment-id="form.segment_id" :tag-id="form.tag_id" :status="subscription" :type="form.type" />
     </div>
 
     <div v-if="form.type === 'email' && !rawHtml" class="card">
@@ -243,6 +244,7 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.aud-note { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #eceef7; color: #4b5563; }
 .tpl-list { list-style: none; margin: 0 0 12px; padding: 0; max-height: 360px; overflow: auto; }
 .tpl-list li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #eceef7; }
 .tpl-list small { color: #6b7280; }

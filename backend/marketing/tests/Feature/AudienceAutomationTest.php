@@ -89,7 +89,7 @@ class AudienceAutomationTest extends TestCase
         $c = $this->call_as($t, 'POST', '/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 's', 'body' => '<p>x</p>'])->json('id');
         $this->call_as($t, 'POST', "/api/campaigns/$c/send");
         $this->assertSame(0, EmailLog::withoutGlobalScopes()->count()); // nothing is written to the message log for them
-        $this->assertSame(1, Campaign::withoutGlobalScopes()->find($c)->audience_skipped);
+        $this->assertSame(0, Campaign::withoutGlobalScopes()->find($c)->audience_skipped); // opted out is not "skipped"
 
         $this->call_as($t, 'POST', '/api/subscriptions/bulk', ['ids' => [$id], 'subscribed' => true])->assertJsonPath('changed', 1);
         $this->assertTrue((bool) Contact::withoutGlobalScopes()->find($id)->is_subscribed);

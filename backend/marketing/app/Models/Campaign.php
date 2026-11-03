@@ -11,7 +11,7 @@ class Campaign extends Model
 {
     use BelongsToCompany, SoftDeletes, Auditable;
 
-    protected $guarded = ['id', 'company_id', 'status', 'started_at', 'completed_at', 'audience_skipped'];
+    protected $guarded = ['id', 'company_id', 'status', 'started_at', 'completed_at', 'audience_skipped', 'audience_total'];
 
     protected function casts(): array
     {
