@@ -111,7 +111,14 @@ class Campaign extends Model
             ? Person::withoutGlobalScope('company')->whereHas('lists', fn ($q) => $q->where('people_lists.id', $this->people_list_id))
             : Person::withoutGlobalScope('company');
 
-        return $query->where('company_id', $this->company_id);
+        $query->where('company_id', $this->company_id);
+        // "All people with a device" (a push campaign with no list, segment or tag): the condition IS having a device, so people without one are not part of the audience
+        // (they are not "skipped"). With a list, segment or tag, a person without a device is part of the audience and is counted as skipped.
+        if ($this->type === 'push' && ! $this->people_list_id) {
+            $query->whereHas('pushDevices', fn ($q) => $q->where('status', 'ACTIVE'));
+        }
+
+        return $query;
     }
 
     /** A push campaign to every registered device (linked to a person or not), not to an audience of people. */

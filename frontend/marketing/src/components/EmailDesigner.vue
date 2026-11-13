@@ -9,6 +9,8 @@ import RichText from './RichText.vue'
 import CodeEditor from './CodeEditor.vue'
 import HistoryTimeline from './HistoryTimeline.vue'
 import { fmtDateTime } from '../format'
+import VariableList from './VariableList.vue'
+import { loadMergeTags, fillTags } from '../mergeTags'
 import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, uid } from '../builder/blocks'
 
 // v-model-less: pass `initial` ({ name, subject, design, html }), receive `save` / `close`.
@@ -30,6 +32,9 @@ const design = ref(
       : null,
 )
 if (design.value) design.value.settings = { ...defaultSettings(), ...(design.value.settings || {}) }
+loadMergeTags()
+// the View tab shows the email as a reader would see it: real company values, sample person values, and a note for what does not exist
+const filled = (html) => fillTags(html, true)
 const layoutPreviews = LAYOUTS.map((l) => ({ ...l, html: renderEmail(l.make()) })) // built once, not on every render
 const picking = ref(!design.value)
 
@@ -308,7 +313,7 @@ function save() {
         <div class="g-grid">
           <div v-for="l in myLayouts" :key="l.id" class="g-card mine" role="button" tabindex="0" @click="useSaved(l)" @keydown.enter="useSaved(l)">
             <button class="g-del" title="Delete layout" @click.stop="deleteLayout(l)">&times;</button>
-            <div class="g-thumb"><iframe :srcdoc="l.html" tabindex="-1" sandbox="" loading="lazy"></iframe></div>
+            <div class="g-thumb"><iframe :srcdoc="filled(l.html)" tabindex="-1" sandbox="" loading="lazy"></iframe></div>
             <span>{{ l.name }}</span>
           </div>
         </div>
@@ -338,6 +343,7 @@ function save() {
               <Icon :name="def.icon" :size="26" /><span>{{ def.label }}</span>
             </div>
           </div>
+          <VariableList v-if="!locked" />
         </div>
       </aside>
 
@@ -364,7 +370,7 @@ function save() {
               <div v-if="!locked" class="dz" :class="{ hov: hover === i }" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)"></div>
               <div class="cv-block" :class="{ sel: selected === b.id, stack: device === 'mobile' }" :draggable="!locked"
                 @dragstart="dragMove($event, i)" @click.prevent.stop="selected = b.id">
-                <div class="cv-html" v-html="renderBlock(b, s, true)"></div>
+                <div class="cv-html" v-html="filled(renderBlock(b, s, true))"></div>
                 <div v-if="selected === b.id && !locked" class="cv-tools" @click.stop>
                   <span class="grip" title="Drag to move"><Icon name="drag" :size="16" /></span>
                   <button title="Move up" @click="move(i, -1)"><Icon name="up" :size="16" /></button>

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use App\Models\Campaign;
 use App\Models\Company;
+use App\Models\PeopleList;
+use App\Models\Person;
 use App\Models\PushDevice;
 use App\Models\PushLog;
 use App\Services\Push\WebPush;
@@ -148,7 +150,7 @@ class PushNotificationsTest extends TestCase
 
     // ----------------------------------------------------------------- sending to browsers
 
-    public function test_a_push_campaign_sends_to_every_device_of_subscribed_people_and_counts_the_rest_as_skipped(): void
+    public function test_a_push_campaign_sends_to_every_device_of_subscribed_people_and_people_without_a_device_are_not_in_its_audience(): void
     {
         $this->live();
         $a = $this->person('ann@example.com');
@@ -181,10 +183,10 @@ class PushNotificationsTest extends TestCase
 
         $c = Campaign::first()->fresh();
         $this->assertSame('SENT', $c->status);
-        $this->assertSame(1, (int) $c->audience_skipped); // the person with no device
+        $this->assertSame([2, 0], [(int) $c->audience_total, (int) $c->audience_skipped]); // Ann and the unsubscribed person; the person with no device is not part of "people with a device"
         $row = $this->getJson("/api/campaigns/$id", $this->h)->json();
         $this->assertSame([2, 2, 0], [$row['logs_count'], $row['sent_count'], $row['failed_count']]);
-        $this->assertSame(1, $row['skipped_count']);
+        $this->assertSame(0, $row['skipped_count']);
     }
 
     public function test_in_test_mode_nothing_is_sent_and_the_messages_are_logged_only(): void
@@ -333,7 +335,7 @@ class PushNotificationsTest extends TestCase
         $id = $this->campaign(['push_url' => null, 'subject' => str_repeat('T', 60)]);
 
         $check = $this->getJson("/api/campaigns/$id/check", $this->h)->assertOk()->json();
-        $this->assertSame([2, 1, 1], [$check['audience'], $check['reach'], $check['skipped']]);
+        $this->assertSame([1, 1, 0], [$check['audience'], $check['reach'], $check['skipped']]); // the audience is the people with a device: only Ann
         $warnings = implode(' | ', $check['warnings']);
         $this->assertStringContainsString('title is long', $warnings);
         $this->assertStringContainsString('No link is set', $warnings);
@@ -371,8 +373,7 @@ class PushNotificationsTest extends TestCase
         $this->send($id);
 
         $deliveries = $this->getJson("/api/reports/campaigns/$id/deliveries", $this->h)->assertOk()->json('data');
-        $this->assertSame(['SENT', 'SKIPPED'], array_column($deliveries, 'status'));
-        $this->assertStringContainsString('No device', end($deliveries)['error']);
+        $this->assertSame(['SENT'], array_column($deliveries, 'status')); // only the person with a device matches "all people with a device"
 
         $logs = $this->getJson('/api/logs?channel=push', $this->h)->assertOk()->json('data');
         $this->assertSame([['push', 'SENT', 'Hi Pat']], array_map(fn ($r) => [$r['channel'], $r['status'], $r['subject']], $logs));
@@ -780,5 +781,25 @@ class PushNotificationsTest extends TestCase
     {
         $this->assertStringContainsString("localStorage.getItem('fcpush-uid')", $this->get('/api/push/sdk.js')->getContent());
         $this->assertStringContainsString('device_uid: uid()', $this->get('/api/push/sdk.js')->getContent());
+    }
+
+    public function test_with_a_list_the_people_in_it_without_a_device_are_skipped(): void
+    {
+        $this->live();
+        $ann = $this->person('ann@example.com');
+        $bob = $this->person('nodevice@example.com');
+        $this->person('outside@example.com'); // not in the list: not part of this audience at all
+        $this->subscribe($this->browser(), 'ann@example.com');
+        $list = PeopleList::create(['name' => 'VIPs']);
+        Person::withoutGlobalScopes()->whereIn('id', [$ann, $bob])->get()->each(fn ($p) => $p->lists()->attach($list->id));
+        Http::fake(['*' => Http::response('', 201)]);
+
+        $id = $this->campaign(['people_list_id' => $list->id]);
+        $this->send($id);
+
+        $c = Campaign::first()->fresh();
+        $this->assertSame([2, 1], [(int) $c->audience_total, (int) $c->audience_skipped]); // Bob is in the list but has no device
+        $deliveries = $this->getJson("/api/reports/campaigns/$id/deliveries", $this->h)->assertOk()->json('data');
+        $this->assertSame(['SENT', 'SKIPPED'], array_column($deliveries, 'status'));
     }
 }

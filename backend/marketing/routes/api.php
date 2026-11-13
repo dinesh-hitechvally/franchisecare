@@ -114,6 +114,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
 
     // Campaigns
     Route::post('campaigns/preview', [CampaignController::class, 'preview']);
+    Route::get('merge-tags', [CampaignController::class, 'mergeTags']);
     Route::apiResource('campaigns', CampaignController::class);
     Route::post('campaigns/{campaign}/send', [CampaignController::class, 'send']);
     Route::post('campaigns/{campaign}/unschedule', [CampaignController::class, 'unschedule']);

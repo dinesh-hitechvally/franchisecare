@@ -6,6 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 import api, { errorMessage, responseMessage } from '../api'
 import Modal from '../components/Modal.vue'
 import InfoTip from '../components/InfoTip.vue'
+import FilterBar from '../components/FilterBar.vue'
 
 const providers = ref([])
 const connections = ref([])
@@ -29,6 +30,33 @@ const TILE = {
   mailerlite: ['#09c269', 'ML'], kit: ['#fb6970', 'Kit'], square: ['#3e4348', 'Sq'], paddle: ['#2b3a67', 'Pa'], chargebee: ['#ff3300', 'Cb'], gocardless: ['#ffdb00', 'GC', '#1b1b1b'],
 }
 const CATEGORIES = [['store', 'Online stores'], ['website', 'Websites'], ['crm', 'CRM'], ['email', 'Email marketing'], ['payments', 'Payments'], ['social', 'Social media'], ['messaging', 'Messaging channels']]
+// Help: everything needed to connect one platform, in a window. The steps, fields and notes come from the platform's own definition;
+// the links go to the official page where its keys or app are created.
+const helpOf = ref(null)
+const HELP_LINKS = {
+  shopify: ['https://help.shopify.com/en/manual/apps/app-types/custom-apps', 'Shopify: custom apps and access tokens'],
+  woocommerce: ['https://woocommerce.com/document/woocommerce-rest-api/', 'WooCommerce: REST API keys'],
+  wordpress: ['https://make.wordpress.org/core/2020/11/05/application-passwords-integration-guide/', 'WordPress: application passwords'],
+  magento: ['https://developer.adobe.com/commerce/webapi/get-started/authentication/gs-authentication-token/', 'Magento: integration access tokens'],
+  bigcommerce: ['https://developer.bigcommerce.com/docs/start/authentication/api-accounts', 'BigCommerce: API accounts'],
+  hubspot: ['https://developers.hubspot.com/docs/api/private-apps', 'HubSpot: private apps'],
+  mailchimp: ['https://mailchimp.com/help/about-api-keys/', 'Mailchimp: API keys'],
+  klaviyo: ['https://developers.klaviyo.com/en/docs/authenticate_', 'Klaviyo: API authentication'],
+  brevo: ['https://app.brevo.com/settings/keys/api', 'Brevo: API keys page'],
+  stripe: ['https://dashboard.stripe.com/apikeys', 'Stripe: API keys page'],
+  pipedrive: ['https://pipedrive.readme.io/docs/how-to-find-the-api-token', 'Pipedrive: finding the API token'],
+  activecampaign: ['https://help.activecampaign.com/hc/en-us/articles/207317590', 'ActiveCampaign: API URL and key'],
+  mailerlite: ['https://developers.mailerlite.com/docs/#authentication', 'MailerLite: authentication'],
+  kit: ['https://developers.kit.com/', 'Kit: developer documentation'],
+  square: ['https://developer.squareup.com/apps', 'Square: developer dashboard'],
+  facebook: ['https://developers.facebook.com/docs/marketing-api/guides/lead-ads/retrieving', 'Meta: retrieving lead ads leads'],
+  instagram: ['https://developers.facebook.com/docs/marketing-api/guides/lead-ads/retrieving', 'Meta: retrieving lead ads leads'],
+  linkedin: ['https://learn.microsoft.com/en-us/linkedin/marketing/lead-sync/leadsync', 'LinkedIn: Lead Sync API'],
+  whatsapp: ['https://developers.facebook.com/docs/whatsapp/cloud-api/get-started', 'WhatsApp Cloud API: get started'],
+  messenger: ['https://developers.facebook.com/docs/messenger-platform/get-started', 'Messenger Platform: get started'],
+  x: ['https://developer.x.com/en/portal/dashboard', 'X Developer Portal'],
+}
+const helpLink = (p) => HELP_LINKS[p.key]
 const categoryLabel = (key) => CATEGORIES.find((c) => c[0] === key)?.[1] || key
 const f = reactive({ q: '', category: '', method: '' }) // filters of the table: search, category, one-click or pasted details
 const dirty = computed(() => !!(f.q || f.category || f.method))
@@ -188,13 +216,14 @@ onBeforeUnmount(() => clearInterval(timer))
 
   <p v-if="connections.length" class="connected-note"><b>{{ connections.length }}</b> connected. <router-link to="/integrations/connected">View connected integrations</router-link> to sync, change settings or disconnect.</p>
 
-  <h2 class="sec">{{ connections.length ? 'Connect another' : 'Connect a platform' }}</h2>
+  <h2 class="sec">Connect a platform</h2>
   <p v-if="loading" class="empty">Loading…</p>
   <template v-else>
     <FilterBar :dirty="dirty" @clear="clear">
       <input v-model="f.q" type="search" placeholder="Search name or description…" />
       <select v-model="f.category"><option value="">All categories</option><option v-for="[key, label] in CATEGORIES" :key="key" :value="key">{{ label }}</option></select>
       <select v-model="f.method"><option value="">Any way to connect</option><option value="oneclick">One-click</option><option value="manual">Paste details</option></select>
+      <template #end>{{ rows.length }} of {{ providers.length }} platforms</template>
     </FilterBar>
     <div class="card tbl">
       <table>
@@ -208,7 +237,7 @@ onBeforeUnmount(() => clearInterval(timer))
             </td>
             <td>{{ categoryLabel(p.category) }}</td>
             <td class="c-desc">{{ p.description }}</td>
-            <td class="c-act"><button class="btn sm" @click="open('new', p)">Connect</button></td>
+            <td class="c-act"><button class="btn ghost sm" @click="helpOf = p">Help</button> <button class="btn sm" @click="open('new', p)">Connect</button></td>
           </tr>
           <tr v-if="!rows.length"><td colspan="5" class="empty">No platform matches these filters.</td></tr>
         </tbody>
@@ -216,6 +245,55 @@ onBeforeUnmount(() => clearInterval(timer))
     </div>
   </template>
   <p class="more">Connecting something else? Another system can add and update people with an <router-link to="/settings/api">API key</router-link>.</p>
+
+  <Modal v-if="helpOf" :title="'How to connect ' + helpOf.label" wide @close="helpOf = null">
+    <div class="help">
+      <p class="lead">{{ helpOf.description }}</p>
+
+      <h4>Before you start</h4>
+      <ul>
+        <li>You need an account on <b>{{ helpOf.label }}</b> with permission to create keys or approve apps.</li>
+        <li v-if="helpOf.auto_connect?.available"><b>One-click is available:</b> choose <i>Connect</i>, then approve access on {{ helpOf.label }}'s own page. Nothing to copy and paste.</li>
+        <li v-else-if="helpOf.auto_connect"><b>One-click is supported</b> but not switched on yet for this server (the platform owner must add the app's client ID and secret). Until then, paste the details below.</li>
+        <li v-else>This platform is connected by pasting the details below. They are stored encrypted.</li>
+        <li v-if="helpOf.uses_url">You will also type the address of your site or store.</li>
+      </ul>
+
+      <h4>What you will enter</h4>
+      <table class="hf">
+        <thead><tr><th>Field</th><th>Where to find it</th><th>Example</th></tr></thead>
+        <tbody>
+          <tr v-for="f in helpOf.fields" :key="f.key">
+            <td><b>{{ f.label }}</b><br /><small>{{ f.secret ? 'secret: stored encrypted' : f.required === false ? 'optional' : 'required' }}</small></td>
+            <td>{{ f.help || '—' }}</td>
+            <td><code v-if="f.placeholder">{{ f.placeholder }}</code></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h4>Step by step</h4>
+      <ol><li v-for="(st, i) in helpOf.steps" :key="i">{{ st }}</li></ol>
+      <p v-if="helpOf.messaging" class="note">This account sends campaign messages. Nothing is imported from it: after connecting, it appears in the <b>Channel</b> list when you create a campaign.</p>
+
+      <h4>Who gets subscribed, and what is imported</h4>
+      <p>{{ helpOf.consent_note }}</p>
+      <p v-if="helpOf.supports_export" class="note">This connection can also <b>send your People to {{ helpOf.label }}</b>. Choose the direction (import, send or both) when you connect.</p>
+
+      <template v-if="helpLink(helpOf)">
+        <h4>Official documentation</h4>
+        <p><a :href="helpLink(helpOf)[0]" target="_blank" rel="noopener noreferrer">{{ helpLink(helpOf)[1] }} ↗</a></p>
+      </template>
+
+      <h4>If it does not connect</h4>
+      <ul>
+        <li>Copy the key again and check there is no space before or after it.</li>
+        <li>Check that the key has permission to read what is listed above (for example customers, or leads).</li>
+        <li>Keys of a test or sandbox account only work with that account's data.</li>
+        <li>The message shown after pressing Connect comes from {{ helpOf.label }} itself and says what it refused.</li>
+      </ul>
+      <div class="row" style="margin-top: 16px"><button class="btn" @click="open('new', helpOf); helpOf = null">Connect {{ helpOf.label }}</button><button class="btn ghost" @click="helpOf = null">Close</button></div>
+    </div>
+  </Modal>
 
   <Modal v-if="dlg" :title="dlg.mode === 'new' ? 'Connect ' + provider.label : 'Settings · ' + dlg.connection.name" wide @close="dlg = null">
     <form @submit.prevent="submit">
@@ -337,7 +415,15 @@ onBeforeUnmount(() => clearInterval(timer))
 .tbl th { font-size: 12px; text-transform: uppercase; letter-spacing: .04em; color: #6b7280; background: #fafbfc; }
 .c-logo { width: 64px; }
 .c-desc { color: #4b5563; font-size: 13px; line-height: 1.4; max-width: 420px; }
-.c-act { width: 120px; text-align: right !important; }
+.help h4 { margin: 18px 0 6px; font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #6b7280; }
+.help .lead { font-size: 15px; margin: 0; }
+.help ul, .help ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.help .note { background: #eef2ff; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+.hf { width: 100%; border-collapse: collapse; font-size: 13px; }
+.hf th, .hf td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid #eef0f3; }
+.hf th { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+.hf code { background: #f3f4f6; padding: 2px 6px; border-radius: 4px; word-break: break-all; }
+.c-act { width: 160px; text-align: right !important; }
 .provs { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
 .prov { display: flex; flex-direction: column; gap: 6px; } .prov h3 { margin: 0; } .prov p { margin: 0 0 8px; color: #6b7280; font-size: 14px; flex: 1; }
 .more { margin-top: 20px; color: #6b7280; font-size: 14px; }

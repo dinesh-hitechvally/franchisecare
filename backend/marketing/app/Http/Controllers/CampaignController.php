@@ -246,6 +246,12 @@ class CampaignController extends Controller
         return ApiResponse::ok(['ok' => true], 'Test message sent.');
     }
 
+    /** The variables a template can use, with where each comes from and the value a preview shows: real from Settings, a sample for people. */
+    public function mergeTags(Request $request)
+    {
+        return collect(MessageRenderer::previewTags($request->user()->company))->map(fn ($t, $key) => ['key' => $key] + $t)->values();
+    }
+
     /** Live preview of a body using sample data. */
     public function preview(Request $request, MessageRenderer $renderer)
     {
@@ -253,6 +259,11 @@ class CampaignController extends Controller
         $company = $request->user()->company;
         $sample = new Person(['first_name' => 'Jane', 'last_name' => 'Doe', 'email' => 'jane@example.com', 'phone' => '+61400000000']);
         $sample->unsubscribe_token = 'preview';
+        // company variables show their real value, person variables a sample, and a missing variable or an empty setting is called out in the text
+        $tags = MessageRenderer::previewTags($company);
+        $isHtml = $data['type'] === 'email';
+        $data['subject'] = MessageRenderer::previewFill((string) ($data['subject'] ?? ''), $tags, false);
+        $data['body'] = MessageRenderer::previewFill($data['body'], $tags, $isHtml);
 
         if ($data['type'] === 'email') {
             [$subject, $html] = $renderer->renderEmail($data['subject'] ?? '', $data['body'], $company, $sample);

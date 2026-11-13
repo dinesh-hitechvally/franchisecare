@@ -2,6 +2,8 @@
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import api from '../api'
 import ImagePicker from './ImagePicker.vue'
+import VariableList from './VariableList.vue'
+import { loadMergeTags, tagsIn } from '../mergeTags'
 
 // v-model:subject and v-model:body; `type` is 'email', 'sms' or 'push' (for push the subject is the title, and url / image are the link and picture)
 const props = defineProps({ type: String, subject: String, body: String, url: String, image: String })
@@ -11,6 +13,10 @@ const TAGS = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company
 const tag = (t) => `{{${t}}}`
 const subjectHint = computed(() => (props.type === 'push' ? 'Title, e.g. Hi ' : 'Subject line, e.g. Hi ') + tag('first_name'))
 const bodyHint = computed(() => (props.type === 'email' ? `<h1>Hello ${tag('first_name')}</h1>` : `Hi ${tag('first_name')}, …`))
+loadMergeTags()
+// where each variable of the message comes from, so it is clear what the preview shows and what is wrong
+const used = computed(() => tagsIn((props.subject || '') + ' ' + (props.body || '')))
+const NOTE = { setting: 'from Settings', empty: 'not set in Settings yet', dynamic: 'sample value in the preview', custom: 'custom field: sample value in the preview', missing: 'this variable does not exist' }
 const bodyEl = ref(null)
 const picker = ref(false)
 const preview = ref({ html: '', text: '', subject: '', title: '' })
@@ -63,6 +69,7 @@ onBeforeUnmount(() => clearTimeout(timer))
           <button v-for="t in TAGS.slice(0, type === 'email' ? 7 : 4)" :key="t" type="button" class="tag" @click="insert(tag(t))">{{ tag(t) }}</button>
           <button v-if="type === 'email'" type="button" class="btn sm" @click="picker = true">🖼 Insert free image</button>
         </div>
+        <details class="all-vars"><summary>All available variables <small>click to copy</small></summary><VariableList /></details>
         <textarea ref="bodyEl" :value="body" :rows="type === 'email' ? 18 : type === 'push' ? 4 : 7" @input="emit('update:body', $event.target.value)"
           :placeholder="bodyHint"></textarea>
         <small v-if="type === 'sms'">{{ (body || '').length }} characters · {{ smsSegments }} SMS segment(s) · include "Reply STOP to opt out"</small>
@@ -82,6 +89,12 @@ onBeforeUnmount(() => clearTimeout(timer))
           <img v-if="image" :src="image" alt="" class="push-img" />
         </div>
         <div v-else class="sms-bubble" style="margin-top: 6px">{{ preview.text || 'Your message preview' }}</div>
+        <ul v-if="used.length" class="used-vars">
+          <li v-for="v in used" :key="v.key" :class="v.state">
+            <code>{{ tag(v.key) }}</code>
+            <span>{{ NOTE[v.state] }}<template v-if="v.state === 'setting' || v.state === 'dynamic' || v.state === 'custom'"> · <b>{{ v.value || '(empty)' }}</b></template></span>
+          </li>
+        </ul>
       </div>
     </div>
 
@@ -90,6 +103,16 @@ onBeforeUnmount(() => clearTimeout(timer))
 </template>
 
 <style scoped>
+.all-vars { margin: 6px 0; font-size: 12px; }
+.all-vars > summary { cursor: pointer; color: #3f51b5; }
+.all-vars small { color: #6b7280; margin-left: 6px; }
+.used-vars { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 4px; font-size: 12px; }
+.used-vars li { display: flex; gap: 8px; align-items: baseline; padding: 4px 8px; border-radius: 6px; background: #f3f4f6; color: #374151; }
+.used-vars li code { font-weight: 700; }
+.used-vars li.setting { background: #e8f5e9; color: #1b5e20; }
+.used-vars li.dynamic, .used-vars li.custom { background: #e3f2fd; color: #0d47a1; }
+.used-vars li.empty { background: #fff4e0; color: #8a5a00; }
+.used-vars li.missing { background: #fdecea; color: #b71c1c; }
 .push-card { max-width: 340px; background: #fff; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,.18); padding: 12px 14px; font-size: 14px; line-height: 1.35; }
 .push-app { font-size: 11px; color: #6b7280; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
 .push-img { display: block; width: 100%; border-radius: 8px; margin-top: 8px; max-height: 160px; object-fit: cover; }

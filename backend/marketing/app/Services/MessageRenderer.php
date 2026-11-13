@@ -43,6 +43,63 @@ class MessageRenderer
         return $vars;
     }
 
+    /**
+     * Every variable a template may use, for showing a template without sending it:
+     * kind "setting" = comes from Settings (the real value, `set` false when Settings has none yet),
+     * kind "dynamic" = depends on the person (a sample value stands in), kind "custom" = a custom field of the person (a sample of its type).
+     *
+     * @return array<string, array{kind: string, value: string, set: bool, label: string}>
+     */
+    public static function previewTags(Company $company): array
+    {
+        $r = new self;
+        $real = $r->vars($company, null, 'email');
+        $tag = fn (string $kind, string $value, string $label, bool $set = true) => ['kind' => $kind, 'value' => $value, 'set' => $set, 'label' => $label];
+        $tags = [];
+        foreach ([
+            'company_name' => 'Company name', 'business_name' => 'Company name (old name)', 'company_phone' => 'Company phone', 'company_website' => 'Company website',
+            'company_email' => 'Company email', 'company_logo' => 'Company logo',
+        ] as $key => $label) {
+            $tags[$key] = $tag('setting', (string) $real[$key], $label, trim((string) $real[$key]) !== '');
+        }
+        foreach ([
+            'first_name' => ['Alex', 'First name'], 'last_name' => ['Taylor', 'Last name'], 'full_name' => ['Alex Taylor', 'Full name'], 'email' => ['alex@example.com', 'Email'],
+            'phone' => ['+61 400 000 000', 'Phone'], 'unsubscribe_url' => ['#', 'Unsubscribe link'],
+        ] as $key => [$value, $label]) {
+            $tags[$key] = $tag('dynamic', $value, $label);
+        }
+        foreach (\App\Models\PersonField::all() as $f) {
+            $options = array_values((array) $f->options);
+            $tags[$f->key] ??= $tag('custom', match ($f->type) {
+                'number' => '42', 'date' => now()->format('Y-m-d'), 'checkbox' => 'Yes', 'dropdown', 'radio' => (string) ($options[0] ?? 'Option 1'),
+                'textarea' => 'Sample text for '.$f->label, default => 'Sample '.mb_strtolower($f->label),
+            }, $f->label);
+        }
+
+        return $tags;
+    }
+
+    /**
+     * Fills the variables that are not plain person data, for a preview: custom fields get a sample, a setting that is still empty and a
+     * variable that does not exist are replaced by a readable note (no braces, so nothing else touches it and it can sit inside a link).
+     */
+    public static function previewFill(string $text, array $tags, bool $html): string
+    {
+        $esc = fn (string $s) => $html ? e($s) : $s;
+
+        return preg_replace_callback('/\{\{\s*([\w.]+)\s*\}\}/', function ($m) use ($tags, $esc) {
+            $t = $tags[$m[1]] ?? null;
+            if (! $t) {
+                return '['.$m[1].': this variable does not exist]';
+            }
+            if ($t['kind'] === 'setting' && ! $t['set']) {
+                return '['.$m[1].': not set in Settings yet]';
+            }
+
+            return $t['kind'] === 'custom' ? $esc($t['value']) : $m[0]; // company and person variables are filled by the normal renderer
+        }, $text);
+    }
+
     public function replace(string $text, array $vars): string
     {
         return preg_replace_callback('/\{\{\s*([\w.]+)\s*\}\}/', fn ($m) => $vars[$m[1]] ?? '', $text);
