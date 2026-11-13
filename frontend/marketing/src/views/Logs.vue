@@ -6,6 +6,7 @@ import { useRoute } from 'vue-router'
 import api from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import Modal from '../components/Modal.vue'
+import Pager from '../components/Pager.vue'
 import RowMenu from '../components/RowMenu.vue'
 
 const route = useRoute()
@@ -15,6 +16,9 @@ const detail = ref(null)
 const f = reactive({ channel: route.query.channel || '', source: route.query.source || '', service: '', status: '', search: '', from: '', to: '', campaign_id: route.query.campaign_id || '' })
 const fDirty = computed(() => Object.values(f).some(Boolean))
 const fClear = () => Object.keys(f).forEach((k) => (f[k] = ''))
+const perPage = ref(Number((() => { try { return localStorage.getItem('logs.per_page') } catch (e) { return null } })()) || 30) // rows per page, remembered
+const PER_PAGE = [10, 30, 50]
+function setPerPage(n) { perPage.value = n; try { localStorage.setItem('logs.per_page', String(n)) } catch (e) { /* storage blocked */ } load(1) }
 
 const SOURCES = { campaign: 'Campaign', automation: 'Automation', form: 'Form auto-reply', test: 'Test message', notification: 'Staff notification' }
 const SERVICES = {
@@ -26,11 +30,12 @@ const service = (k) => (k ? SERVICES[k] || k : '—')
 const statusLabel = (s) => (s === 'LOGGED' ? 'logged only' : (s || '').toLowerCase()) // logged = written to a log, nothing was delivered
 
 async function load(page = 1) {
-  const params = { page }
+  const params = { page, per_page: perPage.value }
   for (const k in f) if (f[k]) params[k] = f[k]
   const { data } = await api.get('/logs', { params })
   rows.value = data.data
   meta.value = data
+  if (page > 1 && !data.data.length && data.last_page < page) load(data.last_page) // the page is gone (filters or deletions): go to the last one that exists
 }
 
 async function copy(text) { try { await navigator.clipboard.writeText(text) } catch (e) { /* clipboard blocked */ } }
@@ -81,11 +86,7 @@ onBeforeUnmount(() => clearInterval(poll))
         ]" /></td>
       </tr>
     </table>
-    <div v-if="meta.last_page > 1" class="row" style="justify-content: center; margin-top: 12px">
-      <button class="btn ghost sm" :disabled="meta.current_page <= 1" @click="load(meta.current_page - 1)">Previous</button>
-      <small>Page {{ meta.current_page }} of {{ meta.last_page }}</small>
-      <button class="btn ghost sm" :disabled="meta.current_page >= meta.last_page" @click="load(meta.current_page + 1)">Next</button>
-    </div>
+    <Pager :meta="meta" :sizes="PER_PAGE" @page="load" @per-page="setPerPage" />
   </div>
 
   <Modal v-if="detail" :title="`${detail.channel.toUpperCase()} to ${detail.recipient}`" wide @close="detail = null">

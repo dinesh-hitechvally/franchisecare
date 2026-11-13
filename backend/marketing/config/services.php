@@ -38,47 +38,84 @@ return [
     // set OUTBOUND_ALLOW_PRIVATE=true only on a dev machine, to let webhooks / SMTP target localhost
     'outbound' => ['allow_private' => (bool) env('OUTBOUND_ALLOW_PRIVATE', false)],
 
-    // Online platforms whose customers can be imported (Integrations menu). Shopify retires old API versions: set a newer one here when needed.
-    'integrations' => ['shopify_version' => env('SHOPIFY_API_VERSION', '2026-04'), 'klaviyo_revision' => env('KLAVIYO_API_REVISION', '2025-04-15')],
+    // Everything the Integrations menu needs from the platform owner, one entry per platform. `auth_type` says how the platform is connected, and platforms of the
+    // same type are kept together:
+    //   oauth   = "Connect with …": client_id and client_secret of the app registered with the platform (redirect URI = APP_URL/api/oauth/integrations/callback).
+    //             A platform without them keeps the paste-your-key form.
+    //   api_key = the person pastes a key: test keys for development are kept here, the connect form still asks for what the platform needs.
+    // `api_version` is the platform's API version, for the ones that retire old versions: set a newer one in .env when needed.
+    'integrations' => [
+        // ================= auth_type: oauth =================
 
-    // Platform-owner OAuth apps for "Connect with …" in Integrations. Register one app per platform (redirect URI = APP_URL/api/oauth/integrations/callback)
-    // and put its client id/secret in .env. A platform without them keeps the paste-your-key form.
-    'integration_oauth' => [
         'shopify' => [
-            'client_id' => env('SHOPIFY_CLIENT_ID'), 
-            'client_secret' => env('SHOPIFY_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('SHOPIFY_CLIENT_ID'),
+            'client_secret' => env('SHOPIFY_CLIENT_SECRET'),
+            'api_version'   => env('SHOPIFY_API_VERSION', '2026-04'),
         ],
+
         'hubspot' => [
-            'client_id' => env('HUBSPOT_CLIENT_ID'), 
-            'client_secret' => env('HUBSPOT_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('HUBSPOT_CLIENT_ID'),
+            'client_secret' => env('HUBSPOT_CLIENT_SECRET'),
         ],
+
         'mailchimp' => [
-            'client_id' => env('MAILCHIMP_CLIENT_ID'), 'client_secret' => env('MAILCHIMP_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('MAILCHIMP_CLIENT_ID'),
+            'client_secret' => env('MAILCHIMP_CLIENT_SECRET'),
         ],
-        'x' => ['client_id' => env('X_CLIENT_ID'), 'client_secret' => env('X_CLIENT_SECRET')],
+
         'klaviyo' => [
-            'client_id' => env('KLAVIYO_CLIENT_ID'), 
-            'client_secret' => env('KLAVIYO_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('KLAVIYO_CLIENT_ID'),
+            'client_secret' => env('KLAVIYO_CLIENT_SECRET'),
+            'api_version'   => env('KLAVIYO_API_REVISION', '2025-04-15'),
         ],
+
         'kit' => [
-            'client_id' => env('KIT_CLIENT_ID'), 
-            'client_secret' => env('KIT_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('KIT_CLIENT_ID'),
+            'client_secret' => env('KIT_CLIENT_SECRET'),
         ],
+
         'pipedrive' => [
-            'client_id' => env('PIPEDRIVE_CLIENT_ID'), 
-            'client_secret' => env('PIPEDRIVE_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('PIPEDRIVE_CLIENT_ID'),
+            'client_secret' => env('PIPEDRIVE_CLIENT_SECRET'),
         ],
+
         'salesforce' => [
-            'client_id' => env('SALESFORCE_CLIENT_ID'), 
-            'client_secret' => env('SALESFORCE_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('SALESFORCE_CLIENT_ID'),
+            'client_secret' => env('SALESFORCE_CLIENT_SECRET'),
         ],
+
         'square' => [
-            'client_id' => env('SQUARE_CLIENT_ID'), 
-            'client_secret' => env('SQUARE_CLIENT_SECRET')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('SQUARE_CLIENT_ID'),
+            'client_secret' => env('SQUARE_CLIENT_SECRET'),
         ],
+
         'stripe' => [
-            'client_id' => env('STRIPE_CONNECT_CLIENT_ID'), 
-            'client_secret' => env('STRIPE_CONNECT_SECRET_KEY')
+            'auth_type'     => 'oauth',
+            'client_id'     => env('STRIPE_CONNECT_CLIENT_ID'),
+            'client_secret' => env('STRIPE_CONNECT_SECRET_KEY'),
+        ],
+
+        'x' => [
+            'auth_type'     => 'oauth',
+            'client_id'     => env('X_CLIENT_ID'),
+            'client_secret' => env('X_CLIENT_SECRET'),
+        ],
+
+        // ================= auth_type: api_key =================
+
+        // Wix also needs a site id, which the connect form asks for.
+        'wix' => [
+            'auth_type'  => 'api_key',
+            'api_key'    => env('WIX_API_KEY'),
+            'account_id' => env('WIX_ACCOUNT_ID'),
         ],
     ],
 

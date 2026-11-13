@@ -100,7 +100,7 @@ class ShopifyProvider extends Provider
 
     protected function graphql(Integration $i, string $query, array $variables = []): array
     {
-        $url = rtrim($i->store_url, '/').'/admin/api/'.config('services.integrations.shopify_version', '2026-04').'/graphql.json';
+        $url = rtrim($i->store_url, '/').'/admin/api/'.config('services.integrations.shopify.api_version', '2026-04').'/graphql.json';
 
         for ($attempt = 1; $attempt <= 3; $attempt++) {
             $response = $this->send($i, 'POST', $url, [

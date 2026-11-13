@@ -96,7 +96,7 @@ onBeforeUnmount(() => clearInterval(timer))
           <td>{{ c.failed_count }}</td>
           <td>{{ c.type === 'email' ? c.opened_count : '—' }}</td>
         </template>
-        <td class="act"><RowMenu :history="{ type: 'campaign', id: c.id, title: c.name }" :items="[{ label: 'Open', to: `/campaigns/${c.id}` }, { label: 'Report', to: `/reports/${c.id}`, show: ['SENT', 'SENDING', 'FAILED'].includes(c.status) }, { label: 'Cancel schedule', run: () => unschedule(c), show: c.status === 'SCHEDULED' }, { label: 'Stop sending', run: () => stop(c), show: c.status === 'SENDING', danger: true }, { label: 'Clone', run: () => duplicate(c) }, { label: 'Delete', run: () => remove(c), danger: true, show: c.status !== 'SENDING' }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'campaign', id: c.id, title: c.name }" :items="[{ label: c.status === 'DRAFT' ? 'Edit' : 'Open', to: `/campaigns/${c.id}` }, { label: 'Report', to: `/reports/${c.id}`, show: ['SENT', 'SENDING', 'FAILED'].includes(c.status) }, { label: 'Cancel schedule', run: () => unschedule(c), show: c.status === 'SCHEDULED' }, { label: 'Stop sending', run: () => stop(c), show: c.status === 'SENDING', danger: true }, { label: 'Clone', run: () => duplicate(c) }, { label: 'Delete', run: () => remove(c), danger: true, show: c.status !== 'SENDING' }]" /></td>
       </tr>
     </table>
     <Pager :meta="meta" @page="load" />

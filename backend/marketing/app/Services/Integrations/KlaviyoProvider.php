@@ -68,7 +68,7 @@ class KlaviyoProvider extends Provider
     protected function get(Integration $i, string $path, array $query = [])
     {
         $response = $this->send($i, 'GET', 'https://a.klaviyo.com/api'.$path, [
-            'headers' => ['Authorization' => ($this->secret($i, 'oauth') ? 'Bearer ' : 'Klaviyo-API-Key ').$this->secret($i, 'private_key'), 'revision' => config('services.integrations.klaviyo_revision', '2025-04-15'), 'Accept' => 'application/vnd.api+json'],
+            'headers' => ['Authorization' => ($this->secret($i, 'oauth') ? 'Bearer ' : 'Klaviyo-API-Key ').$this->secret($i, 'private_key'), 'revision' => config('services.integrations.klaviyo.api_version', '2025-04-15'), 'Accept' => 'application/vnd.api+json'],
             'query' => $query,
         ]);
         if (! $response->successful()) {

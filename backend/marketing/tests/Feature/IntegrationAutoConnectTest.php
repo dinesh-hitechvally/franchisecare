@@ -23,10 +23,10 @@ class IntegrationAutoConnectTest extends TestCase
         parent::setUp();
         config([
             'services.outbound.allow_private' => true, 'app.url' => 'http://app.test', 'services.mail_oauth.frontend_url' => 'http://front.test',
-            'services.integration_oauth.mailchimp' => ['client_id' => 'mc-id', 'client_secret' => 'mc-secret'],
-            'services.integration_oauth.shopify' => ['client_id' => 'sh-id', 'client_secret' => 'sh-secret'],
-            'services.integration_oauth.klaviyo' => ['client_id' => 'kl-id', 'client_secret' => 'kl-secret'],
-            'services.integration_oauth.hubspot' => ['client_id' => 'hs-id', 'client_secret' => 'hs-secret'],
+            'services.integrations.mailchimp' => ['client_id' => 'mc-id', 'client_secret' => 'mc-secret'],
+            'services.integrations.shopify' => ['client_id' => 'sh-id', 'client_secret' => 'sh-secret'],
+            'services.integrations.klaviyo' => ['client_id' => 'kl-id', 'client_secret' => 'kl-secret'],
+            'services.integrations.hubspot' => ['client_id' => 'hs-id', 'client_secret' => 'hs-secret'],
         ]);
         $this->app['auth']->forgetGuards();
         $token = $this->postJson('/api/register', [

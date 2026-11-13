@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Http;
  *   ['mode' => 'woocommerce', 'asks' => ['url']]                                                          // WooCommerce's own key approval page
  *   ['mode' => 'wordpress', 'asks' => ['url']]                                                            // WordPress "application password" approval page
  *
- * The OAuth client id and secret of each platform are the platform owner's, set in .env (config services.integration_oauth).
+ * The OAuth client id and secret of each platform are the platform owner's, set in .env (config services.integrations, entries with auth_type oauth).
  */
 trait OAuthFlow
 {
@@ -26,7 +26,7 @@ trait OAuthFlow
     /** @return array{0: ?string, 1: ?string} the client id and secret registered with the platform */
     public function oauthCredentials(): array
     {
-        return [config('services.integration_oauth.'.$this->key().'.client_id'), config('services.integration_oauth.'.$this->key().'.client_secret')];
+        return [config('services.integrations.'.$this->key().'.client_id'), config('services.integrations.'.$this->key().'.client_secret')];
     }
 
     /** Can the "connect" button be offered right now? */
