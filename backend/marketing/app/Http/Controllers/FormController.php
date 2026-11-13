@@ -73,6 +73,7 @@ class FormController extends Controller
         $form->setAttribute('style', $form->resolvedStyle());
         $form->setAttribute('notify_emails', $form->notify_emails ?? []);
         $form->setAttribute('url', url('/f/'.$form->slug));
+        $form->setAttribute('embed_script', \App\Services\FormEmbed::scriptUrl($form->company)); // the one-script embed (Share → Embed with JavaScript)
 
         return $form;
     }
@@ -210,8 +211,8 @@ class FormController extends Controller
             if (isset(FormFields::STANDARD[$type])) {
                 abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add "'.FormFields::STANDARD[$type].'" once.');
                 $types[] = $type;
-            } elseif ($type === FormFields::SUBSCRIBE || $type === FormFields::CAPTCHA) {
-                abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add the '.($type === FormFields::CAPTCHA ? 'captcha' : 'newsletter tick box').' once.');
+            } elseif ($type === FormFields::SUBSCRIBE || $type === FormFields::PUSH || $type === FormFields::CAPTCHA) {
+                abort_if(in_array($type, $types, true), 422, 'Field '.$n.': you can only add the '.(['captcha' => 'captcha', 'push' => 'push notifications tick box'][$type] ?? 'newsletter tick box').' once.');
                 $types[] = $type;
                 $f['key'] = $type;
                 if ($type === FormFields::CAPTCHA) {

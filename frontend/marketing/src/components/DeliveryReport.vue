@@ -12,8 +12,8 @@ const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const loading = ref(true)
 const f = reactive({ search: '', status: '' })
 
-const LABELS = { sent: 'Delivered', logged: 'Logged only', failed: 'Failed', skipped: 'Skipped', queued: 'Queued' }
-const BADGE = { sent: 'sent', logged: 'logged', failed: 'failed', skipped: 'skipped', queued: 'queued' }
+const LABELS = { SENT: 'Delivered', LOGGED: 'Logged only', FAILED: 'Failed', SKIPPED: 'Skipped', QUEUED: 'Queued' }
+const BADGE = { SENT: 'sent', LOGGED: 'logged', FAILED: 'failed', SKIPPED: 'skipped', QUEUED: 'queued' }
 
 async function load(page = 1) {
   loading.value = true
@@ -49,12 +49,12 @@ const clear = () => { f.search = ''; f.status = '' }
     <p v-if="loading && !rows.length" class="muted">Loading…</p>
     <p v-else-if="!rows.length" class="muted">{{ f.search || f.status ? 'No recipients match.' : 'No recipients yet.' }}</p>
     <table v-else>
-      <thead><tr><th>Name</th><th>{{ type === 'sms' ? 'Phone' : 'Email' }}</th><th>Status</th><th>Reason</th></tr></thead>
+      <thead><tr><th>Name</th><th>{{ ['sms', 'whatsapp'].includes(type) ? 'Phone' : type === 'push' ? 'Device' : ['messenger', 'x'].includes(type) ? 'Account ID' : 'Email' }}</th><th>Status</th><th>Reason</th></tr></thead>
       <tr v-for="(p, i) in rows" :key="i">
         <td>{{ p.name || '—' }}</td>
         <td>{{ p.recipient || '—' }}</td>
-        <td><span class="badge" :class="BADGE[p.status]">{{ LABELS[p.status] || p.status }}</span></td>
-        <td><small>{{ p.error || (p.status === 'logged' ? 'Written to a log, not delivered (Log only service)' : '') }}</small></td>
+        <td><span class="badge" :class="BADGE[p.status]">{{ LABELS[p.status] || (p.status || '').toLowerCase() }}</span></td>
+        <td><small>{{ p.error || (p.status === 'LOGGED' ? 'Written to a log, not delivered (Log only service)' : '') }}</small></td>
       </tr>
     </table>
     <Pager :meta="meta" @page="load" />

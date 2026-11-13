@@ -19,7 +19,7 @@ const fClear = () => { search.value = ''; type.value = ''; status.value = '' }
 const error = ref('')
 let timer
 
-const title = computed(() => (route.query.status === 'scheduled' ? 'Scheduled Campaigns' : route.query.type === 'email' ? 'Email Campaigns' : route.query.type === 'sms' ? 'SMS Campaigns' : 'All Campaigns'))
+const title = computed(() => (route.query.status === 'scheduled' ? 'Scheduled Campaigns' : route.query.type === 'email' ? 'Email Campaigns' : route.query.type === 'sms' ? 'SMS Campaigns' : route.query.type === 'push' ? 'Push Campaigns' : route.query.type === 'whatsapp' ? 'WhatsApp Campaigns' : route.query.type === 'messenger' ? 'Messenger Campaigns' : route.query.type === 'x' ? 'X Campaigns' : 'All Campaigns'))
 const scheduledView = computed(() => status.value === 'scheduled')
 const audience = (c) => c.segment?.name ? `Segment: ${c.segment.name}` : c.tag?.name ? `Tag: ${c.tag.name}` : c.list?.name || 'All people'
 
@@ -62,7 +62,7 @@ watch(() => route.query, (q) => { type.value = q.type || ''; status.value = q.st
 onMounted(() => {
   load()
   // keep progress fresh while something is sending
-  timer = setInterval(() => rows.value.some((r) => r.status === 'sending') && load(meta.value.current_page), 4000)
+  timer = setInterval(() => rows.value.some((r) => r.status === 'SENDING') && load(meta.value.current_page), 4000)
 })
 onBeforeUnmount(() => clearInterval(timer))
 </script>
@@ -75,7 +75,7 @@ onBeforeUnmount(() => clearInterval(timer))
   <div v-if="error" class="alert err">{{ error }}</div>
   <FilterBar :dirty="fDirty" @clear="fClear">
     <input v-model="search" type="search" placeholder="Search campaigns…" />
-    <select v-model="type"><option value="">All channels</option><option value="email">Email</option><option value="sms">SMS</option></select>
+    <select v-model="type"><option value="">All channels</option><option value="email">Email</option><option value="sms">SMS</option><option value="push">Push</option><option value="whatsapp">WhatsApp</option><option value="messenger">Messenger</option><option value="x">X (Twitter)</option></select>
     <select v-model="status"><option value="">All statuses</option><option value="draft">Draft</option><option value="scheduled">Scheduled</option><option value="sending">Sending</option><option value="sent">Sent</option><option value="failed">Failed</option><option value="cancelled">Stopped</option></select>
   </FilterBar>
 
@@ -89,14 +89,14 @@ onBeforeUnmount(() => clearInterval(timer))
         <td><router-link :to="`/campaigns/${c.id}`">{{ c.name }}</router-link></td>
         <td><span class="badge" :class="c.type">{{ c.type }}</span></td>
         <td>{{ audience(c) }}</td>
-        <td><span class="badge" :class="c.status">{{ c.status }}</span></td>
+        <td><span class="badge" :class="(c.status || '').toLowerCase()">{{ (c.status || '').toLowerCase() }}</span></td>
         <template v-if="scheduledView"><td>{{ $ds(c.scheduled_at, '—') }}</td></template>
         <template v-else>
           <td>{{ c.sent_count }}/{{ c.logs_count }}<br v-if="c.logged_count" /><small v-if="c.logged_count" title="Written to a log only: nothing was delivered">{{ c.logged_count }} logged only</small></td>
           <td>{{ c.failed_count }}</td>
           <td>{{ c.type === 'email' ? c.opened_count : '—' }}</td>
         </template>
-        <td class="act"><RowMenu :history="{ type: 'campaign', id: c.id, title: c.name }" :items="[{ label: 'Open', to: `/campaigns/${c.id}` }, { label: 'Report', to: `/reports/${c.id}`, show: ['sent', 'sending', 'failed'].includes(c.status) }, { label: 'Cancel schedule', run: () => unschedule(c), show: c.status === 'scheduled' }, { label: 'Stop sending', run: () => stop(c), show: c.status === 'sending', danger: true }, { label: 'Clone', run: () => duplicate(c) }, { label: 'Delete', run: () => remove(c), danger: true, show: c.status !== 'sending' }]" /></td>
+        <td class="act"><RowMenu :history="{ type: 'campaign', id: c.id, title: c.name }" :items="[{ label: 'Open', to: `/campaigns/${c.id}` }, { label: 'Report', to: `/reports/${c.id}`, show: ['SENT', 'SENDING', 'FAILED'].includes(c.status) }, { label: 'Cancel schedule', run: () => unschedule(c), show: c.status === 'SCHEDULED' }, { label: 'Stop sending', run: () => stop(c), show: c.status === 'SENDING', danger: true }, { label: 'Clone', run: () => duplicate(c) }, { label: 'Delete', run: () => remove(c), danger: true, show: c.status !== 'SENDING' }]" /></td>
       </tr>
     </table>
     <Pager :meta="meta" @page="load" />

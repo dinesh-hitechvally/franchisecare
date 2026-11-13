@@ -18,7 +18,7 @@ watch(() => auth.company?.logo_url, () => (logoBroken.value = false))
 const sections = [
   {
     title: 'Audience', icon: 'people',
-    items: [['People', '/people'], ['Lists', '/lists'], ['Tags', '/tags'], ['Segments', '/segments'], ['Subscriptions', '/subscriptions'], ['Custom Fields', '/custom-fields']],
+    items: [['People', '/people'], ['Devices', '/devices'], ['Lists', '/lists'], ['Tags', '/tags'], ['Segments', '/segments'], ['Custom Fields', '/custom-fields']],
   },
   {
     title: 'Campaigns', icon: 'campaign',
@@ -31,6 +31,10 @@ const sections = [
   {
     title: 'Automation', icon: 'bolt',
     items: [['Workflows', '/workflows'], ['Triggers', '/automation/triggers'], ['Webhooks', '/automation/webhooks'], ['Automation History', '/automation/history']],
+  },
+  {
+    title: 'Integrations', icon: 'plug',
+    items: [['Connections', '/integrations'], ['All integrations', '/integrations/connected'], ['Sync history', '/integrations/history']],
   },
   {
     title: 'Analytics', icon: 'chart',

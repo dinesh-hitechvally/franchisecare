@@ -15,6 +15,6 @@ class Segment extends Model
 
     protected function casts(): array
     {
-        return ['rules' => 'array'];
+        return ['match' => \App\Casts\Upper::class, 'rules' => 'array'];
     }
 }

@@ -17,7 +17,7 @@ return new class extends Migration
             $table->string('path', 500);                  // where the file lives on disk (private storage)
             $table->string('token', 40)->unique();        // the unguessable part of the public link /api/m/{token}/{file_name}
             $table->string('mime', 100);
-            $table->string('kind', 12)->default('image'); // image | document
+            $table->enum('kind', ['IMAGE', 'DOCUMENT'])->default('IMAGE'); // image | document
             $table->unsignedBigInteger('size');           // bytes
             $table->unsignedInteger('width')->nullable(); // images only
             $table->unsignedInteger('height')->nullable();

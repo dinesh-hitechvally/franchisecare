@@ -19,6 +19,8 @@ return new class extends Migration
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->dateTime('deleted_at')->nullable();
+            $table->string('push_key', 40)->nullable()->unique();   // public id of the company in the push snippet and the app registration
+            $table->string('public_key', 40)->nullable()->unique(); // public id of the company in the form embed script (forms.js?c=KEY)
         });
     }
 

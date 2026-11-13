@@ -79,12 +79,12 @@ class ApiResponseTest extends TestCase
     {
         $h = $this->owner();
         $id = $this->postJson('/api/campaigns', ['name' => 'Spring', 'type' => 'email', 'subject' => 'Hi', 'body' => '<p>x</p>'], $h)->assertCreated()->json('id');
-        Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'sending']);
+        Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'SENDING']);
 
         $res = $this->postJson("/api/campaigns/$id/cancel", [], $h)->assertOk(); // answers with ApiResponse::ok($campaign, 'Sending stopped...')
         $body = $this->raw($res);
         $this->assertSame('Sending stopped. What already went out stays sent; the rest was skipped.', $body['message']);
-        $this->assertSame('cancelled', $body['data']['status']);
+        $this->assertSame('CANCELLED', $body['data']['status']);
         $this->assertArrayNotHasKey('success', $body['data']);        // one envelope, not an envelope inside an envelope
         $this->assertFalse($res->headers->has(ApiResponse::MARK));     // the internal marker never reaches the client
     }

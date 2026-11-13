@@ -13,6 +13,8 @@ const routes = [
   { path: '/contacts/history', redirect: (to) => ({ path: '/people/history', query: to.query }) },
   { path: '/analytics/contacts', redirect: '/analytics/people' },
   { path: '/lists', component: () => import('./views/Lists.vue') },
+  { path: '/devices', component: () => import('./views/PushDevices.vue') },
+  { path: '/devices/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'push_device' }, meta: { parent: '/devices' } },
   { path: '/tags', component: () => import('./views/Tags.vue') },
   { path: '/custom-fields', component: () => import('./views/CustomFields.vue') },
   { path: '/segments', component: () => import('./views/Segments.vue') },
@@ -32,7 +34,9 @@ const routes = [
 
   // Content
   { path: '/templates', component: () => import('./views/Templates.vue') },
+  { path: '/templates/:id(\\d+|new)', component: () => import('./views/Templates.vue'), meta: { parent: '/templates' } }, // an open template editor: /templates/3 (or /templates/new)
   { path: '/pages', component: () => import('./views/LandingPages.vue') },
+  { path: '/pages/:id(\\d+|new)', component: () => import('./views/LandingPages.vue'), meta: { parent: '/pages' } }, // an open page editor: /pages/12 (or /pages/new)
   { path: '/pages/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'landing_page' }, meta: { parent: '/pages' } },
   { path: '/forms/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'form' }, meta: { parent: '/forms' } },
   { path: '/templates/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'template' }, meta: { parent: '/templates' } },
@@ -54,6 +58,10 @@ const routes = [
   { path: '/automation/webhooks/history', component: () => import('./views/HistoryList.vue'), props: { kind: 'webhook' }, meta: { parent: '/automation/webhooks' } },
   { path: '/automation/webhooks/deliveries', component: () => import('./views/WebhookDeliveries.vue'), meta: { parent: '/automation/webhooks' } },
   { path: '/automation/history', component: () => import('./views/AutomationHistory.vue') },
+  // connected platforms (Shopify, WooCommerce, WordPress, Magento): their customers become People
+  { path: '/integrations', component: () => import('./views/PlatformIntegrations.vue') },
+  { path: '/integrations/connected', component: () => import('./views/ConnectedIntegrations.vue') },
+  { path: '/integrations/history', component: () => import('./views/IntegrationSyncs.vue'), meta: { parent: '/integrations' } },
 
   // Analytics
   { path: '/analytics', redirect: '/analytics/overview' },
@@ -75,6 +83,7 @@ const routes = [
       { path: 'company', component: () => import('./views/Settings.vue') },
       { path: 'email', component: () => import('./views/EmailConfig.vue') },
       { path: 'sms', component: () => import('./views/SmsConfig.vue') },
+      { path: 'push', component: () => import('./views/PushConfig.vue') },
       { path: 'users', component: () => import('./views/Users.vue') },
       { path: 'api', component: () => import('./views/Integrations.vue') },
       { path: 'activity', component: () => import('./views/ActivityLogs.vue') },

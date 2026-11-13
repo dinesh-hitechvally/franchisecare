@@ -14,9 +14,9 @@ class ProcessAutomation extends Command
 
     public function handle(): void
     {
-        WorkflowRun::withoutGlobalScope('company')->where('status', 'running')->where('next_run_at', '<=', now())
+        WorkflowRun::withoutGlobalScope('company')->where('status', 'RUNNING')->where('next_run_at', '<=', now())
             ->where(fn ($q) => $q->whereNull('locked_until')->orWhere('locked_until', '<', now()))
-            ->whereHas('workflow', fn ($q) => $q->where('status', 'active'))
+            ->whereHas('workflow', fn ($q) => $q->where('status', 'ACTIVE'))
             ->pluck('id')->each(fn ($id) => ProcessWorkflowRunJob::dispatch($id));
     }
 }

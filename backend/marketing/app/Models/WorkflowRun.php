@@ -14,7 +14,7 @@ class WorkflowRun extends Model
 
     protected function casts(): array
     {
-        return ['next_run_at' => 'datetime', 'locked_until' => 'datetime', 'started_at' => 'datetime', 'completed_at' => 'datetime'];
+        return ['status' => \App\Casts\Upper::class, 'next_run_at' => 'datetime', 'locked_until' => 'datetime', 'started_at' => 'datetime', 'completed_at' => 'datetime'];
     }
 
     public function workflow()

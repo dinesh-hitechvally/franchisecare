@@ -24,6 +24,7 @@ class Person extends Model
         return [
             'is_subscribed' => 'boolean',
             'subscribed_at' => 'datetime',
+            'handles' => 'array',
         ];
     }
 
@@ -110,5 +111,11 @@ class Person extends Model
             PersonFieldValue::updateOrCreate(['person_id' => $this->id, 'person_field_id' => $def->id], ['value' => $value]);
         }
         $this->unsetRelation('fieldValues');
+    }
+
+    /** Browsers and apps of this person that can receive push notifications. */
+    public function pushDevices()
+    {
+        return $this->hasMany(PushDevice::class);
     }
 }

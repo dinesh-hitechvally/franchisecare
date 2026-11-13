@@ -11,7 +11,7 @@ trait IsSendLog
     public static function bootIsSendLog(): void
     {
         // test sends and staff notifications are in the send history but never count in statistics (the history list lifts this scope)
-        static::addGlobalScope('real', fn ($q) => $q->whereNotIn($q->getModel()->getTable().'.source', ['test', 'notification']));
+        static::addGlobalScope('real', fn ($q) => $q->whereNotIn($q->getModel()->getTable().'.source', ['TEST', 'NOTIFICATION']));
     }
 
     public function campaign()

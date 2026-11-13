@@ -35,7 +35,7 @@ onMounted(async () => { r.value = (await api.get(`/reports/campaigns/${route.par
     <div class="head">
       <div>
         <h1>{{ r.campaign.name }}</h1>
-        <small>{{ r.campaign.type.toUpperCase() }} · {{ audience }} · <span class="badge" :class="r.campaign.status">{{ r.campaign.status }}</span>
+        <small>{{ r.campaign.type.toUpperCase() }} · {{ audience }} · <span class="badge" :class="(r.campaign.status || '').toLowerCase()">{{ (r.campaign.status || '').toLowerCase() }}</span>
           <template v-if="r.campaign.completed_at"> · finished {{ $dt(r.campaign.completed_at) }}</template></small>
       </div>
       <div class="row">

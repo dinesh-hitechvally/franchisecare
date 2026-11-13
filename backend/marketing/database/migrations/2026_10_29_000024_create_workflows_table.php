@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('trigger_type', 40); // person_created | list_joined | tag_added | form_submitted
             $table->text('trigger_config')->nullable();
             $table->longText('steps');          // JSON
-            $table->string('status', 10)->default('draft'); // draft | active | paused
+            $table->enum('status', ['DRAFT', 'ACTIVE', 'PAUSED'])->default('DRAFT'); // draft | active | paused
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();
             $table->dateTime('deleted_at')->nullable();

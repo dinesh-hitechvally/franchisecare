@@ -1,0 +1,9 @@
+# Used only when the server has no OpenSSL configuration of its own (some Windows PHP builds), so push keys can still be created.
+openssl_conf = openssl_init
+
+[openssl_init]
+
+[req]
+distinguished_name = req_dn
+
+[req_dn]

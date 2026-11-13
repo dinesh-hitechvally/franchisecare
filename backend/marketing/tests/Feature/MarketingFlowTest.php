@@ -38,7 +38,7 @@ class MarketingFlowTest extends TestCase
 
         $logs = EmailLog::withoutGlobalScopes()->get();
         $this->assertCount(2, $logs);
-        $this->assertSame('sent', $logs[0]->status);
+        $this->assertSame('SENT', $logs[0]->status);
         $this->assertStringContainsString('Hi Ann', $logs->firstWhere('recipient', 'ann@x.com')->subject);
         $this->assertStringContainsString('/api/t/c/', $logs[0]->body);
         $this->assertStringContainsString('Unsubscribe', $logs[0]->body);
@@ -46,11 +46,11 @@ class MarketingFlowTest extends TestCase
         // SMS: Bob has no phone -> left out (counted), Ann 'logged' (test mode: written to the log, not delivered)
         $sms = $this->postJson('/api/campaigns', ['name' => 'Txt', 'type' => 'sms', 'people_list_id' => $list, 'body' => 'Hi {{first_name}}'], $h)->json('id');
         $this->postJson("/api/campaigns/$sms/send", [], $h)->assertOk();
-        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'logged')->count());
-        $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'sent')->count()); // nothing was really sent
-        $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'skipped')->count()); // nobody without a number is written to the message log
+        $this->assertSame(1, SmsLog::withoutGlobalScopes()->where('status', 'LOGGED')->count());
+        $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'SENT')->count()); // nothing was really sent
+        $this->assertSame(0, SmsLog::withoutGlobalScopes()->where('status', 'SKIPPED')->count()); // nobody without a number is written to the message log
         $this->assertSame(1, Campaign::withoutGlobalScopes()->find($sms)->audience_skipped); // but they are counted
-        $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('status', 'sent');
+        $this->getJson("/api/campaigns/$sms", $h)->assertJsonPath('status', 'SENT');
 
         $this->getJson('/api/logs?channel=email', $h)->assertJsonPath('total', 2);
     }

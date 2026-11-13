@@ -24,6 +24,9 @@ class FormFields
     /** A tick box ("Subscribe me to the newsletter") that decides whether a new person is subscribed. Not saved on the person. */
     public const SUBSCRIBE = 'subscribe';
 
+    /** A tick box ("Send me notifications on this device") that turns on push notifications in the visitor's browser. Not saved on the person; the browser is linked to them by their email or phone. */
+    public const PUSH = 'push';
+
     /** A small built-in human check ("7 + 4 = ?"): never saved with the answers or on the person. */
     public const CAPTCHA = 'captcha';
 
@@ -34,7 +37,7 @@ class FormFields
     public const WIDTHS = ['full', 'two_thirds', 'half', 'third', 'quarter'];
 
     /** Names a custom field may not use (they collide with person columns or the honeypot). */
-    public const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'subscribe', 'captcha', 'captcha_token', 'website', 'id', 'company_id'];
+    public const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'subscribe', 'push', 'captcha', 'captcha_token', 'website', 'id', 'company_id'];
 
     public const FONTS = [
         'sans' => 'Arial, Helvetica, sans-serif',
@@ -44,12 +47,12 @@ class FormFields
 
     public static function types(): array
     {
-        return array_merge(array_keys(self::STANDARD), self::INPUTS, [self::SUBSCRIBE, self::CAPTCHA], self::BLOCKS);
+        return array_merge(array_keys(self::STANDARD), self::INPUTS, [self::SUBSCRIBE, self::PUSH, self::CAPTCHA], self::BLOCKS);
     }
 
     public static function isInput(string $type): bool
     {
-        return isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || $type === self::CAPTCHA || in_array($type, self::INPUTS, true);
+        return isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || $type === self::PUSH || $type === self::CAPTCHA || in_array($type, self::INPUTS, true);
     }
 
     /** A pattern is written without delimiters; this makes it a PCRE pattern (unicode). */
@@ -113,7 +116,7 @@ class FormFields
 
         return [
             'id' => $f['id'] ?? Str::lower(Str::random(8)),
-            'key' => isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || $type === self::CAPTCHA ? $type : ($f['key'] ?? null),
+            'key' => isset(self::STANDARD[$type]) || $type === self::SUBSCRIBE || $type === self::PUSH || $type === self::CAPTCHA ? $type : ($f['key'] ?? null),
             'type' => $type,
             'label' => (string) ($f['label'] ?? ''),
             'placeholder' => (string) ($f['placeholder'] ?? ''),
@@ -125,7 +128,7 @@ class FormFields
             'default' => in_array($type, [...self::BLOCKS, self::CAPTCHA], true) ? '' : mb_substr(trim((string) ($f['default'] ?? '')), 0, 500),
             // headings and paragraphs always take the whole row; forms from before columns existed are all 'full'
             // standard fields always fill the person's own columns; headings never; custom questions default to "yes" except long free text (usually a message, which belongs in the inbox)
-            'to_person' => isset(self::STANDARD[$type]) ? true : (in_array($type, [...self::BLOCKS, self::SUBSCRIBE, self::CAPTCHA], true) ? false : (bool) ($f['to_person'] ?? $type !== 'textarea')),
+            'to_person' => isset(self::STANDARD[$type]) ? true : (in_array($type, [...self::BLOCKS, self::SUBSCRIBE, self::PUSH, self::CAPTCHA], true) ? false : (bool) ($f['to_person'] ?? $type !== 'textarea')),
             'width' => in_array($type, self::BLOCKS, true) || ! in_array($f['width'] ?? 'full', self::WIDTHS, true) ? 'full' : ($f['width'] ?? 'full'),
         ];
     }

@@ -15,6 +15,14 @@
   <h3>Add an SMS provider</h3>
   <p>Implement <code>App\Services\Sms\SmsDriver</code> (copy a small one such as <code>LogDriver</code> or <code>MessageMediaDriver</code>), register it in <code>SmsManager</code> and describe its settings fields in <code>SmsProviders</code>; the SMS configuration screen builds its form from that description.</p>
 
+  <h3>Add a platform to Integrations</h3>
+  <ol>
+    <li>Write a class in <code>app/Services/Integrations</code> that extends <code>Provider</code> and list it in <code>Providers::all()</code>. It declares its <code>key()</code> (also stored as the person’s <code>source</code>, at most 20 characters), <code>label()</code>, <code>description()</code>, the connection form <code>fields()</code> (mark credentials <code>secret</code>), the <code>steps()</code> that tell a person where to find them, and a <code>consentNote()</code>.</li>
+    <li><code>test()</code> checks the connection and returns the store’s name; throw <code>IntegrationException</code> with a message a person can act on. <code>customers($integration, $cursor, $since)</code> returns one page, <code>[customers, next cursor or null]</code>, each customer as <code>id, email, first_name, last_name, phone, consent, tags</code> where <code>consent</code> is <code>subscribed</code>, <code>unsubscribed</code>, <code>none</code> or <code>null</code> (the platform has no such information). The cursor is any string (a page number, a GraphQL cursor).</li>
+    <li>Make every HTTP call through <code>$this-&gt;send()</code>: it refuses private addresses and, outside development, plain http, and follows no redirects. Use <code>$this-&gt;failed()</code> to turn a bad status into a clear message.</li>
+    <li>Everything else is shared: encrypted storage of the credentials, the connection screen (built from <code>describe()</code>), the importer (matching, subscription rules, list and tags), chunked background syncing, scheduled syncing and the history. Test the provider with <code>Http::fake()</code> as <code>tests/Feature/IntegrationsTest.php</code> does.</li>
+  </ol>
+
   <h3>Add an automation trigger</h3>
   <ol>
     <li>Add an entry to <code>Automation::TRIGGERS</code> (key ⇒ group, label, description, and which setting it needs: <code>list</code>, <code>tag</code>, <code>form</code>, <code>url</code>, <code>date</code> or <code>days</code>). The Triggers and Workflows screens and the manual’s trigger table read this list.</li>

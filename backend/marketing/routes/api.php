@@ -30,6 +30,11 @@ use App\Http\Controllers\TagController;
 use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\IntegrationOAuthController;
+use App\Http\Controllers\FormEmbedController;
+use App\Http\Controllers\PushController;
+use App\Http\Controllers\PushPublicController;
 use App\Http\Controllers\WebhookController;
 use App\Http\Controllers\WorkflowController;
 use Illuminate\Support\Facades\Route;
@@ -43,13 +48,30 @@ Route::get('unsubscribe/{token}', [TrackingController::class, 'unsubscribe']);
 Route::post('unsubscribe/{token}', [TrackingController::class, 'unsubscribe'])->middleware('throttle:30,1'); // the one-click button in mail apps (List-Unsubscribe-Post)
 Route::get('m/{token}/{name?}', [MediaController::class, 'file'])->middleware('throttle:300,1'); // a library file by its unguessable token
 Route::get('oauth/mail/{provider}/callback', [MailOAuthController::class, 'callback']); // the provider sends the browser back here
+Route::get('oauth/integrations/callback', [IntegrationOAuthController::class, 'callback']); // a platform sends the browser back here after the person approves
+Route::post('oauth/integrations/woocommerce', [IntegrationOAuthController::class, 'woocommerce'])->middleware('throttle:30,1'); // WooCommerce posts the new keys here
 Route::post('public/forms/{slug}', [PublicController::class, 'submit'])->middleware('throttle:20,1');
+
+// the one-script form embed: a website adds forms.js once and a <div class="mate-form" data-form-id="12"> wherever a form should appear
+Route::get('embed/forms.js', [FormEmbedController::class, 'script'])->middleware('throttle:300,1');
+Route::get('embed/forms/{key}/{id}', [FormEmbedController::class, 'show'])->whereNumber('id')->middleware('throttle:300,1');
+
+// push notifications: what a website talks to (identified by the company's public site key)
+Route::get('push/sdk.js', [PushPublicController::class, 'sdk'])->middleware('throttle:120,1');
+Route::get('push/sw.js', [PushPublicController::class, 'serviceWorker'])->middleware('throttle:120,1');
+Route::get('push/worker.js', [PushPublicController::class, 'worker'])->middleware('throttle:300,1');   // the same worker, inline: forms and landing pages on this app register it
+Route::get('push/config', [PushPublicController::class, 'config'])->middleware('throttle:120,1');
+Route::post('push/subscribe', [PushPublicController::class, 'subscribe'])->middleware('throttle:30,1');
+Route::post('push/unsubscribe', [PushPublicController::class, 'unsubscribe'])->middleware('throttle:30,1');
+Route::get('push/c/{token}', [PushPublicController::class, 'click'])->middleware('throttle:120,1'); // a tap on a notification
 
 // ---------------------------------------------------------------- integration API (API-key authenticated)
 Route::prefix('v1')->middleware(['auth:sanctum', 'throttle:120,1'])->group(function () {
     Route::get('people', [ApiV1Controller::class, 'show']);
     Route::post('people', [ApiV1Controller::class, 'upsert']);
     Route::post('people/unsubscribe', [ApiV1Controller::class, 'unsubscribe']);
+    Route::post('push/devices', [ApiV1Controller::class, 'pushDevice']);       // an Android / iOS app registers its Firebase token
+    Route::delete('push/devices', [ApiV1Controller::class, 'pushDeviceRemove']); // ... or removes it (logout, uninstall)
 });
 
 // ---------------------------------------------------------------- dashboard API (all data is scoped to the user's company)
@@ -58,6 +80,17 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::put('account', [AccountController::class, 'update']);
     Route::post('logout', [AuthController::class, 'logout']);
     Route::get('dashboard', [LogController::class, 'dashboard']);
+
+    // Push notifications (settings, connections, registered devices)
+    Route::get('push/settings', [PushController::class, 'show']);
+    Route::put('push/settings', [PushController::class, 'update']);
+    Route::post('push/web-keys/rotate', [PushController::class, 'rotateKeys'])->middleware('throttle:10,1');
+    Route::put('push/fcm', [PushController::class, 'saveFcm'])->middleware('throttle:20,1');
+    Route::delete('push/fcm', [PushController::class, 'removeFcm']);
+    Route::get('push/audience', [PushController::class, 'audience']);
+    Route::get('push/devices', [PushController::class, 'devices']);
+    Route::post('push/devices/{device}/test', [PushController::class, 'testDevice'])->middleware('throttle:20,1');
+    Route::delete('push/devices/{device}', [PushController::class, 'destroyDevice']);
 
     Route::post('attachments', [AttachmentController::class, 'store'])->middleware('throttle:60,1');
     Route::post('attachments/from-media', [AttachmentController::class, 'fromMedia'])->middleware('throttle:60,1');
@@ -151,6 +184,16 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
         Route::post('webhooks/{webhook}/test', [WebhookController::class, 'test']);
         Route::get('webhooks/{webhook}/deliveries', [WebhookController::class, 'deliveries']);
         Route::apiResource('webhooks', WebhookController::class)->except('show');
+
+        // connected platforms (Shopify, WooCommerce, WordPress, Magento): their customers are imported as people
+        Route::get('integrations/providers', [IntegrationController::class, 'providers']);
+        Route::get('integration-syncs', [IntegrationController::class, 'allSyncs']);
+        Route::post('integrations/{integration}/check', [IntegrationController::class, 'check'])->middleware('throttle:20,1');
+        Route::post('integrations/{integration}/sync', [IntegrationController::class, 'sync'])->middleware('throttle:20,1');
+        Route::get('integrations/{integration}/syncs', [IntegrationController::class, 'syncs']);
+        Route::post('integrations', [IntegrationController::class, 'store'])->middleware('throttle:20,1');
+        Route::post('integrations/oauth/start', [IntegrationOAuthController::class, 'start'])->middleware('throttle:20,1');
+        Route::apiResource('integrations', IntegrationController::class)->only(['index', 'update', 'destroy']);
 
         Route::apiResource('api-keys', ApiKeyController::class)->only(['index', 'store', 'destroy']);
         Route::apiResource('users', UserController::class)->except('show');

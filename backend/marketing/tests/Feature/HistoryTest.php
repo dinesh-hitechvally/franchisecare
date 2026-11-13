@@ -42,14 +42,14 @@ class HistoryTest extends TestCase
         $this->deleteJson("/api/people/$id", [], $h)->assertNoContent();
 
         $copies = DB::table('people_history')->where('id', $id)->orderBy('history_id')->get();
-        $this->assertSame(['created', 'updated', 'deleted'], $copies->pluck('change_action')->all());
+        $this->assertSame(['CREATED', 'UPDATED', 'DELETED'], $copies->pluck('change_action')->all());
         $this->assertSame(['Ann', 'Anna', 'Anna'], $copies->pluck('first_name')->all()); // the whole row is mirrored each time
         $this->assertSame('+61400000000', $copies[0]->phone);
         $this->assertNull($copies[1]->deleted_at);
         $this->assertNotNull($copies[2]->deleted_at);
         $this->assertSame(['first_name'], json_decode($copies[1]->changed_fields, true));
         $this->assertSame('Olivia Owner', $copies[1]->changed_by_name);
-        $this->assertSame('dashboard', $copies[1]->change_source);
+        $this->assertSame('DASHBOARD', $copies[1]->change_source);
         $this->assertSame('a@x.com', $copies[0]->record_label);
     }
 
@@ -102,8 +102,8 @@ class HistoryTest extends TestCase
         $form = $this->postJson('/api/forms', ['name' => 'F'], $h)->json();
         $this->postJson('/api/public/forms/'.$form['slug'], ['email' => 'p@x.com'])->assertOk();
 
-        $this->assertSame('public', DB::table('people_history')->where('email', 'p@x.com')->value('change_source'));
-        $this->assertSame('public', DB::table('form_submissions_history')->value('change_source'));
+        $this->assertSame('PUBLIC', DB::table('people_history')->where('email', 'p@x.com')->value('change_source'));
+        $this->assertSame('PUBLIC', DB::table('form_submissions_history')->value('change_source'));
     }
 
     public function test_history_is_private_to_each_company_and_read_only(): void

@@ -33,8 +33,8 @@ class HistoryController extends Controller
 
             return DB::table($table)->where('history_company_id', $company)->when(! $everyone, fn ($q) => $q->where('changed_by', $me))
                 ->when($request->query('id') && $hasId, fn ($q) => $q->where('id', (int) $request->query('id')))
-                ->when($request->query('action'), fn ($q, $v) => $q->where('change_action', $v))
-                ->when($request->query('source'), fn ($q, $v) => $q->where('change_source', $v))
+                ->when($request->query('action'), fn ($q, $v) => $q->where('change_action', strtoupper($v)))
+                ->when($request->query('source'), fn ($q, $v) => $q->where('change_source', strtoupper($v)))
                 ->when($request->query('search'), fn ($q, $v) => $q->where('record_label', 'like', "%$v%"))
                 ->when($request->query('from'), fn ($q, $v) => $q->where('changed_at', '>=', $v.' 00:00:00'))
                 ->when($request->query('to'), fn ($q, $v) => $q->where('changed_at', '<=', $v.' 23:59:59'))
@@ -95,7 +95,7 @@ class HistoryController extends Controller
             'type' => $type, 'history_id' => $row->history_id, 'row_id' => $row->id,
             'exists' => $this->modelFor($type)::query()->whereKey($row->id)->exists(), // false once it has been deleted: there is no editor to open
             'current_status' => $type === 'campaign' ? \App\Models\Campaign::query()->whereKey($row->id)->value('status') : null, // a campaign that has gone out can no longer be edited
- 'change_action' => $row->change_action, 'changed_at' => $row->changed_at, 'changed_by_name' => $row->changed_by_name,
+ 'change_action' => strtolower($row->change_action), 'changed_at' => $row->changed_at, 'changed_by_name' => $row->changed_by_name,
             'data' => $this->content($type, $row),
         ];
     }
@@ -136,6 +136,8 @@ class HistoryController extends Controller
     protected function withChanges(object $r): object
     {
         $full = DB::table(History::historyTable(History::TYPES[$r->type]))->where('history_id', $r->history_id)->first();
+        $r->change_action = strtolower($r->change_action); // stored UPPERCASE, the API speaks lowercase
+        $r->change_source = strtolower($r->change_source);
         $r->changes = $full ? (object) History::changes($r->type, $full) : (object) [];
         $r->changed_fields = $r->changed_fields ? json_decode($r->changed_fields, true) : [];
 

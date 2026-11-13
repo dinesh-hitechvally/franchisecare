@@ -53,6 +53,8 @@ class DocsController extends Controller
         'automation' => ['Automation', 'Triggers and the run history of automations.'],
         'webhooks' => ['Automation', 'Send events to other systems.'],
         'webhook-deliveries' => ['Automation', 'Every webhook delivery and its result.'],
+        'integrations' => ['Integrations', 'Connect Shopify, WooCommerce, WordPress or Magento; their customers become people. Connections, tests, syncs.'],
+        'integration-syncs' => ['Integrations', 'The history of every import run.'],
         'analytics' => ['Analytics', 'Reports on email, SMS, delivery, automation and people.'],
         'history' => ['History', 'Who changed what, and when. Read-only versions.'],
         'activity' => ['History', 'The signed-in company’s activity feed.'],
@@ -94,6 +96,8 @@ class DocsController extends Controller
         'workflow_runs' => 'One row per person going through a workflow.',
         'automation_history' => 'Step-by-step log of workflow runs.',
         'webhooks' => 'Webhook endpoints.',
+        'integrations' => 'Connections to online platforms (Shopify, WooCommerce, WordPress, Magento); credentials are encrypted.',
+        'integration_syncs' => 'One row per import run of a connection: what was read and what was done with it.',
         'webhook_deliveries' => 'Each webhook call and its result.',
         'activity_logs' => 'Who did what in the dashboard (My Activities).',
     ];

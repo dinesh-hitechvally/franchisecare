@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('name');
             $table->text('description')->nullable();
-            $table->string('match', 3)->default('all'); // all | any
+            $table->enum('match', ['ALL', 'ANY'])->nullable()->default('ALL');
             $table->text('rules');                      // JSON: [{field, op, value}]
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();

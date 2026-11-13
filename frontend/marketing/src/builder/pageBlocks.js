@@ -27,6 +27,35 @@ let formNames = {}
 /** The company's forms, so the editor can show which one a section uses. */
 export const setForms = (list) => { formNames = Object.fromEntries((list || []).map((f) => [String(f.id), f.name])) }
 
+
+// ---------------------------------------------------------------- notification block: styles and icons (inline, so they follow the text colour)
+const NOTE_STYLES = [['info', 'Info (blue)'], ['success', 'Success (green)'], ['error', 'Error (red)'], ['warning', 'Warning (yellow)'], ['basic', 'Basic (white)']]
+const ico = (d) => `<svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`
+const NOTE_ICONS = {
+  success: ico('<path d="M4.5 12.5l5 5L19.5 7"/>'),
+  info: ico('<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.3v.1"/>'),
+  error: ico('<path d="M12 3.5l9.5 16.5h-19z"/><path d="M12 10v4.5M12 17.3v.1"/>'),
+  warning: ico('<path d="M6 17.5V11a6 6 0 0112 0v6.5l1.5 2h-15z"/><path d="M10 21.5a2 2 0 004 0"/>'),
+  basic: '',
+}
+
+/** What the notification's button does when clicked: push (turn on notifications), link (redirect to another address) or close. Blocks made with the earlier settings still read correctly. */
+export const noteAction = (b) => (['push', 'link', 'close'].includes(b?.action) ? b.action : b?.action === 'none' ? 'close' : b?.mode === 'normal' ? (b.btnUrl ? 'link' : 'close') : 'push')
+
+/** Is the button shown? Earlier blocks had "no button" as one of the actions. */
+export const noteShowButton = (b) => (b?.showButton !== undefined ? !!b.showButton : b?.action !== 'none' && !(b?.mode === 'normal' && !b.btnUrl))
+
+/** Blocks saved when the notification block was still called "Push notifications", or had a Type and a floating position, become the current kind. */
+export const upgradeBlock = (b) => {
+  if (!b || (b.type !== 'push' && b.type !== 'notification')) return b
+  const { mode, pos, ...rest } = b
+  return {
+    ...rest, type: 'notification', style: rest.style || 'info', action: noteAction(b), showButton: noteShowButton(b), showClose: rest.showClose !== false,
+    width: rest.width || 'container', customW: rest.customW || 600, align: rest.align || 'center', btnUrl: rest.btnUrl || '', newTab: !!rest.newTab, secs: rest.secs || 0,
+    offOption: rest.offOption !== false, offText: rest.offText || 'Turn off notifications', offDone: rest.offDone || 'Notifications are turned off.',
+  }
+}
+
 // ---------------------------------------------------------------- block catalogue
 const base = (over = {}) => ({ bg: '', bg2: '', color: '', pad: 80, ...over })
 const year = () => new Date().getFullYear()
@@ -48,6 +77,7 @@ export const BLOCKS = {
   faq: { label: 'FAQ', icon: 'template', make: () => base({ pad: 72, heading: 'Questions & answers', items: [{ q: 'How does it work?', a: 'Give a short, helpful answer.' }, { q: 'How much does it cost?', a: 'Give a short, helpful answer.' }] }) },
   cta: { label: 'Call to action', icon: 'button', make: () => base({ bg: '#4f46e5', bg2: '#7c3aed', color: '#ffffff', pad: 72, heading: 'Ready to get started?', text: 'Join today — it only takes a minute.', btnText: 'Get started', btnUrl: '#form' }) },
   form: { label: 'Form', icon: 'email', make: () => base({ bg: '#f3f4f6', form_id: '', heading: 'Get started today', text: 'Fill in the form and we will be in touch.' }) },
+  notification: { label: 'Notification', icon: 'bell', make: () => base({ bg: '', pad: 32, style: 'info', width: 'container', customW: 600, align: 'center', heading: 'Turn on notifications?', text: 'Get news and offers on this device. You can turn them off any time.', showClose: true, showButton: true, action: 'push', btnText: 'Allow', btnUrl: '', newTab: false, doneText: 'Notifications are on. Thank you!', offOption: true, offText: 'Turn off notifications', offDone: 'Notifications are turned off.', secs: 0 }) },
   spacer: { label: 'Spacer', icon: 'spacer', make: () => ({ bg: '', bg2: '', color: '', pad: 0, height: 48 }) },
   divider: { label: 'Divider', icon: 'divider', make: () => ({ bg: '', bg2: '', color: '', pad: 0 }) },
   footer: { label: 'Footer', icon: 'footer', make: () => base({ bg: '#111827', color: '#d1d5db', pad: 40, text: `© ${year()} {{company_name}}. All rights reserved.`, links: [{ label: 'Privacy', url: '#' }, { label: 'Terms', url: '#' }] }) },
@@ -80,6 +110,22 @@ export const FIELDS = {
   faq: [['heading', 'Heading', 'text'], ['items', 'Questions', 'items', { sub: [['q', 'Question', 'text'], ['a', 'Answer', 'textarea']], blank: () => ({ q: 'Question?', a: 'Answer.' }) }], ...common],
   cta: [['heading', 'Heading', 'text'], ['text', 'Text', 'text'], ...cta2, ...common],
   form: [['form_id', 'Form to show', 'form'], ['heading', 'Heading', 'text'], ['text', 'Text above the form', 'text'], ...common],
+  // a function: the fields depend on what the button does, whether it is shown, and on the width
+  notification: (b) => [
+    ['style', 'Style', 'select', { options: NOTE_STYLES }],
+    ['width', 'Width', 'select', { options: [['container', 'Container width (same as the page content)'], ['full', 'Full width (edge to edge)'], ['custom', 'Set my own width']] }],
+    ...(b?.width === 'custom' ? [['customW', 'Width (px)', 'range', { min: 240, max: 1400 }], ['align', 'Alignment', 'select', { options: [['center', 'Centre'], ['left', 'Left'], ['right', 'Right']] }]] : []),
+    ['heading', 'Title', 'text'], ['text', 'Message', 'textarea'],
+    ['showClose', 'Show the close (×) icon', 'check', { tab: 'content' }],
+    ['showButton', 'Show the button', 'check', { tab: 'content' }],
+    ['action', 'When the button is clicked', 'select', { tab: 'content', options: [['push', 'Turn on push notifications (asks the visitor to allow them)'], ['link', 'Redirect to another URL'], ['close', 'Close the notification']] }],
+    ...(noteShowButton(b) ? [['btnText', 'Button text', 'text']] : []),
+    ...(noteAction(b) === 'link' && noteShowButton(b) ? [['btnUrl', 'Redirect to (URL)', 'text'], ['newTab', 'Open in a new tab', 'check', { tab: 'content' }]] : []),
+    ...(noteAction(b) === 'push'
+      ? [['doneText', 'Message when notifications are on', 'text'], ['offOption', 'Let visitors turn notifications off again', 'check', { tab: 'content' }], ...(b?.offOption !== false ? [['offText', 'Turn-off button text', 'text'], ['offDone', 'Message after turning them off', 'text']] : [])]
+      : [['secs', 'Hides itself after (seconds, 0 = stays until closed)', 'range', { min: 0, max: 60, tab: 'content' }]]),
+    ['bg', 'Background colour (behind the box)', 'color'], ['pad', 'Vertical spacing', 'range', { min: 0, max: 180 }],
+  ],
   spacer: [['height', 'Height', 'range', { min: 8, max: 240 }]],
   divider: [],
   footer: [['text', 'Text', 'text'], ['links', 'Links', 'items', { sub: [['label', 'Label', 'text'], ['url', 'Link', 'text']], blank: () => ({ label: 'Link', url: '#' }) }], ...common],
@@ -149,6 +195,37 @@ export function renderBlock(b, s, edit = false) {
       const name = formNames[String(b.form_id)]
       const slot = edit ? `<div class="form-ph">${name ? `Form: <b>${esc(name)}</b>` : 'No form chosen yet'}<br><small>${name ? 'Shown here on the published page.' : 'Pick one in the panel on the right.'}</small></div>` : formMarker(b)
       return `<section class="sec" id="form" style="${wrapStyle(b)}"><div class="wrap narrow center">${b.heading ? `<h2>${esc(b.heading)}</h2>` : ''}${b.text ? `<p class="lead" style="margin-bottom:28px">${esc(b.text)}</p>` : ''}<div style="text-align:left">${slot}</div></div></section>`
+    }
+
+    // An alert box, like the ones websites show: an icon, a bold title, a message, an optional button and an optional close icon, in one of five styles. It stays where it
+    // is placed in the page; its width is the page content, the full browser width, or a width you set. The button (which can be hidden) turns on PUSH notifications
+    // (the browser asks for permission and, once the visitor allows it, is registered as a device; no email is asked for), redirects to another address, or closes the
+    // box. A push notification can also offer a "turn off" button once notifications are on. Without a push action it can hide itself after some seconds.
+    // On the published page the server adds the script (the marker).
+    case 'notification': {
+      const act = noteAction(b)
+      const style = NOTE_STYLES.some((s) => s[0] === b.style) ? b.style : 'info'
+      const secs = act === 'push' ? 0 : Math.max(0, Math.min(120, Number(b.secs) || 0))
+      const showClose = b.showClose !== false
+      const icon = NOTE_ICONS[style] ? `<div class="pn-ico">${NOTE_ICONS[style]}</div>` : ''
+      const title = b.heading ? `<b class="pn-title">${esc(b.heading)}</b>` : ''
+      const text = b.text ? `<span class="pn-text">${esc(b.text)}</span>` : ''
+      const label = esc(b.btnText || (act === 'push' ? 'Allow' : act === 'close' ? 'Got it' : 'Learn more'))
+      const main = !noteShowButton(b) ? ''
+        : act === 'push' ? `<button type="button" class="btn sm fc-push-btn">${label}</button>`
+          : act === 'close' ? `<button type="button" class="btn sm fc-close-btn">${label}</button>`
+            : `<a class="btn sm" href="${esc(url(b.btnUrl))}"${b.newTab ? ' target="_blank" rel="noopener"' : ''}>${label}</a>`
+      // once notifications are on, a push notification can let the visitor turn them off again (shown by the script)
+      const off = act === 'push' && b.offOption !== false ? `<button type="button" class="btn sm alt fc-push-off" style="display:none">${esc(b.offText || 'Turn off notifications')}</button>` : ''
+      const actions = main || off ? `<span class="pn-actions">${main}${off}</span>` : ''
+      const note = `<div class="pn pn-${style} ${act === 'push' ? 'fc-push' : 'fc-note'}${showClose ? '' : ' pn-noclose'}" data-secs="${secs}" data-on="${esc(b.doneText || 'Notifications are on for this device.')}" data-off="${esc(b.offDone || 'Notifications are turned off.')}" role="alert">${icon}<div class="pn-body">${title}${text}<span class="fc-push-msg" role="status"></span>${actions}</div>${showClose ? '<button type="button" class="pn-x" aria-label="Close">&times;</button>' : ''}</div>`
+      const w = ['container', 'full', 'custom'].includes(b.width) ? b.width : 'container'
+      const marker = edit ? '' : '<!--fc-push-->'
+      if (w === 'full') return `<section class="sec pn-sec-full" style="${wrapStyle(b)}">${note}</section>${marker}`
+      const box = w === 'custom'
+        ? `<div style="max-width:${Math.max(200, Math.min(1400, Number(b.customW) || 600))}px;${b.align === 'left' ? '' : b.align === 'right' ? 'margin-left:auto' : 'margin:0 auto'}">${note}</div>`
+        : note
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${box}</div></section>${marker}`
     }
 
     case 'spacer':
@@ -223,6 +300,22 @@ export function pageCss() {
 .pg .cap{text-align:center;font-size:14px;opacity:.7;margin-top:10px}
 .pg .img-ph{background:#e5e7eb;color:#6b7280;display:grid;place-items:center;border-radius:var(--r);font-size:14px;width:100%}
 .pg .form-ph{border:2px dashed currentColor;opacity:.55;border-radius:var(--r);padding:36px 16px;text-align:center}
+.pg .pn{position:relative;display:flex;gap:16px;align-items:flex-start;background:#fff;color:#1f2937;border-radius:16px;box-shadow:0 8px 26px rgba(0,0,0,.14);padding:18px 24px;width:100%;text-align:left;font-size:16px;line-height:1.45;box-sizing:border-box}
+.pg .pn.pn-hide{display:none}
+.pg .pn-sec-full{padding-left:0;padding-right:0}.pg .pn-sec-full .pn{border-radius:0;box-shadow:none;padding-left:28px;padding-right:28px}
+.pg .pn-ico{flex:none;width:34px;display:grid;place-items:center;margin-top:3px}
+.pg .pn-body{min-width:0;flex:1;display:flex;flex-direction:column;gap:4px;padding-right:24px}
+.pg .pn-noclose .pn-body{padding-right:0}
+.pg .pn-actions .btn.alt{background:transparent;color:inherit;border-color:currentColor}
+.pg .pn-title{font-size:17px;font-weight:700;color:#111827}
+.pg .pn-x{position:absolute;top:10px;right:12px;background:none;border:0;color:#6b7280;font-size:26px;line-height:1;cursor:pointer;padding:2px 6px;font-family:inherit}.pg .pn-x:hover{color:#111827}
+.pg .pn-info{background:#d0e7f6}.pg .pn-info .pn-title,.pg .pn-info .pn-ico{color:#1d8fe6}
+.pg .pn-success{background:#cbe9d1}.pg .pn-success .pn-title,.pg .pn-success .pn-ico{color:#35a853}
+.pg .pn-error{background:#ffc8d2}.pg .pn-error .pn-title,.pg .pn-error .pn-ico{color:#c4304c}
+.pg .pn-warning{background:#f7efbc}.pg .pn-warning .pn-title,.pg .pn-warning .pn-ico{color:#f5783a}
+.pg .pn-actions{display:flex;gap:8px;align-items:center;margin-top:10px}
+.pg .pn-actions .btn{padding:9px 20px;font-size:14px;cursor:pointer;font-family:inherit;color:var(--accentText)}.pg .pn-actions .btn:disabled{opacity:.6;cursor:wait}
+.pg .fc-push-msg{font-size:14px}.pg .fc-push-msg:empty{display:none}.pg .fc-push-msg.ok{color:#047857;font-weight:600}.pg .fc-push-msg.err{color:#b91c1c}
 .pg .foot{padding:40px 0;font-size:14px;text-align:center}
 .pg .foot-links{display:flex;gap:20px;justify-content:center;flex-wrap:wrap;margin-bottom:12px}
 .pg .foot p{opacity:.7}

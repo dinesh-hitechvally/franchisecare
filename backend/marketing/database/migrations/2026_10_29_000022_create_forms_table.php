@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->string('type', 20)->default('newsletter'); // newsletter | contact | other — sets the defaults for what happens on submit
+            $table->enum('type', ['NEWSLETTER', 'CONTACT', 'OTHER'])->default('NEWSLETTER'); // newsletter | contact | other — sets the defaults for what happens on submit
             $table->string('slug', 40)->unique();
             $table->string('title')->nullable();
             $table->text('description')->nullable();

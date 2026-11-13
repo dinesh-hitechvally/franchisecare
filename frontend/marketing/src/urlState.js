@@ -8,3 +8,10 @@ export function setQuery(params) {
   }
   window.history.replaceState(window.history.state, '', url.pathname + url.search + url.hash)
 }
+
+/** Like setQuery, but also moves the address to another path (an open editor is /pages/12, /templates/3), still without navigating. */
+export function setPath(path, params = {}) {
+  const url = new URL(window.location.origin + path)
+  for (const [k, v] of Object.entries(params)) if (v !== null && v !== undefined && v !== '') url.searchParams.set(k, v)
+  window.history.replaceState(window.history.state, '', url.pathname + url.search)
+}

@@ -109,10 +109,10 @@ class HistoryViewTest extends TestCase
         $id = $this->postJson('/api/campaigns', ['name' => 'Spring', 'type' => 'email', 'subject' => 'Hi', 'body' => '<p>x</p>'], $h)->assertCreated()->json('id');
         $copy = collect($this->getJson("/api/history/campaign/$id", $h)->json())->first();
 
-        $this->getJson("/api/history/campaign/entry/{$copy['history_id']}", $h)->assertOk()->assertJsonPath('exists', true)->assertJsonPath('current_status', 'draft');
+        $this->getJson("/api/history/campaign/entry/{$copy['history_id']}", $h)->assertOk()->assertJsonPath('exists', true)->assertJsonPath('current_status', 'DRAFT');
 
-        \App\Models\Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'sent']);
-        $this->getJson("/api/history/campaign/entry/{$copy['history_id']}", $h)->assertJsonPath('current_status', 'sent'); // gone out: its editor stays closed
+        \App\Models\Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'SENT']);
+        $this->getJson("/api/history/campaign/entry/{$copy['history_id']}", $h)->assertJsonPath('current_status', 'SENT'); // gone out: its editor stays closed
 
         // only a campaign has a status to report
         $t = $this->postJson('/api/templates', ['name' => 'T', 'type' => 'email', 'subject' => 's', 'body' => '<p>x</p>'], $h)->assertCreated()->json('id');

@@ -26,6 +26,7 @@ return new class extends Migration
             $table->string('email_active')->nullable()->virtualAs('CASE WHEN deleted_at IS NULL THEN `email` END'); // unique only among rows that are not deleted
             $table->unique(['company_id', 'email_active']);
             $table->index(['company_id', 'phone']);
+            $table->json('handles')->nullable(); // ids on messaging platforms: {"messenger": "PSID", "x": "user id"} (WhatsApp uses the phone)
         });
     }
 

@@ -75,13 +75,13 @@ class SoftDeleteTest extends TestCase
         $h = $this->owner();
         $cid = $this->postJson('/api/people', ['email' => 'a@x.com'], $h)->json('id');
         $camp = Campaign::withoutGlobalScopes()->create(['company_id' => Person::withoutGlobalScopes()->find($cid)->company_id, 'name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => 'B']);
-        $log = EmailLog::withoutGlobalScopes()->create(['company_id' => $camp->company_id, 'campaign_id' => $camp->id, 'person_id' => $cid, 'recipient' => 'a@x.com', 'status' => 'queued', 'track_token' => str_repeat('t', 40)]);
+        $log = EmailLog::withoutGlobalScopes()->create(['company_id' => $camp->company_id, 'campaign_id' => $camp->id, 'person_id' => $cid, 'recipient' => 'a@x.com', 'status' => 'QUEUED', 'track_token' => str_repeat('t', 40)]);
 
         $this->deleteJson("/api/campaigns/{$camp->id}", [], $h)->assertNoContent();
         (new SendMessageJob($log->id))->handle(app(\App\Services\MessageRenderer::class), app(\App\Services\Sms\SmsManager::class));
 
         $log->refresh();
-        $this->assertSame('skipped', $log->status);
+        $this->assertSame('SKIPPED', $log->status);
         $this->assertStringContainsString('deleted', $log->error);
     }
 }

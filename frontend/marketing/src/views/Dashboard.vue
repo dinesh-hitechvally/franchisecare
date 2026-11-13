@@ -23,8 +23,8 @@ const ago = (s) => fmtDateTime(s)
         <h3>Recent Campaigns</h3>
         <p v-if="!d.recent_campaigns.length" class="muted pad">No campaigns yet.</p>
         <router-link v-for="c in d.recent_campaigns" :key="c.id" :to="`/campaigns/${c.id}`" class="feed">
-          <span class="ico" :class="c.type"><Icon :name="c.type === 'email' ? 'email' : 'sms'" :size="22" /></span>
-          <span class="txt"><b>{{ c.name }}</b> <span class="badge" :class="c.status">{{ c.status }}</span><small>{{ ago(c.created_at) }}</small></span>
+          <span class="ico" :class="c.type"><Icon :name="c.type === 'email' ? 'email' : c.type === 'push' ? 'bell' : 'sms'" :size="22" /></span>
+          <span class="txt"><b>{{ c.name }}</b> <span class="badge" :class="(c.status || '').toLowerCase()">{{ (c.status || '').toLowerCase() }}</span><small>{{ ago(c.created_at) }}</small></span>
           <Icon name="chevron" :size="22" class="go" />
         </router-link>
       </div>
@@ -32,8 +32,8 @@ const ago = (s) => fmtDateTime(s)
         <h3>Recent Activity</h3>
         <p v-if="!d.recent_logs.length" class="muted pad">No messages sent yet.</p>
         <router-link v-for="l in d.recent_logs" :key="l.channel + l.id" to="/message-logs" class="feed">
-          <span class="ico" :class="l.channel"><Icon :name="l.channel === 'email' ? 'email' : 'sms'" :size="22" /></span>
-          <span class="txt"><b>{{ l.recipient }}</b> <span class="badge" :class="l.status">{{ l.status === 'logged' ? 'logged only' : l.status }}</span><small>{{ ago(l.created_at) }}</small></span>
+          <span class="ico" :class="l.channel"><Icon :name="l.channel === 'email' ? 'email' : l.channel === 'push' ? 'bell' : 'sms'" :size="22" /></span>
+          <span class="txt"><b>{{ l.recipient }}</b> <span class="badge" :class="(l.status || '').toLowerCase()">{{ l.status === 'LOGGED' ? 'logged only' : (l.status || '').toLowerCase() }}</span><small>{{ ago(l.created_at) }}</small></span>
           <Icon name="chevron" :size="22" class="go" />
         </router-link>
       </div>
@@ -64,7 +64,7 @@ const ago = (s) => fmtDateTime(s)
       <div class="tile purple"><Icon name="error" :size="42" /><div><b>{{ d.email.failed + d.sms.failed }}</b>Failed Messages</div></div>
       <div class="tile orange"><Icon name="unsub" :size="42" /><div><b>{{ d.unsubscribed }}</b>Unsubscribed</div></div>
 
-      <router-link to="/campaigns/new" class="tile black big-link"><Icon name="add" :size="34" /><div><b>New Campaign</b>Email or SMS</div></router-link>
+      <router-link to="/campaigns/new" class="tile black big-link"><Icon name="add" :size="34" /><div><b>New Campaign</b>Email, SMS or push</div></router-link>
       <router-link to="/templates" class="tile teal big-link"><Icon name="template" :size="34" /><div><b>Templates</b>{{ d.templates }} saved</div></router-link>
 
       <div class="card-p sched">

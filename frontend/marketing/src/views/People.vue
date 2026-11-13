@@ -15,7 +15,7 @@ const lists = ref([])
 const tags = ref([])
 const customFields = ref([]) // the company's custom person fields, edited alongside the built-in ones
 const segments = ref([])
-const f = reactive({ search: '', list_id: '', tag_id: route.query.tag_id || '', segment_id: route.query.segment_id || '', status: route.query.status || '' })
+const f = reactive({ search: route.query.search || '', list_id: '', tag_id: route.query.tag_id || '', segment_id: route.query.segment_id || '', status: route.query.status || '' })
 const fDirty = computed(() => Object.values(f).some(Boolean))
 const fClear = () => Object.keys(f).forEach((k) => (f[k] = ''))
 const error = ref('')
@@ -36,7 +36,7 @@ async function exportCsv() {
   try { await download('/people/export' + (q ? '?' + q : ''), 'people.csv') } catch (e) { error.value = errorMessage(e) }
 }
 
-const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', subscribed: true, list_ids: [], tag_ids: [], custom: {} })
+const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', handles: { messenger: '', x: '' }, subscribed: true, list_ids: [], tag_ids: [], custom: {} })
 const form = reactive(blank())
 const allSelected = computed(() => rows.value.length > 0 && rows.value.every((r) => selected.value.includes(r.id)))
 
@@ -52,7 +52,7 @@ async function load(page = 1) {
 let subDirty = false // an existing person's subscription is only rewritten when the box is toggled
 function edit(c) {
   subDirty = false
-  Object.assign(form, blank(), c ? { ...c, subscribed: !!c.is_subscribed, list_ids: c.lists.map((l) => l.id), tag_ids: c.tags.map((t) => t.id), custom: { ...(c.custom || {}) } } : {})
+  Object.assign(form, blank(), c ? { ...c, subscribed: !!c.is_subscribed, list_ids: c.lists.map((l) => l.id), tag_ids: c.tags.map((t) => t.id), custom: { ...(c.custom || {}) }, handles: { messenger: '', x: '', ...(c.handles || {}) } } : {})
   editing.value = c ? c.id : 'new'
   error.value = ''
 }
@@ -172,7 +172,11 @@ onMounted(async () => {
         <div class="field"><label>Last name</label><input v-model="form.last_name" /></div>
       </div>
       <div class="field"><label>Email</label><input v-model="form.email" type="email" /></div>
-      <div class="field"><label>Phone (international, e.g. +61400000000)</label><input v-model="form.phone" /></div>
+      <div class="field"><label>Phone (international, e.g. +61400000000)</label><input v-model="form.phone" /><small class="muted">Also used for WhatsApp campaigns.</small></div>
+      <div class="grid g2">
+        <div class="field"><label>Messenger ID (PSID)</label><input v-model="form.handles.messenger" placeholder="for Messenger campaigns" /></div>
+        <div class="field"><label>X user ID</label><input v-model="form.handles.x" placeholder="for X message campaigns" /></div>
+      </div>
       <div class="field">
         <label>Lists</label>
         <MultiSelect v-model="form.list_ids" :options="listOptions" placeholder="Select one or more lists" empty-text="No lists yet — create one under Person Lists." />

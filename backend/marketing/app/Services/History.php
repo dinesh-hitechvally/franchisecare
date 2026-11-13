@@ -33,6 +33,8 @@ class History
         'landing_page' => 'landing_pages',
         'workflow' => 'workflows',
         'webhook' => 'webhooks',
+        'integration' => 'integrations',
+        'push_device' => 'push_devices',
         'person_field' => 'person_fields',
         'person_field_value' => 'person_field_values',
         'form_submission' => 'form_submissions',
@@ -40,13 +42,19 @@ class History
     ];
 
     /** Columns that change all the time without meaning anything: a change to only these is not recorded. */
-    public const NOISE = ['updated_at', 'views', 'submissions', 'locked_until'];
+    public const NOISE = ['updated_at', 'views', 'submissions', 'locked_until', 'last_seen_at'];
 
     /** Column names whose values are secrets: the copy keeps that a value exists, not the value. */
-    protected const SECRET = '/pass|secret|token|api_?key|access_?key|private/i';
+    protected const SECRET = '/pass|secret|token|api_?key|access_?key|private|^keys$/i';
 
     /** Columns every history table has besides the mirrored ones. */
     public const META = ['history_id', 'history_company_id', 'change_action', 'changed_fields', 'record_label', 'changed_by', 'changed_by_name', 'change_source', 'change_ip', 'changed_at'];
+
+    /** Mirrored columns that are UPPERCASE enums on the live table (the model casts them to lowercase): a copy shows them lowercase too. */
+    public const LOWERCASED = [
+        'segments' => ['match'], 'templates' => ['type'], 'campaigns' => ['type', 'push_platform'], 'forms' => ['type'], 'workflows' => ['status'],
+        'person_fields' => ['type'], 'media' => ['kind'], 'integrations' => ['status'], 'push_devices' => ['platform', 'status'],
+    ];
 
     protected static array $columns = [];
 
@@ -74,11 +82,11 @@ class History
 
             DB::table(self::historyTable($table))->insert(self::snapshot($m) + [
                 'history_company_id' => $company,
-                'change_action' => $action,
+                'change_action' => strtoupper($action), // the history tables store the words UPPERCASE; the API gives them back lowercase
                 'changed_fields' => $changed ? json_encode(array_values($changed)) : null,
                 'record_label' => mb_substr(self::labelOf($m), 0, 250),
                 'changed_by' => $user?->id, 'changed_by_name' => $user?->name,
-                'change_source' => self::source(),
+                'change_source' => strtoupper(self::source()),
                 'change_ip' => request()->ip(),
                 'changed_at' => now(),
             ]);
@@ -141,7 +149,7 @@ class History
     public static function source(): string
     {
         $r = request();
-        if ($r->is('api/public/*', 'f/*', 'p/*', 'api/unsubscribe/*', 'api/t/*')) {
+        if ($r->is('api/public/*', 'f/*', 'p/*', 'api/unsubscribe/*', 'api/t/*', 'api/push/subscribe', 'api/push/unsubscribe', 'api/push/c/*')) {
             return 'public';
         }
         if ($r->is('api/v1/*')) {
@@ -201,8 +209,12 @@ class History
             if ($prev ? $old === $new : $new === null) {
                 continue;
             }
-            if ($prev && $row->change_action === 'updated' && $fields && ! in_array($c, $fields, true)) {
+            if ($prev && strtolower($row->change_action) === 'updated' && $fields && ! in_array($c, $fields, true)) {
                 continue;
+            }
+            if (in_array($c, self::LOWERCASED[$table] ?? [], true)) {
+                $old = is_string($old) ? strtolower($old) : $old;
+                $new = is_string($new) ? strtolower($new) : $new;
             }
             $out[$c] = ['old' => self::short(self::scrub($old)), 'new' => self::short(self::scrub($new))];
         }

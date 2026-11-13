@@ -57,10 +57,11 @@ FinalizeCampaign::check
   <div class="table-wrap"><table>
     <thead><tr><th>Piece</th><th>Runs</th><th>What it does</th></tr></thead>
     <tbody>
-      <tr><td><code>queue:work</code></td><td>always</td><td>Runs <code>SendCampaignJob</code>, <code>SendMessageJob</code>, <code>ProcessWorkflowRunJob</code> (one workflow step), <code>SendWebhookJob</code> and <code>SendFormNotificationJob</code>.</td></tr>
+      <tr><td><code>queue:work</code></td><td>always</td><td>Runs <code>SendCampaignJob</code>, <code>SendMessageJob</code>, <code>ProcessWorkflowRunJob</code> (one workflow step), <code>SendWebhookJob</code>, <code>SendFormNotificationJob</code> and <code>SyncIntegrationJob</code> (a few pages of a store’s customers, then it queues the next chunk).</td></tr>
       <tr><td><code>campaigns:dispatch-scheduled</code></td><td>every minute</td><td>Starts campaigns whose scheduled time has arrived.</td></tr>
       <tr><td><code>automation:process</code></td><td>every minute</td><td>Resumes workflow runs whose wait is over.</td></tr>
       <tr><td><code>automation:time-triggers</code></td><td>daily at 00:15</td><td>Starts workflows for “a date arrives” and “has not opened emails”.</td></tr>
+      <tr><td><code>integrations:sync</code></td><td>every 15 minutes</td><td>Starts the automatic import for each connected store that is due (its own “keep up to date” interval has passed).</td></tr>
     </tbody>
   </table></div>
 
@@ -87,6 +88,7 @@ return ApiResponse::validation(['email' => ['Not valid.']]);  // 422 with field 
       <tr><td><b>Pages</b>, templates, media</td><td><code>LandingPageController</code>, <code>LayoutController</code>, <code>TemplateController</code>, <code>MediaController</code>, <code>OnlineImageImport</code>, <code>ImageSearch</code>, <code>Attachments</code></td><td><code>LandingPages.vue</code>, <code>PageDesigner.vue</code>, <code>Templates.vue</code>, <code>EmailDesigner.vue</code>, <code>builder/blocks.js</code>, <code>builder/pageBlocks.js</code>, <code>Media.vue</code></td></tr>
       <tr><td><b>Automation</b></td><td><code>WorkflowController</code>, <code>Automation</code>, <code>ProcessWorkflowRunJob</code>, the <code>automation:*</code> commands</td><td><code>Workflows.vue</code>, <code>Triggers.vue</code>, <code>AutomationHistory.vue</code></td></tr>
       <tr><td><b>Webhooks</b></td><td><code>WebhookController</code>, <code>WebhookDispatcher</code>, <code>SendWebhookJob</code>, <code>UrlGuard</code></td><td><code>Webhooks.vue</code>, <code>WebhookDeliveries.vue</code></td></tr>
+      <tr><td><b>Integrations</b> (stores → People)</td><td><code>IntegrationController</code>, <code>Integration</code>, <code>IntegrationSync</code>, <code>Services/Integrations/*</code> (<code>Provider</code>, <code>ShopifyProvider</code>, <code>WooCommerceProvider</code>, <code>WordPressProvider</code>, <code>MagentoProvider</code>, <code>Importer</code>, <code>Syncs</code>), <code>SyncIntegrationJob</code>, <code>SyncIntegrations</code> command</td><td><code>PlatformIntegrations.vue</code>, <code>IntegrationSyncs.vue</code></td></tr>
       <tr><td><b>API keys</b> and integration API</td><td><code>ApiKeyController</code>, <code>ApiV1Controller</code>, <code>BlockIntegrationTokens</code></td><td><code>Integrations.vue</code></td></tr>
       <tr><td><b>Settings</b>, users, account</td><td><code>SettingsController</code>, <code>ConfigController</code>, <code>MailSettings</code>, <code>SmsSettings</code>, <code>MailOAuthController</code>, <code>UserController</code>, <code>AccountController</code></td><td><code>Settings*.vue</code>, <code>EmailConfig.vue</code>, <code>SmsConfig.vue</code>, <code>Users.vue</code>, <code>Account.vue</code></td></tr>
       <tr><td><b>History</b> and activity</td><td><code>Auditable</code>, <code>History</code>, <code>HistoryController</code>, <code>LogActivity</code>, <code>ActivityLogController</code></td><td><code>HistoryList.vue</code>, <code>HistoryTimeline.vue</code>, <code>HistoryVersion.vue</code>, <code>ActivityLogs.vue</code></td></tr>

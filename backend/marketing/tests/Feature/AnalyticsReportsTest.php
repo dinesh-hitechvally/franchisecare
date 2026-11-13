@@ -25,22 +25,22 @@ class AnalyticsReportsTest extends TestCase
 
     protected function log(string $model, int $company, array $a): void
     {
-        $model::withoutGlobalScopes()->create($a + ['company_id' => $company, 'source' => 'campaign', 'service' => 'default', 'recipient' => 'x@x.com', 'body' => 'b', 'status' => 'sent', 'sent_at' => now()]);
+        $model::withoutGlobalScopes()->create($a + ['company_id' => $company, 'source' => 'campaign', 'service' => 'default', 'recipient' => 'x@x.com', 'body' => 'b', 'status' => 'SENT', 'sent_at' => now()]);
     }
 
     public function test_every_report_answers_with_the_right_numbers_and_only_for_the_own_company(): void
     {
         $h = $this->owner();
         $co = (int) Company::value('id');
-        $campaign = (new Campaign)->forceFill(['company_id' => $co, 'name' => 'Spring', 'type' => 'email', 'subject' => 's', 'body' => 'b', 'status' => 'sent']);
+        $campaign = (new Campaign)->forceFill(['company_id' => $co, 'name' => 'Spring', 'type' => 'email', 'subject' => 's', 'body' => 'b', 'status' => 'SENT']);
         $campaign->save();
 
         $this->log(EmailLog::class, $co, ['campaign_id' => $campaign->id, 'opened_at' => now(), 'clicks' => 2]);
         $this->log(EmailLog::class, $co, ['campaign_id' => $campaign->id]);
-        $this->log(EmailLog::class, $co, ['status' => 'failed', 'error' => 'Connection refused for a@x.com', 'sent_at' => null, 'service' => 'gmail']);
-        $this->log(EmailLog::class, $co, ['status' => 'failed', 'error' => 'Connection refused for b@x.com', 'sent_at' => null, 'service' => 'gmail']);
+        $this->log(EmailLog::class, $co, ['status' => 'FAILED', 'error' => 'Connection refused for a@x.com', 'sent_at' => null, 'service' => 'gmail']);
+        $this->log(EmailLog::class, $co, ['status' => 'FAILED', 'error' => 'Connection refused for b@x.com', 'sent_at' => null, 'service' => 'gmail']);
         $this->log(SmsLog::class, $co, ['service' => 'clicksend']);
-        $this->log(SmsLog::class, $co, ['status' => 'skipped', 'error' => 'Person unsubscribed', 'sent_at' => null]);
+        $this->log(SmsLog::class, $co, ['status' => 'SKIPPED', 'error' => 'Person unsubscribed', 'sent_at' => null]);
 
         $email = $this->getJson('/api/analytics/email?days=7', $h)->assertOk();
         $this->assertSame([2, 1, 50.0, 2], [$email->json('totals.sent'), $email->json('totals.opened'), (float) $email->json('totals.open_rate'), $email->json('totals.failed')]);

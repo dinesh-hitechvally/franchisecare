@@ -29,7 +29,7 @@ watch(() => props.tick, load)
         <td class="nw">{{ $dt(r.sent_at || r.created_at) }}</td>
         <td>{{ r.recipient }}</td>
         <td>{{ SERVICES[r.service] || r.service || '—' }}</td>
-        <td><span class="badge" :class="r.status">{{ r.status === 'logged' ? 'logged only' : r.status }}</span><small v-if="r.error" class="err"> {{ r.error }}</small></td>
+        <td><span class="badge" :class="(r.status || '').toLowerCase()">{{ r.status === 'LOGGED' ? 'logged only' : (r.status || '').toLowerCase() }}</span><small v-if="r.error" class="err"> {{ r.error }}</small></td>
       </tr>
     </table>
   </div>

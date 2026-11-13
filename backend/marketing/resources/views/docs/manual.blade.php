@@ -23,6 +23,8 @@
     @endforeach
   </section>
 
+  @include('docs.manual._push')
+  @include('docs.manual._integrations')
   @include('docs.manual._reports')
   @include('docs.manual._settings')
   @include('docs.manual._problems')

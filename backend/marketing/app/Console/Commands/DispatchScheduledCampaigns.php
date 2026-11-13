@@ -14,10 +14,10 @@ class DispatchScheduledCampaigns extends Command
 
     public function handle(): void
     {
-        Campaign::withoutGlobalScope('company')->where('status', 'scheduled')->where('scheduled_at', '<=', now())
+        Campaign::withoutGlobalScope('company')->where('status', 'SCHEDULED')->where('scheduled_at', '<=', now())
             ->each(function (Campaign $c) {
                 // atomic claim so overlapping runs can't double-send
-                if (Campaign::withoutGlobalScope('company')->whereKey($c->id)->where('status', 'scheduled')->update(['status' => 'sending'])) {
+                if (Campaign::withoutGlobalScope('company')->whereKey($c->id)->where('status', 'SCHEDULED')->update(['status' => 'SENDING'])) {
                     \App\Services\History::record('updated', $c->fresh(), ['status']); // a plain query: no model event, so record it here
                     SendCampaignJob::dispatch($c->id);
                     $this->info("Dispatched campaign {$c->id}");

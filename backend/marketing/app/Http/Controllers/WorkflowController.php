@@ -17,9 +17,9 @@ class WorkflowController extends Controller
     public function index()
     {
         return Workflow::withCount([
-            'runs as running_count' => fn ($q) => $q->where('status', 'running'),
-            'runs as completed_count' => fn ($q) => $q->where('status', 'completed'),
-            'runs as failed_count' => fn ($q) => $q->where('status', 'failed'),
+            'runs as running_count' => fn ($q) => $q->where('status', 'RUNNING'),
+            'runs as completed_count' => fn ($q) => $q->where('status', 'COMPLETED'),
+            'runs as failed_count' => fn ($q) => $q->where('status', 'FAILED'),
         ])->latest()->get();
     }
 
@@ -70,7 +70,7 @@ class WorkflowController extends Controller
     {
         return WorkflowRun::with('workflow:id,name', 'person:id,first_name,last_name,email')
             ->when($request->query('workflow_id'), fn ($q, $v) => $q->where('workflow_id', $v))
-            ->when($request->query('status'), fn ($q, $v) => $q->where('status', $v))
+            ->when($request->query('status'), fn ($q, $v) => $q->where('status', strtoupper($v)))
             ->latest('id')->paginate(25);
     }
 
@@ -124,7 +124,7 @@ class WorkflowController extends Controller
         abort_if(! empty($cfg['tag_id']) && ! Tag::whereKey($cfg['tag_id'])->exists(), 422, 'Trigger tag not found.');
         abort_if(! empty($cfg['form_id']) && ! Form::whereKey($cfg['form_id'])->exists(), 422, 'Trigger form not found.');
         if ($data['trigger_type'] === 'date_reached') {
-            abort_unless(! empty($cfg['field_id']) && \App\Models\PersonField::whereKey($cfg['field_id'])->where('type', 'date')->exists(), 422, 'Choose the date field this workflow follows (a custom field of the type Date).');
+            abort_unless(! empty($cfg['field_id']) && \App\Models\PersonField::whereKey($cfg['field_id'])->where('type', 'DATE')->exists(), 422, 'Choose the date field this workflow follows (a custom field of the type Date).');
             abort_if(($cfg['when'] ?? 'on') !== 'on' && (int) ($cfg['days'] ?? 0) < 1, 422, 'Say how many days before or after the date it should start.');
         }
         abort_if($data['trigger_type'] === 'inactive' && (int) ($cfg['days'] ?? 0) < 1, 422, 'Say after how many days without an opened email the workflow starts.');
@@ -136,7 +136,7 @@ class WorkflowController extends Controller
                 case 'send_sms':
                     $want = $s['type'] === 'send_email' ? 'email' : 'sms';
                     abort_if(empty($s['template_id']) && empty($s['body']), 422, "Step {$n}: choose a template".($want === 'sms' ? ' or write a message' : '').'.');
-                    abort_if(! empty($s['template_id']) && ! Template::where('type', $want)->whereKey($s['template_id'])->exists(), 422, "Step {$n}: template not found.");
+                    abort_if(! empty($s['template_id']) && ! Template::where('type', strtoupper($want))->whereKey($s['template_id'])->exists(), 422, "Step {$n}: template not found.");
                     break;
                 case 'wait':
                     abort_if(! isset($s['amount'], $s['unit']), 422, "Step {$n}: set how long to wait.");

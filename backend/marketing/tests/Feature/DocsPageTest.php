@@ -28,6 +28,8 @@ class DocsPageTest extends TestCase
         $this->assertStringContainsString('Person is added', $html);               // a trigger, read from Automation::TRIGGERS
         $this->assertStringContainsString('&#123;&#123;first_name&#125;&#125;', $html); // merge tags, read from MessageRenderer
         $this->assertStringNotContainsString('@verbatim', $html);
+        $this->assertStringContainsString('bring your store', $html); // the Integrations section
+        $this->assertStringContainsString('Shopify', $html);
         $this->assertStringNotContainsString('/api/people', $html); // technical detail belongs to the other documents
     }
 
@@ -53,6 +55,7 @@ class DocsPageTest extends TestCase
         // the endpoint reference is read from the running app
         $this->assertStringContainsString('/api/reports/campaigns/{campaign}/deliveries', $html);
         $this->assertStringContainsString('/api/api-keys', $html);
+        $this->assertStringContainsString('/api/integrations/{integration}/sync', $html); // connected platforms
         $this->assertStringNotContainsString('@verbatim', $html);
     }
 

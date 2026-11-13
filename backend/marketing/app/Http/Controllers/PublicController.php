@@ -30,7 +30,7 @@ class PublicController extends Controller
     {
         return response($body, 200, [
             'Content-Type' => 'text/html; charset=UTF-8',
-            'Content-Security-Policy' => "default-src 'none'; img-src * data:; style-src 'unsafe-inline'; font-src *; script-src 'nonce-{$nonce}'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors *",
+            'Content-Security-Policy' => "default-src 'none'; img-src * data:; style-src 'unsafe-inline'; font-src *; script-src 'nonce-{$nonce}'; worker-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors *",
             'X-Content-Type-Options' => 'nosniff',
             'Referrer-Policy' => 'no-referrer',
         ]);
@@ -87,6 +87,17 @@ class PublicController extends Controller
             $at = stripos($html, '</body>');
             $html = $at !== false ? substr_replace($html, $extra, $at, 0) : $html.$extra;
         }
+
+        // a "Push notifications" block leaves <!--fc-push-->: the first one becomes the script that wires every such block on the page
+        $pushScript = false;
+        $html = preg_replace_callback('/<!--fc-push-->/', function () use (&$pushScript, $company, $nonce) {
+            if ($pushScript || ! $company) {
+                return '';
+            }
+            $pushScript = true;
+
+            return \App\Services\Push\PagePrompt::script($nonce, \App\Services\PushSettings::siteKey($company));
+        }, $html);
 
         // the "browser tab title" set when publishing wins over the placeholder title in the generated HTML
         if (filled($page->title)) {
@@ -178,7 +189,7 @@ class PublicController extends Controller
         $messages = [];
         foreach ($fields as $f) {
             $type = $f['type'];
-            $rules[$f['key']] = in_array($type, ['checkbox', 'subscribe'], true)
+            $rules[$f['key']] = in_array($type, ['checkbox', 'subscribe', 'push'], true)
                 ? ($f['required'] ? ['accepted'] : ['nullable', 'boolean'])
                 : array_merge([$f['required'] ? 'required' : 'nullable'], match ($type) {
                     'email' => ['email', 'max:255'],
@@ -211,7 +222,7 @@ class PublicController extends Controller
         $answers = [];
         foreach ($fields->where('type', '!=', FormFields::CAPTCHA) as $f) { // the captcha is a check, not an answer
             $v = $data[$f['key']] ?? null;
-            $answers[] = ['label' => $f['label'], 'type' => $f['type'], 'value' => in_array($f['type'], ['checkbox', 'subscribe'], true) ? ($v ? 'Yes' : 'No') : (string) ($v ?? '')];
+            $answers[] = ['label' => $f['label'], 'type' => $f['type'], 'value' => in_array($f['type'], ['checkbox', 'subscribe', 'push'], true) ? ($v ? 'Yes' : 'No') : (string) ($v ?? '')];
         }
 
         // questions marked "save on the person" fill that person's custom fields (usable as merge tags);
@@ -303,7 +314,7 @@ class PublicController extends Controller
             }
             $log = EmailLog::create([
                 'company_id' => $biz, 'person_id' => $person?->id, 'source' => 'form', 'recipient' => $email,
-                'subject' => $subject, 'body' => nl2br(e($text)).($form->autoreply_attachments ? '<!--fc-attach:'.implode(',', array_column($form->autoreply_attachments, 'token')).'-->' : ''), 'status' => 'queued', // the marker makes SendMessageJob attach the files
+                'subject' => $subject, 'body' => nl2br(e($text)).($form->autoreply_attachments ? '<!--fc-attach:'.implode(',', array_column($form->autoreply_attachments, 'token')).'-->' : ''), 'status' => 'QUEUED', // the marker makes SendMessageJob attach the files
             ]);
             SendMessageJob::dispatch($log->id);
         }

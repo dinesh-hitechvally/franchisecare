@@ -10,7 +10,7 @@ class TemplateController extends Controller
 {
     public function index(Request $request)
     {
-        return Template::when($request->query('type'), fn ($q, $t) => $q->where('type', $t))->latest()->get();
+        return Template::when($request->query('type'), fn ($q, $t) => $q->where('type', strtoupper($t)))->latest()->get();
     }
 
     public function store(Request $request)
@@ -45,7 +45,7 @@ class TemplateController extends Controller
     {
         $data = $request->validate([
             'name' => 'required|string|max:255',
-            'type' => 'required|in:email,sms',
+            'type' => 'required|in:email,sms,push',
             'subject' => 'nullable|string|max:255|required_if:type,email',
             'body' => 'required|string',
             'design' => 'nullable|array',

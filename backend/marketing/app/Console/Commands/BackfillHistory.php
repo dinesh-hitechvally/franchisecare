@@ -29,6 +29,8 @@ class BackfillHistory extends Command
         'landing_pages' => Models\LandingPage::class,
         'workflows' => Models\Workflow::class,
         'webhooks' => Models\Webhook::class,
+        'integrations' => Models\Integration::class,
+        'push_devices' => Models\PushDevice::class,
         'person_fields' => Models\PersonField::class,
         'person_field_values' => Models\PersonFieldValue::class,
         'form_submissions' => Models\FormSubmission::class,

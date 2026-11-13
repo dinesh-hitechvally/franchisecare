@@ -17,6 +17,7 @@ class Form extends Model
     protected function casts(): array
     {
         return [
+            'type' => \App\Casts\Upper::class,
             'fields' => 'array', 'style' => 'array', 'list_ids' => 'array', 'tag_ids' => 'array', 'notify_emails' => 'array',
             'active' => 'boolean', 'save_person' => 'boolean', 'subscribe' => 'boolean', 'autoreply' => 'boolean', 'autoreply_attachments' => 'array',
         ];

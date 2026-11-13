@@ -1,7 +1,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { setQuery } from '../urlState'
+import { setPath, setQuery } from '../urlState'
 import api, { errorMessage } from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import { useFilters } from '../composables/useFilters'
@@ -29,6 +29,7 @@ const load = async () => { rows.value = (await api.get('/landing-pages')).data }
 
 function create() {
   editing.value = 'new'
+  setPath('/pages/new')
   error.value = ''
   initial.value = { name: '', slug: '', title: '', published: false, design: null }
   designer.value = true
@@ -40,7 +41,7 @@ const withForms = (d, formId) => (d?.kind === 'page' ? { ...d, blocks: (d.blocks
 function edit(p, version = null) {
   editing.value = p.id
   startVersion.value = version
-  setQuery({ edit: p.id, history: version }) // an open editor has an address: a refresh or a shared link comes back to it
+  setPath('/pages/' + p.id, { history: version }) // an open editor has an address (/pages/12): a refresh or a shared link comes back to it
   error.value = ''
   initial.value = { name: p.name, slug: p.slug, title: p.title || '', published: p.published, design: withForms(p.design, p.form_id) }
   // a page made before the page builder existed has an email-style design; the builder can't edit that, so it starts a fresh layout
@@ -65,18 +66,21 @@ async function save(d) {
   } catch (e) { error.value = errorMessage(e) } finally { saving.value = false }
 }
 
-// the address carries ?edit=&history= when the editor was opened from a history list: drop it once the editor is closed
+// the address is /pages/12 (and ?history= when opened from a history list) while an editor is open: back to /pages once it is closed
 function leave() {
   startVersion.value = null
-  setQuery({ edit: null, history: null })
-  if (route.query.edit) router.replace('/pages') // arrived through a link with ?edit=: bring the router's own record of the address back in line
+  setPath('/pages')
+  if (route.params.id || route.query.edit) router.replace('/pages') // arrived through a link: bring the router's own record of the address back in line
 }
 function closeDesigner() { designer.value = false; editing.value = null; leave() }
 
 function openFromQuery() {
   const q = route.query
-  const p = q.edit ? rows.value.find((r) => String(r.id) === String(q.edit)) : null
+  const id = route.params.id || q.edit // /pages/12; the older /pages?edit=12 still works
+  if (id === 'new') { create(); return }
+  const p = id ? rows.value.find((r) => String(r.id) === String(id)) : null
   if (p) edit(p, q.history ? Number(q.history) : null)
+  else if (id) router.replace('/pages') // no such page
 }
 
 async function togglePublish(p) {
@@ -114,10 +118,10 @@ onMounted(async () => { forms.value = (await api.get('/forms')).data; await load
     <table v-else>
       <thead><tr><th>Name</th><th>Title</th><th>Views</th><th>Status</th><th class="act">Actions</th></tr></thead>
       <tr v-for="p in visible" :key="p.id">
-        <td><a href="#" class="pg-name" @click.prevent="edit(p)"><b>{{ p.name }}</b></a><br /><a v-if="p.published" :href="p.url" target="_blank" rel="noopener"><small>{{ p.url }}</small></a><small v-else>Not published</small></td>
+        <td><a href="#" class="pg-name" @click.prevent="edit(p)"><b>{{ p.name }}</b></a><a v-if="p.published" :href="p.url" target="_blank" rel="noopener" class="eye" title="View the live page"><Icon name="eye" :size="18" /></a><br /><a v-if="p.published" :href="p.url" target="_blank" rel="noopener"><small>{{ p.url }}</small></a><small v-else>Not published</small></td>
         <td>{{ p.title || 'Landing page' }}<small v-if="!p.title" style="color: #9ca3af"> (default)</small></td>
         <td>{{ p.views }}</td>
-        <td><div class="st"><span class="badge" :class="p.published ? 'sent' : ''">{{ p.published ? 'published' : 'draft' }}</span> <a v-if="p.published" :href="p.url" target="_blank" rel="noopener" class="eye" title="View the live page"><Icon name="eye" :size="18" /></a></div></td>
+        <td><span class="badge" :class="p.published ? 'sent' : ''">{{ p.published ? 'published' : 'draft' }}</span></td>
         <td class="act"><RowMenu :history="{ type: 'landing_page', id: p.id, title: p.name }" :items="[{ label: 'Edit', run: () => edit(p) }, { label: 'Clone', run: () => clone(p) }, ...(p.form_id ? [{ label: 'View submissions', to: `/forms/${p.form_id}/submissions` }] : []), { label: p.published ? 'Unpublish' : 'Publish', run: () => togglePublish(p) }, { label: 'Delete', run: () => remove(p), danger: true }]" /></td>
       </tr>
     </table>
@@ -128,7 +132,6 @@ onMounted(async () => { forms.value = (await api.get('/forms')).data; await load
 
 <style scoped>
 .pg-name { color: inherit; text-decoration: none; } .pg-name:hover { color: #3f51b5; text-decoration: underline; }
-.st { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.eye { color: #6b7280; display: inline-flex; margin-left: auto; } .eye:hover { color: #3f51b5; }
+.eye { color: #6b7280; display: inline-flex; vertical-align: middle; margin-left: 8px; } .eye:hover { color: #3f51b5; }
 .intro { color: #6b7280; margin: -8px 0 18px; }
 </style>

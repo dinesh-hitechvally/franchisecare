@@ -91,4 +91,36 @@ class ApiV1Controller extends Controller
 
         return ['ok' => true];
     }
+
+    /**
+     * An Android / iOS app registers (or refreshes) its Firebase token, optionally linked to a person by email, phone or id.
+     * With create_person=true and an email that is not known yet, the person is created.
+     */
+    public function pushDevice(Request $request)
+    {
+        $data = $request->validate([
+            'token' => 'required|string|max:4096', 'platform' => 'required|in:android,ios',
+            'email' => 'nullable|email|max:255', 'phone' => 'nullable|string|max:30', 'person_id' => 'nullable|integer',
+            'label' => 'nullable|string|max:120', 'create_person' => 'nullable|boolean',
+            'device_id' => 'nullable|string|max:64', // the app's own install id: a new Firebase token for the same installation keeps ONE device
+        ]);
+        $company = $request->user()->company;
+
+        $who = array_filter(['email' => $data['email'] ?? null, 'phone' => $data['phone'] ?? null, 'person_id' => $data['person_id'] ?? null]);
+        if ($request->boolean('create_person') && ! empty($data['email']) && ! \App\Services\Push\Devices::person($company, $who)) {
+            Person::create(['email' => Str::lower($data['email']), 'source' => 'api']);
+        }
+        $device = \App\Services\Push\Devices::register($company, $data['platform'], $data['token'], null, $data['label'] ?? null, $who, null, $data['device_id'] ?? null);
+
+        return response()->json(['id' => $device->id, 'linked' => (bool) $device->person_id], 201);
+    }
+
+    /** The app no longer wants notifications on this installation. */
+    public function pushDeviceRemove(Request $request)
+    {
+        $data = $request->validate(['token' => 'required|string|max:4096']);
+        \App\Models\PushDevice::where('token_hash', \App\Models\PushDevice::hashOf($data['token']))->get()->each(fn ($d) => $d->update(['status' => 'revoked'])); // one by one, so each is written to the device history
+
+        return response()->noContent();
+    }
 }

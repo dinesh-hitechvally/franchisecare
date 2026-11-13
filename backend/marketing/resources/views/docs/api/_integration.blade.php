@@ -1,13 +1,15 @@
 @verbatim
 <section id="integration-api" data-nav="Integration API (/api/v1)" data-group="API keys">
   <h2>Integration API <a class="anchor" href="#integration-api">#</a></h2>
-  <p>Three endpoints, all authenticated with an <a href="#keys">API key</a>. A <b>successful</b> answer is plain JSON (shown below). A <b>failure</b> uses the standard <a href="#errors">error shape</a> with a <code>success: false</code>, a <code>message</code> and a <code>code</code>.</p>
+  <p>Five endpoints, all authenticated with an <a href="#keys">API key</a>. A <b>successful</b> answer is plain JSON (shown below). A <b>failure</b> uses the standard <a href="#errors">error shape</a> with a <code>success: false</code>, a <code>message</code> and a <code>code</code>.</p>
   <div class="table-wrap"><table>
     <thead><tr><th>Endpoint</th><th>Purpose</th></tr></thead>
     <tbody>
       <tr><td><code>POST /api/v1/people</code></td><td><a href="#v1-upsert">Create or update a person</a> by email or phone.</td></tr>
       <tr><td><code>GET /api/v1/people?email=</code></td><td><a href="#v1-lookup">Look up a person</a>, with their lists and tags.</td></tr>
       <tr><td><code>POST /api/v1/people/unsubscribe</code></td><td><a href="#v1-unsubscribe">Opt a person out.</a></td></tr>
+      <tr><td><code>POST /api/v1/push/devices</code></td><td><a href="#push-devices">Register an Android / iOS app</a> for push notifications.</td></tr>
+      <tr><td><code>DELETE /api/v1/push/devices</code></td><td><a href="#push-devices">Remove it</a> again.</td></tr>
     </tbody>
   </table></div>
 
@@ -79,5 +81,27 @@ const person = await res.json()</code></pre>
     <li><b>401</b> <code>unauthenticated</code>: no key, a wrong key, or a revoked one. <b>422</b> <code>validation_failed</code>: see <code>errors</code>, for example <i>“The email field is required when phone is not present.”</i></li>
     <li>Calls are not idempotent by request, but they are by person: sending the same upsert twice creates one person and adds the same lists and tags once.</li>
   </ul>
+</section>
+<section id="push-devices" data-nav="Push devices" data-group="API keys">
+  <h2>Register an app for push notifications <a class="anchor" href="#push-devices">#</a></h2>
+  <p>Your Android or iOS app gets a <b>Firebase registration token</b> from the Firebase SDK. Send it here, with the person it belongs to, so push campaigns can reach them. Call it again whenever the token changes: the same token never creates a second device. (Browsers register themselves with the website snippet, not this API.)</p>
+  <pre>curl -X POST https://YOUR-APP/api/v1/push/devices \
+  -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" \
+  -d '{"token":"FIREBASE_TOKEN","platform":"android","email":"ann@example.com","label":"Pixel 8"}'
+
+// 201
+{ "id": 12, "linked": true }</pre>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Field</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>token</code> (required)</td><td>The Firebase registration token of this installation.</td></tr>
+      <tr><td><code>platform</code> (required)</td><td><code>android</code> or <code>ios</code>.</td></tr>
+      <tr><td><code>email</code>, <code>phone</code> or <code>person_id</code></td><td>Who it belongs to. <code>linked</code> in the answer tells whether a person was found. A device that is not linked cannot be reached by a campaign.</td></tr>
+      <tr><td><code>create_person</code></td><td><code>true</code> creates the person from <code>email</code> when they are not known yet.</td></tr>
+      <tr><td><code>label</code></td><td>A name for the device, shown in Audience → Devices.</td></tr>
+      <tr><td><code>device_id</code></td><td>The app's own install id (8 to 64 letters, digits, dashes). Send it every time: when Firebase gives the installation a new token, the same device is updated instead of a second one being added.</td></tr>
+    </tbody>
+  </table></div>
+  <p>To stop notifications on an installation (log out, uninstall): <code>DELETE /api/v1/push/devices</code> with <code>{"token":"…"}</code>. It answers <code>204</code>.</p>
 </section>
 @endverbatim

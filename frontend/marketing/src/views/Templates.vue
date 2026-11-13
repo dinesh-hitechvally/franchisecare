@@ -3,7 +3,7 @@ import { fmtDateTime } from '../format'
 import { useAuth } from '../stores/auth'
 import { ref, reactive, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { setQuery } from '../urlState'
+import { setPath, setQuery } from '../urlState'
 import api, { errorMessage } from '../api'
 import RowMenu from '../components/RowMenu.vue'
 import HistoryModal from '../components/HistoryModal.vue'
@@ -54,6 +54,7 @@ function create(type) {
   if (type === 'email') {
     initial.value = { name: '', subject: '', design: null, attachments: [] }
     designer.value = true
+    setPath('/templates/new')
   } else {
     Object.assign(form, { name: '', type: 'sms', subject: '', body: '' })
   }
@@ -68,10 +69,10 @@ function edit(t, version = null) {
   if (t.type === 'email') {
     initial.value = { name: t.name, subject: t.subject || '', design: t.design, html: t.body, attachments: t.attachments || [] }
     designer.value = true
-    setQuery({ edit: t.id, history: version }) // an open editor has an address: a refresh or a shared link comes back to it
   } else {
     Object.assign(form, { name: t.name, type: 'sms', subject: '', body: t.body })
   }
+  setPath('/templates/' + t.id, { history: version }) // an open editor has an address (/templates/3): a refresh or a shared link comes back to it
 }
 
 async function persist(payload, keepOpen = false) {
@@ -88,17 +89,20 @@ async function persist(payload, keepOpen = false) {
   }
 }
 
-// the address carries ?edit=&history= when the editor was opened from a history list: drop it once the editor is closed
+// the address is /templates/3 (and ?history= when opened from a history list) while an editor is open: back to /templates once it is closed
 function leave() {
   startVersion.value = null
-  setQuery({ edit: null, history: null })
-  if (route.query.edit) router.replace('/templates') // arrived through a link with ?edit=: bring the router's own record of the address back in line
+  setPath('/templates')
+  if (route.params.id || route.query.edit) router.replace('/templates') // arrived through a link: bring the router's own record of the address back in line
 }
 function closeDesigner() { designer.value = false; editing.value = null; leave() }
 function openFromQuery() {
   const q = route.query
-  const t = q.edit ? rows.value.find((r) => String(r.id) === String(q.edit)) : null
+  const id = route.params.id || q.edit // /templates/3; the older /templates?edit=3 still works
+  if (id === 'new') { create('email'); return }
+  const t = id ? rows.value.find((r) => String(r.id) === String(id)) : null
   if (t) edit(t, q.history ? Number(q.history) : null)
+  else if (id) router.replace('/templates') // no such template
 }
 
 async function saveEmail(d) {
@@ -177,7 +181,7 @@ onMounted(async () => { await load(); openFromQuery() })
   <HistoryModal v-if="historyOf" type="template" :id="historyOf.id" :title="historyOf.name" @close="historyOf = null" />
   <EmailDesigner v-if="designer" :initial="initial" :history-id="editing === 'new' ? null : editing" :start-version="startVersion" :saved-tick="savedTick" show-name :saving="saving" @save="saveEmail" @close="closeDesigner" @version="(v) => setQuery({ history: v })" />
 
-  <Modal v-if="editing && !designer" :title="editing === 'new' ? 'New SMS template' : 'Edit SMS template'" @close="editing = null">
+  <Modal v-if="editing && !designer" :title="editing === 'new' ? 'New SMS template' : 'Edit SMS template'" @close="closeDesigner">
     <form @submit.prevent="saveSms">
       <div v-if="error" class="alert err">{{ error }}</div>
       <div class="field"><label>Template name</label><input v-model="form.name" required /></div>

@@ -27,8 +27,8 @@ const forms = ref(null)
 const VIEWABLE = ['template', 'campaign', 'landing_page', 'form']
 // where that record is edited: the editor opens on that version, with History open in its side panel
 const EDITOR = {
-  landing_page: (r) => '/pages?edit=' + r.row_id + '&history=' + r.history_id,
-  template: (r) => '/templates?edit=' + r.row_id + '&history=' + r.history_id,
+  landing_page: (r) => '/pages/' + r.row_id + '?history=' + r.history_id,
+  template: (r) => '/templates/' + r.row_id + '?history=' + r.history_id,
   form: (r) => '/forms/' + r.row_id + '?history=' + r.history_id,
   campaign: (r) => '/campaigns/' + r.row_id + '?history=' + r.history_id,
 }
@@ -73,7 +73,7 @@ async function open(r) {
   try {
     const entry = (await api.get(`/history/${r.type}/entry/${r.history_id}`)).data
     // pages, email templates and forms: go to their editor (an SMS, a campaign, or a record that was deleted keeps the read-only view below)
-    const canOpen = { landing_page: entry.data.design?.kind === 'page', template: entry.data.type !== 'sms', form: true, campaign: entry.data.type === 'email' && ['draft', 'scheduled'].includes(entry.current_status) }[r.type]
+    const canOpen = { landing_page: entry.data.design?.kind === 'page', template: entry.data.type !== 'sms', form: true, campaign: entry.data.type === 'email' && ['draft', 'scheduled'].includes(String(entry.current_status || '').toLowerCase()) }[r.type]
     if (entry.exists && canOpen) { emit('close'); router.push(EDITOR[r.type](r)); return }
     if (r.type === 'form') { error.value = 'This form has been deleted, so its editor cannot be opened.'; opening.value = 0; return }
     if (r.type === 'landing_page' && entry.data.design?.kind !== 'page') {

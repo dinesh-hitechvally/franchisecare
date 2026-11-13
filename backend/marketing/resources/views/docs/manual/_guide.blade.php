@@ -11,13 +11,14 @@
       <tr><td>Lists</td><td>Named groups of people.</td></tr>
       <tr><td>Tags</td><td>Coloured labels. A person can have many.</td></tr>
       <tr><td>Segments</td><td>Saved rules (tag, list, email domain, subscription, dates…) that always show the matching people.</td></tr>
-      <tr><td>Subscriptions</td><td>Who is subscribed; unsubscribe or re-subscribe one or many (re-subscribing asks you to confirm permission).</td></tr>
+      <tr><td>Devices</td><td>The browsers and apps that can receive push notifications, each linked to a person. Search them, send a test notification to one, or remove it.</td></tr>
       <tr><td>Custom Fields</td><td>Extra data on a person (a birthday, a plan). Usable as merge tags and in forms.</td></tr>
       <tr><td rowspan="2"><b>Campaigns</b></td><td>Campaigns</td><td>Write or design a message, choose an audience, check, send or schedule. Stop a send, clone, send a test.</td></tr>
       <tr><td>Reports</td><td>One report per sent campaign: delivered, skipped, failed, logged only, opens, clicks, and a delivery list you can filter.</td></tr>
       <tr><td rowspan="3"><b>Content</b></td><td>Forms</td><td>Build sign-up and contact forms; see submissions; share a link or embed.</td></tr>
       <tr><td>Pages</td><td>Build hosted web pages from sections; choose a name, a page title and a slug.</td></tr>
       <tr><td>Templates</td><td>Email (visual designer or raw HTML) and SMS templates to start campaigns from.</td></tr>
+      <tr><td><b>Integrations</b></td><td>Connections, All integrations, Sync history</td><td>Connect 25 platforms (stores, websites, CRMs, email-marketing tools and payments), several of each if you like, and import their customers as People, kept up to date automatically. See <a href="#integrations">Integrations</a>.</td></tr>
       <tr><td rowspan="4"><b>Automation</b></td><td>Workflows</td><td>A trigger plus steps. Turn on when ready; new ones start as drafts.</td></tr>
       <tr><td>Triggers</td><td>All triggers and which workflows use them.</td></tr>
       <tr><td>Webhooks</td><td>Send events to other systems, with deliveries and histories.</td></tr>
@@ -37,7 +38,7 @@
     <li>A person has <b>one</b> subscription flag (<code>is_subscribed</code>, with <code>subscribed_at</code>). It covers email and SMS together.</li>
     <li><b>Unsubscribed people are never sent to</b>, whatever audience you choose. They are simply not part of the send.</li>
     <li>Every email carries an unsubscribe link and a one-click <code>List-Unsubscribe</code> header; a template without an unsubscribe link gets one added in a footer.</li>
-    <li>Only a person (or you, in <b>Subscriptions</b>) can subscribe someone again. Forms and imports never re-subscribe someone who opted out.</li>
+    <li>Only a person (or you, from the person’s record in <b>People</b>) can subscribe someone again. Forms and imports never re-subscribe someone who opted out.</li>
   </ul>
 
   <h3>Choosing an audience</h3>
@@ -132,7 +133,7 @@
   </ul>
 
   <h3>Sharing</h3>
-  <p>A saved form has a hosted link <code>/f/{slug}</code> and an embed snippet (an iframe) under <b>Share / embed</b>. Pages can include forms too. Hosted pages are served with a strict Content-Security-Policy, so page HTML cannot run its own scripts.</p>
+  <p>A saved form can be shared three ways under <b>Share / embed</b>: a <b>hosted link</b> (<code>/f/{slug}</code>), <b>Embed with JavaScript</b> (recommended) and an <b>iframe</b>. With the JavaScript embed you add one <code>&lt;script&gt;</code> line to your website and, wherever a form should appear, a <code>&lt;div class="mate-form" data-form-id="12"&gt;&lt;/div&gt;</code> with the form's id: the script draws that form in your page with its own colours, so you can show several forms by adding more divs, and a form you change here changes there at once. A paused form does not show. The push notifications tick box is not shown in an embedded form (a browser can only allow notifications on the website it is on): use the hosted link or a landing page for that. Pages can include forms too. Hosted pages are served with a strict Content-Security-Policy, so page HTML cannot run its own scripts.</p>
 </section>
 
 <section id="messaging" data-nav="Email, SMS and templates" data-group="Using the app">

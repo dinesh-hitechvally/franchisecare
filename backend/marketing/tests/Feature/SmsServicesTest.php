@@ -74,7 +74,7 @@ class SmsServicesTest extends TestCase
             'rest.clicksend.com/*' => Http::response(['data' => ['messages' => [['status' => 'SUCCESS', 'message_id' => 'C1']]]]),
             'rest.messagebird.com/*' => Http::response(['id' => 'M1']),
             'eu.sms.api.sinch.com/*' => Http::response(['id' => 'S1']),
-            'api.messagemedia.com/*' => Http::response(['messages' => [['message_id' => 'MM1', 'status' => 'queued']]]),
+            'api.messagemedia.com/*' => Http::response(['messages' => [['message_id' => 'MM1', 'status' => 'QUEUED']]]),
         ]);
         $conns = [
             'twilio' => ['account_sid' => 'AC1', 'auth_token' => 't', 'from' => '+1555'],

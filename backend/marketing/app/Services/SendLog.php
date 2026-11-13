@@ -19,7 +19,12 @@ class SendLog
     /** The service that would carry a message now: a mail/SMS connection key, "default" (platform mail) or "log" (Log only for SMS). */
     public static function service(Company $company, string $channel): string
     {
-        return $channel === 'sms' ? SmsSettings::activeKey($company) : MailSettings::activeKey($company);
+        return match ($channel) {
+            'sms' => SmsSettings::activeKey($company),
+            'push' => PushSettings::mode($company) === 'log' ? 'log' : 'live',
+            'social' => 'social',
+            default => MailSettings::activeKey($company),
+        };
     }
 
     /**
@@ -28,11 +33,14 @@ class SendLog
      */
     public static function deliveredStatus(Company $company, string $channel): string
     {
+        if ($channel === 'push') {
+            return PushSettings::mode($company) === 'log' ? 'LOGGED' : 'SENT';
+        }
         if ($channel === 'sms') {
-            return SmsSettings::activeKey($company) === 'log' ? 'logged' : 'sent';
+            return SmsSettings::activeKey($company) === 'log' ? 'LOGGED' : 'SENT';
         }
 
-        return MailSettings::activeKey($company) === 'log' ? 'logged' : 'sent';
+        return MailSettings::activeKey($company) === 'log' ? 'LOGGED' : 'SENT';
     }
 
     /**
@@ -44,7 +52,7 @@ class SendLog
         $isSms = $channel === 'sms';
         $log = ($isSms ? SmsLog::class : EmailLog::class)::create([
             'company_id' => $company->id, 'recipient' => $to, 'body' => $body,
-            'status' => 'queued', 'source' => $source, 'service' => self::service($company, $channel),
+            'status' => 'QUEUED', 'source' => $source, 'service' => self::service($company, $channel),
         ] + ($isSms ? [] : ['subject' => $subject]));
 
         try {
@@ -53,7 +61,7 @@ class SendLog
 
             return $result;
         } catch (Throwable $e) {
-            $log->update(['status' => 'failed', 'error' => mb_substr($e->getMessage(), 0, 1000)]);
+            $log->update(['status' => 'FAILED', 'error' => mb_substr($e->getMessage(), 0, 1000)]);
 
             throw $e;
         }

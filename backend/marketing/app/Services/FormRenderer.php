@@ -64,7 +64,8 @@ class FormRenderer
                 return '<label class="fc-l">'.$label.$star.$tip.'<span class="fc-q">'.self::e($c['question']).'</span><input name="captcha" type="text" inputmode="numeric" autocomplete="off" maxlength="4" required></label><input type="hidden" name="captcha_token" value="'.self::e($c['token']).'">'.$help;
             case 'checkbox':
             case 'subscribe':
-                $box = '<label class="fc-opt fc-chk"><input type="checkbox" name="'.$name.'"'.$req.$on.'> <span>'.$label.$star.'</span></label>';
+            case 'push':
+                $box = '<label class="fc-opt fc-chk"><input type="checkbox" name="'.$name.'"'.($f['type'] === 'push' ? ' data-push="1"' : '').$req.$on.'> <span>'.$label.$star.'</span></label>';
 
                 return ($tip !== '' ? '<div class="fc-chkrow">'.$box.$tip.'</div>' : $box).$help; // the icon sits beside the box: inside the label a click on it would tick the box
             default:
@@ -78,19 +79,33 @@ class FormRenderer
     /** $suffix keeps element ids unique when a page shows several forms (or the same form twice). */
     public static function fragment(Form $form, string $nonce, string $suffix = ''): string
     {
+        $slug = self::e($form->slug);
+        // a form with the push tick box needs the company's public site key, to register the visitor's browser
+        $pushKey = collect($form->builderFields())->contains('type', FormFields::PUSH) && ($company = \App\Models\Company::find($form->company_id)) ? PushSettings::siteKey($company) : '';
+
+        return self::markup($form, $suffix).self::script($nonce, $suffix, $slug, $pushKey);
+    }
+
+    /**
+     * The <form> alone. $embed is the one-script embed on another website: the push tick box is left out there (a browser can only allow notifications
+     * on the website it is on, and our service worker lives on this app's address), and the script that sends the form is the embed script's own.
+     */
+    public static function markup(Form $form, string $suffix = '', bool $embed = false): string
+    {
         $rows = '';
         foreach ($form->builderFields() as $f) {
+            if ($embed && $f['type'] === FormFields::PUSH) {
+                continue;
+            }
             $rows .= '<div class="fc-f fc-w-'.$f['width'].'">'.self::field($f).'</div>';
         }
-        $slug = self::e($form->slug);
 
         return '<form id="fc-form'.$suffix.'" class="fc-form" novalidate>'
             .($form->title ? '<h2 class="fc-title">'.self::e($form->title).'</h2>' : '')
             .($form->description ? '<p class="fc-desc">'.self::e($form->description).'</p>' : '')
             .'<div class="fc-row">'.$rows.'</div>'
             .'<input name="website" class="fc-hp" tabindex="-1" autocomplete="off" aria-hidden="true">' // honeypot: bots fill it, people never see it
-            .'<button type="submit">'.self::e($form->button_text).'</button><div id="fc-msg'.$suffix.'" class="fc-msg" role="status"></div></form>'
-            .self::script($nonce, $suffix, $slug);
+            .'<button type="submit">'.self::e($form->button_text).'</button><div id="fc-msg'.$suffix.'" class="fc-msg" role="status"></div></form>';
     }
 
     /**
@@ -101,12 +116,37 @@ class FormRenderer
      *  - on a problem a visible message says what to fix, and the first field that needs attention is focused.
      * The server's wording is only ever put in with textContent, never as HTML.
      */
-    protected static function script(string $nonce, string $suffix, string $slug): string
+    protected static function script(string $nonce, string $suffix, string $slug, string $pushKey = ''): string
     {
         $js = <<<'JS'
 (function(){
 var f=document.getElementById('fc-form__SUFFIX__'),m=document.getElementById('fc-msg__SUFFIX__'),b=f.querySelector('button[type=submit]'),label=b.textContent;
 function say(cls,text){m.className='fc-msg'+(cls?' '+cls:'');m.textContent=text}
+/* push notifications: the "Send me notifications" tick box asks the browser for permission as soon as it is ticked (a click is what browsers need),
+   and once the form is sent the browser is registered under the email or phone that was just submitted */
+var pc=f.querySelector('input[data-push]'),PKEY='__PUSHKEY__';
+function uid(){try{var u=localStorage.getItem('fcpush-uid');if(!u){u=(window.crypto&&crypto.randomUUID?crypto.randomUUID():Date.now().toString(36)+Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2));localStorage.setItem('fcpush-uid',u)}return u}catch(e){return null}}
+function pushable(){return 'serviceWorker' in navigator&&'PushManager' in window&&'Notification' in window}
+function unwrap(j){return j&&j.data!==undefined&&j.success!==undefined?j.data:j}
+function bytes(s){s=s.replace(/-/g,'+').replace(/_/g,'/');var r=atob(s+'='.repeat((4-s.length%4)%4)),o=new Uint8Array(r.length);for(var i=0;i<r.length;i++)o[i]=r.charCodeAt(i);return o}
+function whenActive(reg){return new Promise(function(res){var w=reg.installing||reg.waiting||reg.active;if(!w||w.state==='activated')return res(reg);w.addEventListener('statechange',function(){if(w.state==='activated')res(reg)})})}
+function enablePush(email,phone){
+  return fetch('/api/push/config?key='+encodeURIComponent(PKEY)).then(function(r){return r.json()}).then(unwrap).then(function(cfg){
+    return navigator.serviceWorker.register('/api/push/worker.js',{scope:'/api/push/'}).then(whenActive).then(function(reg){
+      return reg.pushManager.getSubscription().then(function(sub){return sub||reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:bytes(cfg.public_key)})})
+    })
+  }).then(function(sub){
+    return fetch('/api/push/subscribe',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify({key:PKEY,subscription:sub.toJSON(),email:email||null,phone:phone||null,page_url:location.href.split('#')[0],device_uid:uid()})}).then(function(r){if(!r.ok)throw new Error('register')})
+  })
+}
+if(pc){
+  if(!pushable()||!PKEY){pc.checked=false;pc.disabled=true;var nb=document.createElement('small');nb.className='fc-help';nb.textContent='This browser cannot receive notifications.';var holder=pc.closest('.fc-f');if(holder)holder.appendChild(nb)}
+  else pc.addEventListener('change',function(){
+    if(!pc.checked||Notification.permission==='granted')return;
+    if(Notification.permission==='denied'){pc.checked=false;say('err','Notifications are blocked for this site. Allow them in your browser settings, then tick this box again.');return}
+    Notification.requestPermission().then(function(p){if(p!=='granted'){pc.checked=false;say('err','Notifications were not allowed.')}else say('','')},function(){pc.checked=false})
+  })
+}
 function idle(){b.disabled=false;b.textContent=label}
 function done(j){
   var box=document.createElement('div');box.className='fc-done';box.setAttribute('role','status');
@@ -119,17 +159,27 @@ function done(j){
   try{box.scrollIntoView({behavior:'smooth',block:'nearest'})}catch(e){}
   if(j.redirect){setTimeout(function(){location.href=j.redirect},1500)}
 }
+function afterPush(d){
+  var box=f.nextSibling,p=document.createElement('p');p.className='fc-done-sub';
+  function put(t){p.textContent=t;if(box&&box.appendChild)box.insertBefore(p,box.querySelector('.fc-again'))}
+  Promise.resolve(Notification.permission==='granted'?null:new Promise(function(r){var n=0,t=setInterval(function(){if(Notification.permission!=='default'||++n>40){clearInterval(t);r()}},250)})).then(function(){
+    if(Notification.permission!=='granted'){put('Notifications were not turned on for this device.');return}
+    return enablePush(d.email,d.phone).then(function(){put('Notifications are on for this device.')},function(){put('Your form was sent, but notifications could not be turned on for this device.')})
+  })
+}
 f.addEventListener('submit',function(ev){
   ev.preventDefault();say('','');
   var d={};
   Array.prototype.forEach.call(f.elements,function(el){if(!el.name)return;
     if(el.type==='checkbox')d[el.name]=el.checked;else if(el.type==='radio'){if(el.checked)d[el.name]=el.value}else d[el.name]=el.value});
+  var wantPush=!!(pc&&pc.checked&&pushable()&&PKEY);
+  if(wantPush&&Notification.permission==='default')Notification.requestPermission(); // ticked by default: this click is the moment to ask
   b.disabled=true;b.textContent='Sending\u2026';
   fetch('/api/public/forms/__SLUG__',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json'},body:JSON.stringify(d)})
   .then(function(r){return r.json().then(function(j){return[r.ok,j]},function(){return[r.ok,{}]})})
   .then(function(x){
     var j=x[1];idle();
-    if(x[0]){done(j);return}
+    if(x[0]){done(j);if(wantPush)afterPush(d);return}
     var first=j.errors?Object.keys(j.errors)[0]:null;
     say('err',j.errors?Object.values(j.errors)[0][0]:(j.message||'Something went wrong. Please try again.'));
     if(first&&f.elements[first]){try{f.elements[first].focus()}catch(e){}}
@@ -139,7 +189,7 @@ f.addEventListener('submit',function(ev){
 })();
 JS;
 
-        return '<script nonce="'.$nonce.'">'.str_replace(['__SUFFIX__', '__SLUG__'], [$suffix, $slug], $js).'</script>';
+        return '<script nonce="'.$nonce.'">'.str_replace(['__SUFFIX__', '__SLUG__', '__PUSHKEY__'], [$suffix, $slug, self::e($pushKey)], $js).'</script>';
     }
 
     /** Stylesheet for the form; $style must come from FormFields::style() (validated). */

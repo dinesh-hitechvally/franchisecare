@@ -16,7 +16,7 @@ class MediaController extends Controller
     public function index(Request $request)
     {
         return Media::query()
-            ->when($request->query('kind'), fn ($q, $v) => $q->where('kind', $v))
+            ->when($request->query('kind'), fn ($q, $v) => $q->where('kind', strtoupper($v)))
             ->when($request->query('origin') === 'uploaded', fn ($q) => $q->where('source', 'upload'))
             ->when($request->query('origin') === 'online', fn ($q) => $q->where('source', '!=', 'upload'))
             ->when($request->query('source'), fn ($q, $v) => $q->where('source', $v))

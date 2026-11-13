@@ -87,27 +87,27 @@ class SendingSafetyTest extends TestCase
 
         $this->postJson("/api/campaigns/$id/cancel", [], $h)->assertStatus(422); // not sending yet
 
-        Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'sending']);
-        EmailLog::withoutGlobalScopes()->create(['company_id' => $co, 'campaign_id' => $id, 'recipient' => 'q@x.com', 'status' => 'queued', 'source' => 'campaign']);
-        EmailLog::withoutGlobalScopes()->create(['company_id' => $co, 'campaign_id' => $id, 'recipient' => 's@x.com', 'status' => 'sent', 'source' => 'campaign']);
+        Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'SENDING']);
+        EmailLog::withoutGlobalScopes()->create(['company_id' => $co, 'campaign_id' => $id, 'recipient' => 'q@x.com', 'status' => 'QUEUED', 'source' => 'campaign']);
+        EmailLog::withoutGlobalScopes()->create(['company_id' => $co, 'campaign_id' => $id, 'recipient' => 's@x.com', 'status' => 'SENT', 'source' => 'campaign']);
 
-        $this->postJson("/api/campaigns/$id/cancel", [], $h)->assertOk()->assertJsonPath('status', 'cancelled');
-        $this->assertSame(['sent', 'skipped'], EmailLog::withoutGlobalScopes()->orderBy('id')->pluck('status')->sort()->values()->all());
+        $this->postJson("/api/campaigns/$id/cancel", [], $h)->assertOk()->assertJsonPath('status', 'CANCELLED');
+        $this->assertSame(['SENT', 'SKIPPED'], EmailLog::withoutGlobalScopes()->orderBy('id')->pluck('status')->sort()->values()->all());
         $this->assertStringContainsString('stopped', EmailLog::withoutGlobalScopes()->where('recipient', 'q@x.com')->value('error'));
 
         // a late queue worker finds nothing left to send
         SendMessageJob::dispatchSync(EmailLog::withoutGlobalScopes()->where('recipient', 'q@x.com')->value('id'), 'email');
-        $this->assertSame('skipped', EmailLog::withoutGlobalScopes()->where('recipient', 'q@x.com')->value('status'));
+        $this->assertSame('SKIPPED', EmailLog::withoutGlobalScopes()->where('recipient', 'q@x.com')->value('status'));
     }
 
     public function test_campaigns_and_templates_can_be_duplicated(): void
     {
         $h = $this->owner();
         $id = $this->campaign($h);
-        Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'sent']);
+        Campaign::withoutGlobalScopes()->whereKey($id)->update(['status' => 'SENT']);
 
         $copy = $this->postJson("/api/campaigns/$id/duplicate", [], $h)->assertCreated()->json();
-        $this->assertSame(['Copy of Spring', 'draft', 'Hello'], [$copy['name'], $copy['status'], $copy['subject']]);
+        $this->assertSame(['Copy of Spring', 'DRAFT', 'Hello'], [$copy['name'], $copy['status'], $copy['subject']]);
         $this->assertNotSame($id, $copy['id']);
 
         $t = $this->postJson('/api/templates', ['name' => 'Promo', 'type' => 'email', 'subject' => 'S', 'body' => '<p>x</p>'], $h)->assertCreated()->json('id');

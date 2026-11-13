@@ -26,7 +26,7 @@ class SettingsController extends Controller
             'profile.industry' => 'nullable|string|max:120',
             'profile.support_email' => 'nullable|email|max:255',
             // the logo is picked from the media library (images only, this company's own): never a typed address or a direct upload
-            'profile.logo_media_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('media', 'id')->where('company_id', $request->user()->company_id)->where('kind', 'image')->whereNull('deleted_at')],
+            'profile.logo_media_id' => ['nullable', 'integer', \Illuminate\Validation\Rule::exists('media', 'id')->where('company_id', $request->user()->company_id)->where('kind', 'IMAGE')->whereNull('deleted_at')],
             'profile.city' => 'nullable|string|max:120',
             'profile.state' => 'nullable|string|max:120',
             'profile.postcode' => 'nullable|string|max:20',

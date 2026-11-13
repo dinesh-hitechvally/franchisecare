@@ -18,7 +18,7 @@ class PersonField extends Model
 
     protected function casts(): array
     {
-        return ['options' => 'array'];
+        return ['type' => \App\Casts\Upper::class, 'options' => 'array'];
     }
 
     public function values()

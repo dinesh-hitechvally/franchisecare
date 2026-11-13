@@ -26,7 +26,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
     public function handle(): void
     {
         // atomic lease so the scheduler and a queue retry can never process the same run twice
-        $leased = WorkflowRun::withoutGlobalScope('company')->whereKey($this->runId)->where('status', 'running')
+        $leased = WorkflowRun::withoutGlobalScope('company')->whereKey($this->runId)->where('status', 'RUNNING')
             ->where(fn ($q) => $q->whereNull('locked_until')->orWhere('locked_until', '<', now()))
             ->update(['locked_until' => now()->addMinutes(2)]);
         if (! $leased) {
@@ -131,7 +131,7 @@ class ProcessWorkflowRunJob implements ShouldQueue
                 }
                 $log = ($email ? \App\Models\EmailLog::class : \App\Models\SmsLog::class)::create([
                     'company_id' => $wf->company_id, 'workflow_id' => $wf->id, 'person_id' => $person->id,
-                    'source' => 'automation', 'recipient' => $to, 'body' => $body, 'status' => 'queued',
+                    'source' => 'automation', 'recipient' => $to, 'body' => $body, 'status' => 'QUEUED',
                 ] + ($email ? ['subject' => $subject] : []));
                 SendMessageJob::dispatch($log->id, $email ? 'email' : 'sms');
 

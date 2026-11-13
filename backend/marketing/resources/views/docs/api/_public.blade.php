@@ -18,7 +18,7 @@ Content-Type: application/json
     <li><b>Honeypot:</b> an extra field called <code>website</code> is a trap for robots; if it is filled in, the submission is silently ignored.</li>
     <li><b>Captcha:</b> a form with a captcha also needs <code>captcha</code> (the answer) and <code>captcha_token</code> (from the page that showed the sum). Each token works once, allows 5 wrong tries and expires after 6 hours.</li>
     <li><b>Result:</b> <code>existing</code> is <code>true</code> only when the form’s owner wrote a special message for people who are already in People; otherwise everybody gets the same answer, so a visitor cannot learn who is a contact. <code>redirect</code> is the address to send the visitor to afterwards, if one is set.</li>
-    <li>Normally you just embed the form (an iframe from <b>Share / embed</b>), which does all of this for you.</li>
+    <li>Normally you just embed the form (the JavaScript embed or the iframe from <b>Share / embed</b>), which does all of this for you. The JavaScript embed reads <code>GET /api/embed/forms/{company key}/{form id}</code> (markup, styles and the form's slug, only for an active form of that company) and then posts to this endpoint; the script is <code>/api/embed/forms.js?c={company key}</code>.</li>
   </ul>
 
   <h3>Hosted pages</h3>

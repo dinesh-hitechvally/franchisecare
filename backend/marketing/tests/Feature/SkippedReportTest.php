@@ -44,7 +44,7 @@ class SkippedReportTest extends TestCase
         // Delivery Reports lists everyone, newest filters first: the sent message, then the person without an email
         $all = $this->getJson("/api/reports/campaigns/$id/deliveries", $h)->assertOk()->json();
         $this->assertSame(2, $all['total']);
-        $this->assertSame(['sent', 'skipped'], collect($all['data'])->pluck('status')->all());
+        $this->assertSame(['SENT', 'SKIPPED'], collect($all['data'])->pluck('status')->all());
 
         $skipped = $this->getJson("/api/reports/campaigns/$id/deliveries?status=skipped", $h)->json();
         $this->assertSame(1, $skipped['total']);

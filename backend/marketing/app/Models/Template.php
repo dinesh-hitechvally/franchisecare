@@ -15,6 +15,6 @@ class Template extends Model
 
     protected function casts(): array
     {
-        return ['design' => 'array', 'attachments' => 'array'];
+        return ['type' => \App\Casts\Upper::class, 'design' => 'array', 'attachments' => 'array'];
     }
 }

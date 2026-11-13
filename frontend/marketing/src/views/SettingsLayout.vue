@@ -6,6 +6,7 @@ const GROUPS = [
     ['Company profile', '/settings/company', 'Name, address, contact details, email footer'],
     ['Email sending', '/settings/email', 'Sender, reply-to and SMTP delivery'],
     ['SMS sending', '/settings/sms', 'SMS provider and sender'],
+    ['Push notifications', '/settings/push', 'Browser and mobile app notifications'],
   ] },
   { title: 'Team', items: [['Users', '/settings/users', 'Who can sign in to this company']] },
   { title: 'Developers', items: [['API keys', '/settings/api', 'Connect websites, Zapier and other systems']] },

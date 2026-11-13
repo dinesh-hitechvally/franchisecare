@@ -16,7 +16,8 @@ class Campaign extends Model
     protected function casts(): array
     {
         return [
-            'design' => 'array', 'attachments' => 'array',
+            'type' => \App\Casts\Upper::class, 'push_platform' => \App\Casts\Upper::class,
+            'design' => 'array', 'attachments' => 'array', 'push_all_devices' => 'boolean',
             'scheduled_at' => 'datetime',
             'started_at' => 'datetime',
             'completed_at' => 'datetime',
@@ -48,10 +49,50 @@ class Campaign extends Model
         return $this->hasMany(SmsLog::class);
     }
 
-    /** The log relation of this campaign's own channel: email campaigns send emails, SMS campaigns send texts. */
+    public function pushLogs()
+    {
+        return $this->hasMany(PushLog::class);
+    }
+
+    public function socialLogs()
+    {
+        return $this->hasMany(SocialLog::class);
+    }
+
+    /** WhatsApp, Messenger or X: sent through a connected social account, to an id the person has on that platform. */
+    public function isSocial(): bool
+    {
+        return in_array($this->type, SocialLog::PLATFORMS, true);
+    }
+
+    /** The connected account (Integration) this social campaign sends through. */
+    public function socialAccount(): ?Integration
+    {
+        return $this->social_account_id ? Integration::withoutGlobalScope('company')->where('company_id', $this->company_id)->whereKey($this->social_account_id)->first() : null;
+    }
+
+    /** The log relation of this campaign's own channel: email campaigns send emails, SMS campaigns send texts, push campaigns send notifications. */
     public function logs()
     {
-        return $this->type === 'sms' ? $this->smsLogs() : $this->emailLogs();
+        return match (true) {
+            $this->type === 'sms' => $this->smsLogs(),
+            $this->type === 'push' => $this->pushLogs(),
+            $this->isSocial() => $this->socialLogs(),
+            default => $this->emailLogs(),
+        };
+    }
+
+    /** Narrows a people query to those this campaign can reach ($has = true) or cannot reach ($has = false) for lack of an address on its channel. */
+    public function whereAddress($query, bool $has)
+    {
+        if ($this->type === 'email' || $this->type === 'sms' || $this->type === 'whatsapp') {
+            $col = $this->type === 'email' ? 'people.email' : 'people.phone';
+
+            return $has ? $query->whereNotNull($col)->where($col, '!=', '') : $query->where(fn ($w) => $w->whereNull($col)->orWhere($col, ''));
+        }
+        $path = 'people.handles->'.$this->type; // messenger, x: the id stored on the person
+
+        return $has ? $query->whereNotNull($path)->where($path, '!=', '') : $query->where(fn ($w) => $w->whereNull($path)->orWhere($path, ''));
     }
 
     /** Everyone this campaign goes to (before unsubscribed / missing-address people are left out): its segment, its list, or all people. */
@@ -73,10 +114,21 @@ class Campaign extends Model
         return $query->where('company_id', $this->company_id);
     }
 
+    /** A push campaign to every registered device (linked to a person or not), not to an audience of people. */
+    public function toAllDevices(): bool
+    {
+        return $this->type === 'push' && (bool) $this->push_all_devices;
+    }
+
     /** The model that stores this campaign's messages. */
     public function logModel(): string
     {
-        return $this->type === 'sms' ? SmsLog::class : EmailLog::class;
+        return match (true) {
+            $this->type === 'sms' => SmsLog::class,
+            $this->type === 'push' => PushLog::class,
+            $this->isSocial() => SocialLog::class,
+            default => EmailLog::class,
+        };
     }
 
     /** Counts for both channels in one query; logTotals() then picks the ones for the campaign's own channel. */
@@ -84,17 +136,28 @@ class Campaign extends Model
     {
         return [
             'emailLogs as email_logs_count',
-            'emailLogs as email_sent' => fn ($q) => $q->where('status', 'sent'),
-            'emailLogs as email_failed' => fn ($q) => $q->where('status', 'failed'),
-            'emailLogs as email_skipped' => fn ($q) => $q->where('status', 'skipped'),
-            'emailLogs as email_logged' => fn ($q) => $q->where('status', 'logged'),
+            'emailLogs as email_sent' => fn ($q) => $q->where('status', 'SENT'),
+            'emailLogs as email_failed' => fn ($q) => $q->where('status', 'FAILED'),
+            'emailLogs as email_skipped' => fn ($q) => $q->where('status', 'SKIPPED'),
+            'emailLogs as email_logged' => fn ($q) => $q->where('status', 'LOGGED'),
             'emailLogs as email_opened' => fn ($q) => $q->whereNotNull('opened_at'),
             'emailLogs as email_clicked' => fn ($q) => $q->where('clicks', '>', 0),
             'smsLogs as sms_logs_count',
-            'smsLogs as sms_sent' => fn ($q) => $q->where('status', 'sent'),
-            'smsLogs as sms_failed' => fn ($q) => $q->where('status', 'failed'),
-            'smsLogs as sms_skipped' => fn ($q) => $q->where('status', 'skipped'),
-            'smsLogs as sms_logged' => fn ($q) => $q->where('status', 'logged'),
+            'smsLogs as sms_sent' => fn ($q) => $q->where('status', 'SENT'),
+            'smsLogs as sms_failed' => fn ($q) => $q->where('status', 'FAILED'),
+            'smsLogs as sms_skipped' => fn ($q) => $q->where('status', 'SKIPPED'),
+            'smsLogs as sms_logged' => fn ($q) => $q->where('status', 'LOGGED'),
+            'pushLogs as push_logs_count',
+            'pushLogs as push_sent' => fn ($q) => $q->where('status', 'SENT'),
+            'pushLogs as push_failed' => fn ($q) => $q->where('status', 'FAILED'),
+            'pushLogs as push_skipped' => fn ($q) => $q->where('status', 'SKIPPED'),
+            'pushLogs as push_logged' => fn ($q) => $q->where('status', 'LOGGED'),
+            'pushLogs as push_clicked' => fn ($q) => $q->where('clicks', '>', 0),
+            'socialLogs as social_logs_count',
+            'socialLogs as social_sent' => fn ($q) => $q->where('status', 'SENT'),
+            'socialLogs as social_failed' => fn ($q) => $q->where('status', 'FAILED'),
+            'socialLogs as social_skipped' => fn ($q) => $q->where('status', 'SKIPPED'),
+            'socialLogs as social_logged' => fn ($q) => $q->where('status', 'LOGGED'),
         ];
     }
 
@@ -106,15 +169,17 @@ class Campaign extends Model
     /** logs_count, sent_count, failed_count, skipped_count, opened_count, clicked_count for this campaign's own channel. */
     public function logTotals(): static
     {
-        $sms = $this->type === 'sms';
-        $this->setAttribute('logs_count', (int) ($sms ? $this->sms_logs_count : $this->email_logs_count));
-        $this->setAttribute('sent_count', (int) ($sms ? $this->sms_sent : $this->email_sent));
-        $this->setAttribute('failed_count', (int) ($sms ? $this->sms_failed : $this->email_failed));
-        $this->setAttribute('skipped_count', (int) ($sms ? $this->sms_skipped : $this->email_skipped) + (int) $this->audience_skipped); // stopped-before-sending messages are logged, people left out at send time are only counted
-        $this->setAttribute('logged_count', (int) ($sms ? $this->sms_logged : $this->email_logged)); // written to the log only, not delivered
-        $this->setAttribute('opened_count', $sms ? 0 : (int) $this->email_opened);
-        $this->setAttribute('clicked_count', $sms ? 0 : (int) $this->email_clicked);
+        $ch = in_array($this->type, ['sms', 'push'], true) ? $this->type : ($this->isSocial() ? 'social' : 'email'); // the counts of this campaign's own channel
+        $n = fn (string $k) => (int) $this->getAttribute($ch.'_'.$k);
+        $sms = in_array($ch, ['sms', 'social'], true); // no opens or clicks to count
+        $this->setAttribute('logs_count', $n('logs_count'));
+        $this->setAttribute('sent_count', $n('sent'));
+        $this->setAttribute('failed_count', $n('failed'));
+        $this->setAttribute('skipped_count', $n('skipped') + (int) $this->audience_skipped); // stopped-before-sending messages are logged, people left out at send time are only counted
+        $this->setAttribute('logged_count', $n('logged')); // written to the log only, not delivered
+        $this->setAttribute('opened_count', $ch === 'email' ? (int) $this->email_opened : 0);
+        $this->setAttribute('clicked_count', $sms ? 0 : $n('clicked'));
 
-        return $this->makeHidden(['email_logs_count', 'email_sent', 'email_failed', 'email_skipped', 'email_logged', 'email_opened', 'email_clicked', 'sms_logs_count', 'sms_sent', 'sms_failed', 'sms_skipped', 'sms_logged']);
+        return $this->makeHidden(['social_logs_count', 'social_sent', 'social_failed', 'social_skipped', 'social_logged', 'push_logs_count', 'push_sent', 'push_failed', 'push_skipped', 'push_logged', 'push_clicked', 'email_logs_count', 'email_sent', 'email_failed', 'email_skipped', 'email_logged', 'email_opened', 'email_clicked', 'sms_logs_count', 'sms_sent', 'sms_failed', 'sms_skipped', 'sms_logged']);
     }
 }

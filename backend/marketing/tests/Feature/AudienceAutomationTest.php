@@ -125,9 +125,9 @@ class AudienceAutomationTest extends TestCase
     {
         $t = $this->owner();
         $c = $this->call_as($t, 'POST', '/api/campaigns', ['name' => 'Later', 'type' => 'sms', 'body' => 'hi', 'scheduled_at' => now()->addDay()->toIso8601String()])->json('id');
-        $this->call_as($t, 'POST', "/api/campaigns/$c/send")->assertJsonPath('status', 'scheduled');
+        $this->call_as($t, 'POST', "/api/campaigns/$c/send")->assertJsonPath('status', 'SCHEDULED');
         $this->call_as($t, 'GET', '/api/campaigns?status=scheduled')->assertJsonPath('total', 1);
-        $this->call_as($t, 'POST', "/api/campaigns/$c/unschedule")->assertJsonPath('status', 'draft');
+        $this->call_as($t, 'POST', "/api/campaigns/$c/unschedule")->assertJsonPath('status', 'DRAFT');
         $this->call_as($t, 'GET', '/api/campaigns?type=email')->assertJsonPath('total', 0);
     }
 
@@ -207,7 +207,7 @@ class AudienceAutomationTest extends TestCase
 
         // email went out immediately, using the person's name
         $log = EmailLog::withoutGlobalScopes()->firstOrFail();
-        $this->assertSame('sent', $log->status);
+        $this->assertSame('SENT', $log->status);
         $this->assertSame('Hi Ann', $log->subject);
         $this->assertNotNull($log->workflow_id);
 

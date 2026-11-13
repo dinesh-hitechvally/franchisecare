@@ -18,7 +18,7 @@ const CONFIG = {
   landing_page: {
     title: 'Page histories', noun: 'Page', back: ['/pages', 'Back to pages'], records: '/landing-pages', all: 'All pages', search: 'Search by page name…',
     columns: { slug: 'Address (slug)', title: 'Title', html: 'Design', design: 'Design', published: 'Published', form_id: 'Form' },
-    open: (r, entry) => (entry.exists && entry.data.design?.kind === 'page' ? '/pages?edit=' + r.row_id + '&history=' + r.history_id : null), preview: true,
+    open: (r, entry) => (entry.exists && entry.data.design?.kind === 'page' ? '/pages/' + r.row_id + '?history=' + r.history_id : null), preview: true,
     intro: 'Every change made to your pages, newest first: who changed what, and when. Open a version to see the page exactly as it was. You can only look, nothing changes.',
   },
   form: {
@@ -30,14 +30,14 @@ const CONFIG = {
   template: {
     title: 'Template histories', noun: 'Template', back: ['/templates', 'Back to templates'], records: '/templates', all: 'All templates', search: 'Search by template name…',
     columns: { type: 'Channel', subject: 'Subject', body: 'Design', design: 'Design', attachments: 'Attachments' },
-    open: (r, entry) => (entry.exists && entry.data.type !== 'sms' ? '/templates?edit=' + r.row_id + '&history=' + r.history_id : null), preview: true,
+    open: (r, entry) => (entry.exists && entry.data.type !== 'sms' ? '/templates/' + r.row_id + '?history=' + r.history_id : null), preview: true,
     intro: 'Every change made to your email and SMS templates, newest first: who changed what, and when. Open a version to see the template exactly as it was. You can only look, nothing changes.',
   },
   campaign: {
     title: 'Campaign histories', noun: 'Campaign', back: ['/campaigns', 'Back to campaigns'], records: null, all: null, search: 'Search by campaign name…',
     columns: { type: 'Channel', subject: 'Subject', body: 'Design', design: 'Design', template_id: 'Template', people_list_id: 'Audience', tag_id: 'Audience tag', segment_id: 'Audience', scheduled_at: 'Schedule', started_at: 'Started', completed_at: 'Finished', status: 'Status', attachments: 'Attachments' },
     // a campaign that is still a draft or scheduled opens in its editor; one that has gone out can no longer be edited, so it gets the read-only preview
-    open: (r, entry) => (entry.exists && entry.data.type === 'email' && ['draft', 'scheduled'].includes(entry.current_status) ? '/campaigns/' + r.row_id + '?history=' + r.history_id : null), preview: true,
+    open: (r, entry) => (entry.exists && entry.data.type === 'email' && ['draft', 'scheduled'].includes(String(entry.current_status || '').toLowerCase()) ? '/campaigns/' + r.row_id + '?history=' + r.history_id : null), preview: true,
     intro: 'Every change made to your campaigns, newest first: who changed what, and when. Open a version to see the campaign content exactly as it was. You can only look, nothing changes.',
   },
   person: {
@@ -57,6 +57,12 @@ const CONFIG = {
     columns: { url: 'URL', events: 'Events', active: 'Active' },
     open: null, details: true,
     intro: 'Every change made to your webhooks, newest first: who changed what, and when, including when one was switched off. The signing secret is never recorded. Click View changes to see exactly what was different. For what was actually sent to each URL, see Deliveries.',
+  },
+  push_device: {
+    title: 'Device histories', noun: 'Device', back: ['/devices', 'Back to devices'], records: null, all: null, search: 'Search by device or person…',
+    columns: { platform: 'Type', person_id: 'Linked person (id)', label: 'Device', token: 'Push address (changes each time it is turned on again)', token_hash: 'Push address id', keys: 'Browser keys', device_uid: 'Browser id', page_url: 'Enabled from page', status: 'Status', last_seen_at: 'Last seen' },
+    open: null, details: true,
+    intro: 'Every change to your push notification devices, newest first: when a browser or app registered, was linked to a person, turned notifications off or on again, or was removed. Click View changes to see exactly what was different. The device token and keys are never recorded.',
   },
   segment: {
     title: 'Segment histories', noun: 'Segment', back: ['/segments', 'Back to segments'], records: '/segments', all: 'All segments', search: 'Search by segment name…',

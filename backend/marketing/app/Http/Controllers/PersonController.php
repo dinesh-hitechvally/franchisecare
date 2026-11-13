@@ -47,6 +47,9 @@ class PersonController extends Controller
         if ($tag = $request->query('tag_id')) {
             $q->whereHas('tags', fn ($w) => $w->where('tags.id', $tag));
         }
+        if ($request->boolean('has_device')) { // push campaigns: only people who have a browser or app registered
+            $q->whereHas('pushDevices', fn ($w) => $w->where('status', 'ACTIVE'))->withCount(['pushDevices as devices_count' => fn ($w) => $w->where('status', 'ACTIVE')]);
+        }
 
         return $q;
     }
@@ -237,8 +240,15 @@ class PersonController extends Controller
             'is_subscribed' => 'boolean',
             'custom' => 'nullable|array',
             'custom.*' => 'nullable|string|max:2000',
+            'handles' => 'nullable|array',
+            'handles.messenger' => 'nullable|string|max:60',
+            'handles.x' => 'nullable|string|max:60',
         ]);
         unset($data['custom']); // handled separately by customAnswers()
+        if (array_key_exists('handles', $data)) {
+            // the ids this person has on Messenger / X (WhatsApp uses the phone number); blanks are dropped
+            $data['handles'] = array_filter(array_map(fn ($v) => trim((string) $v), $data['handles'] ?? []), fn ($v) => $v !== '') ?: null;
+        }
 
         return $data;
     }

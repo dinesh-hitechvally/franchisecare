@@ -35,7 +35,7 @@ class CampaignSeeder extends DemoSeeder
             if (Campaign::withoutGlobalScopes()->where(['company_id' => $biz, 'name' => $name])->exists()) {
                 continue;
             }
-            (new Campaign)->forceFill(['company_id' => $biz, 'name' => $name, 'type' => $type, 'subject' => $subject, 'body' => $body, 'status' => 'draft'] + $audience)->save();
+            (new Campaign)->forceFill(['company_id' => $biz, 'name' => $name, 'type' => $type, 'subject' => $subject, 'body' => $body, 'status' => 'DRAFT'] + $audience)->save();
         }
     }
 }

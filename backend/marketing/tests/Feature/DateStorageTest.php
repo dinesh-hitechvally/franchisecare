@@ -68,15 +68,15 @@ class DateStorageTest extends TestCase
         $this->postJson('/api/people', ['email' => 'ann@x.com'], $h)->assertCreated();
         $this->travelTo(now()->setDate(2026, 11, 1)->setTime(8, 0, 0));
         $id = $this->postJson('/api/campaigns', ['name' => 'C', 'type' => 'email', 'subject' => 'S', 'body' => '<p>x</p>', 'scheduled_at' => '2026-11-01 09:00:00'], $h)->json('id');
-        $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk()->assertJsonPath('status', 'scheduled');
+        $this->postJson("/api/campaigns/$id/send", [], $h)->assertOk()->assertJsonPath('status', 'SCHEDULED');
 
         $this->travelTo(now()->setTime(8, 59, 0));
         $this->artisan('campaigns:dispatch-scheduled')->assertSuccessful();
-        $this->assertSame('scheduled', DB::table('campaigns')->where('id', $id)->value('status')); // 08:59 UTC: not yet
+        $this->assertSame('SCHEDULED', DB::table('campaigns')->where('id', $id)->value('status')); // 08:59 UTC: not yet
 
         $this->travelTo(now()->setTime(9, 0, 1));
         $this->artisan('campaigns:dispatch-scheduled')->assertSuccessful();
-        $this->assertContains(DB::table('campaigns')->where('id', $id)->value('status'), ['sending', 'sent']); // 09:00 UTC: gone
+        $this->assertContains(DB::table('campaigns')->where('id', $id)->value('status'), ['SENDING', 'SENT']); // 09:00 UTC: gone
     }
     public function test_sent_opened_and_click_times_are_all_saved_as_utc(): void
     {

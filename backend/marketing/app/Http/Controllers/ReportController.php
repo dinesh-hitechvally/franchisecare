@@ -24,9 +24,9 @@ class ReportController extends Controller
 
     public function campaigns(Request $request)
     {
-        $rows = Campaign::whereIn('status', ['sending', 'sent', 'failed'])
-            ->when($request->query('type'), fn ($q, $v) => $q->where('type', $v))
-            ->when(in_array($request->query('status'), ['sending', 'sent', 'failed'], true), fn ($q) => $q->where('status', $request->query('status')))
+        $rows = Campaign::whereIn('status', ['SENDING', 'SENT', 'FAILED'])
+            ->when($request->query('type'), fn ($q, $v) => $q->where('type', strtoupper($v)))
+            ->when(in_array(strtoupper((string) $request->query('status')), ['SENDING', 'SENT', 'FAILED'], true), fn ($q) => $q->where('status', strtoupper($request->query('status'))))
             ->when($request->query('search'), fn ($q, $v) => $q->where('name', 'like', "%$v%"))
             ->when($request->query('from'), fn ($q, $v) => $q->where('created_at', '>=', $v.' 00:00:00'))
             ->when($request->query('to'), fn ($q, $v) => $q->where('created_at', '<=', $v.' 23:59:59'))
@@ -45,14 +45,15 @@ class ReportController extends Controller
 
     public function campaign(Campaign $campaign)
     {
-        // emails and texts are in different tables; only emails can be opened or clicked
-        $isEmail = $campaign->type !== 'sms';
+        // emails, texts and notifications are in different tables; only emails can be opened, emails and notifications can be clicked
+        $isEmail = $campaign->type === 'email';
+        $isPush = $campaign->type === 'push';
         $logs = $campaign->logModel()::where('campaign_id', $campaign->id);
         $count = fn ($s) => (clone $logs)->where('status', $s)->count();
-        $sent = $count('sent');
+        $sent = $count('SENT');
         $opened = $isEmail ? (clone $logs)->whereNotNull('opened_at')->count() : 0;
-        $clickers = $isEmail ? (clone $logs)->where('clicks', '>', 0)->count() : 0;
-        $clicks = $isEmail ? (int) (clone $logs)->sum('clicks') : 0;
+        $clickers = $isEmail || $isPush ? (clone $logs)->where('clicks', '>', 0)->count() : 0;
+        $clicks = $isEmail || $isPush ? (int) (clone $logs)->sum('clicks') : 0;
 
         $span = max(1, min(14, (int) ceil(($campaign->started_at ?? $campaign->created_at)->diffInDays(now())) + 1));
         $opens = $isEmail ? (clone $logs)->selectRaw('DATE(opened_at) as d, COUNT(*) as c')->whereNotNull('opened_at')
@@ -63,7 +64,7 @@ class ReportController extends Controller
         return [
             'campaign' => $campaign->load('list:id,name', 'segment:id,name'),
             'stats' => [
-                'recipients' => (clone $logs)->count(), 'sent' => $sent, 'failed' => $count('failed'), 'skipped' => $count('skipped') + (int) $campaign->audience_skipped, 'logged' => $count('logged'),
+                'recipients' => (clone $logs)->count(), 'sent' => $sent, 'failed' => $count('FAILED'), 'skipped' => $count('SKIPPED') + (int) $campaign->audience_skipped, 'logged' => $count('LOGGED'),
                 'opened' => $opened, 'open_rate' => $this->pct($opened, $sent),
                 'clickers' => $clickers, 'clicks' => $clicks, 'click_rate' => $this->pct($clickers, $sent),
                 'click_to_open' => $this->pct($clickers, $opened),
@@ -81,23 +82,25 @@ class ReportController extends Controller
      */
     public function deliveries(Request $request, Campaign $campaign)
     {
-        $isEmail = $campaign->type !== 'sms';
-        $status = (string) $request->query('status', '');
+        $isEmail = $campaign->type === 'email';
+        $isPush = $campaign->type === 'push';
+        $status = strtoupper((string) $request->query('status', '')); // SENT, FAILED… (either case is accepted)
         $search = trim((string) $request->query('search', ''));
         $per = 20;
         $page = max(1, (int) $request->query('page', 1));
         $offset = ($page - 1) * $per;
-        $col = $isEmail ? 'people.email' : 'people.phone';
 
         $logs = $campaign->logModel()::where('campaign_id', $campaign->id)
-            ->when(in_array($status, ['sent', 'logged', 'failed', 'queued'], true), fn ($q) => $q->where('status', $status))
+            ->when(in_array($status, ['SENT', 'LOGGED', 'FAILED', 'QUEUED'], true), fn ($q) => $q->where('status', $status))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('recipient', 'like', "%$search%")
                 ->orWhereIn('person_id', Person::where(fn ($c) => $c->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%"))->select('id'))));
-        $left = $campaign->audienceQuery()->where('people.is_subscribed', true)->where(fn ($q) => $q->whereNull($col)->orWhere($col, ''))
+        $left = $campaign->audienceQuery()->where('people.is_subscribed', true)
+            ->when($campaign->toAllDevices(), fn ($q) => $q->whereRaw('1 = 0'))
+            ->when($isPush, fn ($q) => $q->whereDoesntHave('pushDevices', fn ($d) => $d->where('status', 'ACTIVE')), fn ($q) => $campaign->whereAddress($q, false))
             ->when($search !== '', fn ($q) => $q->where(fn ($w) => $w->where('first_name', 'like', "%$search%")->orWhere('last_name', 'like', "%$search%")));
 
-        $wantLogs = $status !== 'skipped';
-        $wantLeft = $status === '' || $status === 'skipped';
+        $wantLogs = $status !== 'SKIPPED';
+        $wantLeft = $status === '' || $status === 'SKIPPED';
         $logsTotal = $wantLogs ? (clone $logs)->count() : 0;
         $leftTotal = $wantLeft ? (clone $left)->count() : 0;
 
@@ -112,8 +115,8 @@ class ReportController extends Controller
             $skip = max(0, $offset - $logsTotal);
             $items = $items->concat((clone $left)->orderBy('people.id')->offset($skip)->limit($per - $items->count())->get(['people.id', 'first_name', 'last_name', 'email', 'phone'])
                 ->map(fn ($c) => [
-                    'name' => trim($c->first_name.' '.$c->last_name), 'recipient' => '', 'status' => 'skipped', 'at' => null,
-                    'error' => $isEmail ? 'No email address found for this person' : 'No phone number found for this person',
+                    'name' => trim($c->first_name.' '.$c->last_name), 'recipient' => '', 'status' => 'SKIPPED', 'at' => null,
+                    'error' => $isPush ? 'No device that accepts notifications was found for this person' : ($isEmail ? 'No email address found for this person' : 'No phone number found for this person'),
                 ]));
         }
 
@@ -150,16 +153,16 @@ class ReportController extends Controller
         $days = in_array((int) $request->query('days'), [7, 14, 30, 60, 90], true) ? (int) $request->query('days') : 30;
         $from = now()->subDays($days - 1)->startOfDay();
 
-        $sentEmails = EmailLog::where('status', 'sent')->where('sent_at', '>=', $from);
-        $sentTexts = SmsLog::where('status', 'sent')->where('sent_at', '>=', $from);
+        $sentEmails = EmailLog::where('status', 'SENT')->where('sent_at', '>=', $from);
+        $sentTexts = SmsLog::where('status', 'SENT')->where('sent_at', '>=', $from);
         $emailSent = (clone $sentEmails)->count();
         $sentCount = $emailSent + (clone $sentTexts)->count();
         $opened = EmailLog::whereNotNull('opened_at')->where('opened_at', '>=', $from)->count();
         $clickers = EmailLog::where('clicks', '>', 0)->where('sent_at', '>=', $from)->count();
         $biz = $request->user()->company_id;
 
-        $top = Campaign::where('type', 'email')->where('status', 'sent')->where('completed_at', '>=', $from)
-            ->withCount(['emailLogs as sent_count' => fn ($q) => $q->where('status', 'sent'), 'emailLogs as opened_count' => fn ($q) => $q->whereNotNull('opened_at')])
+        $top = Campaign::where('type', 'EMAIL')->where('status', 'SENT')->where('completed_at', '>=', $from)
+            ->withCount(['emailLogs as sent_count' => fn ($q) => $q->where('status', 'SENT'), 'emailLogs as opened_count' => fn ($q) => $q->whereNotNull('opened_at')])
             ->get()->filter(fn ($c) => $c->sent_count > 0)
             ->map(fn ($c) => ['id' => $c->id, 'name' => $c->name, 'sent' => $c->sent_count, 'open_rate' => $this->pct($c->opened_count, $c->sent_count)])
             ->sortByDesc('open_rate')->take(5)->values();
@@ -168,7 +171,7 @@ class ReportController extends Controller
             'days' => $days,
             'totals' => [
                 'sent' => $sentCount, 'emails' => $emailSent, 'sms' => $sentCount - $emailSent,
-                'failed' => EmailLog::where('status', 'failed')->where('created_at', '>=', $from)->count() + SmsLog::where('status', 'failed')->where('created_at', '>=', $from)->count(),
+                'failed' => EmailLog::where('status', 'FAILED')->where('created_at', '>=', $from)->count() + SmsLog::where('status', 'FAILED')->where('created_at', '>=', $from)->count(),
                 'open_rate' => $this->pct($opened, $emailSent), 'click_rate' => $this->pct($clickers, $emailSent),
                 'campaigns' => Campaign::where('created_at', '>=', $from)->count(),
             ],
@@ -189,7 +192,7 @@ class ReportController extends Controller
         $total = Person::count();
         $since = now()->subDays(29)->startOfDay();
         $engaged = EmailLog::whereNotNull('opened_at')->where('opened_at', '>=', now()->subDays(30))->distinct()->count('person_id');
-        $received = EmailLog::where('status', 'sent')->distinct()->count('person_id');
+        $received = EmailLog::where('status', 'SENT')->distinct()->count('person_id');
         $everOpened = EmailLog::whereNotNull('opened_at')->distinct()->count('person_id');
 
         return [

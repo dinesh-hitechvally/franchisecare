@@ -13,7 +13,7 @@ const forms = computed(() => d.value.forms.filter((f) => has(f.name) && (state.v
 const pages = computed(() => d.value.pages.filter((p) => (has(p.name) || has(p.form)) && (state.value === '' || (p.published === false ? 'draft' : 'live') === state.value)))
 const dirty = computed(() => q.value !== '' || state.value !== '')
 const clear = () => { q.value = ''; state.value = '' }
-const SRC = { manual: 'Added manually', import: 'CSV import', form: 'Sign-up form', api: 'API' }
+const SRC = { manual: 'Added manually', import: 'CSV import', form: 'Sign-up form', api: 'API', shopify: 'Shopify', woocommerce: 'WooCommerce', wordpress: 'WordPress', magento: 'Magento', hubspot: 'HubSpot', mailchimp: 'Mailchimp', klaviyo: 'Klaviyo', brevo: 'Brevo', stripe: 'Stripe' }
 const signups = computed(() => [{ name: 'Submissions', color: '#4caf50', points: d.value.signups_30d }])
 const rate = (v) => (v === null || v === undefined ? '—' : v + '%')
 

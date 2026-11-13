@@ -27,12 +27,12 @@ return new class extends Migration
             $table->dateTime('deleted_at')->nullable();
 
             $table->unsignedBigInteger('history_company_id')->nullable();
-            $table->string('change_action', 20);            // created | updated | deleted | restored | purged
+            $table->enum('change_action', ['CREATED', 'UPDATED', 'DELETED', 'RESTORED', 'PURGED', 'BASELINE']);
             $table->json('changed_fields')->nullable();     // which columns differ from the previous copy
             $table->string('record_label')->nullable();     // readable name of the row at that moment
             $table->unsignedBigInteger('changed_by')->nullable();
             $table->string('changed_by_name')->nullable();
-            $table->string('change_source', 20);            // dashboard | api | public | system
+            $table->enum('change_source', ['DASHBOARD', 'API', 'PUBLIC', 'SYSTEM']);
             $table->string('change_ip', 45)->nullable();
             $table->dateTime('changed_at')->useCurrent();
 

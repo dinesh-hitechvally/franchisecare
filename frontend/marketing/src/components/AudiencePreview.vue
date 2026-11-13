@@ -5,7 +5,7 @@ import api from '../api'
 import Modal from './Modal.vue'
 import Pager from './Pager.vue'
 
-const props = defineProps({ listId: { type: [Number, String], default: '' }, segmentId: { type: [Number, String], default: '' }, tagId: { type: [Number, String], default: '' }, status: { type: String, default: '' }, type: { type: String, default: 'email' } })
+const props = defineProps({ listId: { type: [Number, String], default: '' }, segmentId: { type: [Number, String], default: '' }, tagId: { type: [Number, String], default: '' }, status: { type: String, default: '' }, type: { type: String, default: 'email' }, hasDevice: Boolean })
 
 const PREVIEW = 5
 const rows = ref([])
@@ -18,7 +18,7 @@ const search = ref('')
 const modalLoading = ref(false)
 
 const emit = defineEmits(['counts'])
-const params = (extra) => ({ ...extra, list_id: props.listId || undefined, segment_id: props.segmentId || undefined, tag_id: props.tagId || undefined, status: props.status || undefined })
+const params = (extra) => ({ ...extra, list_id: props.listId || undefined, segment_id: props.segmentId || undefined, tag_id: props.tagId || undefined, status: props.status || undefined, has_device: props.hasDevice ? 1 : undefined })
 const channel = (c) => (props.type === 'sms' ? { value: c.phone, ok: c.is_subscribed } : { value: c.email, ok: c.is_subscribed })
 
 async function load() {
@@ -44,23 +44,24 @@ async function loadAll(page = 1) {
 function openAll() { search.value = ''; all.value = true; loadAll(1) }
 let t
 watch(search, () => { clearTimeout(t); t = setTimeout(() => loadAll(1), 300) })
-watch(() => [props.listId, props.segmentId, props.tagId, props.status], load)
+watch(() => [props.listId, props.segmentId, props.tagId, props.status, props.hasDevice], load)
 onMounted(load)
 </script>
 
 <template>
   <div class="aud">
     <div class="top">
-      <b>{{ loading ? 'Loading audience…' : `${total} ${total === 1 ? 'person' : 'people'}${props.status ? ' (' + props.status + ')' : ' in this audience'}` }}</b>
+      <b>{{ loading ? 'Loading audience…' : `${total} ${total === 1 ? 'person' : 'people'}${props.hasDevice ? ' with a device' : ''}${props.status ? ' (' + props.status + ')' : ' in this audience'}` }}</b>
       <button v-if="total > PREVIEW" type="button" class="btn ghost sm" @click="openAll">Show all ({{ total }})</button>
     </div>
-    <p v-if="!loading && !rows.length" class="empty">No people in this audience yet.</p>
+    <p v-if="!loading && !rows.length" class="empty">{{ hasDevice ? 'Nobody in this audience has a device registered yet.' : 'No people in this audience yet.' }}</p>
     <table v-else-if="rows.length">
-      <thead><tr><th>Name</th><th>Email</th><th v-if="type === 'sms'">Phone</th><th>Subscription</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th v-if="['sms', 'whatsapp'].includes(type)">Phone</th><th v-if="['messenger', 'x'].includes(type)">{{ type === 'x' ? 'X ID' : 'Messenger ID' }}</th><th v-if="hasDevice">Devices</th><th>Subscription</th></tr></thead>
       <tr v-for="c in rows" :key="c.id">
         <td>{{ [c.first_name, c.last_name].filter(Boolean).join(' ') || '—' }}</td>
         <td>{{ c.email || '—' }}</td>
-        <td v-if="type === 'sms'">{{ c.phone || '—' }}</td>
+        <td v-if="['sms', 'whatsapp'].includes(type)">{{ c.phone || '—' }}</td><td v-if="['messenger', 'x'].includes(type)">{{ c.handles?.[type] || '—' }}</td>
+        <td v-if="hasDevice">{{ c.devices_count }}</td>
         <td><span class="badge" :class="c.is_subscribed ? 'sent' : 'failed'">{{ c.is_subscribed ? 'Subscribed' : 'Unsubscribed' }}</span></td>
       </tr>
     </table>
@@ -71,11 +72,12 @@ onMounted(load)
     <p v-if="modalLoading && !full.length" class="empty">Loading…</p>
     <p v-else-if="!full.length" class="empty">No person matches.</p>
     <table v-else>
-      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Subscription</th></tr></thead>
+      <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th v-if="hasDevice">Devices</th><th>Subscription</th></tr></thead>
       <tr v-for="c in full" :key="c.id">
         <td>{{ [c.first_name, c.last_name].filter(Boolean).join(' ') || '—' }}</td>
         <td>{{ c.email || '—' }}</td>
         <td>{{ c.phone || '—' }}</td>
+        <td v-if="hasDevice">{{ c.devices_count }}</td>
         <td><span class="badge" :class="c.is_subscribed ? 'sent' : 'failed'">{{ c.is_subscribed ? 'Subscribed' : 'Unsubscribed' }}</span></td>
       </tr>
     </table>

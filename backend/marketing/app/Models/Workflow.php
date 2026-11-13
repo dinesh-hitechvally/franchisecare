@@ -15,7 +15,7 @@ class Workflow extends Model
 
     protected function casts(): array
     {
-        return ['trigger_config' => 'array', 'steps' => 'array'];
+        return ['status' => \App\Casts\Upper::class, 'trigger_config' => 'array', 'steps' => 'array'];
     }
 
     public function runs()

@@ -7,7 +7,7 @@ import { useAuth } from '../stores/auth'
 import api, { errorMessage } from '../api'
 import { fmtDate, fmtDateTime } from '../format'
 import RichText from './RichText.vue'
-import { BLOCKS, FIELDS, LAYOUTS, setForms, defaultSettings, newBlock, renderBlock, renderBody, renderPage, pageCss, pageVars, uid } from '../builder/pageBlocks'
+import { BLOCKS, FIELDS, LAYOUTS, setForms, defaultSettings, newBlock, renderBlock, renderBody, renderPage, pageCss, pageVars, uid, upgradeBlock } from '../builder/pageBlocks'
 
 // Landing-page builder (a real web page, not an email). Pass `initial` ({ name, design }); emits `save` / `close`.
 const props = defineProps({ initial: Object, saving: Boolean, error: String, readonly: Boolean, note: String, historyId: [Number, String], startVersion: Number, savedTick: { type: Number, default: 0 }, urlBase: { type: String, default: '' }, forms: { type: Array, default: () => [] } })
@@ -18,6 +18,7 @@ const init = props.initial || {}
 const meta = reactive({ name: init.name || '', slug: init.slug || '', published: !!init.published })
 const design = ref(init.design?.kind === 'page' ? JSON.parse(JSON.stringify(init.design)) : null)
 // the browser tab title is a page setting: it lives in the design and becomes the <title> of the page
+if (design.value?.blocks) design.value.blocks = design.value.blocks.map(upgradeBlock)
 if (design.value) design.value.settings = { ...defaultSettings(), ...(design.value.settings || {}), title: design.value.settings?.title || init.title || '' }
 
 // Page name and browser tab title help each other: while one is empty, whatever you type in the other fills it in too
@@ -60,9 +61,13 @@ const copied = ref(false)
 const s = computed(() => ({ ...defaultSettings(), ...(design.value?.settings || {}) }))
 const blocks = computed(() => design.value?.blocks || [])
 const current = computed(() => blocks.value.find((b) => b.id === selected.value))
-const fields = computed(() => (current.value ? FIELDS[current.value.type] || [] : []))
-// colours, sliders, choices and tick-boxes (and the background photo) are design; text, links, images and lists are content
-const isDesign = ([k, , kind]) => ['color', 'range', 'select', 'check'].includes(kind) || k === 'bgImage'
+const fields = computed(() => {
+  const f = current.value ? FIELDS[current.value.type] || [] : []
+  return typeof f === 'function' ? f(current.value) : f // a block's fields may depend on its own settings (a push or a normal notification)
+})
+// colours, sliders, choices and tick-boxes (and the background photo) are design; text, links, images and lists are content.
+// A field can say otherwise with { tab: 'content' } in its options (what a notification's button does is content, not looks).
+const isDesign = ([k, , kind, o]) => (o?.tab ? o.tab === 'design' : ['color', 'range', 'select', 'check'].includes(kind) || k === 'bgImage')
 const shownFields = computed(() => fields.value.filter((fd) => (side.value === 'design') === isDesign(fd)))
 const html = computed(() => (design.value ? renderPage(design.value) : ''))
 const css = pageCss()

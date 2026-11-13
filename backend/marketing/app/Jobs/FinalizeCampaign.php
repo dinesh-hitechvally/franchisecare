@@ -15,15 +15,15 @@ class FinalizeCampaign
         }
         $logs = fn () => $campaign->logModel()::withoutGlobalScope('company')->where('campaign_id', $campaignId);
 
-        if ($logs()->where('status', 'queued')->exists()) {
+        if ($logs()->where('status', 'QUEUED')->exists()) {
             return;
         }
 
-        $allFailed = ! $logs()->where('status', 'sent')->exists()
-            && $logs()->where('status', 'failed')->exists();
+        $allFailed = ! $logs()->where('status', 'SENT')->exists()
+            && $logs()->where('status', 'FAILED')->exists();
 
-        $changed = Campaign::withoutGlobalScope('company')->whereKey($campaignId)->where('status', 'sending')->update([
-            'status' => $allFailed ? 'failed' : 'sent',
+        $changed = Campaign::withoutGlobalScope('company')->whereKey($campaignId)->where('status', 'SENDING')->update([
+            'status' => $allFailed ? 'FAILED' : 'SENT',
             'completed_at' => now(),
         ]);
 
@@ -33,7 +33,7 @@ class FinalizeCampaign
             $count = fn ($s) => $logs()->where('status', $s)->count();
             \App\Services\WebhookDispatcher::dispatch($c->company_id, 'campaign.sent', [
                 'id' => $c->id, 'name' => $c->name, 'type' => $c->type, 'status' => $c->status,
-                'sent' => $count('sent'), 'failed' => $count('failed'), 'skipped' => $count('skipped') + (int) $c->audience_skipped, 'logged' => $count('logged'),
+                'sent' => $count('SENT'), 'failed' => $count('FAILED'), 'skipped' => $count('SKIPPED') + (int) $c->audience_skipped, 'logged' => $count('LOGGED'),
             ]);
         }
     }

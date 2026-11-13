@@ -34,7 +34,7 @@ class Automation
     public static function fire(string $type, Person $person, array $ctx = []): void
     {
         $workflows = Workflow::withoutGlobalScope('company')
-            ->where('company_id', $person->company_id)->where('status', 'active')->where('trigger_type', $type)->get();
+            ->where('company_id', $person->company_id)->where('status', 'ACTIVE')->where('trigger_type', $type)->get();
 
         foreach ($workflows as $wf) {
             $cfg = $wf->trigger_config ?? [];
@@ -60,7 +60,7 @@ class Automation
     public static function startFor(Workflow $wf, Person $person): bool
     {
         // a person can't be inside the same workflow twice at once
-        if (WorkflowRun::withoutGlobalScope('company')->where('workflow_id', $wf->id)->where('person_id', $person->id)->where('status', 'running')->exists()) {
+        if (WorkflowRun::withoutGlobalScope('company')->where('workflow_id', $wf->id)->where('person_id', $person->id)->where('status', 'RUNNING')->exists()) {
             return false;
         }
 
@@ -87,9 +87,9 @@ class Automation
     {
         $started = 0;
         $today = now()->startOfDay();
-        foreach (Workflow::withoutGlobalScope('company')->where('status', 'active')->where('trigger_type', 'date_reached')->get() as $wf) {
+        foreach (Workflow::withoutGlobalScope('company')->where('status', 'ACTIVE')->where('trigger_type', 'date_reached')->get() as $wf) {
             $cfg = $wf->trigger_config ?? [];
-            $field = PersonField::withoutGlobalScope('company')->where('company_id', $wf->company_id)->where('type', 'date')->find($cfg['field_id'] ?? 0);
+            $field = PersonField::withoutGlobalScope('company')->where('company_id', $wf->company_id)->where('type', 'DATE')->find($cfg['field_id'] ?? 0);
             if (! $field) {
                 continue;
             }
@@ -119,12 +119,12 @@ class Automation
     protected static function inactiveTriggers(): int
     {
         $started = 0;
-        foreach (Workflow::withoutGlobalScope('company')->where('status', 'active')->where('trigger_type', 'inactive')->get() as $wf) {
+        foreach (Workflow::withoutGlobalScope('company')->where('status', 'ACTIVE')->where('trigger_type', 'inactive')->get() as $wf) {
             $days = max(1, (int) (($wf->trigger_config ?? [])['days'] ?? 30));
             $cut = now()->subDays($days)->toDateTimeString();
 
             // received our email at least $days ago, and opened none since then (or ever)
-            $ids = EmailLog::withoutGlobalScope('company')->where('company_id', $wf->company_id)->where('status', 'sent')->whereNotNull('person_id')
+            $ids = EmailLog::withoutGlobalScope('company')->where('company_id', $wf->company_id)->where('status', 'SENT')->whereNotNull('person_id')
                 ->selectRaw('person_id')->groupBy('person_id')
                 ->havingRaw('MIN(sent_at) < ?', [$cut])->havingRaw('(MAX(opened_at) IS NULL OR MAX(opened_at) < ?)', [$cut])
                 ->pluck('person_id');

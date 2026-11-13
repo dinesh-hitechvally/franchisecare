@@ -10,6 +10,8 @@ export const FIELD_TYPES = {
   phone: { label: 'Mobile', icon: 'sms', group: 'People fields', unique: true, hint: 'Saved as the person’s phone number', def: { label: 'Mobile', placeholder: '+61 400 000 000' } },
   subscribe: { label: 'Subscribe to newsletter', icon: 'email', group: 'People fields', unique: true, hint: 'A tick box: people who tick it are subscribed to your marketing emails. Not saved as a person field.', def: { label: 'Subscribe me to the newsletter' } },
 
+  push: { label: 'Push notifications', icon: 'bell', group: 'People fields', unique: true, hint: 'A tick box that asks the visitor’s browser to allow notifications on this device. No email is needed: the browser becomes a device. If the form also asks for an email or mobile, the device is linked to that person. Not saved as a person field.', def: { label: 'Send me notifications on this device' } },
+
   text: { label: 'Short text', icon: 'text', group: 'Other fields', custom: true, def: { label: 'Your question' } },
   textarea: { label: 'Long text', icon: 'template', group: 'Other fields', custom: true, def: { label: 'Message' } },
   number: { label: 'Number', icon: 'chart', group: 'Other fields', custom: true, def: { label: 'Number' } },
@@ -36,7 +38,7 @@ export const GROUP_INFO = {
   Content: 'Text shown in the form that visitors do not answer: headings and paragraphs to explain the form or split it into sections.',
 }
 
-export const newField = (type) => ({ id: uid(), key: null, type, label: '', placeholder: '', help: '', required: false, options: [], default: '', rules: {}, width: 'full', to_person: type !== 'textarea' && type !== 'subscribe' && type !== 'captcha', ...FIELD_TYPES[type].def })
+export const newField = (type) => ({ id: uid(), key: null, type, label: '', placeholder: '', help: '', required: false, options: [], default: '', rules: {}, width: 'full', to_person: type !== 'textarea' && type !== 'subscribe' && type !== 'push' && type !== 'captcha', ...FIELD_TYPES[type].def })
 
 /** Column layout: fields flow left to right and wrap, so two ½ fields share a row. */
 export const WIDTHS = [['full', 'Full'], ['two_thirds', '⅔'], ['half', '½'], ['third', '⅓'], ['quarter', '¼']]
@@ -54,7 +56,7 @@ export const defaultForm = () => ({
   notify_on: false, notify_text: '', autoreply: false, autoreply_subject: '', autoreply_body: '', autoreply_attachments: [],
 })
 
-const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'website', 'id', 'company_id']
+const RESERVED = ['first_name', 'last_name', 'full_name', 'email', 'phone', 'company_name', 'company_phone', 'company_website', 'company_email', 'company_logo', 'business_name', 'unsubscribe_url', 'subscribe', 'push', 'website', 'id', 'company_id']
 
 /** Mirrors the server's key generation; only used to show "stored as …" while editing. */
 export const slug = (label) => {

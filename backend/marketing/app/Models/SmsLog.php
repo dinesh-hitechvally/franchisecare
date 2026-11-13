@@ -20,7 +20,7 @@ class SmsLog extends Model
 
     protected function casts(): array
     {
-        return ['sent_at' => 'datetime'];
+        return ['source' => \App\Casts\Upper::class, 'sent_at' => 'datetime'];
     }
 
     public function getChannelAttribute(): string

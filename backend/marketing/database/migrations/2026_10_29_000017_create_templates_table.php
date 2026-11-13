@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('name');
-            $table->enum('type', ['email', 'sms']);
+            $table->enum('type', ['EMAIL', 'SMS', 'PUSH']); // email | sms
             $table->string('subject')->nullable();
             $table->longText('body');
             $table->longText('design')->nullable(); // visual-designer JSON (blocks + settings) kept next to the rendered HTML

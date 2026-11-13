@@ -5,7 +5,7 @@ import LineChart from '../components/LineChart.vue'
 import BarList from '../components/BarList.vue'
 
 const d = ref(null)
-const SRC = { manual: 'Added manually', import: 'CSV import', form: 'Sign-up form', api: 'API' }
+const SRC = { manual: 'Added manually', import: 'CSV import', form: 'Sign-up form', api: 'API', shopify: 'Shopify', woocommerce: 'WooCommerce', wordpress: 'WordPress', magento: 'Magento', hubspot: 'HubSpot', mailchimp: 'Mailchimp', klaviyo: 'Klaviyo', brevo: 'Brevo', stripe: 'Stripe' }
 
 const growth = computed(() => [{ name: 'New people', color: '#3f51b5', points: d.value.growth }])
 const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0)

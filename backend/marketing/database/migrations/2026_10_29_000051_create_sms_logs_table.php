@@ -17,8 +17,8 @@ return new class extends Migration
             $table->foreignId('person_id')->nullable()->constrained()->nullOnDelete();
             $table->string('recipient');
             $table->text('body')->nullable();
-            $table->enum('status', ['queued', 'sent', 'failed', 'skipped', 'logged'])->default('queued'); // logged = only written to the log (test mode / log mailer): nothing was delivered
-            $table->string('source', 20)->default('campaign'); // campaign | automation | form | test
+            $table->enum('status', ['QUEUED', 'SENT', 'FAILED', 'SKIPPED', 'LOGGED'])->default('QUEUED'); // logged = only written to the log (test mode / log mailer): nothing was delivered
+            $table->enum('source', ['CAMPAIGN', 'AUTOMATION', 'FORM', 'TEST', 'NOTIFICATION'])->default('CAMPAIGN'); // campaign | automation | form | test
             $table->string('service', 30)->nullable();          // which connected service carried it (twilio, vonage…; "log" = test mode)
             $table->string('provider_id')->nullable();
             $table->text('error')->nullable();

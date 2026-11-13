@@ -256,7 +256,7 @@ class FormBuilderTest extends TestCase
         $this->assertStringContainsString('Hi Sam,', $reply->getHtmlBody());
         $this->assertStringNotContainsString('<script>x</script>', $reply->getHtmlBody());
         $log = EmailLog::withoutGlobalScopes()->where('recipient', 'sam@x.com')->firstOrFail();
-        $this->assertSame('sent', $log->status);
+        $this->assertSame('SENT', $log->status);
         $this->assertNull($log->campaign_id);
 
         // a newsletter-type form opts people in

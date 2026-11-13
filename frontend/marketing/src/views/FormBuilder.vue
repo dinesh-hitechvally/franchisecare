@@ -385,7 +385,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
                 <h3 v-if="f.type === 'heading'" class="p-h">{{ f.label }}</h3>
                 <p v-else-if="f.type === 'paragraph'" class="p-p">{{ f.label }}</p>
                 <label v-else-if="f.type === 'captcha'" class="p-l">{{ f.label }}<b class="req"> *</b><InfoTip v-if="longHelp(f)" :text="f.help" /><span class="p-q">7 + 4 = ?</span><input type="text" placeholder="Your answer" disabled /></label>
-                <label v-else-if="f.type === 'checkbox' || f.type === 'subscribe'" class="p-opt"><input type="checkbox" :checked="!!f.default" disabled /> <span>{{ f.label }}<b v-if="f.required" class="req"> *</b></span><InfoTip v-if="longHelp(f)" :text="f.help" /></label>
+                <label v-else-if="f.type === 'checkbox' || f.type === 'subscribe' || f.type === 'push'" class="p-opt"><input type="checkbox" :checked="!!f.default" disabled /> <span>{{ f.label }}<b v-if="f.required" class="req"> *</b></span><InfoTip v-if="longHelp(f)" :text="f.help" /></label>
                 <fieldset v-else-if="f.type === 'radio'" class="p-fs">
                   <legend>{{ f.label }}<b v-if="f.required" class="req"> *</b><InfoTip v-if="longHelp(f)" :text="f.help" /></legend>
                   <label v-for="(o, oi) in f.options.filter((x) => x && x.trim())" :key="oi" class="p-opt"><input type="radio" :checked="o === f.default" disabled /> {{ o }}</label>
@@ -450,7 +450,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
 
                 <div v-if="current.type !== 'captcha'" class="field">
                   <label>Default value <small>(filled in when the form opens)</small></label>
-                  <label v-if="current.type === 'checkbox' || current.type === 'subscribe'" class="check"><input type="checkbox" :checked="!!current.default" @change="current.default = $event.target.checked ? 'yes' : ''" /> Ticked by default</label>
+                  <label v-if="current.type === 'checkbox' || current.type === 'subscribe' || current.type === 'push'" class="check"><input type="checkbox" :checked="!!current.default" @change="current.default = $event.target.checked ? 'yes' : ''" /> Ticked by default</label>
                   <select v-else-if="current.type === 'dropdown' || current.type === 'radio'" v-model="current.default">
                     <option value="">None</option>
                     <option v-for="o in (current.options || []).filter((x) => x && x.trim())" :key="o" :value="o">{{ o }}</option>
@@ -461,7 +461,7 @@ onBeforeUnmount(() => window.removeEventListener('beforeunload', warn))
 
                 <div class="field"><label>Help text <small>(optional)</small><InfoTip v-if="(current.help || '').length > HELP_LONG" text="Long help text is shown as an i icon, with the text on hover." /></label><input v-model="current.help" maxlength="200" />
                 </div>
-                <label v-if="current.type !== 'captcha'" class="check"><input v-model="current.required" type="checkbox" /> {{ current.type === 'checkbox' || current.type === 'subscribe' ? 'Must be ticked to submit' : 'Required' }}</label>
+                <label v-if="current.type !== 'captcha'" class="check"><input v-model="current.required" type="checkbox" /> {{ current.type === 'checkbox' || current.type === 'subscribe' || current.type === 'push' ? 'Must be ticked to submit' : 'Required' }}</label>
                 <div v-else class="static-line">Always required<InfoTip text="A captcha is always required: the visitor has to answer the sum to send the form." /></div>
               </template>
             </template>

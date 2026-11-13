@@ -13,7 +13,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->foreignId('workflow_id')->constrained()->cascadeOnDelete();
             $table->foreignId('person_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('status', 12)->default('running'); // running | completed | failed | cancelled
+            $table->enum('status', ['RUNNING', 'COMPLETED', 'FAILED', 'CANCELLED'])->default('RUNNING'); // running | completed | failed | cancelled
             $table->unsignedSmallInteger('current_step')->default(0);
             $table->dateTime('next_run_at')->nullable()->index();
             $table->dateTime('locked_until')->nullable();

@@ -165,7 +165,7 @@ class ConfigController extends Controller
             ]);
         }
 
-        $logged = SendLog::deliveredStatus($company, 'email') === 'logged';
+        $logged = SendLog::deliveredStatus($company, 'email') === 'LOGGED';
 
         return ['ok' => true, 'logged' => $logged, 'message' => $logged
             ? "Test email for {$to} was only written to the log (Log only): nothing was sent. Choose a mail service to really send."
@@ -261,7 +261,7 @@ class ConfigController extends Controller
             ]);
         }
 
-        $logged = SendLog::deliveredStatus($company, 'sms') === 'logged';
+        $logged = SendLog::deliveredStatus($company, 'sms') === 'LOGGED';
 
         return ['ok' => true, 'logged' => $logged, 'message' => $logged
             ? "Test SMS for {$to} was only written to the log (Log only): nothing was sent. Connect an SMS service and use it for sending to really send."

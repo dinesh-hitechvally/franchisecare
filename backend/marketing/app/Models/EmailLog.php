@@ -21,7 +21,7 @@ class EmailLog extends Model
 
     protected function casts(): array
     {
-        return ['sent_at' => 'datetime', 'opened_at' => 'datetime'];
+        return ['source' => \App\Casts\Upper::class, 'sent_at' => 'datetime', 'opened_at' => 'datetime'];
     }
 
     protected static function booted(): void

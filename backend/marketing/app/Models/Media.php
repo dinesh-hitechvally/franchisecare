@@ -35,7 +35,7 @@ class Media extends Model
 
     protected function casts(): array
     {
-        return ['size' => 'integer', 'width' => 'integer', 'height' => 'integer'];
+        return ['kind' => \App\Casts\Upper::class, 'size' => 'integer', 'width' => 'integer', 'height' => 'integer'];
     }
 
     /** The public address of the file: no sign-in needed, protected by the long random token. */
@@ -49,6 +49,6 @@ class Media extends Model
     {
         $id = $company->setting('profile.logo_media_id');
 
-        return $id ? self::withoutGlobalScope('company')->where('company_id', $company->id)->where('kind', 'image')->find($id)?->url : null;
+        return $id ? self::withoutGlobalScope('company')->where('company_id', $company->id)->where('kind', 'IMAGE')->find($id)?->url : null;
     }
 }

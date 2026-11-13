@@ -57,7 +57,7 @@ class AutomationTriggersTest extends TestCase
     protected function sentEmail(Person $c, string $token, array $over = []): EmailLog
     {
         return EmailLog::withoutGlobalScopes()->create($over + [
-            'company_id' => $c->company_id, 'person_id' => $c->id, 'recipient' => $c->email, 'body' => 'b', 'status' => 'sent', 'source' => 'campaign',
+            'company_id' => $c->company_id, 'person_id' => $c->id, 'recipient' => $c->email, 'body' => 'b', 'status' => 'SENT', 'source' => 'campaign',
             'service' => 'default', 'sent_at' => now(), 'track_token' => $token,
         ]);
     }

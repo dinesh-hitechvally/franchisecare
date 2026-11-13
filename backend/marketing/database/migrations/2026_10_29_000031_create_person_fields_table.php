@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('company_id')->constrained()->cascadeOnDelete();
             $table->string('key', 40);          // merge-tag name, e.g. company_name
             $table->string('label');            // what people see, e.g. "Company name"
-            $table->string('type', 20)->default('text'); // text | textarea | number | date | dropdown | radio | checkbox
+            $table->enum('type', ['TEXT', 'TEXTAREA', 'NUMBER', 'DATE', 'DROPDOWN', 'RADIO', 'CHECKBOX'])->default('TEXT'); // text | textarea | number | date | dropdown | radio | checkbox
             $table->text('options')->nullable();         // JSON list, for dropdown / radio
             $table->dateTime('created_at')->nullable();
             $table->dateTime('updated_at')->nullable();

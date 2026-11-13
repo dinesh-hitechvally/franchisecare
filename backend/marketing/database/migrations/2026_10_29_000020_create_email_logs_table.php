@@ -18,8 +18,8 @@ return new class extends Migration
             $table->string('recipient');
             $table->string('subject')->nullable();
             $table->longText('body')->nullable();
-            $table->enum('status', ['queued', 'sent', 'failed', 'skipped', 'logged'])->default('queued'); // logged = only written to the log (test mode / log mailer): nothing was delivered
-            $table->string('source', 20)->default('campaign'); // campaign | automation | form | test | notification
+            $table->enum('status', ['QUEUED', 'SENT', 'FAILED', 'SKIPPED', 'LOGGED'])->default('QUEUED'); // logged = only written to the log (test mode / log mailer): nothing was delivered
+            $table->enum('source', ['CAMPAIGN', 'AUTOMATION', 'FORM', 'TEST', 'NOTIFICATION'])->default('CAMPAIGN'); // campaign | automation | form | test | notification
             $table->string('service', 30)->nullable();          // which connected service carried it (gmail, sendgrid…; "default" = platform mail)
             $table->string('provider_id')->nullable();
             $table->text('error')->nullable();
