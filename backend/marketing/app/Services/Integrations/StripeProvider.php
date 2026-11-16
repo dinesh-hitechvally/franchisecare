@@ -87,11 +87,11 @@ class StripeProvider extends Provider
         return [
             [
                 'name' => 'STRIPE_CONNECT_CLIENT_ID', 
-                'example' => 'ca_xxxxxxxxxxxxxxxxxxxxxxxx'
+                'example' => 'ca_your_client_id'
             ], 
             [
                 'name' => 'STRIPE_CONNECT_SECRET_KEY', 
-                'example' => 'sk_live_xxxxxxxxxxxxxxxxxxxxxxxx'
+                'example' => 'sk_live_your_secret_key'
             ]
         ];
     }
