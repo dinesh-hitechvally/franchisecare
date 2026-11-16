@@ -1,7 +1,7 @@
 <script setup>
-// Choose an image from the media library. Nothing is typed or uploaded here: upload in Media, then pick.
-import { ref, onMounted, watch } from 'vue'
-import api from '../api'
+// Choose an image from the media library, upload a new one, or (when `online`) pick a free online image.
+import { ref, computed, onMounted, watch } from 'vue'
+import api, { errorMessage } from '../api'
 import Modal from './Modal.vue'
 import Pager from './Pager.vue'
 import OnlineImages from './OnlineImages.vue'
@@ -13,7 +13,27 @@ const rows = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const search = ref('')
 const loading = ref(true)
-const tab = ref('library') // library | online
+const tab = ref('library') // library | upload | online
+
+// Upload tab: the file goes into the media library (same as the Media page) and is picked straight away.
+const uploading = ref(false)
+const dragging = ref(false)
+const uploadError = ref('')
+const accept = computed(() => (props.kind === 'image' ? '.png,.jpg,.jpeg,.gif,.webp' : '.png,.jpg,.jpeg,.gif,.webp,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.csv,.txt,.zip'))
+async function upload(files) {
+  const file = files && files[0]
+  if (!file) return
+  uploadError.value = ''
+  uploading.value = true
+  try {
+    const body = new FormData()
+    body.append('file', file)
+    const { data } = await api.post('/media', body)
+    emit('pick', data)
+  } catch (e) { uploadError.value = errorMessage(e) }
+  uploading.value = false
+}
+const onDrop = (e) => { dragging.value = false; upload(e.dataTransfer.files) }
 
 async function load(page = 1) {
   loading.value = true
@@ -30,11 +50,23 @@ onMounted(() => load())
 
 <template>
   <Modal :title="title" wide @close="emit('close')">
-    <div v-if="online" class="tabs">
+    <div class="tabs">
+      <button type="button" :class="{ on: tab === 'upload' }" @click="tab = 'upload'">Upload</button>
       <button type="button" :class="{ on: tab === 'library' }" @click="tab = 'library'">My media</button>
-      <button type="button" :class="{ on: tab === 'online' }" @click="tab = 'online'">Free online images</button>
+      <button v-if="online" type="button" :class="{ on: tab === 'online' }" @click="tab = 'online'">Free online images</button>
     </div>
-    <OnlineImages v-if="online && tab === 'online'" action-label="Use this image" @added="(m) => emit('pick', m)" />
+    <div v-if="tab === 'upload'">
+      <p v-if="uploadError" class="alert err">{{ uploadError }}</p>
+      <label class="drop" :class="{ over: dragging }" @dragover.prevent="dragging = true" @dragleave="dragging = false" @drop.prevent="onDrop">
+        <b v-if="uploading">Uploading…</b>
+        <template v-else>
+          <b>Drop a {{ noun }} here, or click to choose one</b>
+          <small>{{ kind === 'image' ? 'PNG, JPG, GIF or WebP, up to 8 MB' : 'Images up to 8 MB, or PDF, Office, CSV, TXT, ZIP' }}. It is saved to your media library.</small>
+        </template>
+        <input type="file" hidden :accept="accept" :disabled="uploading" @change="upload($event.target.files); $event.target.value = ''" />
+      </label>
+    </div>
+    <OnlineImages v-else-if="online && tab === 'online'" action-label="Use this image" @added="(m) => emit('pick', m)" />
     <template v-else>
     <input v-model="search" type="search" :placeholder="`Search ${noun}s…`" style="max-width: 280px; margin-bottom: 14px" />
     <p v-if="loading" class="empty">Loading…</p>
@@ -59,6 +91,8 @@ onMounted(() => load())
 .tabs { display: flex; gap: 4px; border-bottom: 1px solid #e0e3f0; margin-bottom: 14px; }
 .tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; font: inherit; color: #6b7280; cursor: pointer; margin-bottom: -1px; }
 .tabs button.on { color: #3f51b5; border-bottom-color: #3f51b5; font-weight: 600; }
+.drop { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 48px 16px; border: 2px dashed #c5cae9; border-radius: 8px; cursor: pointer; text-align: center; color: #3f51b5; }
+.drop:hover, .drop.over { background: #eef0fb; border-color: #3f51b5; }
 .pk { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
 .pic { background: #fff; border: 2px solid #e0e3f0; border-radius: 8px; padding: 8px; cursor: pointer; text-align: left; font: inherit; }
 .pic:hover { border-color: #3f51b5; }

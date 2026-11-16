@@ -8,6 +8,7 @@ use App\Services\Integrations\Importer;
 use App\Services\Integrations\IntegrationException;
 use App\Models\Person;
 use App\Services\Integrations\Providers;
+use App\Services\PersonSources;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
 use Throwable;
@@ -53,7 +54,7 @@ class SyncIntegrationJob implements ShouldQueue
 
         try {
             if ($imports && ! str_starts_with((string) $cursor, 'x:')) {
-                $importer = new Importer($integration);
+                $importer = new Importer($integration, $sync->id);
                 for ($page = 0; $page < self::PAGES_PER_JOB; $page++) {
                     [$customers, $next] = $provider->customers($integration, $cursor, $sync->since);
                     $importer->import($customers, $stats);
@@ -92,6 +93,23 @@ class SyncIntegrationJob implements ShouldQueue
         }
     }
 
+    /** Writes each person's outcome into their sync history, and the id the platform gave them. */
+    protected function recordExport(Integration $integration, IntegrationSync $sync, $people, array $results): void
+    {
+        foreach ($people as $person) {
+            $r = $results[$person->id] ?? null;
+            if (! $r) {
+                continue;
+            }
+            $o = ['integration_id' => $integration->id, 'external_id' => $r['external_id'] ?? '', 'label' => $integration->name, 'sync_id' => $sync->id, 'direction' => 'out', 'message' => $r['message'] ?? null];
+            if ($r['status'] === 'sent') {
+                PersonSources::seen($person, $integration->provider, $o + ['action' => 'SENT']);
+            } else {
+                PersonSources::event($person, $integration->provider, $r['status'] === 'failed' ? 'FAILED' : 'SKIPPED', $o); // refused or nothing to do: no id to remember
+            }
+        }
+    }
+
     /** People sent per request to the platform. */
     protected const EXPORT_BATCH = 100;
 
@@ -101,18 +119,34 @@ class SyncIntegrationJob implements ShouldQueue
      */
     protected function export(Integration $integration, $provider, IntegrationSync $sync, array &$stats, int $afterId): ?string
     {
-        $listId = $integration->setting('export_list_id');
+        // who is sent: the people of any chosen list, segment or tag (they add up); nothing chosen = everyone with an email address
+        $audience = $integration->setting('export_audience') ?: (($l = $integration->setting('export_list_id')) ? ['lists' => [$l]] : []);
+        $lists = (array) ($audience['lists'] ?? []);
+        $tags = (array) ($audience['tags'] ?? []);
+        $segments = \App\Models\Segment::withoutGlobalScope('company')->where('company_id', $integration->company_id)->whereIn('id', (array) ($audience['segments'] ?? []))->get();
         for ($batch = 0; $batch < self::PAGES_PER_JOB; $batch++) {
             $people = Person::withoutGlobalScope('company')->where('company_id', $integration->company_id)->where('id', '>', $afterId)
                 ->whereNotNull('email')->where('email', '!=', '')
                 ->when($sync->since, fn ($q) => $q->where('updated_at', '>=', $sync->since))
-                ->when($listId, fn ($q) => $q->whereHas('lists', fn ($l) => $l->where('people_lists.id', $listId)))
+                ->when($audience, fn ($q) => $q->where(function ($any) use ($lists, $tags, $segments, $integration) {
+                    $any->whereRaw('1 = 0'); // each chosen kind adds its people
+                    if ($lists) {
+                        $any->orWhereHas('lists', fn ($l) => $l->whereIn('people_lists.id', $lists));
+                    }
+                    if ($tags) {
+                        $any->orWhereHas('tags', fn ($t) => $t->whereIn('tags.id', $tags));
+                    }
+                    foreach ($segments as $segment) {
+                        $any->orWhereIn('people.id', \App\Services\SegmentQuery::forSegment($segment)->select('people.id'));
+                    }
+                }))
                 ->orderBy('id')->limit(self::EXPORT_BATCH)->get();
             if ($people->isEmpty()) {
                 return null;
             }
 
             $result = $provider->export($integration, $people);
+            $this->recordExport($integration, $sync, $people, $result['results'] ?? []);
             $stats['exported'] += $result['sent'];
             $stats['export_failed'] += $result['failed'];
             $stats['skipped'] += $result['skipped'];

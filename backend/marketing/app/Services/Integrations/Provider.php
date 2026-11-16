@@ -70,6 +70,18 @@ abstract class Provider
         return (string) (($integration->setting('config') ?? [])[$key] ?? $default);
     }
 
+    /** Can the platform list the places contacts live in (Mailchimp audiences), so the person picks from a list instead of typing an id? */
+    public function hasAudiences(): bool
+    {
+        return false;
+    }
+
+    /** @return array<int, array{id: string, name: string, members: int|null}> */
+    public function audienceChoices(Integration $integration): array
+    {
+        return [];
+    }
+
     /** Can People be sent to this platform too (not only read from it)? */
     public function supportsExport(): bool
     {
@@ -78,7 +90,8 @@ abstract class Provider
 
     /**
      * Sends a batch of People to the platform. Only people who are subscribed here are sent as subscribed; nobody who unsubscribed on the
-     * platform is ever re-subscribed. Returns ['sent' => n, 'failed' => n, 'skipped' => n, 'error' => first failure message|null].
+     * platform is ever re-subscribed. Returns ['sent' => n, 'failed' => n, 'skipped' => n, 'error' => first failure message|null,
+     * 'results' => [person id => ['status' => 'sent'|'failed'|'skipped', 'external_id' => the id the platform gave them|null, 'message' => string|null]]].
      */
     public function export(Integration $integration, iterable $people): array
     {
@@ -123,7 +136,7 @@ abstract class Provider
     {
         return [
             'key' => $this->key(), 'label' => $this->label(), 'category' => $this->category(), 'uses_url' => $this->usesUrl(), 'description' => $this->description(),
-            'fields' => $this->fields(), 'steps' => $this->steps(), 'consent_note' => $this->consentNote(), 'settings' => $this->extraSettings(), 'auto_connect' => $this->describeAutoConnect(), 'supports_export' => $this->supportsExport(),
+            'fields' => $this->fields(), 'steps' => $this->steps(), 'consent_note' => $this->consentNote(), 'settings' => $this->extraSettings(), 'auto_connect' => $this->describeAutoConnect(), 'supports_export' => $this->supportsExport(), 'has_audiences' => $this->hasAudiences(),
         ];
     }
 

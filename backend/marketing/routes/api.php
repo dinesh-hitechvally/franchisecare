@@ -31,6 +31,7 @@ use App\Http\Controllers\TemplateController;
 use App\Http\Controllers\TrackingController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\JobsAnalyticsController;
 use App\Http\Controllers\IntegrationOAuthController;
 use App\Http\Controllers\FormEmbedController;
 use App\Http\Controllers\PushController;
@@ -102,6 +103,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::get('people/export', [PersonController::class, 'export']);
     Route::post('people/import', [PersonController::class, 'import']);
     Route::post('people/bulk', [PersonController::class, 'bulk']);
+    Route::get('people/{person}/sync-history', [PersonController::class, 'syncHistory'])->whereNumber('person');
     Route::apiResource('people', PersonController::class)->except('show');
     Route::apiResource('lists', PeopleListController::class)->except('show')->parameters(['lists' => 'list']);
     Route::apiResource('person-fields', PersonFieldController::class)->except('show')->parameters(['person-fields' => 'field']);
@@ -161,6 +163,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
     Route::get('analytics/sms', [AnalyticsController::class, 'sms']);
     Route::get('analytics/delivery', [AnalyticsController::class, 'delivery']);
     Route::get('analytics/automation', [AnalyticsController::class, 'automation']);
+    Route::get('analytics/jobs', [JobsAnalyticsController::class, 'index']);
 
     Route::get('settings', [SettingsController::class, 'show']);
 
@@ -189,6 +192,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
         // connected platforms (Shopify, WooCommerce, WordPress, Magento): their customers are imported as people
         Route::get('integrations/providers', [IntegrationController::class, 'providers']);
         Route::get('integration-syncs', [IntegrationController::class, 'allSyncs']);
+        Route::get('integrations/{integration}/audiences', [IntegrationController::class, 'audiences'])->middleware('throttle:30,1');
         Route::post('integrations/{integration}/check', [IntegrationController::class, 'check'])->middleware('throttle:20,1');
         Route::post('integrations/{integration}/sync', [IntegrationController::class, 'sync'])->middleware('throttle:20,1');
         Route::get('integrations/{integration}/syncs', [IntegrationController::class, 'syncs']);

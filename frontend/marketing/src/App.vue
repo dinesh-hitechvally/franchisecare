@@ -38,7 +38,7 @@ const sections = [
   },
   {
     title: 'Analytics', icon: 'chart',
-    items: [['Overview', '/analytics/overview'], ['Email', '/analytics/email'], ['SMS', '/analytics/sms'], ['Delivery & errors', '/analytics/delivery'], ['Message logs', '/message-logs'], ['People', '/analytics/people'], ['Forms & pages', '/analytics/conversions'], ['Automation', '/analytics/automation']],
+    items: [['Overview', '/analytics/overview'], ['Email', '/analytics/email'], ['SMS', '/analytics/sms'], ['Delivery & errors', '/analytics/delivery'], ['Jobs & queue', '/analytics/jobs'], ['Message logs', '/message-logs'], ['People', '/analytics/people'], ['Forms & pages', '/analytics/conversions'], ['Automation', '/analytics/automation']],
   },
 ]
 

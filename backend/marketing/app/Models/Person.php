@@ -43,6 +43,12 @@ class Person extends Model
         return $this->belongsToMany(Tag::class, 'person_tag')->using(PersonTag::class);
     }
 
+    /** Where this person comes from and the platforms they are on, with their id on each. */
+    public function sources()
+    {
+        return $this->hasMany(PersonSource::class);
+    }
+
     public function emailLogs()
     {
         return $this->hasMany(EmailLog::class);

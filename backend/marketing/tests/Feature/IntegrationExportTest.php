@@ -7,6 +7,8 @@ use App\Models\Integration;
 use App\Models\IntegrationSync;
 use App\Models\PeopleList;
 use App\Models\Person;
+use App\Models\Segment;
+use App\Models\Tag;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Factory;
 use Illuminate\Http\Client\Request;
@@ -65,7 +67,8 @@ class IntegrationExportTest extends TestCase
 
             return match (true) {
                 $path === '/3.0/' => Http::response(['account_name' => 'Acme Mailchimp']),
-                $path === '/3.0/lists' => Http::response(['lists' => [['id' => 'aud1']]]),
+                $path === '/3.0/lists' => Http::response(['lists' => [['id' => 'aud1', 'name' => 'Newsletter', 'stats' => ['member_count' => 120]], ['id' => 'aud2', 'name' => 'Customers', 'stats' => ['member_count' => 8]]]]),
+                $path === '/3.0/lists/aud2/members' => Http::response(['members' => [], 'total_items' => 0]),
                 $path === '/3.0/lists/aud1/members' => Http::response(['members' => [
                     ['id' => 'm1', 'email_address' => 'from-mc@example.com', 'status' => 'subscribed', 'merge_fields' => ['FNAME' => 'Mia']],
                 ], 'total_items' => 1]),
@@ -206,5 +209,51 @@ class IntegrationExportTest extends TestCase
         Http::fake(['api.hubapi.com/*' => Http::response(['results' => [], 'paging' => []])]);
         $r = $this->postJson('/api/integrations', ['provider' => 'hubspot', 'access_token' => 't', 'direction' => 'both'], $this->h)->assertStatus(201);
         $this->assertArrayNotHasKey('direction', $r->json('settings'));
+    }
+
+    public function test_the_people_sent_can_be_chosen_by_several_lists_segments_and_tags_and_they_add_up(): void
+    {
+        $this->getJson('/api/lists', $this->h)->assertOk(); // signs the test in, so what is created below belongs to the company
+        $list = PeopleList::create(['name' => 'VIPs']);
+        $tag = Tag::create(['name' => 'buyer']);
+        $segment = Segment::create(['name' => 'Gmail people', 'match' => 'all', 'rules' => [['field' => 'email_domain', 'op' => 'equals', 'value' => 'gmail.com']]]);
+        $this->person('in-list@example.com')->lists()->attach($list->id);
+        $this->person('tagged@example.com')->tags()->attach($tag->id);
+        $this->person('seg@gmail.com');
+        $this->person('nobody@example.com'); // in none of them: not sent
+
+        $this->fakeMailchimp();
+        $r = $this->connect(['direction' => 'export', 'audience_id' => 'aud1', 'export_lists' => [$list->id], 'export_tags' => [$tag->id], 'export_segments' => [$segment->id]]);
+        $r->assertSuccessful();
+        $this->assertSame(['lists' => [$list->id], 'segments' => [$segment->id], 'tags' => [$tag->id]], $r->json('settings.export_audience'));
+
+        $sent = collect($this->memberCalls('PUT'))->map(fn ($c) => $c[1])->sort()->values()->all();
+        $this->assertSame(collect(['in-list@example.com', 'tagged@example.com', 'seg@gmail.com'])->map(fn ($e) => '/3.0/lists/aud1/members/'.md5($e))->sort()->values()->all(), $sent);
+
+        $id = $r->json('id'); // a choice that does not exist is refused
+        $this->putJson("/api/integrations/$id", ['export_tags' => [999999]], $this->h)->assertStatus(422);
+        $this->putJson("/api/integrations/$id", ['export_lists' => [], 'export_segments' => [], 'export_tags' => []], $this->h)->assertOk()->assertJsonPath('settings.export_audience', null); // empty = everyone
+    }
+
+    public function test_the_accounts_audiences_can_be_listed_and_people_are_sent_to_their_own_audience(): void
+    {
+        $this->fakeMailchimp();
+        $id = $this->connect(['direction' => 'both', 'audience_id' => 'aud1', 'export_audience_id' => 'aud2'])->json('id');
+        $this->person('local@example.com');
+
+        // the audiences to pick from, with their sizes
+        $this->app['auth']->forgetGuards();
+        $choices = $this->getJson("/api/integrations/$id/audiences", $this->h)->assertOk()->json();
+        $this->assertSame([['id' => 'aud1', 'name' => 'Newsletter', 'members' => 120], ['id' => 'aud2', 'name' => 'Customers', 'members' => 8]], $choices);
+
+        // people are pushed to the "send to" audience, not the one read from
+        $paths = array_map(fn ($c) => $c[1], $this->memberCalls('PUT'));
+        $this->assertNotEmpty($paths);
+        foreach ($paths as $path) {
+            $this->assertStringStartsWith('/3.0/lists/aud2/members/', $path);
+        }
+
+        // sending needs a destination: either one, an old connection's single audience counts for both
+        $this->putJson("/api/integrations/$id", ['audience_id' => '', 'export_audience_id' => ''], $this->h)->assertStatus(422);
     }
 }

@@ -100,6 +100,19 @@ class IntegrationController extends Controller
         return ApiResponse::ok($this->present($integration->fresh()), 'The connection works.');
     }
 
+    /** The places contacts live in on the platform (Mailchimp audiences), to pick from in Settings. */
+    public function audiences(Integration $integration)
+    {
+        $provider = Providers::find($integration->provider);
+        abort_unless($provider?->hasAudiences(), 404, 'This platform has no audiences.');
+
+        try {
+            return $provider->audienceChoices($integration);
+        } catch (IntegrationException $e) {
+            abort(422, $e->getMessage());
+        }
+    }
+
     /** Imports now. Only customers changed since the last sync, unless full=true. */
     public function sync(Request $request, Integration $integration)
     {
@@ -141,7 +154,10 @@ class IntegrationController extends Controller
             'sync_every' => ['nullable', 'integer', Rule::in(Integration::SYNC_EVERY)],
             'run_automations' => 'nullable|boolean',
             'direction' => ['nullable', Rule::in(['import', 'export', 'both'])],
-            'export_list_id' => 'nullable|integer',
+            'export_list_id' => 'nullable|integer', // (old, one list) kept working: same as export_lists with one list
+            'export_lists' => 'nullable|array|max:100', 'export_lists.*' => 'integer',
+            'export_segments' => 'nullable|array|max:100', 'export_segments.*' => 'integer',
+            'export_tags' => 'nullable|array|max:100', 'export_tags.*' => 'integer',
             'roles' => 'nullable|array',
             'roles.*' => ['string', Rule::in(array_keys(WordPressProvider::ROLES))],
             'import_now' => 'nullable|boolean',
@@ -167,9 +183,22 @@ class IntegrationController extends Controller
             'roles' => $provider->key() === 'wordpress' ? ($data['roles'] ?? null) : null,
             'direction' => $provider->supportsExport() ? ($data['direction'] ?? null) : null,
         ], fn ($v) => $v !== null);
-        if ($provider->supportsExport() && array_key_exists('export_list_id', $data)) {
-            abort_if($data['export_list_id'] && ! PeopleList::whereKey($data['export_list_id'])->exists(), 422, 'That list does not exist.');
-            $settings['export_list_id'] = $data['export_list_id'] ?: null; // empty = everyone
+        // Who is sent to the platform: the people of any chosen list, segment or tag (they add up). Nothing chosen = everyone with an email address.
+        if ($provider->supportsExport() && collect(['export_list_id', 'export_lists', 'export_segments', 'export_tags'])->contains(fn ($k) => array_key_exists($k, $data))) {
+            $pick = fn (string $key, string $model, string $what) => (function () use ($data, $key, $model, $what) {
+                $ids = array_values(array_unique(array_map('intval', (array) ($data[$key] ?? []))));
+                abort_if($ids && $model::whereKey($ids)->count() !== count($ids), 422, 'One of the chosen '.$what.' does not exist.');
+
+                return $ids;
+            })();
+            $lists = $pick('export_lists', PeopleList::class, 'lists');
+            if (! empty($data['export_list_id'])) {
+                abort_unless(PeopleList::whereKey($data['export_list_id'])->exists(), 422, 'That list does not exist.');
+                $lists = array_values(array_unique([...$lists, (int) $data['export_list_id']]));
+            }
+            $audience = array_filter(['lists' => $lists, 'segments' => $pick('export_segments', \App\Models\Segment::class, 'segments'), 'tags' => $pick('export_tags', \App\Models\Tag::class, 'tags')]);
+            $settings['export_audience'] = $audience ?: null; // empty = everyone
+            $settings['export_list_id'] = null; // replaced by export_audience
         }
 
         if (array_key_exists('list_id', $data)) {
@@ -187,7 +216,7 @@ class IntegrationController extends Controller
 
         $final = $settings + $existing + ['subscribe_mode' => 'consent', 'sync_every' => 60, 'run_automations' => false];
         abort_if(
-            $provider->supportsExport() && in_array($final['direction'] ?? 'import', ['export', 'both'], true) && blank($final['config']['audience_id'] ?? null),
+            $provider->supportsExport() && in_array($final['direction'] ?? 'import', ['export', 'both'], true) && blank($final['config']['export_audience_id'] ?? null) && blank($final['config']['audience_id'] ?? null),
             422, 'To send people to '.$provider->label().', choose the audience to send them to (Audience ID).',
         );
 

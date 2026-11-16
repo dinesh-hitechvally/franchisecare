@@ -7,6 +7,7 @@ use App\Models\PeopleList;
 use App\Models\Person;
 use App\Models\Tag;
 use App\Services\Automation;
+use App\Services\PersonSources;
 use App\Services\Subscriptions;
 
 /**
@@ -25,7 +26,7 @@ class Importer
 
     protected array $tagIds = [];
 
-    public function __construct(protected Integration $integration)
+    public function __construct(protected Integration $integration, protected ?int $syncId = null)
     {
         $companyId = $integration->company_id;
 
@@ -113,6 +114,12 @@ class Importer
         if (! $created) {
             ($changed || $newLists || $newTags) ? $stats['updated']++ : $stats['skipped']++;
         }
+
+        // where this person comes from, with their id on the platform (a person found on several platforms keeps one row for each)
+        PersonSources::seen($person, $this->integration->provider, [
+            'integration_id' => $this->integration->id, 'external_id' => $c['id'] ?? '', 'label' => $this->integration->name,
+            'created' => $created, 'changed' => $changed || $newLists || $newTags, 'sync_id' => $this->syncId, 'direction' => 'in',
+        ]);
 
         // joining a list or getting a tag can start workflows: only when the connection says so, so importing a whole store does not email everyone by surprise
         if ($this->integration->setting('run_automations', false)) {

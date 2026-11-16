@@ -1,17 +1,18 @@
 <script setup>
 // Integrations → Sync history: every import run of every connected platform.
 import { ref, reactive, watch, onMounted, onBeforeUnmount } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import api from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import Pager from '../components/Pager.vue'
 
 const route = useRoute()
+const router = useRouter()
 const rows = ref([])
 const meta = ref({ current_page: 1, last_page: 1, total: 0 })
 const connections = ref([])
 const loading = ref(true)
-const f = reactive({ integration_id: route.query.integration_id || '', status: '' })
+const f = reactive({ integration_id: route.params.id || '', status: '' })
 
 const TRIGGER = { connect: 'First import', manual: 'Manual', scheduled: 'Automatic' }
 const took = (s) => {
@@ -45,8 +46,8 @@ onBeforeUnmount(() => clearInterval(timer))
   <div class="head"><h1>Sync history <small v-if="!loading">({{ meta.total }})</small></h1><div class="row"><router-link to="/integrations" class="btn ghost">Back to Integrations</router-link></div></div>
   <p class="intro">Every time customers were imported from a connected platform: what was read, how many people were added or completed, and anything that went wrong.</p>
 
-  <FilterBar :dirty="!!(f.integration_id || f.status)" @clear="f.integration_id = ''; f.status = ''">
-    <select v-model="f.integration_id"><option value="">All connections</option><option v-for="c in connections" :key="c.id" :value="c.id">{{ c.provider_label }} · {{ c.name }}</option></select>
+  <FilterBar :dirty="!!(f.integration_id || f.status)" @clear="f.status = ''; f.integration_id && router.push('/integrations/history')">
+    <select :value="f.integration_id" @change="router.push($event.target.value ? `/integrations/${$event.target.value}/history` : '/integrations/history')"><option value="">All connections</option><option v-for="c in connections" :key="c.id" :value="c.id">{{ c.provider_label }} · {{ c.name }}</option></select>
     <select v-model="f.status"><option value="">All statuses</option><option value="running">Running</option><option value="success">Success</option><option value="failed">Failed</option></select>
   </FilterBar>
 

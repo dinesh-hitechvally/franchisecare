@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\Person;
 use App\Models\PersonField;
+use App\Models\PersonSyncEvent;
 use App\Models\Segment;
 use App\Services\Automation;
+use App\Services\PersonSources;
 use App\Services\SegmentQuery;
 use App\Services\Subscriptions;
 use Illuminate\Http\Request;
@@ -30,7 +32,7 @@ class PersonController extends Controller
             ? SegmentQuery::forSegment($seg)
             : Person::query();
 
-        $q->with(['lists:id,name', 'tags:id,name,color', 'fieldValues.field:id,key']);
+        $q->with(['lists:id,name', 'tags:id,name,color', 'fieldValues.field:id,key', 'sources:id,person_id,platform,integration_id,external_id,label,first_seen_at,last_synced_at']);
 
         if ($s = $request->query('search')) {
             $q->where(fn ($w) => $w->where('first_name', 'like', "%$s%")->orWhere('last_name', 'like', "%$s%")
@@ -88,6 +90,7 @@ class PersonController extends Controller
         $data = $this->validated($request);
         $custom = $this->customAnswers($request);
         $person = Person::create($data + ['source' => 'manual']);
+        PersonSources::seen($person, 'manual', ['created' => true, 'label' => $request->user()->name]);
         $person->setCustom($custom);
         [$lists, $tags] = $this->syncRelations($request, $person);
         Automation::personChanged($person, true, $lists, $tags);
@@ -111,6 +114,15 @@ class PersonController extends Controller
         Automation::personChanged($person, false, $lists, $tags);
 
         return $this->present($person->load('lists:id,name', 'tags:id,name,color'));
+    }
+
+    /** Where a person comes from (each platform, with their id there) and the log of what was imported or sent. */
+    public function syncHistory(Person $person)
+    {
+        return [
+            'sources' => $person->sources()->orderBy('first_seen_at')->orderBy('id')->get(),
+            'events' => PersonSyncEvent::where('person_id', $person->id)->latest('id')->limit(300)->get(),
+        ];
     }
 
     public function destroy(Person $person)
@@ -149,6 +161,7 @@ class PersonController extends Controller
     {
         $request->validate(['file' => 'required|file|mimes:csv,txt', 'list_id' => 'nullable|integer', 'tag_id' => 'nullable|integer']);
 
+        $fileName = $request->file('file')->getClientOriginalName();
         $handle = fopen($request->file('file')->getRealPath(), 'r');
         $header = array_map(fn ($h) => strtolower(trim($h, " \t\n\r\0\x0B\xEF\xBB\xBF")), fgetcsv($handle) ?: []);
         $created = $updated = $skipped = 0;
@@ -178,6 +191,7 @@ class PersonController extends Controller
                 $person = Person::create($fields + ['email' => $email, 'source' => 'import']);
                 $created++;
             }
+            PersonSources::seen($person, 'import', ['created' => $isNew, 'changed' => ! $isNew && $person->wasChanged(), 'label' => $fileName]);
             $newLists = $listId && ! $person->lists()->where('people_lists.id', $listId)->exists() ? [(int) $listId] : [];
             $newTags = $tagId && ! $person->tags()->where('tags.id', $tagId)->exists() ? [(int) $tagId] : [];
             if ($listId) {

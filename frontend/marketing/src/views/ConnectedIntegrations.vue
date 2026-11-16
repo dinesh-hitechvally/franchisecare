@@ -37,19 +37,19 @@ const load = async () => { rows.value = (await api.get('/integrations', { params
 const menu = (c) => (c.status === 'disconnected'
   ? [
       { label: 'Connect again', to: { path: '/integrations', query: { connect: c.provider, name: c.name, url: c.uses_url ? c.store_url : undefined } } },
-      { label: 'Sync history', to: `/integrations/history?integration_id=${c.id}` },
+      { label: 'Sync history', to: `/integrations/${c.id}/history` },
     ]
   : c.channel ? [ // a messaging account (WhatsApp, Messenger, X): nothing to sync
-      { label: 'Settings', to: `/integrations?edit=${c.id}` },
+      { label: 'Settings', to: `/integrations/${c.id}/settings` },
       { label: 'Check connection', run: () => check(c) },
       { label: 'Disconnect', run: () => disconnect(c), danger: true },
     ]
   : [
-      { label: c.running ? 'Syncing…' : 'Sync now', show: !c.running, run: () => syncNow(c) },
-      { label: 'Settings', to: `/integrations?edit=${c.id}` },
+      { label: 'Sync now', run: () => syncNow(c) }, // always offered: while one is running the server answers that it is already running
+      { label: 'Settings', to: `/integrations/${c.id}/settings` },
       { label: 'Check connection', run: () => check(c) },
-      { label: 'Full re-import', show: !c.running, run: () => syncNow(c, true) },
-      { label: 'Sync history', to: `/integrations/history?integration_id=${c.id}` },
+      { label: 'Full re-import', run: () => syncNow(c, true) },
+      { label: 'Sync history', to: `/integrations/${c.id}/history` },
       { label: 'Disconnect', run: () => disconnect(c), danger: true },
     ])
 

@@ -32,7 +32,8 @@ class MailchimpProvider extends Provider
     {
         return [
             ['key' => 'api_key', 'label' => 'API key', 'type' => 'password', 'placeholder' => 'xxxxxxxxxxxxxxxx-us21', 'help' => 'Ends with a dash and a data centre such as -us21. Created under Account → Extras → API keys.', 'secret' => true],
-            ['key' => 'audience_id', 'export_required' => true, 'label' => 'Audience ID (optional)', 'type' => 'text', 'placeholder' => 'Leave empty to import every audience', 'help' => 'To import one audience only: in Mailchimp open the audience → Settings → Audience name and defaults, and copy the Audience ID. Connect the same account again with another ID to import another audience separately.', 'secret' => false, 'required' => false],
+            ['key' => 'export_audience_id', 'export_required' => true, 'required' => false, 'label' => 'Send to audience', 'type' => 'text', 'placeholder' => 'Audience ID', 'help' => 'The audience your People are sent to (only used when this connection sends people). In Mailchimp: audience → Settings → Audience name and defaults → Audience ID.', 'secret' => false],
+            ['key' => 'audience_id', 'label' => 'Import from audience (optional)', 'type' => 'text', 'placeholder' => 'Leave empty to import every audience', 'help' => 'To import one audience only: in Mailchimp open the audience → Settings → Audience name and defaults, and copy the Audience ID. Connect the same account again with another ID to import another audience separately.', 'secret' => false, 'required' => false],
         ];
     }
 
@@ -113,22 +114,36 @@ class MailchimpProvider extends Provider
         return true;
     }
 
+    public function hasAudiences(): bool
+    {
+        return true;
+    }
+
+    /** The account's audiences, to choose from: where to import from, and where to send people. */
+    public function audienceChoices(Integration $integration): array
+    {
+        $lists = (array) ($this->get($integration, '/lists', ['count' => 1000, 'fields' => 'lists.id,lists.name,lists.stats.member_count'])['lists'] ?? []);
+
+        return array_map(fn ($l) => ['id' => (string) $l['id'], 'name' => (string) ($l['name'] ?? $l['id']), 'members' => isset($l['stats']['member_count']) ? (int) $l['stats']['member_count'] : null], $lists);
+    }
+
     /**
      * Adds or updates each person in the chosen audience. A subscriber's status is only set when they are new to Mailchimp, so someone who
      * unsubscribed there stays unsubscribed. A person who is unsubscribed here is marked unsubscribed in Mailchimp if they are already in it.
      */
     public function export(Integration $integration, iterable $people): array
     {
-        $audience = $this->option($integration, 'audience_id');
+        $audience = $this->option($integration, 'export_audience_id') ?: $this->option($integration, 'audience_id'); // connections made before the two were separate used one audience for both
         if ($audience === '') {
             throw new IntegrationException('Choose the Mailchimp audience to send people to (Audience ID) in this connection’s settings.');
         }
-        $stats = ['sent' => 0, 'failed' => 0, 'skipped' => 0, 'error' => null];
+        $stats = ['sent' => 0, 'failed' => 0, 'skipped' => 0, 'error' => null, 'results' => []];
 
         foreach ($people as $person) {
             $email = mb_strtolower(trim((string) $person->email));
             if ($email === '') {
                 $stats['skipped']++;
+                $stats['results'][$person->id] = ['status' => 'skipped', 'external_id' => null, 'message' => 'No email address.'];
 
                 continue;
             }
@@ -143,15 +158,19 @@ class MailchimpProvider extends Provider
 
             if ($response->successful()) {
                 $stats['sent']++;
+                $stats['results'][$person->id] = ['status' => 'sent', 'external_id' => (string) ($response->json('id') ?: md5($email)), 'message' => $subscribed ? 'Sent as subscribed.' : 'Marked unsubscribed.'];
             } elseif (in_array($response->status(), [401, 403], true)) {
                 throw $this->failed($response, 'Mailchimp refused the key. Reconnect it in this connection’s settings.', '');
             } elseif ($response->status() === 404 && ! $subscribed) {
                 $stats['skipped']++; // unsubscribed here and not in Mailchimp: nothing to do
+                $stats['results'][$person->id] = ['status' => 'skipped', 'external_id' => null, 'message' => 'Unsubscribed here and not in Mailchimp.'];
             } elseif (($response->json('title') ?? '') === 'Member In Compliance State' || ($response->json('title') ?? '') === 'Forgotten Email Not Subscribed') {
                 $stats['skipped']++; // Mailchimp will not take them back: they unsubscribed or asked to be forgotten there
+                $stats['results'][$person->id] = ['status' => 'skipped', 'external_id' => null, 'message' => 'Mailchimp will not take them back (unsubscribed or forgotten there).'];
             } else {
                 $stats['failed']++;
                 $stats['error'] ??= (string) ($response->json('detail') ?? 'Mailchimp refused '.$email);
+                $stats['results'][$person->id] = ['status' => 'failed', 'external_id' => null, 'message' => (string) ($response->json('detail') ?? 'Mailchimp refused this person.')];
             }
         }
 

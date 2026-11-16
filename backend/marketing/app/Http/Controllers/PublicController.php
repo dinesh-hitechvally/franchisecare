@@ -271,6 +271,7 @@ class PublicController extends Controller
                 ]));
                 $person->save();
             }
+            \App\Services\PersonSources::seen($person, 'form', ['external_id' => $form->id, 'label' => $form->name, 'created' => $created]);
             $person->setCustom($custom, blanksOnly: ! $created); // a repeat submission never overwrites what we already know
 
             $listIds = PeopleList::withoutGlobalScope('company')->where('company_id', $biz)->whereIn('id', $form->list_ids ?? [])->pluck('id')->all();

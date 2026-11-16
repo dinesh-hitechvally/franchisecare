@@ -92,7 +92,11 @@ class Campaign extends Model
         }
         $path = 'people.handles->'.$this->type; // messenger, x: the id stored on the person
 
-        return $has ? $query->whereNotNull($path)->where($path, '!=', '') : $query->where(fn ($w) => $w->whereNull($path)->orWhere($path, ''));
+        // reachable = an id typed on the person, or one recorded as a source on that platform
+        $reachable = fn ($w) => $w->where(fn ($h) => $h->whereNotNull($path)->where($path, '!=', ''))
+            ->orWhereExists(fn ($s) => $s->selectRaw('1')->from('person_sources')->whereColumn('person_sources.person_id', 'people.id')->where('person_sources.platform', $this->type)->where('person_sources.external_id', '!=', ''));
+
+        return $has ? $query->where($reachable) : $query->whereNot($reachable);
     }
 
     /** Everyone this campaign goes to (before unsubscribed / missing-address people are left out): its segment, its list, or all people. */

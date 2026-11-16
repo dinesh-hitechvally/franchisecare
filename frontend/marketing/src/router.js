@@ -61,7 +61,11 @@ const routes = [
   // connected platforms (Shopify, WooCommerce, WordPress, Magento): their customers become People
   { path: '/integrations', component: () => import('./views/PlatformIntegrations.vue') },
   { path: '/integrations/connected', component: () => import('./views/ConnectedIntegrations.vue') },
-  { path: '/integrations/history', component: () => import('./views/IntegrationSyncs.vue'), meta: { parent: '/integrations' } },
+  { path: '/integrations/:id(\\d+)/settings', component: () => import('./views/IntegrationSettings.vue'), meta: { parent: '/integrations/connected' } },
+  // sync history: every connection at /integrations/history, one connection at /integrations/12/history
+  { path: '/integrations/history', component: () => import('./views/IntegrationSyncs.vue'), meta: { parent: '/integrations' },
+    beforeEnter: (to) => (to.query.integration_id ? { path: `/integrations/${to.query.integration_id}/history`, replace: true } : true) }, // old links with ?integration_id=
+  { path: '/integrations/:id(\\d+)/history', component: () => import('./views/IntegrationSyncs.vue'), meta: { parent: '/integrations/connected' } },
 
   // Analytics
   { path: '/analytics', redirect: '/analytics/overview' },
@@ -70,6 +74,7 @@ const routes = [
   { path: '/analytics/sms', component: () => import('./views/AnalyticsSms.vue') },
   { path: '/analytics/delivery', component: () => import('./views/AnalyticsDelivery.vue') },
   { path: '/analytics/automation', component: () => import('./views/AnalyticsAutomation.vue') },
+  { path: '/analytics/jobs', component: () => import('./views/AnalyticsJobs.vue') },
   { path: '/analytics/campaigns', redirect: '/analytics/email' },
   { path: '/analytics/people', component: () => import('./views/AnalyticsPeople.vue') },
   { path: '/analytics/conversions', component: () => import('./views/AnalyticsConversions.vue') },

@@ -41,6 +41,7 @@ class ApiV1Controller extends Controller
         } else {
             $person->update($fields);
         }
+        \App\Services\PersonSources::seen($person, 'api', ['created' => $created, 'changed' => ! $created && $person->wasChanged()]);
 
         // custom fields: define any that are new (as plain text), then save the answers
         $custom = [];

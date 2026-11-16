@@ -66,6 +66,19 @@ async function load() {
 }
 const next = () => { page.value++; load() }
 
+// A person also has a sync history: where they came from (each platform with their id there) and what was imported or sent.
+const isPerson = computed(() => props.type === 'person' && !whole.value)
+const tab = ref('changes')
+const sync = ref(null)
+const syncError = ref('')
+const ARROW = { IN: '← from', OUT: '→ to', in: '← from', out: '→ to' }
+const SYNC_ACTIONS = { created: 'Came from', linked: 'Found on', updated: 'Updated from', sent: 'Sent to', failed: 'Refused by', skipped: 'Skipped for' }
+async function showSync() {
+  tab.value = 'sync'
+  if (sync.value) return
+  try { sync.value = (await api.get(`/people/${props.id}/sync-history`)).data } catch (e) { syncError.value = errorMessage(e) }
+}
+
 // A saved copy opens in the same editor you edit it in, but read-only. An SMS is plain text, so it gets the small viewer.
 async function open(r) {
   opening.value = r.history_id
@@ -95,7 +108,39 @@ onMounted(load)
 
 <template>
   <Modal :title="`History${title ? ' — ' + title : ''}`" wide @close="$emit('close')">
-    <p v-if="loading" class="empty">Loading…</p>
+    <div v-if="isPerson" class="tabs">
+      <button type="button" :class="{ on: tab === 'changes' }" @click="tab = 'changes'">Changes</button>
+      <button type="button" :class="{ on: tab === 'sync' }" @click="showSync">Sync history</button>
+    </div>
+    <div v-if="isPerson && tab === 'sync'" class="scroll">
+      <p v-if="syncError" class="alert err">{{ syncError }}</p>
+      <p v-else-if="!sync" class="empty">Loading…</p>
+      <template v-else>
+        <h4 class="day">Comes from</h4>
+        <table v-if="sync.sources.length" class="src">
+          <tr><th>Source</th><th>Name</th><th>ID there</th><th>First seen</th><th>Last synced</th></tr>
+          <tr v-for="s in sync.sources" :key="s.id">
+            <td>{{ s.platform_label }}</td><td>{{ s.label || '—' }}</td><td><code v-if="s.external_id">{{ s.external_id }}</code><template v-else>—</template></td>
+            <td>{{ s.first_seen_at ? $dt(s.first_seen_at) : '—' }}</td><td>{{ s.last_synced_at ? $dt(s.last_synced_at) : '—' }}</td>
+          </tr>
+        </table>
+        <p v-else class="empty">No source recorded.</p>
+        <h4 class="day">Log</h4>
+        <p v-if="!sync.events.length" class="empty">Nothing has been imported or sent for this person yet.</p>
+        <ol v-else class="tl">
+          <li v-for="e in sync.events" :key="e.id">
+            <div class="top">
+              <span class="badge" :class="'s-' + e.action">{{ SYNC_ACTIONS[e.action] || e.action }}</span>
+              <b>{{ e.platform_label }}</b><span v-if="e.label" class="muted">· {{ e.label }}</span>
+              <span class="when">{{ $dt(e.created_at) }}</span>
+            </div>
+            <div class="who">{{ ARROW[e.direction] }} {{ e.platform_label }}<template v-if="e.external_id"> · ID <code>{{ e.external_id }}</code></template></div>
+            <div v-if="e.message" class="chg">{{ e.message }}</div>
+          </li>
+        </ol>
+      </template>
+    </div>
+    <p v-else-if="loading" class="empty">Loading…</p>
     <p v-else-if="error" class="alert err">{{ error }}</p>
     <p v-else-if="!rows.length" class="empty">No changes have been recorded {{ whole ? 'yet' : 'for this row yet' }}.</p>
     <div v-else class="scroll">
@@ -148,4 +193,14 @@ onMounted(load)
 .badge.a-updated { background: #dbeafe; color: #1e40af; }
 .badge.a-deleted, .badge.a-purged { background: #fee2e2; color: #991b1b; }
 .note { color: #6b7280; font-size: 12px; margin: 10px 0 0; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid #e5e7eb; margin-bottom: 12px; }
+.tabs button { background: none; border: 0; border-bottom: 2px solid transparent; padding: 8px 14px; font: inherit; font-size: 14px; color: #6b7280; cursor: pointer; }
+.tabs button.on { color: #3f51b5; border-bottom-color: #3f51b5; font-weight: 600; }
+.src { width: 100%; font-size: 13px; margin-bottom: 8px; }
+.src th { text-align: left; font-weight: 600; color: #6b7280; padding: 3px 10px 3px 0; }
+.src td { padding: 3px 10px 3px 0; }
+.badge.s-created, .badge.s-sent { background: #d1fae5; color: #065f46; }
+.badge.s-linked, .badge.s-updated { background: #dbeafe; color: #1e40af; }
+.badge.s-failed { background: #fee2e2; color: #991b1b; }
+.badge.s-skipped { background: #fef3c7; color: #92400e; }
 </style>

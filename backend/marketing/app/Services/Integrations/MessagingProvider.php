@@ -43,6 +43,9 @@ abstract class MessagingProvider extends ApiProvider
     public function address(Person $person): ?string
     {
         $v = trim((string) (($person->handles ?? [])[$this->channel()] ?? ''));
+        if ($v === '' && $person->exists) { // an id recorded as one of the person's sources counts too
+            $v = (string) \App\Models\PersonSource::withoutGlobalScope('company')->where('person_id', $person->id)->where('platform', $this->channel())->where('external_id', '!=', '')->orderBy('id')->value('external_id');
+        }
 
         return $v === '' ? null : $v;
     }

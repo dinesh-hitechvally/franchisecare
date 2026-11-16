@@ -1,6 +1,6 @@
 <script setup>
 // The media library: upload once, then pick from it (company logo, …).
-import { ref, reactive, computed, onMounted, watch } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import api, { errorMessage } from '../api'
 import FilterBar from '../components/FilterBar.vue'
 import DateInput from '../components/DateInput.vue'
@@ -63,6 +63,17 @@ const drop = (e) => { dragging.value = false; send([...e.dataTransfer.files]) }
 function show(i) { at.value = i; Object.assign(rn, { name: cur.value.name, alt: cur.value.alt || '', description: cur.value.description || '' }) }
 const openDetails = (m) => show(rows.value.findIndex((r) => r.id === m.id))
 const step = (d) => { const j = at.value + d; if (j >= 0 && j < rows.value.length) show(j) }
+// Left / Right arrow keys step through files while the window is open (not while typing in a field, or with History on top).
+function onArrow(e) {
+  if (at.value < 0 || historyOf.value || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return
+  if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+  const el = e.target
+  if (el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName))) return
+  e.preventDefault()
+  step(e.key === 'ArrowLeft' ? -1 : 1)
+}
+onMounted(() => window.addEventListener('keydown', onArrow))
+onBeforeUnmount(() => window.removeEventListener('keydown', onArrow))
 const dirty = computed(() => cur.value && (rn.name !== cur.value.name || rn.alt !== (cur.value.alt || '') || rn.description !== (cur.value.description || '')))
 async function saveDetails() {
   saving.value = true

@@ -36,7 +36,9 @@ async function exportCsv() {
   try { await download('/people/export' + (q ? '?' + q : ''), 'people.csv') } catch (e) { error.value = errorMessage(e) }
 }
 
-const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', handles: { messenger: '', x: '' }, subscribed: true, list_ids: [], tag_ids: [], custom: {} })
+const blank = () => ({ first_name: '', last_name: '', email: '', phone: '', subscribed: true, list_ids: [], tag_ids: [], custom: {} })
+const sources = ref([]) // where the person being edited comes from, with their id on each platform
+const sourceNames = (c) => (c.sources?.length ? [...new Set(c.sources.map((s) => s.platform_label))].join(', ') : c.source)
 const form = reactive(blank())
 const allSelected = computed(() => rows.value.length > 0 && rows.value.every((r) => selected.value.includes(r.id)))
 
@@ -52,7 +54,9 @@ async function load(page = 1) {
 let subDirty = false // an existing person's subscription is only rewritten when the box is toggled
 function edit(c) {
   subDirty = false
-  Object.assign(form, blank(), c ? { ...c, subscribed: !!c.is_subscribed, list_ids: c.lists.map((l) => l.id), tag_ids: c.tags.map((t) => t.id), custom: { ...(c.custom || {}) }, handles: { messenger: '', x: '', ...(c.handles || {}) } } : {})
+  sources.value = c?.sources || []
+  const { handles, sources: _s, lists: _l, tags: _t, ...person } = c || {} // handles are kept as they are: they come from the sources now
+  Object.assign(form, blank(), c ? { ...person, subscribed: !!c.is_subscribed, list_ids: c.lists.map((l) => l.id), tag_ids: c.tags.map((t) => t.id), custom: { ...(c.custom || {}) } } : {})
   editing.value = c ? c.id : 'new'
   error.value = ''
 }
@@ -150,7 +154,7 @@ onMounted(async () => {
       <thead><tr><th style="width: 30px"><input type="checkbox" :checked="allSelected" @change="toggleAll" /></th><th>Name</th><th>Email</th><th>Phone</th><th>Subscription</th><th>Lists &amp; tags</th><th class="act">Actions</th></tr></thead>
       <tr v-for="c in rows" :key="c.id">
         <td><input v-model="selected" type="checkbox" :value="c.id" /></td>
-        <td>{{ c.first_name }} {{ c.last_name }}<br /><small>{{ c.source }}</small></td>
+        <td>{{ c.first_name }} {{ c.last_name }}<br /><small>{{ sourceNames(c) }}</small></td>
         <td>{{ c.email }}</td>
         <td>{{ c.phone }}</td>
         <td><span class="badge" :class="c.is_subscribed ? 'sent' : 'failed'">{{ c.is_subscribed ? 'Subscribed' : 'Unsubscribed' }}</span></td>
@@ -173,9 +177,16 @@ onMounted(async () => {
       </div>
       <div class="field"><label>Email</label><input v-model="form.email" type="email" /></div>
       <div class="field"><label>Phone (international, e.g. +61400000000)</label><input v-model="form.phone" /><small class="muted">Also used for WhatsApp campaigns.</small></div>
-      <div class="grid g2">
-        <div class="field"><label>Messenger ID (PSID)</label><input v-model="form.handles.messenger" placeholder="for Messenger campaigns" /></div>
-        <div class="field"><label>X user ID</label><input v-model="form.handles.x" placeholder="for X message campaigns" /></div>
+      <div v-if="editing !== 'new'" class="field">
+        <label>Comes from</label>
+        <table v-if="sources.length" class="src">
+          <tr><th>Source</th><th>Name</th><th>ID there</th><th>Last synced</th></tr>
+          <tr v-for="s in sources" :key="s.id">
+            <td>{{ s.platform_label }}</td><td>{{ s.label || '—' }}</td><td><code v-if="s.external_id">{{ s.external_id }}</code><template v-else>—</template></td><td>{{ s.last_synced_at ? $dt(s.last_synced_at) : '—' }}</td>
+          </tr>
+        </table>
+        <small v-else class="muted">No source recorded.</small>
+        <small class="muted">Full log of what was imported or sent: row menu → History → Sync history.</small>
       </div>
       <div class="field">
         <label>Lists</label>
@@ -221,5 +232,8 @@ onMounted(async () => {
 <style scoped>
 .bulkbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: #eef0fb; border-radius: 4px; padding: 8px 12px; margin-bottom: 12px; }
 .grp { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: #3f51b5; margin: 16px 0 8px; }
+.src { width: 100%; font-size: 13px; margin: 2px 0 4px; }
+.src th { text-align: left; font-weight: 600; color: #6b7280; padding: 3px 8px 3px 0; }
+.src td { padding: 3px 8px 3px 0; }
 .tagchip { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 500; margin: 0 4px 4px 0; }
 </style>
