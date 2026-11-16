@@ -138,19 +138,22 @@ const wrapStyle = (b, extra = '') => {
   const bgCss = bg && bg2 ? `background:linear-gradient(135deg,${bg},${bg2});` : bg ? `background:${bg};` : ''
   return `${bgCss}${color ? `color:${color};` : ''}padding-top:${+b.pad || 0}px;padding-bottom:${+b.pad || 0}px;${extra}`
 }
-const btn = (text, href, cls = '') => (text ? `<a class="btn ${cls}" href="${esc(url(href))}">${esc(text)}</a>` : '')
-const head = (title, sub) => (title || sub ? `<div class="head">${title ? `<h2>${esc(title)}</h2>` : ''}${sub ? `<p>${esc(sub)}</p>` : ''}</div>` : '')
+const btn = (text, href, cls = '', attrs = '') => (text ? `<a class="btn ${cls}"${attrs} href="${esc(url(href))}">${esc(text)}</a>` : '')
+const head = (title, sub, ed = () => '') => (title || sub ? `<div class="head">${title ? `<h2${ed('heading')}>${esc(title)}</h2>` : ''}${sub ? `<p${ed('subheading')}>${esc(sub)}</p>` : ''}</div>` : '')
 const placeholder = (label, h = 240) => `<div class="img-ph" style="min-height:${h}px">${label}</div>`
 const img = (src, alt) => `<img src="${esc(url(src))}" alt="${esc(alt)}" loading="lazy">`
 
 export function renderBlock(b, s, edit = false) {
+  // in the editor, text that can be edited in place is tagged (data-edit = which field; data-idx = which item of a list; data-rich = formatted text); sp wraps bare text so it can be tagged. The published page never has these.
+  const ed = (key, idx, rich) => (edit ? ` data-edit="${key}"${idx !== undefined ? ` data-idx="${idx}"` : ''}${rich ? ' data-rich="1"' : ''}` : '')
+  const sp = (key, idx, html) => (edit ? `<span${ed(key, idx)}>${html}</span>` : html)
   switch (b.type) {
     case 'nav':
-      return `<header class="nav" style="${wrapStyle(b)}"><div class="wrap nav-in"><a class="brand" href="#">${b.logo || LOGO_TAG.test(b.brand || '') ? `<img src="${esc(url(b.logo || '{{company_logo}}'))}" alt="${esc(b.brand)}" style="height:${Number(b.logoH) || 36}px;width:auto;border-radius:0">` : esc(b.brand)}</a><nav class="nav-links">${(b.links || []).map((l) => `<a href="${esc(url(l.url))}">${esc(l.label)}</a>`).join('')}</nav>${btn(b.ctaText, b.ctaUrl, 'sm')}</div></header>`
+      return `<header class="nav" style="${wrapStyle(b)}"><div class="wrap nav-in"><a class="brand" href="#">${b.logo || LOGO_TAG.test(b.brand || '') ? `<img src="${esc(url(b.logo || '{{company_logo}}'))}" alt="${esc(b.brand)}" style="height:${Number(b.logoH) || 36}px;width:auto;border-radius:0">` : sp('brand', undefined, esc(b.brand))}</a><nav class="nav-links">${(b.links || []).map((l, n) => `<a href="${esc(url(l.url))}"${ed('label', n)}>${esc(l.label)}</a>`).join('')}</nav>${btn(b.ctaText, b.ctaUrl, 'sm', ed('ctaText'))}</div></header>`
 
     case 'hero': {
       const photo = b.bgImage ? `background-image:linear-gradient(rgba(0,0,0,${(b.overlay || 0) / 100}),rgba(0,0,0,${(b.overlay || 0) / 100})),url('${esc(url(b.bgImage))}');background-size:cover;background-position:center;color:#fff;` : ''
-      const text = `${b.eyebrow ? `<span class="eyebrow">${esc(b.eyebrow)}</span>` : ''}<h1>${esc(b.title)}</h1>${b.subtitle ? `<p class="lead">${esc(b.subtitle)}</p>` : ''}<div class="btns">${btn(b.primaryText, b.primaryUrl)}${btn(b.secondaryText, b.secondaryUrl, 'alt')}</div>`
+      const text = `${b.eyebrow ? `<span class="eyebrow"${ed('eyebrow')}>${esc(b.eyebrow)}</span>` : ''}<h1${ed('title')}>${esc(b.title)}</h1>${b.subtitle ? `<p class="lead"${ed('subtitle')}>${esc(b.subtitle)}</p>` : ''}<div class="btns">${btn(b.primaryText, b.primaryUrl, '', ed('primaryText'))}${btn(b.secondaryText, b.secondaryUrl, 'alt', ed('secondaryText'))}</div>`
       if (b.layout === 'split' && (b.image || edit)) {
         return `<section class="sec hero" style="${wrapStyle(b, photo)}"><div class="wrap split ${b.side === 'left' ? 'rev' : ''}"><div class="hero-text">${text}</div><div class="col-img">${b.image ? img(b.image, b.title) : placeholder('Image', 300)}</div></div></section>`
       }
@@ -158,43 +161,43 @@ export function renderBlock(b, s, edit = false) {
     }
 
     case 'stats':
-      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap"><div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 4)}">${(b.items || []).map((i) => `<div class="stat"><b>${esc(i.value)}</b><span>${esc(i.label)}</span></div>`).join('')}</div></div></section>`
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap"><div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 4)}">${(b.items || []).map((i, n) => `<div class="stat"><b${ed('value', n)}>${esc(i.value)}</b><span${ed('label', n)}>${esc(i.label)}</span></div>`).join('')}</div></div></section>`
 
     case 'features':
-      return `<section class="sec" id="features" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading, b.subheading)}<div class="grid" style="--cols:${+b.columns || 3}">${(b.items || []).map((i) => `<div class="card"><div class="ico">${esc(i.icon)}</div><h3>${esc(i.title)}</h3><p>${esc(i.text)}</p></div>`).join('')}</div></div></section>`
+      return `<section class="sec" id="features" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading, b.subheading, ed)}<div class="grid" style="--cols:${+b.columns || 3}">${(b.items || []).map((i, n) => `<div class="card"><div class="ico"${ed('icon', n)}>${esc(i.icon)}</div><h3${ed('title', n)}>${esc(i.title)}</h3><p${ed('text', n)}>${esc(i.text)}</p></div>`).join('')}</div></div></section>`
 
     case 'steps':
-      return `<section class="sec" id="how" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading)}<div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 4)}">${(b.items || []).map((i, n) => `<div class="step"><span class="n">${n + 1}</span><div><h3>${esc(i.title)}</h3><p class="muted">${esc(i.text)}</p></div></div>`).join('')}</div></div></section>`
+      return `<section class="sec" id="how" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading, undefined, ed)}<div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 4)}">${(b.items || []).map((i, n) => `<div class="step"><span class="n">${n + 1}</span><div><h3${ed('title', n)}>${esc(i.title)}</h3><p class="muted"${ed('text', n)}>${esc(i.text)}</p></div></div>`).join('')}</div></div></section>`
 
     case 'text':
-      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap narrow" style="text-align:${b.align === 'center' ? 'center' : 'left'}">${b.heading ? `<h2 style="margin-bottom:18px">${esc(b.heading)}</h2>` : ''}<div class="rt">${sanitize(b.html)}</div></div></section>`
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap narrow" style="text-align:${b.align === 'center' ? 'center' : 'left'}">${b.heading ? `<h2${ed('heading')} style="margin-bottom:18px">${esc(b.heading)}</h2>` : ''}<div class="rt"${ed('html', undefined, true)}>${sanitize(b.html)}</div></div></section>`
 
     case 'image':
       if (!b.src) return edit ? `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${placeholder('Click to choose an image')}</div></section>` : ''
-      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap ${b.wide ? '' : 'narrow'}"><figure>${img(b.src, b.alt)}${b.caption ? `<figcaption class="cap">${esc(b.caption)}</figcaption>` : ''}</figure></div></section>`
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap ${b.wide ? '' : 'narrow'}"><figure>${img(b.src, b.alt)}${b.caption ? `<figcaption class="cap"${ed('caption')}>${esc(b.caption)}</figcaption>` : ''}</figure></div></section>`
 
     case 'split': {
       const pic = b.image ? img(b.image, b.heading) : edit ? placeholder('Image', 280) : ''
-      if (!pic) return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap narrow">${b.heading ? `<h2>${esc(b.heading)}</h2>` : ''}<div class="rt" style="margin-top:14px">${sanitize(b.html)}</div>${b.btnText ? `<div style="margin-top:22px">${btn(b.btnText, b.btnUrl)}</div>` : ''}</div></section>`
-      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap split ${b.side === 'left' ? 'rev' : ''}"><div>${b.heading ? `<h2>${esc(b.heading)}</h2>` : ''}<div class="rt" style="margin-top:14px">${sanitize(b.html)}</div>${b.btnText ? `<div style="margin-top:22px">${btn(b.btnText, b.btnUrl)}</div>` : ''}</div><div class="col-img">${pic}</div></div></section>`
+      if (!pic) return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap narrow">${b.heading ? `<h2${ed('heading')}>${esc(b.heading)}</h2>` : ''}<div class="rt"${ed('html', undefined, true)} style="margin-top:14px">${sanitize(b.html)}</div>${b.btnText ? `<div style="margin-top:22px">${btn(b.btnText, b.btnUrl, '', ed('btnText'))}</div>` : ''}</div></section>`
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap split ${b.side === 'left' ? 'rev' : ''}"><div>${b.heading ? `<h2${ed('heading')}>${esc(b.heading)}</h2>` : ''}<div class="rt"${ed('html', undefined, true)} style="margin-top:14px">${sanitize(b.html)}</div>${b.btnText ? `<div style="margin-top:22px">${btn(b.btnText, b.btnUrl, '', ed('btnText'))}</div>` : ''}</div><div class="col-img">${pic}</div></div></section>`
     }
 
     case 'testimonials':
-      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading)}<div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 3)}">${(b.items || []).map((i) => `<figure class="card quote"><blockquote>“${esc(i.quote)}”</blockquote><figcaption><b>${esc(i.name)}</b>${esc(i.role)}</figcaption></figure>`).join('')}</div></div></section>`
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading, undefined, ed)}<div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 3)}">${(b.items || []).map((i, n) => `<figure class="card quote"><blockquote>“${sp('quote', n, esc(i.quote))}”</blockquote><figcaption><b${ed('name', n)}>${esc(i.name)}</b>${sp('role', n, esc(i.role))}</figcaption></figure>`).join('')}</div></div></section>`
 
     case 'pricing':
-      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading, b.subheading)}<div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 3)}">${(b.items || []).map((p) => `<div class="card plan ${p.highlight ? 'hl' : ''}"><h3>${esc(p.name)}</h3><div class="price">${esc(p.price)}${p.period ? `<small> / ${esc(p.period)}</small>` : ''}</div><ul>${lines(p.features).map((l) => `<li>✓ ${esc(l)}</li>`).join('')}</ul>${btn(p.btnText, p.btnUrl)}</div>`).join('')}</div></div></section>`
+      return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${head(b.heading, b.subheading, ed)}<div class="grid" style="--cols:${Math.min((b.items || []).length || 1, 3)}">${(b.items || []).map((p, n) => `<div class="card plan ${p.highlight ? 'hl' : ''}"><h3${ed('name', n)}>${esc(p.name)}</h3><div class="price">${sp('price', n, esc(p.price))}${p.period ? `<small> / ${sp('period', n, esc(p.period))}</small>` : ''}</div><ul>${lines(p.features).map((l) => `<li>✓ ${esc(l)}</li>`).join('')}</ul>${btn(p.btnText, p.btnUrl, '', ed('btnText', n))}</div>`).join('')}</div></div></section>`
 
     case 'faq':
-      return `<section class="sec" id="faq" style="${wrapStyle(b)}"><div class="wrap narrow">${head(b.heading)}${(b.items || []).map((i) => `<details class="faq"><summary>${esc(i.q)}</summary><p>${esc(i.a)}</p></details>`).join('')}</div></section>`
+      return `<section class="sec" id="faq" style="${wrapStyle(b)}"><div class="wrap narrow">${head(b.heading, undefined, ed)}${(b.items || []).map((i, n) => `<details class="faq"><summary>${sp('q', n, esc(i.q))}</summary><p${ed('a', n)}>${esc(i.a)}</p></details>`).join('')}</div></section>`
 
     case 'cta':
-      return `<section class="sec cta" style="${wrapStyle(b)}"><div class="wrap center">${b.heading ? `<h2>${esc(b.heading)}</h2>` : ''}${b.text ? `<p class="lead">${esc(b.text)}</p>` : ''}<div class="btns">${btn(b.btnText, b.btnUrl, 'inv')}</div></div></section>`
+      return `<section class="sec cta" style="${wrapStyle(b)}"><div class="wrap center">${b.heading ? `<h2${ed('heading')}>${esc(b.heading)}</h2>` : ''}${b.text ? `<p class="lead"${ed('text')}>${esc(b.text)}</p>` : ''}<div class="btns">${btn(b.btnText, b.btnUrl, 'inv', ed('btnText'))}</div></div></section>`
 
     case 'form': {
       const name = formNames[String(b.form_id)]
       const slot = edit ? `<div class="form-ph">${name ? `Form: <b>${esc(name)}</b>` : 'No form chosen yet'}<br><small>${name ? 'Shown here on the published page.' : 'Pick one in the panel on the right.'}</small></div>` : formMarker(b)
-      return `<section class="sec" id="form" style="${wrapStyle(b)}"><div class="wrap narrow center">${b.heading ? `<h2>${esc(b.heading)}</h2>` : ''}${b.text ? `<p class="lead" style="margin-bottom:28px">${esc(b.text)}</p>` : ''}<div style="text-align:left">${slot}</div></div></section>`
+      return `<section class="sec" id="form" style="${wrapStyle(b)}"><div class="wrap narrow center">${b.heading ? `<h2${ed('heading')}>${esc(b.heading)}</h2>` : ''}${b.text ? `<p class="lead"${ed('text')} style="margin-bottom:28px">${esc(b.text)}</p>` : ''}<div style="text-align:left">${slot}</div></div></section>`
     }
 
     // An alert box, like the ones websites show: an icon, a bold title, a message, an optional button and an optional close icon, in one of five styles. It stays where it
@@ -208,8 +211,8 @@ export function renderBlock(b, s, edit = false) {
       const secs = act === 'push' ? 0 : Math.max(0, Math.min(120, Number(b.secs) || 0))
       const showClose = b.showClose !== false
       const icon = NOTE_ICONS[style] ? `<div class="pn-ico">${NOTE_ICONS[style]}</div>` : ''
-      const title = b.heading ? `<b class="pn-title">${esc(b.heading)}</b>` : ''
-      const text = b.text ? `<span class="pn-text">${esc(b.text)}</span>` : ''
+      const title = b.heading ? `<b class="pn-title"${ed('heading')}>${esc(b.heading)}</b>` : ''
+      const text = b.text ? `<span class="pn-text"${ed('text')}>${esc(b.text)}</span>` : ''
       const label = esc(b.btnText || (act === 'push' ? 'Allow' : act === 'close' ? 'Got it' : 'Learn more'))
       const main = !noteShowButton(b) ? ''
         : act === 'push' ? `<button type="button" class="btn sm fc-push-btn">${label}</button>`
@@ -235,7 +238,7 @@ export function renderBlock(b, s, edit = false) {
       return '<div class="wrap" style="padding-top:8px;padding-bottom:8px"><hr></div>'
 
     case 'footer':
-      return `<footer class="foot" style="${wrapStyle(b)}"><div class="wrap"><div class="foot-links">${(b.links || []).map((l) => `<a href="${esc(url(l.url))}">${esc(l.label)}</a>`).join('')}</div><p>${esc(b.text)}</p></div></footer>`
+      return `<footer class="foot" style="${wrapStyle(b)}"><div class="wrap"><div class="foot-links">${(b.links || []).map((l, n) => `<a href="${esc(url(l.url))}"${ed('label', n)}>${esc(l.label)}</a>`).join('')}</div><p${ed('text')}>${esc(b.text)}</p></div></footer>`
 
     case 'html':
       return `<section class="sec" style="${wrapStyle(b)}"><div class="wrap">${sanitize(b.html)}</div></section>`

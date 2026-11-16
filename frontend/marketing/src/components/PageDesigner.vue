@@ -7,6 +7,8 @@ import { useAuth } from '../stores/auth'
 import api, { errorMessage } from '../api'
 import { fmtDate, fmtDateTime } from '../format'
 import RichText from './RichText.vue'
+import { sanitize } from '../builder/blocks'
+import { loadMergeTags, fillTags } from '../mergeTags'
 import { BLOCKS, FIELDS, LAYOUTS, setForms, defaultSettings, newBlock, renderBlock, renderBody, renderPage, pageCss, pageVars, uid, upgradeBlock } from '../builder/pageBlocks'
 
 // Landing-page builder (a real web page, not an email). Pass `initial` ({ name, design }); emits `save` / `close`.
@@ -54,6 +56,9 @@ const hover = ref(-1)
 const auth = useAuth()
 // {{company_logo}} is filled in when the page is published; show the real logo while designing
 const withLogo = (h) => h.split('{{company_logo}}').join(auth.company?.logo_url || '')
+// the View tab shows the page as a visitor sees it: variables such as {{company_name}} show their real value (the saved design keeps the variable)
+loadMergeTags()
+const shown = (b) => fillTags(withLogo(renderBlock(b, s.value, true)), true)
 const imagePicker = ref(null)
 const mediaPicker = ref(null) // { block, key } while choosing from the media library
 const copied = ref(false)
@@ -93,6 +98,55 @@ function startFrom(layout) {
   design.value.settings = { ...defaultSettings(), ...(design.value.settings || {}), title }
   picking.value = false
   selected.value = null
+}
+
+// ---- editing text in place (View tab) ----
+// Text that can be edited is tagged by the renderer (data-edit / data-idx / data-rich). Clicking it makes it editable; the new value is saved when you
+// click away (Enter ends a single-line field, Esc cancels).
+const editing = ref(null) // { el, item, key, rich, blockId } while a piece of text is being edited
+const renderTick = ref(0) // bumped to redraw a block after editing
+function startEdit(e, b) {
+  const el = e.target.closest?.('[data-edit]')
+  if (!el || locked.value || el.isContentEditable) return
+  if (editing.value) finishEdit() // clicking another piece of text saves the one being edited
+  const idx = el.dataset.idx
+  const item = idx !== undefined ? b.items?.[Number(idx)] ?? b.links?.[Number(idx)] : b
+  const key = el.dataset.edit
+  if (!item) return
+  const rich = el.dataset.rich === '1'
+  if (rich) el.innerHTML = sanitize(item[key]); else el.textContent = item[key] ?? ''
+  el.contentEditable = rich ? 'true' : 'plaintext-only'
+  if (rich) document.execCommand('defaultParagraphSeparator', false, 'p')
+  editing.value = { el, item, key, rich, blockId: b.id }
+  el.addEventListener('blur', onEditBlur, { once: true })
+  el.addEventListener('keydown', onEditKey)
+  el.focus()
+  const r = document.createRange()
+  r.selectNodeContents(el)
+  r.collapse(false)
+  const sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(r)
+}
+function onEditKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); finishEdit(true) }
+  else if (e.key === 'Enter' && !editing.value?.rich) { e.preventDefault(); finishEdit() }
+  else if (e.key === ' ' && e.target.closest('summary')) { e.preventDefault(); document.execCommand('insertText', false, ' ') } // a space inside a question would otherwise open / close it
+  e.stopPropagation()
+}
+const onEditBlur = () => finishEdit()
+function finishEdit(cancel = false) {
+  const ed = editing.value
+  if (!ed) return
+  editing.value = null
+  ed.el.removeEventListener('blur', onEditBlur)
+  ed.el.removeEventListener('keydown', onEditKey)
+  if (!cancel) {
+    const v = ed.rich ? sanitize(ed.el.innerHTML) : ed.el.textContent.replace(/\s*\n\s*/g, ' ').trim()
+    if (v !== (ed.item[ed.key] ?? '')) ed.item[ed.key] = v
+  }
+  ed.el.removeAttribute('contenteditable')
+  renderTick.value++
 }
 
 // ---- block operations
@@ -291,7 +345,7 @@ const save = () => emit('save', { keepOpen: side.value === 'history' && !!props.
       <!-- left: sections -->
       <aside class="pd-left">
         <div v-if="locked" class="ro-note"><b>Saved copy</b><p>{{ noteText }}</p><p>This is exactly how the page was when it was saved. You can look around, switch device sizes, open the HTML and click a section to see its settings, but nothing can be changed.</p></div>
-        <p v-if="!locked" class="hint">Drag a section onto the page, or click to add it below the selected one.</p>
+        <p v-if="!locked" class="hint">Drag a section onto the page, or click to add it below the selected one. Click any text on the page to edit it.</p>
         <div v-if="!locked" class="tiles">
           <div v-for="(def, type) in BLOCKS" :key="type" class="pal" draggable="true" @dragstart="dragNew($event, type)" @click="add(type)">
             <Icon :name="def.icon" :size="24" /><span>{{ def.label }}</span>
@@ -318,8 +372,8 @@ const save = () => emit('save', { keepOpen: side.value === 'history' && !!props.
               <div v-if="!blocks.length && !locked" class="dz-empty" :class="{ hov: hover === 0 }" @dragover.prevent="hover = 0" @dragleave="hover = -1" @drop.prevent="drop($event, 0)">Drag a section here</div>
               <template v-for="(b, i) in blocks" :key="b.id">
                 <div v-if="!locked" class="dz" :class="{ hov: hover === i }" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)"></div>
-                <div class="cv-b" :class="{ sel: selected === b.id }" :draggable="!locked" @dragstart="dragMove($event, i)" @click.prevent.stop="selected = b.id">
-                  <div class="cv-html" v-html="withLogo(renderBlock(b, s, true))"></div>
+                <div class="cv-b" :class="{ sel: selected === b.id, 'can-edit': !locked }" :draggable="!locked && editing?.blockId !== b.id" @dragstart="dragMove($event, i)" @click.prevent.stop="selected = b.id">
+                  <div :key="renderTick" class="cv-html" @click="startEdit($event, b)" v-html="shown(b)"></div>
                   <div v-if="selected === b.id && !locked" class="cv-tools" @click.stop>
                     <span class="lbl">{{ BLOCKS[b.type].label }}</span>
                     <span class="grip" title="Drag to move"><Icon name="drag" :size="16" /></span>
@@ -515,6 +569,9 @@ const save = () => emit('save', { keepOpen: side.value === 'history' && !!props.
 .cv-b { position: relative; cursor: pointer; outline: 2px solid transparent; outline-offset: -2px; }
 .cv-b:hover { outline-color: #9fa8da; } .cv-b.sel { outline: 3px solid #3f51b5; outline-offset: -3px; }
 .cv-html { pointer-events: none; }
+.cv-b.can-edit .cv-html :deep([data-edit]) { pointer-events: auto; cursor: text; }
+.cv-b.can-edit .cv-html :deep([data-edit]:hover) { outline: 1px dashed #9fa8da; outline-offset: 2px; }
+.cv-b .cv-html :deep([data-edit][contenteditable]) { outline: 2px solid #3f51b5; outline-offset: 2px; background: rgba(63, 81, 181, .08); min-width: 24px; }
 .cv-tools { position: absolute; top: 0; right: 0; background: #3f51b5; display: flex; align-items: center; z-index: 5; border-radius: 0 0 0 4px; font-size: 13px; }
 .cv-tools .lbl { color: #fff; padding: 0 10px; font-size: 12px; }
 .cv-tools button, .grip { background: none; border: 0; color: #fff; padding: 6px 7px; cursor: pointer; display: flex; } .grip { cursor: grab; } .cv-tools button:hover { background: #303f9f; }

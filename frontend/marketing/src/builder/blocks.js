@@ -72,33 +72,35 @@ const styleParas = (html) => html.replace(/<p(?![^>]*style=)/gi, '<p style="marg
 const placeholder = (label, h = 160) =>
   `<div style="background:#eceff1;color:#78909c;text-align:center;font:14px Arial,sans-serif;height:${h}px;line-height:${h}px;border-radius:4px">${label}</div>`
 
-const button = (text, url, bg, color, radius, font) =>
-  `<a href="${esc(url)}" target="_blank" style="display:inline-block;background:${bg};color:${color};font-family:${font};font-weight:700;font-size:16px;text-decoration:none;padding:14px 32px;border-radius:${radius}px;">${esc(text)}</a>`
+const button = (text, url, bg, color, radius, font, attrs = '') =>
+  `<a href="${esc(url)}" target="_blank"${attrs} style="display:inline-block;background:${bg};color:${color};font-family:${font};font-weight:700;font-size:16px;text-decoration:none;padding:14px 32px;border-radius:${radius}px;">${esc(text)}</a>`
 
 /** Inner markup of one block. `edit` shows placeholders for empty media; the sent email omits them. */
 export function renderBlock(b, s, edit = false) {
   const font = s.font
+  // in the editor, text that can be edited in place is tagged (data-edit = which field; data-idx = which item of a list; data-rich = formatted text). The sent email never has these.
+  const ed = (key, idx, rich) => (edit ? ` data-edit="${key}"${idx !== undefined ? ` data-idx="${idx}"` : ''}${rich ? ' data-rich="1"' : ''}` : '')
   const wrap = (inner) => `<div style="background:${b.bg || 'transparent'};padding:${b.padY}px ${b.padX}px;">${inner}</div>`
   switch (b.type) {
     case 'header':
-      return wrap(`<div style="font-family:${font};font-weight:800;font-size:${b.size}px;letter-spacing:2px;text-transform:uppercase;color:${b.color};text-align:${b.align};">${esc(b.text)}</div>`)
+      return wrap(`<div${ed('text')} style="font-family:${font};font-weight:800;font-size:${b.size}px;letter-spacing:2px;text-transform:uppercase;color:${b.color};text-align:${b.align};">${esc(b.text)}</div>`)
 
     case 'hero': {
       const bgImg = b.image ? `background-image:url('${esc(b.image)}');background-size:cover;background-position:center;` : ''
       const parts = []
-      if (b.emoji) parts.push(`<div style="font-size:56px;line-height:1.1;margin-bottom:14px;">${esc(b.emoji)}</div>`)
-      if (b.eyebrow) parts.push(`<div style="font-family:${font};font-weight:700;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:${b.subColor};margin-bottom:12px;">${esc(b.eyebrow)}</div>`)
-      parts.push(`<div style="font-family:${font};font-weight:800;font-size:${b.size}px;line-height:1.15;color:${b.color};">${esc(b.title)}</div>`)
-      if (b.subtitle) parts.push(`<div style="font-family:${font};font-size:18px;line-height:1.5;color:${b.subColor};margin-top:16px;">${esc(b.subtitle)}</div>`)
-      if (b.btnText) parts.push(`<div style="margin-top:28px;">${button(b.btnText, b.btnUrl, b.btnBg, b.btnColor, 30, font)}</div>`)
+      if (b.emoji) parts.push(`<div${ed('emoji')} style="font-size:56px;line-height:1.1;margin-bottom:14px;">${esc(b.emoji)}</div>`)
+      if (b.eyebrow) parts.push(`<div${ed('eyebrow')} style="font-family:${font};font-weight:700;font-size:13px;letter-spacing:3px;text-transform:uppercase;color:${b.subColor};margin-bottom:12px;">${esc(b.eyebrow)}</div>`)
+      parts.push(`<div${ed('title')} style="font-family:${font};font-weight:800;font-size:${b.size}px;line-height:1.15;color:${b.color};">${esc(b.title)}</div>`)
+      if (b.subtitle) parts.push(`<div${ed('subtitle')} style="font-family:${font};font-size:18px;line-height:1.5;color:${b.subColor};margin-top:16px;">${esc(b.subtitle)}</div>`)
+      if (b.btnText) parts.push(`<div style="margin-top:28px;">${button(b.btnText, b.btnUrl, b.btnBg, b.btnColor, 30, font, ed('btnText'))}</div>`)
       return `<div style="background:${b.bg};${bgImg}padding:${b.padY}px ${b.padX}px;text-align:${b.align};">${parts.join('')}</div>`
     }
 
     case 'heading':
-      return wrap(`<div style="font-family:${font};font-weight:700;font-size:${b.size}px;line-height:1.25;color:${b.color || s.textColor};text-align:${b.align};">${esc(b.text)}</div>`)
+      return wrap(`<div${ed('text')} style="font-family:${font};font-weight:700;font-size:${b.size}px;line-height:1.25;color:${b.color || s.textColor};text-align:${b.align};">${esc(b.text)}</div>`)
 
     case 'text':
-      return wrap(`<div style="font-family:${font};font-size:${b.size || 16}px;line-height:1.6;color:${b.color || s.textColor};text-align:${b.align};">${styleParas(styleLinks(sanitize(b.html), s.linkColor))}</div>`)
+      return wrap(`<div${ed('html', undefined, true)} style="font-family:${font};font-size:${b.size || 16}px;line-height:1.6;color:${b.color || s.textColor};text-align:${b.align};">${styleParas(styleLinks(sanitize(b.html), s.linkColor))}</div>`)
 
     case 'image': {
       if (!b.src) return edit ? wrap(placeholder('Click to choose an image')) : ''
@@ -109,35 +111,35 @@ export function renderBlock(b, s, edit = false) {
     }
 
     case 'button':
-      return wrap(`<div style="text-align:${b.align};">${button(b.text, b.url, b.btnBg, b.color, b.radius, font)}</div>`)
+      return wrap(`<div style="text-align:${b.align};">${button(b.text, b.url, b.btnBg, b.color, b.radius, font, ed('text'))}</div>`)
 
     case 'form': {
       if (!b.form_url) return edit ? wrap(placeholder('Choose a form in the panel on the right', 110)) : ''
       return wrap(`<div style="background:${b.boxBg || '#f3f4f6'};border-radius:8px;padding:24px;text-align:${b.align};font-family:${font};">`
-        + (b.heading ? `<div style="font-weight:700;font-size:20px;color:${s.textColor};margin-bottom:8px;">${esc(b.heading)}</div>` : '')
-        + (b.text ? `<div style="font-size:15px;line-height:1.5;color:#6b7280;margin-bottom:18px;">${esc(b.text)}</div>` : '')
-        + `${button(b.btnText || 'Open the form', b.form_url, b.btnBg, b.color, b.radius, font)}</div>`)
+        + (b.heading ? `<div${ed('heading')} style="font-weight:700;font-size:20px;color:${s.textColor};margin-bottom:8px;">${esc(b.heading)}</div>` : '')
+        + (b.text ? `<div${ed('text')} style="font-size:15px;line-height:1.5;color:#6b7280;margin-bottom:18px;">${esc(b.text)}</div>` : '')
+        + `${button(b.btnText || 'Open the form', b.form_url, b.btnBg, b.color, b.radius, font, ed('btnText'))}</div>`)
     }
 
     case 'features': {
-      const cells = (b.items || []).map((it) =>
+      const cells = (b.items || []).map((it, i) =>
         `<td class="col" width="33%" valign="top" style="padding:0 10px;text-align:center;font-family:${font};">`
-        + `<div style="font-size:38px;line-height:1.2;margin-bottom:8px;">${esc(it.icon)}</div>`
-        + `<div style="font-weight:700;font-size:16px;color:${s.textColor};margin-bottom:6px;">${esc(it.title)}</div>`
-        + `<div style="font-size:14px;line-height:1.5;color:#6b7280;">${esc(it.text)}</div></td>`).join('')
+        + `<div${ed('icon', i)} style="font-size:38px;line-height:1.2;margin-bottom:8px;">${esc(it.icon)}</div>`
+        + `<div${ed('title', i)} style="font-weight:700;font-size:16px;color:${s.textColor};margin-bottom:6px;">${esc(it.title)}</div>`
+        + `<div${ed('text', i)} style="font-size:14px;line-height:1.5;color:#6b7280;">${esc(it.text)}</div></td>`).join('')
       return wrap(`<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>${cells}</tr></table>`)
     }
 
     case 'coupon':
       return wrap(`<div style="text-align:center;"><div style="display:inline-block;border:2px dashed ${b.border};background:${b.boxBg};border-radius:10px;padding:18px 40px;font-family:${font};">`
-        + `<div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">${esc(b.label)}</div>`
-        + `<div style="font-family:'Courier New',monospace;font-weight:800;font-size:32px;letter-spacing:5px;color:${b.color};">${esc(b.code)}</div>`
-        + (b.note ? `<div style="font-size:13px;color:#6b7280;margin-top:6px;">${esc(b.note)}</div>` : '')
+        + `<div${ed('label')} style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#6b7280;margin-bottom:6px;">${esc(b.label)}</div>`
+        + `<div${ed('code')} style="font-family:'Courier New',monospace;font-weight:800;font-size:32px;letter-spacing:5px;color:${b.color};">${esc(b.code)}</div>`
+        + (b.note ? `<div${ed('note')} style="font-size:13px;color:#6b7280;margin-top:6px;">${esc(b.note)}</div>` : '')
         + '</div></div>')
 
     case 'split': {
       const img = b.src ? `<img src="${esc(b.src)}" alt="${esc(b.alt)}" style="width:100%;height:auto;border:0;display:block;border-radius:6px;">` : edit ? placeholder('Image', 120) : ''
-      const txt = `<div style="font-family:${font};font-size:16px;line-height:1.6;color:${s.textColor};">${styleParas(styleLinks(sanitize(b.html), s.linkColor))}</div>`
+      const txt = `<div${ed('html', undefined, true)} style="font-family:${font};font-size:16px;line-height:1.6;color:${s.textColor};">${styleParas(styleLinks(sanitize(b.html), s.linkColor))}</div>`
       if (!img) return wrap(txt) // no image set: text takes the full width instead of leaving a blank half
       const cells = [
         `<td class="col" width="50%" valign="top" style="padding-${b.side === 'left' ? 'right' : 'left'}:12px;">${img}</td>`,
@@ -161,7 +163,7 @@ export function renderBlock(b, s, edit = false) {
 
     case 'footer': {
       const c = b.color || '#6b7280'
-      return wrap(`<div style="font-family:${font};font-size:12px;line-height:1.7;color:${c};text-align:center;">${styleParas(styleLinks(sanitize(b.html), c))}</div>`)
+      return wrap(`<div${ed('html', undefined, true)} style="font-family:${font};font-size:12px;line-height:1.7;color:${c};text-align:center;">${styleParas(styleLinks(sanitize(b.html), c))}</div>`)
     }
 
     case 'html':

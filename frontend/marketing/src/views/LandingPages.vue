@@ -49,7 +49,7 @@ function edit(p, version = null) {
   designer.value = true
 }
 
-// the designer holds everything (name, browser tab title, publish, design): one save, then back to the list
+// the designer holds everything (name, browser tab title, publish, design): one save, and you stay where you are
 async function save(d) {
   saving.value = true
   error.value = ''
@@ -57,12 +57,15 @@ async function save(d) {
   const first = (d.design?.blocks || []).find((b) => b.type === 'form' && b.form_id)
   const body = { name: d.name, slug: d.slug || null, title: d.title || null, design: d.design, html: d.html, form_id: first ? first.form_id : null, published: d.published }
   try {
-    editing.value === 'new' ? await api.post('/landing-pages', body) : await api.put(`/landing-pages/${editing.value}`, body)
-    if (d.keepOpen && editing.value !== 'new') { load(); savedTick.value++; return } // History is open in the editor: stay, so the new version shows in the timeline
-    designer.value = false
-    editing.value = null
-    leave()
+    if (editing.value === 'new') {
+      const created = (await api.post('/landing-pages', body)).data
+      editing.value = created.id // from now on this is an existing page: the next save updates it
+      setPath('/pages/' + created.id)
+    } else {
+      await api.put(`/landing-pages/${editing.value}`, body)
+    }
     load()
+    savedTick.value++ // saving never leaves the editor: it says "Saved" and, if History is open, shows the new version
   } catch (e) { error.value = errorMessage(e) } finally { saving.value = false }
 }
 

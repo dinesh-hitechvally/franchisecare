@@ -4,14 +4,14 @@ import api, { errorMessage } from '../api'
 import Icon from './Icon.vue'
 import Modal from './Modal.vue'
 import AttachmentsField from './AttachmentsField.vue'
-import ImagePicker from './ImagePicker.vue'
+import MediaPicker from './MediaPicker.vue'
 import RichText from './RichText.vue'
 import CodeEditor from './CodeEditor.vue'
 import HistoryTimeline from './HistoryTimeline.vue'
 import { fmtDateTime } from '../format'
 import VariableList from './VariableList.vue'
 import { loadMergeTags, fillTags } from '../mergeTags'
-import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, uid } from '../builder/blocks'
+import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, sanitize, uid } from '../builder/blocks'
 
 // v-model-less: pass `initial` ({ name, subject, design, html }), receive `save` / `close`.
 const props = defineProps({ initial: Object, showName: Boolean, saving: Boolean, noSubject: Boolean, readonly: Boolean, note: String, historyId: [Number, String], startVersion: Number, savedTick: { type: Number, default: 0 }, historyType: { type: String, default: 'template' } })
@@ -95,6 +95,7 @@ async function deleteLayout(l) {
 const flash = ref('') // layout gallery first for new emails
 const selected = ref(null) // block id, or null = design settings
 const device = ref('desktop')
+const sideTab = ref('general') // right panel tabs: 'general' (content and logic) | 'design' (look). For the selected block, or for the whole email when none is selected
 const tab = ref('view') // centre tabs: 'view' | 'html'
 const copied = ref(false)
 async function copyHtml() {
@@ -140,6 +141,10 @@ onMounted(async () => {
     viewCopy((await api.get('/history/' + props.historyType + '/entry/' + props.startVersion)).data)
   } catch (e) { flash.value = errorMessage(e) }
 })
+function goTab(t) {
+  sideTab.value = t
+  if (historyOpen.value) toggleHistory() // the tabs stay in view while History is open; choosing one leaves History
+}
 function toggleHistory() {
   if (historyOpen.value) backToCurrent() // leaving history: back on the version you are editing
   historyOpen.value = !historyOpen.value
@@ -185,6 +190,55 @@ function startFrom(layout) {
   design.value = layout.make()
   picking.value = false
   selected.value = null
+}
+
+// ---- editing text in place (View tab) ----
+// Text that can be edited is tagged by the renderer (data-edit / data-idx / data-rich). Clicking it makes it editable; the new value is saved when you
+// click away (Enter ends a single-line field, Esc cancels). While editing, the real value is shown so a merge tag such as {{first_name}} is not
+// replaced by its sample text and saved over.
+const editing = ref(null) // { el, item, key, rich } while a piece of text is being edited
+const renderTick = ref(0) // bumped to redraw a block after editing, so it shows the filled-in preview again
+function startEdit(e, b) {
+  const el = e.target.closest?.('[data-edit]')
+  if (!el || locked.value || el.isContentEditable) return
+  if (editing.value) finishEdit() // clicking another piece of text saves the one being edited
+  const idx = el.dataset.idx
+  const item = idx !== undefined ? b.items?.[Number(idx)] : b
+  const key = el.dataset.edit
+  if (!item) return
+  const rich = el.dataset.rich === '1'
+  if (rich) el.innerHTML = sanitize(item[key]); else el.textContent = item[key] ?? ''
+  el.contentEditable = rich ? 'true' : 'plaintext-only'
+  if (rich) document.execCommand('defaultParagraphSeparator', false, 'p')
+  editing.value = { el, item, key, rich, blockId: b.id }
+  el.addEventListener('blur', onEditBlur, { once: true })
+  el.addEventListener('keydown', onEditKey)
+  el.focus()
+  const r = document.createRange()
+  r.selectNodeContents(el)
+  r.collapse(false)
+  const sel = window.getSelection()
+  sel.removeAllRanges()
+  sel.addRange(r)
+}
+function onEditKey(e) {
+  if (e.key === 'Escape') { e.preventDefault(); finishEdit(true) }
+  else if (e.key === 'Enter' && !editing.value?.rich) { e.preventDefault(); finishEdit() }
+  e.stopPropagation()
+}
+const onEditBlur = () => finishEdit()
+function finishEdit(cancel = false) {
+  const ed = editing.value
+  if (!ed) return
+  editing.value = null
+  ed.el.removeEventListener('blur', onEditBlur)
+  ed.el.removeEventListener('keydown', onEditKey)
+  if (!cancel) {
+    const v = ed.rich ? sanitize(ed.el.innerHTML) : ed.el.textContent.replace(/\s*\n\s*/g, ' ').trim()
+    if (v !== (ed.item[ed.key] ?? '')) ed.item[ed.key] = v
+  }
+  ed.el.removeAttribute('contenteditable')
+  renderTick.value++
 }
 
 // ---- block operations ----
@@ -249,19 +303,27 @@ const FIELDS = {
   footer: [['html', 'Content', 'rich'], ['color', 'Text colour', 'color']],
   html: [['html', 'HTML', 'textarea']],
 }
+// What a field is about: look (colours, sizes, alignment, spacing, corners, background picture) goes to the Design tab; content and logic
+// (text, links, images, items, the form to open, labels) go to General.
+const DESIGN_KEYS = new Set(['size', 'color', 'subColor', 'btnBg', 'btnColor', 'boxBg', 'border', 'align', 'radius', 'width', 'thickness', 'height', 'side', 'padY', 'padX', 'bg'])
+const isDesign = ([k, , , ]) => DESIGN_KEYS.has(k) || (k === 'image' && current.value?.type === 'hero') // the hero's picture is its background
 const fields = computed(() => {
   const t = current.value?.type
   if (!t) return []
-  return t === 'spacer' ? FIELDS[t] : [...FIELDS[t], ...common]
+  const all = t === 'spacer' ? FIELDS[t] : [...FIELDS[t], ...common]
+  return all.filter((f) => (sideTab.value === 'design') === isDesign(f))
 })
 
 function chooseImage(block, key) {
   imagePicker.value = {
-    apply(img) {
-      block[key] = img.url
-      if ('alt' in block) block.alt = block.alt || `Photo by ${img.author}`
-      if (block.type === 'image') {
-        block.caption = `Photo by <a href="${img.author_url}">${img.author}</a> on <a href="${img.link}">${img.source}</a>${img.license ? ` (${img.license.trim()})` : ''}`
+    apply(m) { // a media library item (uploaded, or a free online image saved to the library)
+      block[key] = m.url
+      const free = m.source && m.source !== 'upload' && m.credit // a free image: keep the photographer credit
+      if ('alt' in block) block.alt = block.alt || m.alt || (free ? `Photo by ${m.credit}` : m.name)
+      if (block.type === 'image' && free) {
+        const by = m.credit_url ? `<a href="${m.credit_url}">${m.credit}</a>` : m.credit
+        const on = m.source_url ? `<a href="${m.source_url}">${m.source}</a>` : m.source
+        block.caption = `Photo by ${by} on ${on}${m.license ? ` (${String(m.license).trim()})` : ''}`
       }
     },
   }
@@ -337,7 +399,7 @@ function save() {
         <div class="palette">
           <div v-if="locked" class="ro-note"><b>Saved copy</b><p>{{ noteText }}</p><p>This is exactly how it was when it was saved. You can look around, switch device sizes, open the HTML and click a block to see its settings, but nothing can be changed.</p></div>
           <p v-else-if="rawMode" class="hint">Visual blocks are off while you hand-edit the HTML.</p>
-          <p v-else class="hint">Drag a block onto the email, or click to add.</p>
+          <p v-else class="hint">Drag a block onto the email, or click to add. Click any text in the email to edit it.</p>
           <div v-if="!locked" class="tiles" :class="{ off: rawMode }">
             <div v-for="(def, type) in BLOCKS" :key="type" class="pal" draggable="true" @dragstart="dragNew($event, type)" @click="add(type)">
               <Icon :name="def.icon" :size="26" /><span>{{ def.label }}</span>
@@ -368,9 +430,9 @@ function save() {
             <div v-if="!blocks.length && !locked" class="dz-empty" :class="{ hov: hover === 0 }" @dragover.prevent="hover = 0" @dragleave="hover = -1" @drop.prevent="drop($event, 0)">Drag content here</div>
             <template v-for="(b, i) in blocks" :key="b.id">
               <div v-if="!locked" class="dz" :class="{ hov: hover === i }" @dragover.prevent="hover = i" @dragleave="hover = -1" @drop.prevent="drop($event, i)"></div>
-              <div class="cv-block" :class="{ sel: selected === b.id, stack: device === 'mobile' }" :draggable="!locked"
+              <div class="cv-block" :class="{ sel: selected === b.id, stack: device === 'mobile', 'can-edit': !locked }" :draggable="!locked && editing?.blockId !== b.id"
                 @dragstart="dragMove($event, i)" @click.prevent.stop="selected = b.id">
-                <div class="cv-html" v-html="filled(renderBlock(b, s, true))"></div>
+                <div :key="renderTick" class="cv-html" @click="startEdit($event, b)" v-html="filled(renderBlock(b, s, true))"></div>
                 <div v-if="selected === b.id && !locked" class="cv-tools" @click.stop>
                   <span class="grip" title="Drag to move"><Icon name="drag" :size="16" /></span>
                   <button title="Move up" @click="move(i, -1)"><Icon name="up" :size="16" /></button>
@@ -388,10 +450,15 @@ function save() {
 
       <!-- right: settings -->
       <aside class="ed-right" :class="{ off: rawMode }">
+        <div class="tabs r-tabs">
+          <button type="button" :class="{ on: !historyOpen && sideTab === 'general' }" @click="goTab('general')">General</button>
+          <button type="button" :class="{ on: !historyOpen && sideTab === 'design' }" @click="goTab('design')">Design</button>
+        </div>
         <HistoryTimeline v-if="historyOpen" :type="historyType" :id="historyId" :active-id="viewing ? viewing.history_id : null" :refresh="savedTick" :names="{ body: 'Design', design: 'Design' }" @pick="viewCopy" @current="backToCurrent" @close="toggleHistory" />
         <fieldset v-else :disabled="locked" class="fs">
         <template v-if="current">
-          <div class="r-head"><b>{{ BLOCKS[current.type].label }}</b><button class="x" @click="selected = null">&times;</button></div>
+          <div class="r-head"><b>{{ BLOCKS[current.type].label }} · {{ sideTab === 'design' ? 'Design' : 'General' }}</b><button class="x" @click="selected = null">&times;</button></div>
+          <p v-if="!fields.length" class="hint">This block has no {{ sideTab === 'design' ? 'design' : 'content' }} settings.</p>
           <div v-for="[k, label, kind, o] in fields" :key="current.id + k" class="field">
             <label>{{ label }}<span v-if="kind === 'range'" class="val"> {{ current[k] }}</span></label>
             <input v-if="kind === 'text'" v-model="current[k]" />
@@ -406,7 +473,7 @@ function save() {
             <div v-else-if="kind === 'color'" class="row"><input v-model="current[k]" type="color" class="clr" /><input v-model="current[k]" placeholder="none" /></div>
             <div v-else-if="kind === 'image'">
               <img v-if="current[k]" :src="current[k]" class="thumb" />
-              <button class="btn sm" type="button" @click="chooseImage(current, k)">Choose free image</button>
+              <button class="btn sm" type="button" @click="chooseImage(current, k)">Choose from media</button>
               <input v-model="current[k]" placeholder="…or paste an image URL" style="margin-top: 6px" />
             </div>
             <div v-else-if="kind === 'items'">
@@ -425,9 +492,14 @@ function save() {
           </div>
         </template>
 
-        <template v-else>
-          <div class="r-head"><b>Email design</b></div>
+        <template v-else-if="sideTab === 'general'">
+          <div class="r-head"><b>General</b></div>
           <div class="field"><label>Preview text (inbox snippet)</label><input v-model="design.settings.preheader" placeholder="Shown after the subject in the inbox" /></div>
+          <p class="hint">Click any block in the email to {{ locked ? 'see its settings' : 'edit it' }}.</p>
+        </template>
+
+        <template v-else>
+          <div class="r-head"><b>Template Design</b></div>
           <div class="field"><label>Page background</label><div class="row"><input v-model="design.settings.bg" type="color" class="clr" /><input v-model="design.settings.bg" /></div></div>
           <div class="field"><label>Content background</label><div class="row"><input v-model="design.settings.contentBg" type="color" class="clr" /><input v-model="design.settings.contentBg" /></div></div>
           <div class="field"><label>Text colour</label><div class="row"><input v-model="design.settings.textColor" type="color" class="clr" /><input v-model="design.settings.textColor" /></div></div>
@@ -435,7 +507,6 @@ function save() {
           <div class="field"><label>Content width <span class="val">{{ s.width }}px</span></label><input v-model.number="design.settings.width" type="range" min="480" max="700" step="10" /></div>
           <div class="field"><label>Corner radius <span class="val">{{ s.radius }}px</span></label><input v-model.number="design.settings.radius" type="range" min="0" max="24" /></div>
           <div class="field"><label>Font</label><select v-model="design.settings.font"><option v-for="f in FONTS" :key="f" :value="f">{{ f.split(',')[0].replace(/'/g, '') }}</option></select></div>
-          <p class="hint">Click any block in the email to {{ locked ? 'see its settings' : 'edit it' }}.</p>
         </template>
         </fieldset>
       </aside>
@@ -453,7 +524,7 @@ function save() {
         </div>
       </form>
     </div>
-    <ImagePicker v-if="imagePicker" @close="imagePicker = null" @pick="pick" />
+    <MediaPicker v-if="imagePicker" @close="imagePicker = null" @pick="pick" />
   </div>
 </template>
 
@@ -515,6 +586,9 @@ function save() {
 .cv-block { position: relative; cursor: pointer; outline: 2px solid transparent; outline-offset: -2px; }
 .cv-block:hover { outline-color: #9fa8da; } .cv-block.sel { outline-color: #3f51b5; }
 .cv-html { pointer-events: none; }
+.cv-block.can-edit .cv-html :deep([data-edit]) { pointer-events: auto; cursor: text; }
+.cv-block.can-edit .cv-html :deep([data-edit]:hover) { outline: 1px dashed #9fa8da; outline-offset: 2px; }
+.cv-block .cv-html :deep([data-edit][contenteditable]) { outline: 2px solid #3f51b5; outline-offset: 2px; background: rgba(63, 81, 181, .06); min-width: 24px; }
 .cv-block.stack :deep(.col) { display: block !important; width: 100% !important; padding: 0 0 12px 0 !important; }
 .cv-tools { position: absolute; top: -1px; right: -1px; background: #3f51b5; display: flex; z-index: 3; border-radius: 0 0 0 4px; }
 .cv-tools button, .grip { background: none; border: 0; color: #fff; padding: 5px 6px; cursor: pointer; display: flex; } .grip { cursor: grab; }
@@ -523,6 +597,7 @@ function save() {
 .dz.hov { background: #3f51b5; height: 8px; } .dz.end.hov { height: 24px; opacity: .7; }
 .dz-empty { border: 2px dashed #9fa8da; margin: 24px; padding: 60px 10px; text-align: center; color: #7986cb; border-radius: 6px; } .dz-empty.hov { background: #e8eaf6; }
 
+.r-tabs { margin: -16px -16px 16px; } .r-tabs button { padding: 12px; }
 .r-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 16px; }
 .x { background: none; border: 0; font-size: 22px; cursor: pointer; color: #757575; }
 .val { color: #3f51b5; font-weight: 400; } .thumb { width: 100%; max-height: 140px; object-fit: cover; border-radius: 4px; margin-bottom: 8px; display: block; }
