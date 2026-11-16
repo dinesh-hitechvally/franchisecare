@@ -84,7 +84,7 @@ class StripeProvider extends Provider
     /** Stripe Connect names them differently: the client id of the Connect app and the platform's secret key. */
     public function oauthEnv(): array
     {
-        return [['name' => 'STRIPE_CONNECT_CLIENT_ID', 'example' => 'ca_your_client_id'], ['name' => 'STRIPE_CONNECT_SECRET_KEY', 'example' => 'sk_live_your_secret_key']];
+        return [['name' => 'STRIPE_CONNECT_CLIENT_ID', 'example' => 'ca_xxxxxxxxxxxxxxxxxxxxxxxx'], ['name' => 'STRIPE_CONNECT_SECRET_KEY', 'example' => 'sk_live_xxxxxxxxxxxxxxxxxxxxxxxx']];
     }
 
     protected function oauthAccount(array $tokens): ?string
