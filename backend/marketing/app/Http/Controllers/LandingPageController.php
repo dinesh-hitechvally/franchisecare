@@ -5,13 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\Form;
 use App\Models\LandingPage;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class LandingPageController extends Controller
 {
     public function index()
     {
-        return LandingPage::with('form:id,name')->latest()->get()->each(fn ($p) => $p->setAttribute('url', url('/p/'.$p->slug)));
+        return LandingPage::with('form:id,name')->latest()->get()->each(function ($p) {
+            $p->setAttribute('url', url('/p/'.$p->slug));
+            // a draft has no public link: the owner can look at it through a private link that expires
+            $p->setAttribute('preview_url', $p->published ? null : URL::temporarySignedRoute('page.public', now()->addHours(12), ['slug' => $p->slug]));
+        });
     }
 
     public function store(Request $request)

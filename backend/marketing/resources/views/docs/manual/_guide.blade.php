@@ -18,7 +18,7 @@
       <tr><td rowspan="3"><b>Content</b></td><td>Forms</td><td>Build sign-up and contact forms; see submissions; share a link or embed.</td></tr>
       <tr><td>Pages</td><td>Build hosted web pages from sections; choose a name, a page title and a slug.</td></tr>
       <tr><td>Templates</td><td>Email (visual designer or raw HTML) and SMS templates to start campaigns from.</td></tr>
-      <tr><td><b>Integrations</b></td><td>Connections, All integrations, Sync history</td><td>Connect 25 platforms (stores, websites, CRMs, email-marketing tools and payments), several of each if you like, and import their customers as People, kept up to date automatically. See <a href="#integrations">Integrations</a>.</td></tr>
+      <tr><td><b>Integrations</b></td><td>Integrations, Connected, Sync history</td><td>Connect 31 platforms (stores, marketplaces, websites, CRMs, email-marketing tools and payments), several of each if you like, and import their customers as People, kept up to date automatically. See <a href="#integrations">Integrations</a>.</td></tr>
       <tr><td rowspan="4"><b>Automation</b></td><td>Workflows</td><td>A trigger plus steps. Turn on when ready; new ones start as drafts.</td></tr>
       <tr><td>Triggers</td><td>All triggers and which workflows use them.</td></tr>
       <tr><td>Webhooks</td><td>Send events to other systems, with deliveries and histories.</td></tr>

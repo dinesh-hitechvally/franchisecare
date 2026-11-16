@@ -1,6 +1,6 @@
 <script setup>
 // The window of one connection. mode "new": connect a platform (only credentials, or straight to the platform's approval page when one-click is set up).
-// mode "edit": the settings of a connected integration (credentials, what to sync, list, tags, schedule…). Used on Integrations and on All integrations.
+// mode "edit": the settings of a connected integration (credentials, what to sync, list, tags, schedule…). Used on Integrations and on Connected.
 import { ref, reactive, computed, onMounted } from 'vue'
 import api, { errorMessage, responseMessage } from '../api'
 import Modal from './Modal.vue'
@@ -86,7 +86,7 @@ async function save() {
   } catch (e) { dlgError.value = errorMessage(e) } finally { busy.value = false }
 }
 
-// Connecting needs no settings: they are changed afterwards, on the All integrations page (Settings).
+// Connecting needs no settings: they are changed afterwards, on the Connected page (⋮ → Edit Configuration).
 // - one-click is set up (OAuth app in the server config): go straight to the platform, asking only for what it cannot know (a store address)
 // - not set up: ask only for the credentials to paste
 onMounted(() => {
@@ -131,7 +131,7 @@ onMounted(() => {
       <template v-if="!isNew && !provider.messaging">
         <h3 class="blk">What to sync</h3>
         <div v-if="provider.supports_export" class="field">
-          <label>Which way should people move?<InfoTip :text="'Import brings ' + provider.label + ' contacts into People. Send adds your People to ' + provider.label + ': only people who are subscribed here are sent as subscribed, people who unsubscribed here are marked unsubscribed there, and nobody who unsubscribed in ' + provider.label + ' is ever re-subscribed. Both does the two, import first.'" /></label>
+          <label>Which way should people move?<InfoTip :text="'Import brings ' + provider.label + ' contacts into People. ' + provider.export_note + ' Both does the two, import first.'" /></label>
           <label class="check"><input v-model="form.direction" type="radio" value="import" /> <span><b>Import only</b>: {{ provider.label }} → People</span></label>
           <label class="check"><input v-model="form.direction" type="radio" value="export" /> <span><b>Send only</b>: People → {{ provider.label }}</span></label>
           <label class="check"><input v-model="form.direction" type="radio" value="both" /> <span><b>Both ways</b>: import, then send</span></label>
@@ -139,7 +139,7 @@ onMounted(() => {
         <div v-if="provider.supports_export && form.direction !== 'import'" class="field">
           <label>Send which people?</label>
           <select v-model="form.export_list_id"><option value="">Everyone with an email address</option><option v-for="l in lists" :key="l.id" :value="l.id">Only people in “{{ l.name }}”</option></select>
-          <small>After the first sync, only people who changed since the last one are sent. Choose the {{ provider.label }} audience to send to above.</small>
+          <small>After the first sync, only people who changed since the last one are sent. <template v-if="provider.has_audiences">Choose the {{ provider.label }} {{ provider.audience_noun }} to send to above.</template></small>
         </div>
         <div v-if="roleSetting" class="field">
           <label>{{ roleSetting.label }}</label>

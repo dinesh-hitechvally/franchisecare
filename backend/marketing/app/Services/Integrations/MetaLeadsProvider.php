@@ -20,7 +20,7 @@ abstract class MetaLeadsProvider extends ApiProvider
     {
         return [
             ['key' => 'access_token', 'label' => 'Page access token', 'type' => 'password', 'placeholder' => 'EAA…', 'help' => 'A long-lived access token of the Page that owns the form, with leads_retrieval permission.', 'secret' => true],
-            ['key' => 'form_id', 'label' => 'Lead form ID', 'type' => 'text', 'placeholder' => '1234567890123456', 'help' => 'Shown in Meta Business Suite → Instant forms. One connection reads one form; connect more forms separately.', 'secret' => false, 'required' => true],
+            ['key' => 'form_id', 'card' => 'import', 'label' => 'Lead form ID', 'type' => 'text', 'placeholder' => '1234567890123456', 'help' => 'Shown in Meta Business Suite → Instant forms. One connection reads one form; connect more forms separately.', 'secret' => false, 'required' => true],
         ];
     }
 

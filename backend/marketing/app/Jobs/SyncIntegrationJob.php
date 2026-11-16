@@ -84,6 +84,11 @@ class SyncIntegrationJob implements ShouldQueue
                 return;
             }
             $sync->forceFill(['status' => 'success', 'cursor' => null, 'error' => $stats['export_failed'] ? $sync->error : null, 'finished_at' => now()])->save(); // a hint about refused people is kept
+            $settings = $integration->settings ?? [];
+            if ($exports && ! empty($settings['export_all'])) {
+                unset($settings['export_all']); // everyone has now been sent: from here on only people who changed
+                $integration->settings = $settings;
+            }
             $integration->forceFill(['status' => 'connected', 'last_error' => null, 'last_synced_at' => $sync->started_at])->save();
         } catch (Throwable $e) {
             $message = $e instanceof IntegrationException ? $e->getMessage() : 'Something went wrong while importing. '.mb_substr($e->getMessage(), 0, 200);
@@ -127,7 +132,7 @@ class SyncIntegrationJob implements ShouldQueue
         for ($batch = 0; $batch < self::PAGES_PER_JOB; $batch++) {
             $people = Person::withoutGlobalScope('company')->where('company_id', $integration->company_id)->where('id', '>', $afterId)
                 ->whereNotNull('email')->where('email', '!=', '')
-                ->when($sync->since, fn ($q) => $q->where('updated_at', '>=', $sync->since))
+                ->when($sync->since && ! $integration->setting('export_all'), fn ($q) => $q->where('updated_at', '>=', $sync->since)) // export_all: everyone, once
                 ->when($audience, fn ($q) => $q->where(function ($any) use ($lists, $tags, $segments, $integration) {
                     $any->whereRaw('1 = 0'); // each chosen kind adds its people
                     if ($lists) {

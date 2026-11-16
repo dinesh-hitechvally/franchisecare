@@ -194,6 +194,7 @@ Route::middleware(['auth:sanctum', 'no.integration', 'log.activity'])->group(fun
         Route::get('integration-syncs', [IntegrationController::class, 'allSyncs']);
         Route::get('integrations/{integration}/audiences', [IntegrationController::class, 'audiences'])->middleware('throttle:30,1');
         Route::post('integrations/{integration}/check', [IntegrationController::class, 'check'])->middleware('throttle:20,1');
+        Route::post('integrations/{integration}/permissions', [IntegrationController::class, 'permissions'])->middleware('throttle:20,1');
         Route::post('integrations/{integration}/sync', [IntegrationController::class, 'sync'])->middleware('throttle:20,1');
         Route::get('integrations/{integration}/syncs', [IntegrationController::class, 'syncs']);
         Route::post('integrations', [IntegrationController::class, 'store'])->middleware('throttle:20,1');

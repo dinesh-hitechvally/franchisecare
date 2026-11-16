@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Integration;
 use App\Models\IntegrationSync;
 use App\Models\PeopleList;
+use App\Models\PersonSyncEvent;
 use App\Services\Integrations\IntegrationException;
 use App\Services\Integrations\MessagingProvider;
 use App\Services\Integrations\Provider;
@@ -57,7 +58,8 @@ class IntegrationController extends Controller
         abort_unless($provider, 422, 'This platform is no longer supported.');
         $data = $request->validate($this->rules($provider, false));
 
-        $integration->settings = $this->settings($provider, $data, $integration->settings ?? []);
+        $before = $integration->settings ?? [];
+        $integration->settings = $this->withFullSend($before, $this->settings($provider, $data, $before));
         if (! empty($data['name'])) {
             $integration->name = $data['name'];
         }
@@ -72,6 +74,22 @@ class IntegrationController extends Controller
         $integration->save();
 
         return $this->present($integration->fresh());
+    }
+
+    /**
+     * After the first sync only people who changed since the last one are sent. So when sending is switched on, or where people are sent or who is
+     * sent changes, the next sync sends everyone it now covers (export_all, cleared once that send is done); otherwise nobody who was already
+     * there would ever be sent.
+     */
+    protected function withFullSend(array $before, array $after): array
+    {
+        $sends = fn (array $s) => in_array($s['direction'] ?? 'import', ['export', 'both'], true);
+        $target = fn (array $s) => json_encode([$s['config']['export_audience_id'] ?? $s['config']['audience_id'] ?? null, $s['export_audience'] ?? null]);
+        if ($sends($after) && (! $sends($before) || $target($before) !== $target($after))) {
+            $after['export_all'] = true;
+        }
+
+        return $after;
     }
 
     public function destroy(Integration $integration)
@@ -119,6 +137,25 @@ class IntegrationController extends Controller
         [$sync, $started] = Syncs::start($integration, 'manual', $request->boolean('full'));
 
         return ApiResponse::accepted($started ? 'Import started.' : 'An import is already running for this connection.', $sync);
+    }
+
+    /** Finds out which permissions the connection really has (for platforms that can be asked) and keeps the answer for Edit Configuration. */
+    public function permissions(Integration $integration)
+    {
+        $provider = Providers::find($integration->provider);
+        abort_unless($provider?->checksScopes(), 404, 'This platform does not report its permissions.');
+
+        try {
+            $result = $provider->checkScopes($integration);
+        } catch (IntegrationException $e) {
+            abort(422, $e->getMessage());
+        }
+        $granted = array_keys(array_filter($result, fn ($v) => $v === true));
+        sort($granted);
+        $integration->settings = array_merge($integration->settings ?? [], ['granted_scopes' => $granted, 'scopes_checked_at' => now()->toIso8601String()]);
+        $integration->save();
+
+        return ApiResponse::ok($this->present($integration->fresh()), 'Permissions checked.');
     }
 
     /** The import runs of one connection, newest first. */
@@ -216,8 +253,8 @@ class IntegrationController extends Controller
 
         $final = $settings + $existing + ['subscribe_mode' => 'consent', 'sync_every' => 60, 'run_automations' => false];
         abort_if(
-            $provider->supportsExport() && in_array($final['direction'] ?? 'import', ['export', 'both'], true) && blank($final['config']['export_audience_id'] ?? null) && blank($final['config']['audience_id'] ?? null),
-            422, 'To send people to '.$provider->label().', choose the audience to send them to (Audience ID).',
+            $provider->exportTargetRequired() && in_array($final['direction'] ?? 'import', ['export', 'both'], true) && blank($final['config']['export_audience_id'] ?? null) && blank($final['config']['audience_id'] ?? null),
+            422, 'To send people to '.$provider->label().', choose the '.$provider->audienceNoun().' to send them to ('.ucfirst($provider->audienceNoun()).' ID).',
         );
 
         return $final;
@@ -285,7 +322,10 @@ class IntegrationController extends Controller
             'id' => $i->id, 'provider' => $i->provider, 'provider_label' => $provider?->label() ?? $i->provider, 'name' => $i->name, 'store_url' => $i->store_url,
             'category' => $provider?->category(), 'channel' => $provider instanceof MessagingProvider ? $provider->channel() : null, 'uses_url' => $provider?->usesUrl() ?? true, 'status' => $i->trashed() ? 'disconnected' : $i->status, 'disconnected_at' => $i->deleted_at, 'last_error' => $i->trashed() ? null : $i->last_error, 'last_synced_at' => $i->last_synced_at,
             'settings' => $i->settings, 'secret_hints' => $i->secretHints(), 'running' => (bool) $running,
-            'last_sync' => $last, 'imported' => (int) IntegrationSync::where('integration_id', $i->id)->sum('created'), 'created_at' => $i->created_at,
+            'last_sync' => $last, 'imported' => (int) IntegrationSync::where('integration_id', $i->id)->sum('created'),
+            // the people sent to the platform, each counted once however often they were sent again
+            'exported' => (int) PersonSyncEvent::where('integration_id', $i->id)->where('direction', 'OUT')->where('action', 'SENT')->distinct()->count('person_id'),
+            'created_at' => $i->created_at,
         ];
     }
 }

@@ -34,7 +34,7 @@ const sections = [
   },
   {
     title: 'Integrations', icon: 'plug',
-    items: [['Connections', '/integrations'], ['All integrations', '/integrations/connected'], ['Sync history', '/integrations/history']],
+    items: [['Integrations', '/integrations'], ['Connected', '/integrations/connected'], ['Sync history', '/integrations/history']],
   },
   {
     title: 'Analytics', icon: 'chart',

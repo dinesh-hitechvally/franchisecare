@@ -10,8 +10,9 @@ import CodeEditor from './CodeEditor.vue'
 import HistoryTimeline from './HistoryTimeline.vue'
 import { fmtDateTime } from '../format'
 import VariableList from './VariableList.vue'
+import { useInlineEdit } from '../composables/useInlineEdit'
 import { loadMergeTags, fillTags } from '../mergeTags'
-import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, sanitize, uid } from '../builder/blocks'
+import { BLOCKS, LAYOUTS, FONTS, defaultSettings, newBlock, renderBlock, renderEmail, designFromHtml, designHtml, uid } from '../builder/blocks'
 
 // v-model-less: pass `initial` ({ name, subject, design, html }), receive `save` / `close`.
 const props = defineProps({ initial: Object, showName: Boolean, saving: Boolean, noSubject: Boolean, readonly: Boolean, note: String, historyId: [Number, String], startVersion: Number, savedTick: { type: Number, default: 0 }, historyType: { type: String, default: 'template' } })
@@ -192,54 +193,8 @@ function startFrom(layout) {
   selected.value = null
 }
 
-// ---- editing text in place (View tab) ----
-// Text that can be edited is tagged by the renderer (data-edit / data-idx / data-rich). Clicking it makes it editable; the new value is saved when you
-// click away (Enter ends a single-line field, Esc cancels). While editing, the real value is shown so a merge tag such as {{first_name}} is not
-// replaced by its sample text and saved over.
-const editing = ref(null) // { el, item, key, rich } while a piece of text is being edited
-const renderTick = ref(0) // bumped to redraw a block after editing, so it shows the filled-in preview again
-function startEdit(e, b) {
-  const el = e.target.closest?.('[data-edit]')
-  if (!el || locked.value || el.isContentEditable) return
-  if (editing.value) finishEdit() // clicking another piece of text saves the one being edited
-  const idx = el.dataset.idx
-  const item = idx !== undefined ? b.items?.[Number(idx)] : b
-  const key = el.dataset.edit
-  if (!item) return
-  const rich = el.dataset.rich === '1'
-  if (rich) el.innerHTML = sanitize(item[key]); else el.textContent = item[key] ?? ''
-  el.contentEditable = rich ? 'true' : 'plaintext-only'
-  if (rich) document.execCommand('defaultParagraphSeparator', false, 'p')
-  editing.value = { el, item, key, rich, blockId: b.id }
-  el.addEventListener('blur', onEditBlur, { once: true })
-  el.addEventListener('keydown', onEditKey)
-  el.focus()
-  const r = document.createRange()
-  r.selectNodeContents(el)
-  r.collapse(false)
-  const sel = window.getSelection()
-  sel.removeAllRanges()
-  sel.addRange(r)
-}
-function onEditKey(e) {
-  if (e.key === 'Escape') { e.preventDefault(); finishEdit(true) }
-  else if (e.key === 'Enter' && !editing.value?.rich) { e.preventDefault(); finishEdit() }
-  e.stopPropagation()
-}
-const onEditBlur = () => finishEdit()
-function finishEdit(cancel = false) {
-  const ed = editing.value
-  if (!ed) return
-  editing.value = null
-  ed.el.removeEventListener('blur', onEditBlur)
-  ed.el.removeEventListener('keydown', onEditKey)
-  if (!cancel) {
-    const v = ed.rich ? sanitize(ed.el.innerHTML) : ed.el.textContent.replace(/\s*\n\s*/g, ' ').trim()
-    if (v !== (ed.item[ed.key] ?? '')) ed.item[ed.key] = v
-  }
-  ed.el.removeAttribute('contenteditable')
-  renderTick.value++
-}
+// text is edited in place in the View tab (the renderer tags what can be edited)
+const { editing, renderTick, startEdit } = useInlineEdit(locked)
 
 // ---- block operations ----
 function insertAt(block, i = blocks.value.length) {
@@ -306,7 +261,7 @@ const FIELDS = {
 // What a field is about: look (colours, sizes, alignment, spacing, corners, background picture) goes to the Design tab; content and logic
 // (text, links, images, items, the form to open, labels) go to General.
 const DESIGN_KEYS = new Set(['size', 'color', 'subColor', 'btnBg', 'btnColor', 'boxBg', 'border', 'align', 'radius', 'width', 'thickness', 'height', 'side', 'padY', 'padX', 'bg'])
-const isDesign = ([k, , , ]) => DESIGN_KEYS.has(k) || (k === 'image' && current.value?.type === 'hero') // the hero's picture is its background
+const isDesign = (field) => DESIGN_KEYS.has(field[0]) || (field[0] === 'image' && current.value?.type === 'hero') // the hero's picture is its background
 const fields = computed(() => {
   const t = current.value?.type
   if (!t) return []

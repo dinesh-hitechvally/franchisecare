@@ -16,6 +16,7 @@ class Providers
             new HubSpotProvider, new PipedriveProvider, new SalesforceProvider, new ActiveCampaignProvider, new CloseProvider,              // CRM
             new MailchimpProvider, new KlaviyoProvider, new BrevoProvider, new MailerLiteProvider, new KitProvider,                        // email marketing
             new StripeProvider, new SquareProvider, new PaddleProvider, new ChargebeeProvider, new GoCardlessProvider,                      // payments
+            new EtsyProvider, new EbayProvider, new AmazonProvider, new WalmartProvider, new MercadoLibreProvider, new DarazProvider,         // marketplaces
             new FacebookLeadsProvider, new InstagramLeadsProvider, new LinkedInLeadsProvider,
             new WhatsAppProvider, new MessengerProvider, new XProvider,   // messaging: campaign channels
         ])->keyBy(fn (Provider $p) => $p->key())->all();

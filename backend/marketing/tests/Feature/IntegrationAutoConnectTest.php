@@ -27,6 +27,7 @@ class IntegrationAutoConnectTest extends TestCase
             'services.integrations.shopify' => ['client_id' => 'sh-id', 'client_secret' => 'sh-secret'],
             'services.integrations.klaviyo' => ['client_id' => 'kl-id', 'client_secret' => 'kl-secret'],
             'services.integrations.hubspot' => ['client_id' => 'hs-id', 'client_secret' => 'hs-secret'],
+            'services.integrations.stripe' => ['client_id' => null, 'client_secret' => null], // not set up, whatever the developer's own .env holds
         ]);
         $this->app['auth']->forgetGuards();
         $token = $this->postJson('/api/register', [
@@ -82,13 +83,58 @@ class IntegrationAutoConnectTest extends TestCase
         config(['services.outbound.allow_private' => false]);
         $list = collect($this->getJson('/api/integrations/providers', $this->h)->assertOk()->json())->keyBy('key');
 
-        $this->assertSame(['mode' => 'oauth', 'available' => true, 'asks' => []], $list['mailchimp']['auto_connect']);
+        $this->assertSame(['mode' => 'oauth', 'available' => true, 'asks' => [], 'callback_url' => 'http://app.test/api/oauth/integrations/callback', 'env' => [['name' => 'MAILCHIMP_CLIENT_ID', 'example' => 'your-client-id'], ['name' => 'MAILCHIMP_CLIENT_SECRET', 'example' => 'your-client-secret']], 'scopes' => [], 'scope_notes' => [], 'can_check_scopes' => false], $list['mailchimp']['auto_connect']);
         $this->assertSame(['url'], $list['shopify']['auto_connect']['asks']);
         $this->assertFalse($list['stripe']['auto_connect']['available']); // no client id/secret in .env
         $this->assertFalse($list['woocommerce']['auto_connect']['available']); // the keys are posted back to an http address
         $this->assertTrue($list['wordpress']['auto_connect']['available']);
         $this->assertNull($list['brevo']['auto_connect']); // keys only
         $this->assertNull($list['ghost']['auto_connect']);
+    }
+
+    public function test_oauth_platforms_tell_the_callback_url_to_register_and_the_others_do_not(): void
+    {
+        $list = collect($this->getJson('/api/integrations/providers', $this->h)->json())->keyBy('key');
+
+        foreach (['mailchimp', 'shopify', 'hubspot', 'klaviyo'] as $key) {
+            $this->assertSame('http://app.test/api/oauth/integrations/callback', $list[$key]['auto_connect']['callback_url'], $key); // the address the platform's app must list as its redirect URL
+        }
+        $this->assertNull($list['woocommerce']['auto_connect']['callback_url']); // approved on its own page: nothing to register
+        $this->assertNull($list['magento']['auto_connect']); // keys are pasted: no callback at all
+    }
+    public function test_the_help_shows_the_env_names_the_server_really_reads(): void
+    {
+        $list = collect($this->getJson('/api/integrations/providers', $this->h)->json())->keyBy('key');
+        $config = file_get_contents(config_path('services.php'));
+        $oauth = $list->filter(fn ($p) => ($p['auto_connect']['mode'] ?? null) === 'oauth');
+
+        $this->assertGreaterThanOrEqual(10, $oauth->count());
+        foreach ($oauth as $key => $p) {
+            $this->assertCount($key === 'ebay' ? 3 : 2, $p['auto_connect']['env'], $key); // client id and client secret (eBay also needs the RuName of its callback)
+            foreach ($p['auto_connect']['env'] as $var) {
+                $this->assertStringContainsString("env('{$var['name']}')", $config, "$key: {$var['name']} is not read by config/services.php");
+                $this->assertNotSame('', $var['example']);
+            }
+        }
+        $this->assertSame('STRIPE_CONNECT_SECRET_KEY', $list['stripe']['auto_connect']['env'][1]['name']);
+        $this->assertSame([], $list['woocommerce']['auto_connect']['env']); // nothing to configure for the others
+    }
+    public function test_the_catalogue_says_what_each_permission_is_for(): void
+    {
+        $list = collect($this->getJson('/api/integrations/providers', $this->h)->json())->keyBy('key');
+        $notes = $list['klaviyo']['auto_connect']['scope_notes'];
+
+        $this->assertEqualsCanonicalizing($list['klaviyo']['auto_connect']['scopes'], array_keys($notes)); // every permission the app asks for is explained
+        $this->assertSame(['send'], $notes['profiles:write']['for']); // and says when it is needed
+        $this->assertSame(['import', 'send'], $notes['lists:read']['for']);
+        $this->assertSame(['read_write'], array_keys($list['stripe']['auto_connect']['scope_notes']));
+    }
+
+    public function test_stripe_asks_for_the_scope_it_accepts_without_any_setting(): void
+    {
+        config(['services.integrations.stripe' => ['client_id' => 'ca_test', 'client_secret' => 'sk_test']]);
+
+        $this->assertSame('read_write', $this->start(['provider' => 'stripe'])[1]['scope']); // read_only is refused by Stripe unless it approved the platform
     }
 
     public function test_one_click_is_refused_when_the_platform_has_no_oauth_app_and_for_key_only_platforms(): void
@@ -200,7 +246,7 @@ class IntegrationAutoConnectTest extends TestCase
     {
         [$url, $q] = $this->start(['provider' => 'klaviyo']);
         $this->assertSame('S256', $q['code_challenge_method']);
-        $this->assertSame('accounts:read profiles:read subscriptions:read', $q['scope']);
+        $this->assertSame('accounts:read lists:read lists:write profiles:read profiles:write subscriptions:read subscriptions:write', $q['scope']); // read to import, write to send
 
         $sent = [];
         Http::fake(function (Request $r) use (&$sent) {
@@ -208,7 +254,7 @@ class IntegrationAutoConnectTest extends TestCase
             if ($path === '/oauth/token') {
                 $sent = ['auth' => $r->header('Authorization')[0] ?? '', 'data' => $r->data()];
 
-                return Http::response(['access_token' => 'kl_at', 'refresh_token' => 'kl_rt', 'expires_in' => 3600]);
+                return Http::response(['access_token' => 'kl_at', 'refresh_token' => 'kl_rt', 'expires_in' => 3600, 'scope' => 'profiles:read accounts:read lists:read']);
             }
 
             return $path === '/api/accounts/'
@@ -219,6 +265,7 @@ class IntegrationAutoConnectTest extends TestCase
 
         $this->assertSame('Basic '.base64_encode('kl-id:kl-secret'), $sent['auth']);
         $this->assertSame(rtrim(strtr(base64_encode(hash('sha256', $sent['data']['code_verifier'], true)), '+/', '-_'), '='), $q['code_challenge']); // the challenge matches the verifier
+        $this->assertSame(['accounts:read', 'lists:read', 'profiles:read'], Integration::withoutGlobalScope('company')->sole()->settings['granted_scopes']); // what Klaviyo said it granted is kept, to show in Edit Configuration
         $this->assertSame(['kl_at', 'kl_rt', true], [Integration::withoutGlobalScope('company')->sole()->secrets['private_key'], Integration::withoutGlobalScope('company')->sole()->secrets['refresh_token'], Integration::withoutGlobalScope('company')->sole()->secrets['oauth']]);
     }
 

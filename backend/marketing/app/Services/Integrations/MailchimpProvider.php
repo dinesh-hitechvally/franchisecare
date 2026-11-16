@@ -32,8 +32,8 @@ class MailchimpProvider extends Provider
     {
         return [
             ['key' => 'api_key', 'label' => 'API key', 'type' => 'password', 'placeholder' => 'xxxxxxxxxxxxxxxx-us21', 'help' => 'Ends with a dash and a data centre such as -us21. Created under Account → Extras → API keys.', 'secret' => true],
-            ['key' => 'export_audience_id', 'export_required' => true, 'required' => false, 'label' => 'Send to audience', 'type' => 'text', 'placeholder' => 'Audience ID', 'help' => 'The audience your People are sent to (only used when this connection sends people). In Mailchimp: audience → Settings → Audience name and defaults → Audience ID.', 'secret' => false],
-            ['key' => 'audience_id', 'label' => 'Import from audience (optional)', 'type' => 'text', 'placeholder' => 'Leave empty to import every audience', 'help' => 'To import one audience only: in Mailchimp open the audience → Settings → Audience name and defaults, and copy the Audience ID. Connect the same account again with another ID to import another audience separately.', 'secret' => false, 'required' => false],
+            ['key' => 'export_audience_id', 'card' => 'export', 'export_required' => true, 'required' => false, 'label' => 'Send to audience', 'type' => 'text', 'placeholder' => 'Audience ID', 'help' => 'The audience your People are sent to (only used when this connection sends people). In Mailchimp: audience → Settings → Audience name and defaults → Audience ID.', 'secret' => false],
+            ['key' => 'audience_id', 'card' => 'import', 'label' => 'Import from audience (optional)', 'type' => 'text', 'placeholder' => 'Leave empty to import every audience', 'help' => 'To import one audience only: in Mailchimp open the audience → Settings → Audience name and defaults, and copy the Audience ID. Connect the same account again with another ID to import another audience separately.', 'secret' => false, 'required' => false],
         ];
     }
 
@@ -112,6 +112,11 @@ class MailchimpProvider extends Provider
     public function supportsExport(): bool
     {
         return true;
+    }
+
+    public function exportNote(): string
+    {
+        return 'Send adds your People to Mailchimp: only people who are subscribed here are sent as subscribed, people who unsubscribed here are marked unsubscribed there, and nobody who unsubscribed in Mailchimp is ever re-subscribed.';
     }
 
     public function hasAudiences(): bool

@@ -61,7 +61,8 @@ const routes = [
   // connected platforms (Shopify, WooCommerce, WordPress, Magento): their customers become People
   { path: '/integrations', component: () => import('./views/PlatformIntegrations.vue') },
   { path: '/integrations/connected', component: () => import('./views/ConnectedIntegrations.vue') },
-  { path: '/integrations/:id(\\d+)/settings', component: () => import('./views/IntegrationSettings.vue'), meta: { parent: '/integrations/connected' } },
+  { path: '/integrations/connected/:id(\\d+)', component: () => import('./views/IntegrationSettings.vue'), meta: { parent: '/integrations/connected' } },
+  { path: '/integrations/:id(\\d+)/settings', redirect: (to) => `/integrations/connected/${to.params.id}` }, // the earlier address of the same page
   // sync history: every connection at /integrations/history, one connection at /integrations/12/history
   { path: '/integrations/history', component: () => import('./views/IntegrationSyncs.vue'), meta: { parent: '/integrations' },
     beforeEnter: (to) => (to.query.integration_id ? { path: `/integrations/${to.query.integration_id}/history`, replace: true } : true) }, // old links with ?integration_id=

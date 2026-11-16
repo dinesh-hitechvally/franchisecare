@@ -1,5 +1,5 @@
 <script setup>
-// Integrations → All integrations: every store, site, CRM, email or payments account that is connected, or was disconnected, as a filterable table.
+// Integrations → Connected: every store, site, CRM, email or payments account that is connected, or was disconnected, as a filterable table.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import api, { errorMessage, responseMessage } from '../api'
 import FilterBar from '../components/FilterBar.vue'
@@ -40,13 +40,13 @@ const menu = (c) => (c.status === 'disconnected'
       { label: 'Sync history', to: `/integrations/${c.id}/history` },
     ]
   : c.channel ? [ // a messaging account (WhatsApp, Messenger, X): nothing to sync
-      { label: 'Settings', to: `/integrations/${c.id}/settings` },
+      { label: 'Edit Configuration', to: `/integrations/connected/${c.id}` },
       { label: 'Check connection', run: () => check(c) },
       { label: 'Disconnect', run: () => disconnect(c), danger: true },
     ]
   : [
       { label: 'Sync now', run: () => syncNow(c) }, // always offered: while one is running the server answers that it is already running
-      { label: 'Settings', to: `/integrations/${c.id}/settings` },
+      { label: 'Edit Configuration', to: `/integrations/connected/${c.id}` },
       { label: 'Check connection', run: () => check(c) },
       { label: 'Full re-import', run: () => syncNow(c, true) },
       { label: 'Sync history', to: `/integrations/${c.id}/history` },
@@ -88,7 +88,7 @@ onBeforeUnmount(() => clearInterval(timer))
 
 <template>
   <div class="head">
-    <h1>All integrations <small v-if="!loading">({{ filtered.length }}{{ dirty ? ' of ' + rows.length : '' }})</small></h1>
+    <h1>Connected <small v-if="!loading">({{ filtered.length }}{{ dirty ? ' of ' + rows.length : '' }})</small></h1>
     <div class="row"><router-link to="/integrations" class="btn">Connect a platform</router-link></div>
   </div>
   <p class="intro">Every store, website, CRM, email-marketing and payments account you have connected, including the ones you disconnected. The people already imported from a disconnected integration stay in People.</p>
@@ -108,27 +108,28 @@ onBeforeUnmount(() => clearInterval(timer))
     <p v-else-if="!rows.length" class="empty">Nothing has been connected yet. <router-link to="/integrations">Connect a platform</router-link> to import its customers.</p>
     <p v-else-if="!filtered.length" class="empty">No connections match these filters.</p>
     <table v-else>
-      <thead><tr><th>Connection</th><th>Platform</th><th>Status</th><th>Direction</th><th>People imported</th><th>Last synced</th><th>Automatic sync</th><th></th></tr></thead>
+      <thead><tr><th>Connection</th><th>Platform</th><th>Status</th><th>Direction</th><th>Imported</th><th>Exported</th><th>Last synced</th><th>Automatic sync</th><th></th></tr></thead>
       <tbody>
         <template v-for="c in filtered" :key="c.id">
           <tr>
-            <td :class="{ off: c.status === 'disconnected' }"><b>{{ c.name }}</b><template v-if="c.uses_url"><br /><small class="muted">{{ c.store_url }}</small></template></td>
+            <td :class="{ off: c.status === 'disconnected' }"><router-link :to="`/integrations/connected/${c.id}`" title="Edit Configuration"><b>{{ c.name }}</b></router-link><template v-if="c.uses_url"><br /><small class="muted">{{ c.store_url }}</small></template></td>
             <td>{{ c.provider_label }}<br /><small class="muted">{{ CATEGORIES[c.category] || '' }}</small></td>
             <td>
               <span v-if="c.status === 'disconnected'" class="badge off" :title="'Disconnected ' + $dt(c.disconnected_at)">disconnected</span>
               <span v-else-if="c.running" class="badge queued">syncing…</span>
               <span v-else class="badge" :class="c.status === 'connected' ? 'sent' : 'failed'">{{ c.status === 'connected' ? 'connected' : 'needs attention' }}</span>
             </td>
-            <template v-if="c.channel"><td colspan="4" class="muted">Sends campaign messages ({{ CATEGORIES[c.category] }} channel)</td></template>
+            <template v-if="c.channel"><td colspan="5" class="muted">Sends campaign messages ({{ CATEGORIES[c.category] }} channel)</td></template>
             <template v-else>
               <td>{{ DIRECTION[dirOf(c)] }}</td>
               <td>{{ c.imported }}</td>
+              <td>{{ c.exported > 0 || dirOf(c) !== 'import' ? c.exported : '–' }}</td>
               <td>{{ c.last_synced_at ? $dt(c.last_synced_at) : 'never' }}</td>
               <td>{{ c.status === 'disconnected' ? '–' : EVERY[c.settings?.sync_every ?? 0] || 'Manual only' }}</td>
             </template>
             <td class="act"><RowMenu :history="{ type: 'integration', id: c.id, title: c.name }" :items="menu(c)" /></td>
           </tr>
-          <tr v-if="c.last_error"><td colspan="8" class="errrow">{{ c.last_error }}</td></tr>
+          <tr v-if="c.last_error"><td colspan="9" class="errrow">{{ c.last_error }}</td></tr>
         </template>
       </tbody>
     </table>

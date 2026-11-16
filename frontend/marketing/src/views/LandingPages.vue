@@ -121,7 +121,7 @@ onMounted(async () => { forms.value = (await api.get('/forms')).data; await load
     <table v-else>
       <thead><tr><th>Name</th><th>Title</th><th>Views</th><th>Status</th><th class="act">Actions</th></tr></thead>
       <tr v-for="p in visible" :key="p.id">
-        <td><a href="#" class="pg-name" @click.prevent="edit(p)"><b>{{ p.name }}</b></a><a v-if="p.published" :href="p.url" target="_blank" rel="noopener" class="eye" title="View the live page"><Icon name="eye" :size="18" /></a><br /><a v-if="p.published" :href="p.url" target="_blank" rel="noopener"><small>{{ p.url }}</small></a><small v-else>Not published</small></td>
+        <td><a href="#" class="pg-name" @click.prevent="edit(p)"><b>{{ p.name }}</b></a><a v-if="p.published || p.preview_url" :href="p.published ? p.url : p.preview_url" target="_blank" rel="noopener" class="eye" :title="p.published ? 'View the live page' : 'Preview this draft (private link)'"><Icon name="eye" :size="18" /></a><br /><a v-if="p.published" :href="p.url" target="_blank" rel="noopener"><small>{{ p.url }}</small></a><small v-else>Not published</small></td>
         <td>{{ p.title || 'Landing page' }}<small v-if="!p.title" style="color: #9ca3af"> (default)</small></td>
         <td>{{ p.views }}</td>
         <td><span class="badge" :class="p.published ? 'sent' : ''">{{ p.published ? 'published' : 'draft' }}</span></td>

@@ -1,8 +1,8 @@
 @verbatim
 <section id="integrations" data-nav="Integrations" data-group="Integrations">
   <h2>Integrations: bring your store’s customers in <a class="anchor" href="#integrations">#</a></h2>
-  <p>Open <b>Integrations → Connections</b> to connect an online store, website, CRM, email-marketing tool or payments account. The customers (contacts, subscribers, registered users) of that platform are imported into <b>People</b>, and kept up to date automatically.</p>
-  <p>Your connected platforms are listed, with filters, under <b>Integrations → All integrations</b>: status, direction, people imported and last sync. Each row has a “⋮” menu to sync, change settings, check the connection, re-import, see its sync history or disconnect. Disconnected integrations stay in the list (filter by status “Disconnected”) and can be connected again from the same menu.</p>
+  <p>Open <b>Integrations → Integrations</b> to connect an online store, website, CRM, email-marketing tool or payments account. The customers (contacts, subscribers, registered users) of that platform are imported into <b>People</b>, and kept up to date automatically.</p>
+  <p>Your connected platforms are listed, with filters, under <b>Integrations → Connected</b>: status, direction, people imported and last sync. Each row has a “⋮” menu to sync, edit its configuration, check the connection, re-import, see its sync history or disconnect. Disconnected integrations stay in the list (filter by status “Disconnected”) and can be connected again from the same menu.</p>
   <p><b>Several stores or accounts of the same platform</b> can be connected: for example three Shopify stores, or two WordPress sites and a Mailchimp account. Each connection has its own <b>name</b>, list, tags, permission choice and schedule. The same store or account cannot be connected twice; the app tells you which connection already uses it.</p>
 
   <div class="table-wrap"><table>
@@ -41,20 +41,22 @@
       <tr><td><b>GoCardless</b> (payments)</td><td>Customers: name, email, phone.</td><td>None recorded, so nobody is subscribed by default.</td></tr>
     </tbody>
   </table></div>
-  <p>The platforms are grouped as <b>Online stores</b>, <b>Websites</b>, <b>CRM</b>, <b>Email marketing</b> and <b>Payments</b>. Some imports read only what changed since the last sync; platforms that cannot filter by date (for example Close, Squarespace and MailerLite) read everyone each time, which is safe: people already here are only completed.</p>
+  <p>The platforms are grouped as <b>Online stores</b>, <b>Marketplaces</b> (Etsy, eBay, Amazon, Walmart, Mercado Libre and Daraz: the buyers of your orders are imported, and what a buyer’s record holds depends on what the marketplace shares: Etsy and eBay give names and emails, Amazon and Walmart usually only masked addresses, Daraz a phone number instead of an email, and buyers are not subscribed unless you choose “Everyone”), <b>Websites</b>, <b>CRM</b>, <b>Email marketing</b> and <b>Payments</b>. Some imports read only what changed since the last sync; platforms that cannot filter by date (for example Close, Squarespace and MailerLite) read everyone each time, which is safe: people already here are only completed.</p>
 
-  <h3>Which way people move (Mailchimp)</h3>
-  <p>A Mailchimp connection can work in any of three ways, chosen under <b>Which way should people move?</b> when you connect or in the connection’s Settings:</p>
+  <h3>Which way people move (Mailchimp, Klaviyo and Stripe)</h3>
+  <p>A Mailchimp, Klaviyo or Stripe connection can work in any of three ways, chosen under <b>Which way should people move?</b> when you connect or in the connection’s Edit Configuration page:</p>
   <ul>
     <li><b>Import only</b> (default): Mailchimp contacts become People.</li>
-    <li><b>Send only</b>: your People are added to a Mailchimp audience. Nothing is read from Mailchimp.</li>
+    <li><b>Send only</b>: your People are added to a Mailchimp audience, a Klaviyo list, or Stripe as customers. Nothing is read from the platform.</li>
     <li><b>Both ways</b>: import first, then send.</li>
   </ul>
-  <p>Sending needs the <b>Audience ID</b> (in Mailchimp: Audience → Settings → Audience name and defaults). You can send everyone with an email address, or only the people in one list. <b>Only people who are subscribed here are sent as subscribed.</b> A person who unsubscribed here is marked unsubscribed in Mailchimp if they are already there. Someone who unsubscribed in Mailchimp is never re-subscribed by this app, and people Mailchimp refuses (an invalid email, for example) are counted as “refused” in <b>Sync history</b>. Names and phone numbers you hold here are copied to Mailchimp. After the first sync only people changed since the last one are sent.</p>
+  <p><b>Klaviyo</b>: sending needs the <b>List ID</b> of the list your People join (you can also import from one list only). People who are subscribed here are added as profiles and subscribed to email marketing on that list; people who unsubscribed here are unsubscribed from the list if Klaviyo already knows them, and nobody is created for them. Klaviyo may ask a new subscriber to confirm if the list uses double opt-in. A private API key (or the one-click connection) needs Write access to Profiles, Subscriptions and Lists to send, and Read access to Profiles, Subscriptions, Accounts and Lists to import.</p>
+  <p><b>Stripe</b>: sending needs no list. People are added as customers, matched by email so nobody is added twice; an existing customer only gets a blank name or phone filled in. Whether a person is subscribed is saved on the customer as <code>marketing_subscribed</code> (yes or no).</p>
+  <p><b>Mailchimp</b>: sending needs the <b>Audience ID</b> (in Mailchimp: Audience → Settings → Audience name and defaults). You can send everyone with an email address, or only the people in one list. <b>Only people who are subscribed here are sent as subscribed.</b> A person who unsubscribed here is marked unsubscribed in Mailchimp if they are already there. Someone who unsubscribed in Mailchimp is never re-subscribed by this app, and people Mailchimp refuses (an invalid email, for example) are counted as “refused” in <b>Sync history</b>. Names and phone numbers you hold here are copied to Mailchimp. After the first sync only people changed since the last one are sent.</p>
 
   <h3>One-click connect</h3>
   <p>Platforms that offer it show a <b>One-click</b> label and a <b>Connect with …</b> button. Press it, approve read-only access on the platform’s own page, and you are returned here with the connection ready: there is nothing to copy and paste, and your password is never shared with this app. Available for Shopify (you type your store address first), WooCommerce and WordPress (you type your site address), HubSpot, Mailchimp, Klaviyo, Kit, Pipedrive, Salesforce, Square and Stripe. Where the button is not shown, the platform has not been set up for one-click connect on this server yet: use <b>Paste the details instead</b>, which is always available.</p>
-  <p>If a connection expires or access is removed, open its <b>Settings</b> and press <b>Reconnect with …</b>. Connecting the same account again renews the existing connection instead of adding a second one.</p>
+  <p>If a connection expires or access is removed, open its <b>Edit Configuration</b> and press <b>Reconnect with …</b>. Connecting the same account again renews the existing connection instead of adding a second one.</p>
 
   <h3>Connect a platform</h3>
   <ol>

@@ -45,10 +45,12 @@ class PublicController extends Controller
         return $this->html(FormRenderer::page($form, $nonce), $nonce);
     }
 
-    public function page(string $slug)
+    public function page(Request $request, string $slug)
     {
-        $page = LandingPage::withoutGlobalScope('company')->where('slug', $slug)->where('published', true)->firstOrFail();
-        $page->increment('views');
+        // a draft can be previewed by its owner through a signed link made in the Pages list (it expires, and does not count as a view)
+        $preview = $request->hasValidSignature();
+        $page = LandingPage::withoutGlobalScope('company')->where('slug', $slug)->when(! $preview, fn ($q) => $q->where('published', true))->firstOrFail();
+        $preview || $page->increment('views');
         $nonce = base64_encode(random_bytes(16));
 
         $company = Company::find($page->company_id);

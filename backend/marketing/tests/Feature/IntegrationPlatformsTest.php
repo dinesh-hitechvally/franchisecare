@@ -62,11 +62,12 @@ class IntegrationPlatformsTest extends TestCase
     {
         $list = collect($this->getJson('/api/integrations/providers', $this->h)->assertOk()->json());
 
-        $this->assertCount(31, $list);
+        $this->assertCount(37, $list);
         foreach (['store', 'website', 'crm', 'email', 'payments'] as $group) {
             $this->assertGreaterThanOrEqual(5, $list->where('category', $group)->count(), $group);
         }
         $this->assertSame(['shopify', 'woocommerce', 'magento', 'bigcommerce', 'ecwid'], $list->where('category', 'store')->pluck('key')->values()->all());
+        $this->assertSame(['etsy', 'ebay', 'amazon', 'walmart', 'mercadolibre', 'daraz'], $list->where('category', 'marketplace')->pluck('key')->values()->all());
         $this->assertSame(['shopify', 'woocommerce', 'magento', 'wordpress', 'ghost', 'salesforce', 'activecampaign'], $list->where('uses_url', true)->pluck('key')->values()->all());
         foreach ($list as $p) {
             $this->assertNotEmpty($p['steps'], $p['key']);
@@ -270,7 +271,7 @@ class IntegrationPlatformsTest extends TestCase
 
         $r = $this->connect(['provider' => 'klaviyo', 'private_key' => 'pk_secret1234']);
         $this->assertSame('Acme Klaviyo', $r->json('name'));
-        $this->assertSame('2025-04-15', $revision); // Klaviyo needs an API revision on every call
+        $this->assertSame(config('services.integrations.klaviyo.api_version'), $revision); // Klaviyo needs an API revision on every call
 
         $p = $this->people();
         $this->assertSame(['yes@example.com', 'no@example.com', 'never@example.com', 'plain@example.com'], $p->keys()->all());

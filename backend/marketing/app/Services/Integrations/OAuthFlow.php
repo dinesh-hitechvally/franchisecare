@@ -42,11 +42,68 @@ trait OAuthFlow
         };
     }
 
+    /**
+     * The .env settings that hold the app's client id and secret, each with an example value for the help (never the real one).
+     * Named after the platform unless it says otherwise; config/services.php reads the same names.
+     *
+     * @return array<int, array{name: string, example: string}>
+     */
+    public function oauthEnv(): array
+    {
+        $key = strtoupper($this->key());
+
+        return [['name' => $key.'_CLIENT_ID', 'example' => 'your-client-id'], ['name' => $key.'_CLIENT_SECRET', 'example' => 'your-client-secret']];
+    }
+
+    /**
+     * What each permission the app asks for is used for: [permission => ['why' => a sentence, 'for' => ['import', 'send']]], where `for` is when it is needed.
+     * Shown beside the permissions that were granted, in Edit Configuration.
+     *
+     * @return array<string, array{why: string, for: array<int, string>}>
+     */
+    public function scopeNotes(): array
+    {
+        return [];
+    }
+
+    /** Can this platform be asked which of the permissions a connection really has (by trying harmless requests)? */
+    public function checksScopes(): bool
+    {
+        return false;
+    }
+
+    /**
+     * Which of the app's permissions this connection has: [permission => true (has it) | false (does not) | null (could not tell)].
+     * Only for platforms that return true from checksScopes(). Throws IntegrationException when the connection itself is refused.
+     *
+     * @return array<string, bool|null>
+     */
+    public function checkScopes(Integration $integration): array
+    {
+        return [];
+    }
+
+    /** The address the platform sends the browser back to; it is what gets registered as the redirect (callback) URL of the platform's app. */
+    public static function callbackUrl(string $path = 'callback'): string
+    {
+        return rtrim((string) config('app.url'), '/').'/api/oauth/integrations/'.$path;
+    }
+
     public function describeAutoConnect(): ?array
     {
         $spec = $this->autoConnect();
+        if (! $spec) {
+            return null;
+        }
 
-        return $spec ? ['mode' => $spec['mode'], 'available' => $this->autoConnectReady(), 'asks' => $spec['asks'] ?? []] : null;
+        return [
+            'mode' => $spec['mode'], 'available' => $this->autoConnectReady(), 'asks' => $spec['asks'] ?? [],
+            'callback_url' => $spec['mode'] === 'oauth' ? self::callbackUrl() : null, // only the OAuth platforms need it registered
+            'env' => $spec['mode'] === 'oauth' ? $this->oauthEnv() : [],
+            'scopes' => $spec['mode'] === 'oauth' ? array_values($spec['scopes'] ?? []) : [], // the permissions the app must have switched on at the platform
+            'scope_notes' => $spec['mode'] === 'oauth' ? (object) $this->scopeNotes() : (object) [],
+            'can_check_scopes' => $spec['mode'] === 'oauth' && $this->checksScopes(),
+        ];
     }
 
     protected function oauthAuthorizeBase(array $input): string
@@ -163,7 +220,7 @@ trait OAuthFlow
         try {
             $tokens = $this->refreshTokens($i);
         } catch (IntegrationException) {
-            throw new IntegrationException('The connection to '.$this->label().' has expired. Open Settings and connect again.');
+            throw new IntegrationException('The connection to '.$this->label().' has expired. Open Edit Configuration and connect again.');
         }
         $s[$key] = $tokens['access_token'];
         $s['refresh_token'] = $tokens['refresh_token'] ?: ($s['refresh_token'] ?? null);

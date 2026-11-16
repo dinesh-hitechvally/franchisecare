@@ -1,5 +1,5 @@
 <script setup>
-// Integrations → Connections: connect a store, website, CRM, email-marketing or payments account and import its customers as People.
+// Integrations → Integrations: connect a store, website, CRM, email-marketing or payments account and import its customers as People.
 // Several stores/accounts of the same platform can be connected; each has its own name, list, tags and schedule.
 import { ref, reactive, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -20,7 +20,7 @@ const dlg = ref(null) // { mode: 'new' | 'edit', provider, id }
 const route = useRoute()
 const router = useRouter()
 
-const CATEGORIES = [['store', 'Online stores'], ['website', 'Websites'], ['crm', 'CRM'], ['email', 'Email marketing'], ['payments', 'Payments'], ['social', 'Social media'], ['messaging', 'Messaging channels']]
+const CATEGORIES = [['store', 'Online stores'], ['marketplace', 'Marketplaces'], ['website', 'Websites'], ['crm', 'CRM'], ['email', 'Email marketing'], ['payments', 'Payments'], ['social', 'Social media'], ['messaging', 'Messaging channels']]
 // Help: everything needed to connect one platform, in a window. The steps, fields and notes come from the platform's own definition;
 // the links go to the official page where its keys or app are created.
 const helpOf = ref(null)
@@ -46,8 +46,20 @@ const HELP_LINKS = {
   whatsapp: ['https://developers.facebook.com/docs/whatsapp/cloud-api/get-started', 'WhatsApp Cloud API: get started'],
   messenger: ['https://developers.facebook.com/docs/messenger-platform/get-started', 'Messenger Platform: get started'],
   x: ['https://developer.x.com/en/portal/dashboard', 'X Developer Portal'],
+  etsy: ['https://developers.etsy.com/documentation/essentials/authentication', 'Etsy Open API: authentication'],
+  ebay: ['https://developer.ebay.com/api-docs/static/oauth-authorization-code-grant.html', 'eBay: authorization code grant'],
+  amazon: ['https://developer-docs.amazon.com/sp-api/docs/access-orders-pii', 'Amazon SP-API: access orders PII'],
+  walmart: ['https://developer.walmart.com/us-marketplace/docs/get-all-orders', 'Walmart Marketplace: get all orders'],
+  mercadolibre: ['https://developers.mercadolibre.com.ar/en_us/manage-sales', 'Mercado Libre: manage sales'],
+  daraz: ['https://open.daraz.com/', 'Daraz Open Platform'],
 }
 const helpLink = (p) => HELP_LINKS[p.key]
+const copied = ref('') // which "Copy" button of the help window was just used
+async function copyText(text, which) {
+  try { await navigator.clipboard.writeText(text); copied.value = which; setTimeout(() => (copied.value = ''), 1500) } catch (e) { /* clipboard blocked: the text is shown, so it can be selected by hand */ }
+}
+// the .env lines for the app's client id and secret, as examples (the server sends placeholder values, never the real ones)
+const envExample = (p) => (p.auto_connect?.env || []).map((e) => e.name + '=' + e.example).join('\n')
 const categoryLabel = (key) => CATEGORIES.find((c) => c[0] === key)?.[1] || key
 const f = reactive({ q: '', category: '', method: '' }) // filters of the table: search, category, one-click or pasted details
 const dirty = computed(() => !!(f.q || f.category || f.method))
@@ -55,7 +67,7 @@ const clear = () => Object.assign(f, { q: '', category: '', method: '' })
 const hasOneClick = (p) => !!p.auto_connect?.available
 const rows = computed(() => {
   const q = f.q.trim().toLowerCase()
-  return CATEGORIES.flatMap(([key]) => providers.value.filter((p) => p.category === key)) // grouped by category, in the catalogue's order
+  return [...providers.value].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: 'base' })) // by name, A to Z
     .filter((p) => (!f.category || p.category === f.category) && (!f.method || (f.method === 'oneclick') === hasOneClick(p)) && (!q || (p.label + ' ' + p.description).toLowerCase().includes(q)))
 })
 const EVERY = [[0, 'Only when I press Sync now'], [15, 'Every 15 minutes'], [60, 'Every hour'], [360, 'Every 6 hours'], [1440, 'Every day']]
@@ -74,7 +86,7 @@ function poll() {
   timer = setInterval(() => { if (anyRunning.value) load().catch(() => {}) }, 3000)
 }
 
-// the window itself is IntegrationDialog; this page only opens it for a new connection (settings are on the All integrations page)
+// the window itself is IntegrationDialog; this page only opens it for a new connection (settings are on the Connected page)
 function open(mode, p, c = null, prefill = null) { dlg.value = { mode, provider: p, connection: c, prefill } }
 function onDone(m) { msg.value = m; dlg.value = null; load() }
 
@@ -106,7 +118,7 @@ const DIRECTION = { import: 'Import only', export: 'Send only', both: 'Both ways
 onMounted(async () => {
   // back from the platform's approval page
   const q = route.query
-  if (q.connected) msg.value = `Connected “${q.connected}”. Importing customers now. Change its list, tags, direction and schedule on the All integrations page (Settings).`
+  if (q.connected) msg.value = `Connected “${q.connected}”. Importing customers now. Change its list, tags, direction and schedule on the Connected page (⋮ → Edit Configuration).`
   else if (q.reconnected) msg.value = `Reconnected “${q.reconnected}”.`
   else if (q.woocommerce) msg.value = 'If you approved access in WooCommerce, the shop is being connected and will appear here in a moment.'
   if (q.oauth_error) error.value = q.oauth_error
@@ -115,7 +127,7 @@ onMounted(async () => {
     ;[providers.value, lists.value] = (await Promise.all([api.get('/integrations/providers'), api.get('/lists')])).map((r) => r.data)
     await load()
     if (q.connect && providerOf(q.connect)) open('new', providerOf(q.connect), null, { name: q.name, url: q.url }) // “Connect again” on a disconnected integration
-    if (q.edit) router.replace(`/integrations/${q.edit}/settings`) // Settings has its own page
+    if (q.edit) router.replace(`/integrations/connected/${q.edit}`) // Settings has its own page
   } finally { loading.value = false }
   if (q.woocommerce) setTimeout(() => load().catch(() => {}), 4000)
   poll()
@@ -125,7 +137,7 @@ onBeforeUnmount(() => clearInterval(timer))
 
 <template>
   <div class="head"><h1>Integrations</h1><div class="row"><router-link to="/integrations/history" class="btn ghost">Sync history</router-link></div></div>
-  <p class="intro">Connect a store, website, CRM, email-marketing or payments account and bring its customers into <b>People</b> automatically. You can connect several stores or accounts of the same platform (for example three Shopify stores); each keeps its own name, list, tags and schedule. Details you enter are stored encrypted, and only customers who allowed marketing are subscribed unless you choose otherwise.</p>
+  <p class="intro">Connect a store, marketplace, website, CRM, email-marketing or payments account and bring its customers into <b>People</b> automatically. You can connect several stores or accounts of the same platform (for example three Shopify stores); each keeps its own name, list, tags and schedule. Details you enter are stored encrypted, and only customers who allowed marketing are subscribed unless you choose otherwise.</p>
   <div v-if="msg" class="alert ok" @click="msg = ''">{{ msg }}</div>
   <div v-if="error" class="alert err" @click="error = ''">{{ error }}</div>
 
@@ -173,6 +185,29 @@ onBeforeUnmount(() => clearInterval(timer))
         <li v-else>This platform is connected by pasting the details below. They are stored encrypted.</li>
         <li v-if="helpOf.uses_url">You will also type the address of your site or store.</li>
       </ul>
+
+      <template v-if="helpOf.auto_connect?.callback_url">
+        <h4>Callback URL (redirect URI)</h4>
+        <p>When you create the app on {{ helpOf.label }}'s developer page, add this as its <b>redirect / callback URL</b>. It must match exactly, or {{ helpOf.label }} will refuse the sign-in.</p>
+        <div class="cb">
+          <code>{{ helpOf.auto_connect.callback_url }}</code>
+          <button type="button" class="btn ghost sm" @click="copyText(helpOf.auto_connect.callback_url, 'url')">{{ copied === 'url' ? 'Copied ✓' : 'Copy' }}</button>
+        </div>
+
+        <template v-if="helpOf.auto_connect.scopes?.length">
+          <h4>Permissions to switch on</h4>
+          <p>Switch these on for the app at {{ helpOf.label }} (its scopes or permissions). {{ helpOf.label }} only shows, and only grants, the ones the app has enabled: if one is missing here, the connection is made but that part fails.</p>
+          <div class="cb"><div class="scopes"><code v-for="s in helpOf.auto_connect.scopes" :key="s">{{ s }}</code></div><button type="button" class="btn ghost sm" @click="copyText(helpOf.auto_connect.scopes.join(' '), 'scopes')">{{ copied === 'scopes' ? 'Copied ✓' : 'Copy' }}</button></div>
+        </template>
+
+        <h4>Client ID and secret</h4>
+        <p>{{ helpOf.label }} gives you a <b>client ID</b> and a <b>client secret</b> when the app is created. Put them in the server's <code>.env</code> file, then run <code>php artisan config:clear</code>. Example (use your own values):</p>
+        <div class="cb">
+          <pre>{{ envExample(helpOf) }}</pre>
+          <button type="button" class="btn ghost sm" @click="copyText(envExample(helpOf), 'env')">{{ copied === 'env' ? 'Copied ✓' : 'Copy' }}</button>
+        </div>
+        <p class="note">Keep the secret private: it stays on the server and is never shown in the app.</p>
+      </template>
 
       <h4>What you will enter</h4>
       <table class="hf">
@@ -240,6 +275,12 @@ onBeforeUnmount(() => clearInterval(timer))
 .help .lead { font-size: 15px; margin: 0; }
 .help ul, .help ol { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
 .help .note { background: #eef2ff; border-radius: 8px; padding: 8px 12px; margin-top: 10px; }
+.help .cb { display: flex; align-items: center; gap: 10px; background: #f3f4f6; border-radius: 8px; padding: 8px 12px; margin-top: 8px; }
+.help .scopes { flex: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.help .scopes code { background: #fff; border: 1px solid #e0e3f0; border-radius: 6px; padding: 2px 8px; font-size: 13px; }
+.help .cb code, .help .cb pre { flex: 1; word-break: break-all; font-size: 13px; }
+.help .cb pre { margin: 0; white-space: pre-wrap; font-family: ui-monospace, Menlo, Consolas, monospace; }
+.help p code { background: #f3f4f6; padding: 1px 5px; border-radius: 4px; }
 .hf { width: 100%; border-collapse: collapse; font-size: 13px; }
 .hf th, .hf td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid #eef0f3; }
 .hf th { color: #6b7280; font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }

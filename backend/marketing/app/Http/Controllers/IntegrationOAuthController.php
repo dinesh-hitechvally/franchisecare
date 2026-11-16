@@ -29,7 +29,7 @@ class IntegrationOAuthController extends Controller
 
     protected function callbackUrl(string $path = 'callback'): string
     {
-        return rtrim((string) config('app.url'), '/').'/api/oauth/integrations/'.$path;
+        return Provider::callbackUrl($path);
     }
 
     protected function back(): string
@@ -135,7 +135,18 @@ class IntegrationOAuthController extends Controller
         }
         $tokens = $provider->exchange($p['input'], (string) $request->query('code'), $p['redirect'], $p['verifier'] ?? null);
 
-        return $this->finish($p, $provider, fn (Integration $i) => $provider->oauthConnect($i, $tokens, $p['input']));
+        return $this->finish($p, $provider, fn (Integration $i) => $provider->oauthConnect($i, $tokens, $p['input']), $this->granted($tokens));
+    }
+
+    /** The permissions the platform says it granted (its token answer carries them as a list, separated by spaces or commas), or null when it does not say. */
+    protected function granted(array $tokens): ?array
+    {
+        $scope = $tokens['raw']['scope'] ?? $tokens['raw']['scopes'] ?? null;
+        $list = is_array($scope) ? $scope : preg_split('/[\s,]+/', (string) $scope);
+        $list = array_values(array_unique(array_filter(array_map('trim', $list), fn ($s) => is_string($s) && $s !== '')));
+        sort($list);
+
+        return $list ?: null;
     }
 
     /** WordPress returns the browser with the site address, the user and a new application password. */
@@ -181,7 +192,7 @@ class IntegrationOAuthController extends Controller
      *
      * @return array{0: Integration, 1: bool} the connection, and whether it was an existing one renewed
      */
-    protected function finish(array $p, Provider $provider, callable $apply): array
+    protected function finish(array $p, Provider $provider, callable $apply, ?array $granted = null): array
     {
         $integration = new Integration(['provider' => $provider->key(), 'settings' => $p['settings']]);
         $integration->forceFill(['company_id' => $p['company']]);
@@ -198,12 +209,18 @@ class IntegrationOAuthController extends Controller
         $detected = $provider->test($integration); // the platform confirms the new access works before anything is saved
 
         if ($existing) {
-            $existing->forceFill(['secrets' => $integration->secrets, 'store_url' => $integration->store_url ?: $existing->store_url, 'status' => 'connected', 'last_error' => null])->save();
+            $existing->forceFill([
+                'secrets' => $integration->secrets, 'store_url' => $integration->store_url ?: $existing->store_url, 'status' => 'connected', 'last_error' => null,
+                'settings' => $granted ? array_merge($existing->settings ?? [], ['granted_scopes' => $granted]) : $existing->settings,
+            ])->save();
 
             return [$existing, true];
         }
 
-        $integration->forceFill(['name' => trim((string) ($p['name'] ?? '')) ?: $detected, 'status' => 'connected', 'last_error' => null])->save();
+        $integration->forceFill([
+            'name' => trim((string) ($p['name'] ?? '')) ?: $detected, 'status' => 'connected', 'last_error' => null,
+            'settings' => $granted ? array_merge($integration->settings ?? [], ['granted_scopes' => $granted]) : $integration->settings, // what the platform actually allowed, shown in Edit Configuration
+        ])->save();
         if (($p['import_now'] ?? true) && ! ($provider instanceof \App\Services\Integrations\MessagingProvider)) {
             Syncs::start($integration, 'connect', true);
         }

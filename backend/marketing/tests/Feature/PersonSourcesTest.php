@@ -51,6 +51,11 @@ class PersonSourcesTest extends TestCase
         });
     }
 
+    protected function connectMailchimp(string $direction): void
+    {
+        $this->postJson('/api/integrations', ['provider' => 'mailchimp', 'api_key' => 'abcdef123456-us21', 'direction' => $direction, 'audience_id' => 'aud1'], $this->h)->assertStatus(201);
+    }
+
     public function test_a_person_added_by_hand_records_where_it_came_from(): void
     {
         $id = $this->postJson('/api/people', ['email' => 'hand@example.com'], $this->h)->assertCreated()->json('id');
@@ -66,9 +71,10 @@ class PersonSourcesTest extends TestCase
     public function test_an_imported_customer_keeps_its_id_and_a_person_on_two_platforms_has_two_sources(): void
     {
         $this->fakeMailchimp();
-        $existing = Person::withoutGlobalScopes()->findOrFail($this->postJson('/api/people', ['email' => 'from-mc@example.com'], $this->h)->assertCreated()->json('id'));
+        $id = $this->postJson('/api/people', ['email' => 'from-mc@example.com'], $this->h)->assertCreated()->json('id');
+        $existing = Person::withoutGlobalScopes()->findOrFail($id);
 
-        $this->postJson('/api/integrations', ['provider' => 'mailchimp', 'api_key' => 'abcdef123456-us21', 'direction' => 'both', 'audience_id' => 'aud1'], $this->h)->assertStatus(201);
+        $this->connectMailchimp('both');
 
         $sources = PersonSource::withoutGlobalScope('company')->where('person_id', $existing->id)->get()->keyBy('platform');
         $this->assertSame(md5('from-mc@example.com'), $sources['mailchimp']->external_id); // the id Mailchimp has for them
@@ -86,7 +92,7 @@ class PersonSourcesTest extends TestCase
         $this->fakeMailchimp();
         $person = tap((new Person)->forceFill(['company_id' => $this->company, 'email' => 'sub@example.com', 'source' => 'form', 'is_subscribed' => true]))->save();
 
-        $this->postJson('/api/integrations', ['provider' => 'mailchimp', 'api_key' => 'abcdef123456-us21', 'direction' => 'export', 'audience_id' => 'aud1'], $this->h)->assertStatus(201);
+        $this->connectMailchimp('export');
 
         $source = PersonSource::withoutGlobalScope('company')->where('person_id', $person->id)->where('platform', 'mailchimp')->sole();
         $this->assertSame(md5('sub@example.com'), $source->external_id);

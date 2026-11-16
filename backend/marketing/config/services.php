@@ -70,7 +70,7 @@ return [
             'auth_type'     => 'oauth',
             'client_id'     => env('KLAVIYO_CLIENT_ID'),
             'client_secret' => env('KLAVIYO_CLIENT_SECRET'),
-            'api_version'   => env('KLAVIYO_API_REVISION', '2025-04-15'),
+            'api_version'   => env('KLAVIYO_API_REVISION', '2026-10-15'),
         ],
 
         'kit' => [
@@ -101,6 +101,21 @@ return [
             'auth_type'     => 'oauth',
             'client_id'     => env('STRIPE_CONNECT_CLIENT_ID'),
             'client_secret' => env('STRIPE_CONNECT_SECRET_KEY'),
+        ],
+
+        // Etsy: client_id is the app's keystring and client_secret its shared secret (Etsy asks for both on every request).
+        'etsy' => [
+            'auth_type'     => 'oauth',
+            'client_id'     => env('ETSY_CLIENT_ID'),
+            'client_secret' => env('ETSY_CLIENT_SECRET'),
+        ],
+
+        // eBay: the redirect address is not sent as such but as a "RuName" registered for the app (its "auth accepted URL" is the callback).
+        'ebay' => [
+            'auth_type'     => 'oauth',
+            'client_id'     => env('EBAY_CLIENT_ID'),
+            'client_secret' => env('EBAY_CLIENT_SECRET'),
+            'ru_name'       => env('EBAY_RUNAME'),
         ],
 
         'x' => [

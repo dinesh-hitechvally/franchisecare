@@ -13,4 +13,4 @@ Route::get('/docs/api', [DocsController::class, 'api']);
 
 // Hosted sign-up forms and landing pages (public)
 Route::get('/f/{slug}', [PublicController::class, 'form'])->middleware('throttle:120,1');
-Route::get('/p/{slug}', [PublicController::class, 'page'])->middleware('throttle:120,1');
+Route::get('/p/{slug}', [PublicController::class, 'page'])->middleware('throttle:120,1')->name('page.public');

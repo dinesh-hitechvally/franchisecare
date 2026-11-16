@@ -33,7 +33,7 @@ abstract class Provider
 
     abstract public function description(): string;
 
-    /** Where it belongs in the catalogue: store | website | crm | email | payments | social | messaging. */
+    /** Where it belongs in the catalogue: store | marketplace | website | crm | email | payments | social | messaging. */
     public function category(): string
     {
         return 'store';
@@ -43,6 +43,8 @@ abstract class Provider
      * The connection form: [{key, label, type: text|password, placeholder, help, secret, required}].
      * `url` is the store or site address (stored as store_url); other fields with secret = true are credentials (stored encrypted);
      * the rest are options of the connection (for example a Mailchimp audience id), kept in its settings under `config`.
+     * An option says which settings card it belongs to with `card`: 'import' (which contacts come in: an audience, a lead form, the marketplaces to read)
+     * or 'export' (where people are sent); without it, it is a detail of the connection itself.
      */
     abstract public function fields(): array;
 
@@ -70,7 +72,13 @@ abstract class Provider
         return (string) (($integration->setting('config') ?? [])[$key] ?? $default);
     }
 
-    /** Can the platform list the places contacts live in (Mailchimp audiences), so the person picks from a list instead of typing an id? */
+    /** What the platform calls the places contacts live in: Mailchimp has audiences, Klaviyo has lists. */
+    public function audienceNoun(): string
+    {
+        return 'audience';
+    }
+
+    /** Can the platform list the places contacts live in (Mailchimp audiences, Klaviyo lists), so the person picks from a list instead of typing an id? */
     public function hasAudiences(): bool
     {
         return false;
@@ -86,6 +94,18 @@ abstract class Provider
     public function supportsExport(): bool
     {
         return false;
+    }
+
+    /** Must a place to send people to be chosen first (a Mailchimp audience)? True for platforms with an export field marked export_required. */
+    public function exportTargetRequired(): bool
+    {
+        return collect($this->fields())->contains('export_required', true);
+    }
+
+    /** The rules of sending people to this platform, in a sentence, for the settings screens. */
+    public function exportNote(): string
+    {
+        return 'Send adds your People to '.$this->label().'. People who unsubscribed there are never re-subscribed.';
     }
 
     /**
@@ -136,7 +156,7 @@ abstract class Provider
     {
         return [
             'key' => $this->key(), 'label' => $this->label(), 'category' => $this->category(), 'uses_url' => $this->usesUrl(), 'description' => $this->description(),
-            'fields' => $this->fields(), 'steps' => $this->steps(), 'consent_note' => $this->consentNote(), 'settings' => $this->extraSettings(), 'auto_connect' => $this->describeAutoConnect(), 'supports_export' => $this->supportsExport(), 'has_audiences' => $this->hasAudiences(),
+            'fields' => $this->fields(), 'steps' => $this->steps(), 'consent_note' => $this->consentNote(), 'settings' => $this->extraSettings(), 'auto_connect' => $this->describeAutoConnect(), 'supports_export' => $this->supportsExport(), 'export_note' => $this->supportsExport() ? $this->exportNote() : null, 'has_audiences' => $this->hasAudiences(), 'audience_noun' => $this->audienceNoun(),
         ];
     }
 
@@ -173,7 +193,11 @@ abstract class Provider
                     $request = $request->withBasicAuth($options['basic'][0], $options['basic'][1]);
                 }
                 $verb = strtoupper($method);
-                $response = in_array($verb, ["POST", "PUT", "PATCH"], true) ? $request->send($verb, $url, ['json' => $options['json'] ?? []]) : (empty($options["query"]) ? $request->get($url) : $request->get($url, $options["query"]));
+                $body = isset($options['form']) ? ['form_params' => $options['form']] : ['json' => $options['json'] ?? []]; // a form (Stripe) or JSON body
+                if (isset($options['form'])) {
+                    $request = $request->asForm();
+                }
+                $response = in_array($verb, ['POST', 'PUT', 'PATCH'], true) ? $request->send($verb, $url, $body) : (empty($options['query']) ? $request->get($url) : $request->get($url, $options['query']));
             } catch (ConnectionException $e) {
                 throw new IntegrationException('Could not reach '.(parse_url($url, PHP_URL_HOST) ?: 'the site').'. Check the address and that the site is online.');
             }
